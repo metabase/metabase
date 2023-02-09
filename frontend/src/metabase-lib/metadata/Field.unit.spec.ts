@@ -93,9 +93,11 @@ describe("Field", () => {
 
     it("should prioritize the name in the field's `dimensions` property if it has one", () => {
       const field = new Field({
-        dimensions: {
-          name: "dimensions",
-        },
+        dimensions: [
+          {
+            name: "dimensions",
+          },
+        ],
         display_name: "display",
       });
       expect(field.displayName()).toBe("dimensions");
@@ -293,9 +295,11 @@ describe("Field", () => {
       });
       const field = new Field({
         id: 3,
-        dimensions: {
-          human_readable_field_id: 1,
-        },
+        dimensions: [
+          {
+            human_readable_field_id: 1,
+          },
+        ],
       });
       field.metadata = metadata;
       expect(field.remappedField()).toBe(field1);

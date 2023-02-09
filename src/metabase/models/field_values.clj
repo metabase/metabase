@@ -20,7 +20,6 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.base :as serdes.base]
@@ -31,6 +30,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

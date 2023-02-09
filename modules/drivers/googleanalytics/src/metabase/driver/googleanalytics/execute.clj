@@ -1,6 +1,5 @@
 (ns metabase.driver.googleanalytics.execute
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
             [metabase.driver.googleanalytics.metadata :as ga.metadata]
@@ -10,6 +9,7 @@
             [metabase.util.date-2.common :as u.date.common]
             [metabase.util.date-2.parse :as u.date.parse]
             [metabase.util.date-2.parse.builder :as u.date.builder]
+            [metabase.util.log :as log]
             [toucan.db :as db])
   (:import [com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders]
            java.time.DayOfWeek

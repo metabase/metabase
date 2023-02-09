@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode, useState } from "react";
+import React, { ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
@@ -30,6 +30,7 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import ErrorBoundary from "./ErrorBoundary";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -79,18 +80,6 @@ const mapStateToProps = (
 const mapDispatchToProps: AppDispatchProps = {
   onError: setErrorPage,
 };
-
-class ErrorBoundary extends React.Component<{
-  onError: (errorInfo: ErrorInfo) => void;
-}> {
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError(errorInfo);
-  }
-
-  render() {
-    return this.props.children;
-  }
-}
 
 function App({
   errorPage,

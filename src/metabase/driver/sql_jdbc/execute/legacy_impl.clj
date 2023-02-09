@@ -3,11 +3,11 @@
   don't fully support the new JSR-310 `java.time` classes. Drivers with `::use-legacy-classes-for-read-and-set` as a
   parent will use these implementations instead of the defaults."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log])
   (:import
    (java.sql PreparedStatement ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import InputBase from "metabase/core/components/Input";
 import Icon from "metabase/components/Icon";
 
 import { color, lighten } from "metabase/lib/colors";

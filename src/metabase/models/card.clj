@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -26,6 +25,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

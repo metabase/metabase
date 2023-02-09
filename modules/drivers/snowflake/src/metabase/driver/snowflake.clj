@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -28,6 +27,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
    (java.io File)

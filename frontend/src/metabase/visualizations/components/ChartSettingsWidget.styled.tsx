@@ -14,6 +14,7 @@ export const Root = styled.div<{
   marginBottom?: string;
   borderBottom?: boolean;
 }>`
+  position: relative;
   ${props =>
     !props.noPadding &&
     css`
@@ -66,7 +67,7 @@ export const Root = styled.div<{
 
     &:hover {
       transition: border 0.3s;
-      border-color: ${() => color("brand")};
+      border-color: ${color("brand")};
     }
   }
 `;

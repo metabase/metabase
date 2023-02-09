@@ -1,6 +1,5 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [medley.core :as m]
@@ -13,6 +12,7 @@
             [metabase.test.data.sql :as sql.tx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.log :as log]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption

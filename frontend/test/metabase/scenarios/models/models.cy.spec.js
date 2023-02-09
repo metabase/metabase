@@ -257,7 +257,9 @@ describe("scenarios > models", () => {
       });
 
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
+      selectFromDropdown("Models");
+      selectFromDropdown("Raw Data");
+      selectFromDropdown("Sample Database");
       cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 

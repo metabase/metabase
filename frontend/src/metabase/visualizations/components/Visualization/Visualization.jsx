@@ -30,6 +30,7 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -448,74 +449,76 @@ class Visualization extends React.PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
-      <VisualizationRoot className={className} style={style}>
-        {!!hasHeader && (
-          <VisualizationHeader>
-            <ChartCaption
+      <ErrorBoundary>
+        <VisualizationRoot className={className} style={style}>
+          {!!hasHeader && (
+            <VisualizationHeader>
+              <ChartCaption
+                series={series}
+                settings={settings}
+                icon={headerIcon}
+                actionButtons={extra}
+                onChangeCardAndRun={
+                  this.props.onChangeCardAndRun && !replacementContent
+                    ? this.handleOnChangeCardAndRun
+                    : null
+                }
+              />
+            </VisualizationHeader>
+          )}
+          {replacementContent ? (
+            replacementContent
+          ) : isDashboard && noResults ? (
+            <NoResultsView isSmall={small} />
+          ) : error ? (
+            <ErrorView
+              error={error}
+              icon={errorIcon}
+              isSmall={small}
+              isDashboard={isDashboard}
+            />
+          ) : loading ? (
+            <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
+          ) : (
+            <CardVisualization
+              {...this.props}
+              // NOTE: CardVisualization class used to target ExplicitSize HOC
+              className="CardVisualization flex-full flex-basis-none"
+              isPlaceholder={isPlaceholder}
               series={series}
               settings={settings}
-              icon={headerIcon}
-              actionButtons={extra}
+              card={series[0].card} // convenience for single-series visualizations
+              data={series[0].data} // convenience for single-series visualizations
+              hovered={hovered}
+              clicked={clicked}
+              headerIcon={hasHeader ? null : headerIcon}
+              onHoverChange={this.handleHoverChange}
+              onVisualizationClick={this.handleVisualizationClick}
+              visualizationIsClickable={this.visualizationIsClickable}
+              onRenderError={this.onRenderError}
+              onRender={this.onRender}
+              onActionDismissal={this.hideActions}
+              gridSize={gridSize}
               onChangeCardAndRun={
-                this.props.onChangeCardAndRun && !replacementContent
+                this.props.onChangeCardAndRun
                   ? this.handleOnChangeCardAndRun
                   : null
               }
             />
-          </VisualizationHeader>
-        )}
-        {replacementContent ? (
-          replacementContent
-        ) : isDashboard && noResults ? (
-          <NoResultsView isSmall={small} />
-        ) : error ? (
-          <ErrorView
-            error={error}
-            icon={errorIcon}
-            isSmall={small}
-            isDashboard={isDashboard}
-          />
-        ) : loading ? (
-          <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
-        ) : (
-          <CardVisualization
-            {...this.props}
-            // NOTE: CardVisualization class used to target ExplicitSize HOC
-            className="CardVisualization flex-full flex-basis-none"
-            isPlaceholder={isPlaceholder}
-            series={series}
-            settings={settings}
-            card={series[0].card} // convenience for single-series visualizations
-            data={series[0].data} // convenience for single-series visualizations
-            hovered={hovered}
-            clicked={clicked}
-            headerIcon={hasHeader ? null : headerIcon}
-            onHoverChange={this.handleHoverChange}
-            onVisualizationClick={this.handleVisualizationClick}
-            visualizationIsClickable={this.visualizationIsClickable}
-            onRenderError={this.onRenderError}
-            onRender={this.onRender}
-            onActionDismissal={this.hideActions}
-            gridSize={gridSize}
-            onChangeCardAndRun={
-              this.props.onChangeCardAndRun
-                ? this.handleOnChangeCardAndRun
-                : null
-            }
-          />
-        )}
-        <ChartTooltip series={series} hovered={hovered} settings={settings} />
-        {this.props.onChangeCardAndRun && (
-          <ChartClickActions
-            clicked={clicked}
-            clickActions={clickActions}
-            onChangeCardAndRun={this.handleOnChangeCardAndRun}
-            onClose={this.hideActions}
-            series={series}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          />
-        )}
-      </VisualizationRoot>
+          )}
+          <ChartTooltip series={series} hovered={hovered} settings={settings} />
+          {this.props.onChangeCardAndRun && (
+            <ChartClickActions
+              clicked={clicked}
+              clickActions={clickActions}
+              onChangeCardAndRun={this.handleOnChangeCardAndRun}
+              onClose={this.hideActions}
+              series={series}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            />
+          )}
+        </VisualizationRoot>
+      </ErrorBoundary>
     );
   }
 }

@@ -54,3 +54,11 @@ export const CompactSelect = styled(Select)`
     }
   }
 `;
+
+export const ActionButtons = styled.div`
+  /* Since the button is borderless, adding the negative margin
+     will make it look flush with the container */
+  &:last-child {
+    margin-right: -${space(1)};
+  }
+`;

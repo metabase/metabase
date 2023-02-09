@@ -1,12 +1,12 @@
 (ns metabase.test.initialize.plugins
   (:require
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [metabase.plugins :as plugins]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.test.data.env.impl :as tx.env.impl]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [yaml.core :as yaml]))
 
 ;; [[metabase.plugins/load-local-plugin-manifests!]] actually does the same thing as the code below now; the only

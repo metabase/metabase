@@ -19,7 +19,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
@@ -33,6 +32,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
    [schema.core :as s])

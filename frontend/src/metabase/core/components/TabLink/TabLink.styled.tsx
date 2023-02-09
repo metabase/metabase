@@ -16,7 +16,7 @@ export const TabLabel = styled.div`
 export const TabLinkRoot = styled(Link)<TabLinkProps>`
   padding: 1rem 0;
 
-  color: ${props => (props.isSelected ? color("brand") : color("text-medium"))};
+  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   font-size: 0.875rem;
   font-weight: 700;
 

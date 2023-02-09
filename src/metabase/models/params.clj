@@ -1,8 +1,17 @@
 (ns metabase.models.params
-  "Utility functions for dealing with parameters for Dashboards and Cards."
+  "Utility functions for dealing with parameters for Dashboards and Cards.
+
+  Parameter are objects that exists on Dashboard/Card. In FE terms, we call it \"Widget\".
+  The values of a parameter is provided so the Widget can show a list of options to the user.
+
+
+  There are 3 mains ways to provide values to a parameter:
+  - chain-filter: see [metabase.models.params.chain-filter]
+  - field-values: see [metabase.models.params.field-values]
+  - custom-values: see [metabase.models.params.custom-values]
+  "
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -11,10 +20,12 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -125,28 +136,17 @@
 (defn- remove-dimension-nonpublic-columns
   "Strip nonpublic columns from a `dimension` and from its hydrated human-readable Field."
   [dimension]
-  (-> dimension
-      (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
-      ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go ahead
-      ;; and strip them out
-      (dissoc :created_at :updated_at)))
+  (some-> dimension
+          (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
+          ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
+          ;; ahead and strip them out
+          (dissoc :created_at :updated_at)))
 
 (defn- remove-dimensions-nonpublic-columns
   "Strip nonpublic columns from the hydrated human-readable Field in the hydrated Dimensions in `fields`."
   [fields]
   (for [field fields]
-    (update field :dimensions
-            (fn [dimension-or-dimensions]
-              ;; as disucssed in `metabase.models.field` the hydration code for `:dimensions` is
-              ;; WRONG and the value ends up either being a single Dimension or an empty vector.
-              ;; However at some point we will fix this so deal with either a map or a sequence of
-              ;; maps
-              (cond
-                (map? dimension-or-dimensions)
-                (remove-dimension-nonpublic-columns dimension-or-dimensions)
-
-                (sequential? dimension-or-dimensions)
-                (map remove-dimension-nonpublic-columns dimension-or-dimensions))))))
+    (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
 (s/defn ^:private param-field-ids->fields
@@ -162,7 +162,7 @@
 (defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
-  name)
+  t2/model)
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (mi/define-simple-hydration-method ^:private hydrate-param-fields
@@ -209,7 +209,7 @@
             id))
      (dashboard->card-param-field-ids dashboard))))
 
-(defmethod param-fields "Dashboard" [dashboard]
+(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
   (-> dashboard dashboard->param-field-ids param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,5 +233,5 @@
          [:field (id :guard integer?) _]
          id)))
 
-(defmethod param-fields "Card" [card]
+(defmethod param-fields :metabase.models.card/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

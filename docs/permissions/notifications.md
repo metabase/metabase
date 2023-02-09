@@ -19,5 +19,3 @@ Some notes on how permissions work with dashboard subscriptions and alerts:
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Alerts](../questions/sharing/alerts.md)
 - [Auditing](../usage-and-performance-tools/audit.md)
-- 
-

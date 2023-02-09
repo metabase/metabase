@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [honeysql.format :as hformat]
    [java-time :as t]
@@ -21,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.field :as field]
@@ -29,7 +29,8 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [deferred-tru trs]])
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -281,7 +282,7 @@
     (let [field-type            (:database_type stored-field)
           field-type            (get database-type->mysql-cast-type-name field-type field-type)
           nfc-path              (:nfc_path stored-field)
-          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
           json-extract+jsonpath (hx/call :json_extract (hx/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
       (case field-type

@@ -6,13 +6,13 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [hiccup.util]
    [metabase.core.initialization-status :as init-status]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [stencil.core :as stencil])
   (:import

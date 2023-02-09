@@ -3,7 +3,6 @@
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time :as t]
@@ -13,6 +12,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
@@ -209,7 +210,7 @@
 
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek column}
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (qp.timezone/results-timezone-id)}}
                                                     (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
@@ -249,55 +250,70 @@
                  (days-till-start-of-first-full-week column))]
     {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
 
+(defn- extract
+  [op column]
+  {op {:date column :timezone (qp.timezone/results-timezone-id)}})
+
 (defn- with-rvalue-temporal-bucketing
   [field unit]
   (if (= unit :default)
     field
-    (let [column field]
+    (let [supports-dateTrunc? (-> (get-mongo-version)
+                                  :semantic-version
+                                  (driver.u/semantic-version-gte [5]))
+          column field]
       (letfn [(truncate [unit]
-                (truncate-to-resolution column unit))]
+                (if supports-dateTrunc?
+                  {:$dateTrunc {:date column
+                                :unit (name unit)
+                                :timezone (qp.timezone/results-timezone-id)
+                                :startOfWeek (name (public-settings/start-of-week))}}
+                  (truncate-to-resolution column unit)))]
         (case unit
           :default          column
-          :second-of-minute {$second column}
+          :second-of-minute (extract $second column)
           :minute           (truncate :minute)
-          :minute-of-hour   {$minute column}
+          :minute-of-hour   (extract $minute column)
           :hour             (truncate :hour)
-          :hour-of-day      {$hour column}
+          :hour-of-day      (extract $hour column)
           :day              (truncate :day)
           :day-of-week      (day-of-week column)
-          :day-of-month     {$dayOfMonth column}
-          :day-of-year      {$dayOfYear column}
-          :week             (truncate-to-resolution (week column) :day)
-          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
-                                              7.0]}}
-          :week-of-year-iso {:$isoWeek column}
+          :day-of-month     (extract $dayOfMonth column)
+          :day-of-year      (extract $dayOfYear column)
+          :week             (if supports-dateTrunc?
+                              (truncate :week)
+                              (truncate-to-resolution (week column) :day))
+          :week-of-year     (let [week-start (if supports-dateTrunc?
+                                               (truncate :week)
+                                               (week column))]
+                              {:$ceil {$divide [{$dayOfYear week-start}
+                                                7.0]}})
+          :week-of-year-iso (extract :$isoWeek column)
           :week-of-year-us  (week-of-year column :us)
           :week-of-year-instance  (week-of-year column :instance)
           :month            (truncate :month)
-          :month-of-year    {$month column}
+          :month-of-year    (extract $month column)
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
-          (mongo-let [#_:clj-kondo/ignore parts {:$dateToParts {:date column}}]
-            {:$dateFromParts {:year  :$$parts.year
-                              :month {$subtract [:$$parts.month
-                                                 {$mod [{$add [:$$parts.month 2]}
-                                                        3]}]}}})
+          (if supports-dateTrunc?
+            (truncate :quarter)
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
+              {:$dateFromParts {:year  :$$parts.year
+                                :month {$subtract [:$$parts.month
+                                                   {$mod [{$add [:$$parts.month 2]}
+                                                          3]}]}
+                                :timezone (qp.timezone/results-timezone-id)}}))
 
           :quarter-of-year
-          (mongo-let [month {$month column}]
-            ;; TODO -- $floor ?
-            {$divide [{$subtract [{$add [month 2]}
-                                  {$mod [{$add [month 2]}
-                                         3]}]}
-                      3]})
+          {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
 
           :year
           (truncate :year)
 
           :year-of-era
-          {$year column})))))
+          (extract $year column))))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit] ::add/keys [source-alias]}]]
@@ -889,62 +905,96 @@
   [ag]
   {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
-(defn- extract-aggregation
-  "Separate the expression `aggregation` named `aggr-name` into two parts:
-  an simple expression and an aggregation expression, where the simple expression
-  references the result of the aggregation expression such that first evaluating
-  the aggregation expression and binding its result to `aggr-name` and then
-  evaluating the simple expression in this context, the result is the same as
-  evaluating the whole expression `aggregation`.
-  This separation is necessary, because MongoDB doesn't support embedding
-  aggregations in `normal' expressions.
+(defn- extract-aggregations
+  "Extract aggregation expressions embedded in `aggr-expr` using `parent-name`
+  as a namespace for the names introduced for the aggregation expressions.
+  The function returns a pair with the first element an expression like
+  `aggr-expr` with aggregations replaced by new names. The second element of
+  the pair is a map from the extracted aggregations to the new names conjoined
+  on `aggregations-seen`. `:aggregation-option`s are ignored.
 
-  For example the aggregation
-    [:aggregation-options
-     [:+ [:/ [:sum
-              [:case [[[:< [:field 12 nil] [:field 7 nil]]
-                       [:field 12 nil]]]
-               {:default 0}]]
-             2]
-         1]
-     {:name \"expression\"}]
-  is transformed into the simple expression
-    [:+ [:/ \"$expression\" 2] 1]
-  and the aggregation expression
-    [:aggregation-options
-     [:sum
-      [:case [[[:< [:field 12 nil] [:field 7 nil]]
-               [:field 12 nil]]]
-       {:default 0}]]
-     {:name \"expression\"}]"
-  [aggregation aggr-name]
-  (when (and (vector? aggregation) (seq aggregation))
-    (let [[op & args] aggregation]
-      (cond
-        (= op :aggregation-options)
-        (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
-          [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
+  For example, given \"expression\" as `parent-name`, the expression
 
-        (aggregation-op op)
-        [(str \$ aggr-name) aggregation]
+  [:aggregation-options [:+ [:count [:field 1144 nil]]
+                            [:* [:count [:field 1144 nil]]
+                                [:sum [:+ [:field 1142 nil] 1]]]]
+                        {:name \"expression\"}]
+  is mapped to
 
-        :else
-        (let [ges (map #(extract-aggregation % aggr-name) args)
-              [embedding-expr aggregation'] (first (filter some? ges))]
-          (when-not aggregation'
-            (throw
-             (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
-                      {:type :invalid-query, :clause aggregation})))
-          [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
-           aggregation'])))))
+  [[:+ \"$expression~count\" [:* \"$expression~count\" \"$expression~sum\"]]
+   {[:count [:field 1144 nil]] \"expression~count\"
+    [:sum [:+ [:field 1142 nil] 1]] \"expression~sum\"}]"
+  ([aggr-expr parent-name] (extract-aggregations aggr-expr parent-name {}))
+  ([aggr-expr parent-name aggregations-seen]
+   (if (and (vector? aggr-expr) (seq aggr-expr))
+     (let [[op & args] aggr-expr
+           seen (get aggregations-seen aggr-expr)]
+       (cond
+         seen
+         [(str \$ seen) aggregations-seen]
 
-(defn- expand-embedded-aggregation [aggregation]
-  (let [aggr-name (annotate/aggregation-name aggregation)
-        [embedding-expr aggregation-expr] (extract-aggregation aggregation aggr-name)
-        expanded (expand-aggregation aggregation-expr)]
-    (cond-> expanded
-      (not (string? embedding-expr))
-      (update :post conj {aggr-name (->rvalue embedding-expr)}))))
+         (= :aggregation-options op)
+         (extract-aggregations (first args) parent-name aggregations-seen)
+
+         (aggregation-op op)
+         (let [aggr-name (str parent-name "~" (annotate/aggregation-name aggr-expr))]
+           [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
+
+         :else
+         (reduce (fn [[ges as] arg]
+                   (let [[ge as] (extract-aggregations arg parent-name as)]
+                     [(conj ges ge) as]))
+                 [[op] aggregations-seen]
+                 args)))
+     [aggr-expr aggregations-seen])))
+
+(defn- simplify-extracted-aggregations
+  "Simplifies the extracted aggregation ()for `aggr-name` if the expression
+  contains only a single top-level aggregation. In this case there is no
+  need for namespacing and `aggr-name` can be used as the name of the group
+  introduced for the aggregation.
+  `extracted-aggr` is typically the result of [[extract-aggregations]]."
+  [aggr-name [aggr-expr aggregations-seen :as extracted-aggr]]
+  (if-let [aggr-group (and (string? aggr-expr)
+                           (str/starts-with? aggr-expr (str \$ aggr-name "~"))
+                           (= (count aggregations-seen) 1)
+                           (let [[k v] (first aggregations-seen)]
+                             (when (= v (subs aggr-expr 1))
+                               k)))]
+    [(str \$ aggr-name) {aggr-group aggr-name}]
+    extracted-aggr))
+
+(defn- expand-aggregations
+  "Expands the aggregations in `aggr-expr` into groupings and post processing
+  expressions. The return value is a map with the following keys:
+  `:group` - a map containing the groups of aggregation expression,
+  `:post` - a vector of maps containing the expressions referring to the
+  fields generated by the groups. Each map in the `:post` vector may (and
+  usually does) refer to the fields introduced by the preceding maps."
+  [aggr-expr]
+  (let [aggr-name (annotate/aggregation-name aggr-expr)
+        [aggr-expr' aggregations-seen] (simplify-extracted-aggregations
+                                        aggr-name
+                                        (extract-aggregations aggr-expr aggr-name))
+        raggr-expr (->rvalue aggr-expr')
+        expandeds (map (fn [[aggr name]]
+                         (expand-aggregation [:aggregation-options aggr {:name name}]))
+                       aggregations-seen)]
+    {:group (into {} (map :group) expandeds)
+     :post (cond-> [(into {} (mapcat :post) expandeds)]
+             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))}))
+
+(defn- order-postprocessing
+  "Takes a sequence of post processing vectors (see [[expand-aggregations]]) and
+  returns a sequence with the maps at the same index merged.
+  This is an optimization to reduce the number of stages in the pipeline and
+  assumes that
+    a) maps can only depend on maps preceding them in their own vector and
+    b) the keys in the maps at the same level are unique."
+  [posts]
+  (when (seq posts)
+    (for [i (range (apply max (map count posts)))]
+      (into {} (map #(get % i)) posts))))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
@@ -956,11 +1006,11 @@
    of preceding stages.
    The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
-  (let [expanded-ags (map expand-embedded-aggregation aggregations)
+  (let [expanded-ags (map expand-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)
-        post-ags     (mapcat :post expanded-ags)]
+        post-ags     (order-postprocessing (map :post expanded-ags))]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-          (map (fn [p] {:$addFields p}))
+          (keep (fn [p] (when (seq p) {:$addFields p})))
           post-ags)))
 
 (defn- projection-group-map [fields]

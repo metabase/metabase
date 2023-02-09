@@ -87,6 +87,7 @@
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
 
 (defmacro with-permissions
+  "Execute the body with the given permissions."
   [permissions & body]
   `(binding [api/*current-user-permissions-set* (delay ~permissions)]
      ~@body))

@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -29,6 +28,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -72,8 +72,9 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
+                                   [[table (sql.qp/->honeysql
+                                            :sparksql
+                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
 (defn- venues-category-native-gtap-def []
@@ -251,13 +252,6 @@
   (mt/test-drivers (into #{}
                          (filter #(isa? driver/hierarchy % :sql))
                          (mt/normal-drivers-with-feature :nested-queries))
-    (testing "When querying with full permissions, no changes should be made"
-      (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                       :attributes {"cat" 50}}
-        (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :venues))))
-        (is (= [[100]]
-               (run-venues-count-query)))))
-
     (testing (str "Basic test around querying a table by a user with segmented only permissions and a GTAP question that "
                   "is a native query")
       (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}

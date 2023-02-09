@@ -1,7 +1,6 @@
 (ns metabase.test.data.sparksql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [metabase.config :as config]
@@ -16,7 +15,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.log :as log]))
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
 

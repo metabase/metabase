@@ -1,5 +1,6 @@
 import { Scope } from "nock";
 import _ from "underscore";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { Database } from "metabase-types/api";
 import { setupTableEndpoints } from "./table";
 
@@ -9,8 +10,16 @@ export function setupDatabaseEndpoints(scope: Scope, db: Database) {
   db.tables?.forEach(table => setupTableEndpoints(scope, table));
 }
 
-export function setupDatabasesEndpoints(scope: Scope, dbs: Database[]) {
+export function setupDatabasesEndpoints(
+  scope: Scope,
+  dbs: Database[],
+  { hasSavedQuestions = true } = {},
+) {
   scope.get("/api/database").reply(200, dbs);
+  scope
+    .get("/api/database?saved=true")
+    .reply(200, hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs);
+
   dbs.forEach(db => setupDatabaseEndpoints(scope, db));
 }
 

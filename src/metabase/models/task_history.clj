@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [cheshire.generate :refer [add-encoder encode-map]]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :refer [*current-user-id*]]
@@ -13,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -46,13 +46,43 @@
       (perms/application-perms-path :monitoring)
       "/")})
 
+(defn- task-details-for-snowplow
+  "Ensure task_details is less than 2048 characters.
+
+  2048 is the length limit for task_details in our snowplow schema, if exceeds this limit,
+  the event will be considered a bad rows and ignored.
+
+  Most of the times it's < 200 characters, but there are cases task-details contains an exception.
+  In those case, we want to make sure the stacktrace are ignored from the task-details.
+
+  Return nil if After trying to strip out the stacktraces and the stringified task-details
+  still has more than 2048 chars."
+  [task-details]
+  (let [;; task-details is {:throwable e} during sync
+        ;; check [[metabase.sync.util/run-step-with-metadata]]
+        task-details (cond-> task-details
+                       (some? (:throwable task-details))
+                       (update :throwable dissoc :trace :via)
+
+                       ;; if task-history is created via `with-task-history
+                       ;; the exception is manually caught and includes a stacktrace
+                       true
+                       (dissoc :stacktrace)
+
+                       true
+                       (dissoc :trace :via))
+        as-string     (json/generate-string task-details)]
+    (if (>= (count as-string) 2048)
+      nil
+      as-string)))
+
 (defn- task->snowplow-event
   [task]
   (let [task-details (:task_details task)]
     (merge {:task_id      (:id task)
             :task_name    (:task task)
             :duration     (:duration task)
-            :task_details (json/generate-string task-details)
+            :task_details (task-details-for-snowplow task-details)
             :started_at   (u.date/format-rfc3339 (:started_at task))
             :ended_at     (u.date/format-rfc3339 (:ended_at task))}
            (when-let [db-id (:db_id task)]

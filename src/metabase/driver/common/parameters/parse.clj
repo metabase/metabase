@@ -1,11 +1,11 @@
 (ns metabase.driver.common.parameters.parse
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver.common.parameters :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (metabase.driver.common.parameters Optional Param)))

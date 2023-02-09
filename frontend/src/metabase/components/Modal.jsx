@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import { CSSTransitionGroup } from "react-transition-group";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
 import _ from "underscore";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
@@ -100,26 +100,30 @@ export class WindowModal extends Component {
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
       >
-        <CSSTransitionGroup
-          component="div"
-          transitionName="Modal"
-          transitionAppear={enableTransition}
-          transitionAppearTimeout={250}
-          transitionEnter={enableTransition}
-          transitionEnterTimeout={250}
-          transitionLeave={enableTransition}
-          transitionLeaveTimeout={250}
+        <TransitionGroup
+          appear={enableTransition}
+          enter={enableTransition}
+          exit={enableTransition}
         >
           {isOpen && (
-            <div
+            <CSSTransition
               key="modal"
-              className={cx(backdropClassName, backdropClassnames)}
-              style={style}
+              classNames="Modal"
+              timeout={{
+                appear: 250,
+                enter: 250,
+                exit: 250,
+              }}
             >
-              {this._modalComponent()}
-            </div>
+              <div
+                className={cx(backdropClassName, backdropClassnames)}
+                style={style}
+              >
+                {this._modalComponent()}
+              </div>
+            </CSSTransition>
           )}
-        </CSSTransitionGroup>
+        </TransitionGroup>
       </SandboxedPortal>
     );
   }

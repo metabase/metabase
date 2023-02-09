@@ -4,7 +4,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.serialization.names
     :as names
@@ -35,6 +34,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [yaml.core :as yaml]
    [yaml.reader :as y.reader])

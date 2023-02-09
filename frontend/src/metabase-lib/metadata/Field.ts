@@ -394,8 +394,7 @@ class FieldInner extends Base {
    * @return {?Field}
    */
   remappedField() {
-    const displayFieldId =
-      this.dimensions && this.dimensions.human_readable_field_id;
+    const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);

@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.driver :as driver]
@@ -24,6 +23,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import

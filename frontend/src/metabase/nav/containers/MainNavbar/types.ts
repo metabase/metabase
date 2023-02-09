@@ -1,4 +1,4 @@
-import type { Location, LocationDescriptor } from "history";
+import type { Location } from "history";
 
 export interface MainNavbarOwnProps {
   isOpen: boolean;

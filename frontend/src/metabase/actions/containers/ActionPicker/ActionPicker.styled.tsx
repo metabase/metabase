@@ -1,41 +1,20 @@
-import _ from "underscore";
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import UnstyledEmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
+import CollapseSection from "metabase/components/CollapseSection";
 
-export const ModelActionList = styled.div`
-  margin-bottom: ${space(2)};
-  &:not(:last-child) {
-    border-bottom: 1px solid ${color("border")};
-  }
-`;
-
-export const ModelTitle = styled.h4`
-  color: ${color("text-dark")};
-  margin-bottom: ${space(2)};
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+export const ModelCollapseSection = styled(CollapseSection)`
+  margin-bottom: ${space(1)};
 `;
 
 export const ActionItem = styled.li`
   display: flex;
   justify-content: space-between;
-  padding-left: ${space(3)};
-  margin-bottom: ${space(2)};
-`;
-
-export const ActionName = styled.span`
-  color: ${color("brand")};
-  font-weight: bold;
-  cursor: pointer;
-  &:hover: {
-    color: ${lighten("brand", 0.1)};
-  }
+  margin: 1rem 1.5rem;
 `;
 
 export const EmptyState = styled(UnstyledEmptyState)`
@@ -43,7 +22,7 @@ export const EmptyState = styled(UnstyledEmptyState)`
 `;
 
 export const EmptyModelStateContainer = styled.div`
-  padding-bottom: ${space(2)};
+  padding: ${space(2)};
   color: ${color("text-medium")};
   text-align: center;
 `;

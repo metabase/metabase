@@ -228,6 +228,10 @@
             :malli         ms/NanoIdString
             :failed-cases  ["random"]
             :success-cases ["FReCLx5hSWTBU7kjCWfuu"]}
+           {:plumatic      su/UUIDString
+            :malli         ms/UUIDString
+            :failed-cases  ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+            :success-cases ["84a51d43-2d29-4c2c-8484-e51eb5af2ca4"]}
            {:plumatic      su/Parameter
             :malli         ms/Parameter
             :failed-cases  [{:id   "param-id"

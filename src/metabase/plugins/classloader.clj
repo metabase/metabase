@@ -14,8 +14,8 @@
   (:refer-clojure :exclude [require])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [dynapath.util :as dynapath])
+   [dynapath.util :as dynapath]
+   [metabase.util.log :as log])
   (:import
    (clojure.lang DynamicClassLoader RT)
    (java.net URL)))

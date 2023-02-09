@@ -2,7 +2,6 @@
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.models.card :refer [Card]]
@@ -15,6 +14,7 @@
     :as qp.resolve-referenced]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

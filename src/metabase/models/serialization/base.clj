@@ -11,10 +11,10 @@
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

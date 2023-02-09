@@ -69,9 +69,11 @@ const ValuesSourceModal = ({
 };
 
 const getInitialSourceType = (parameter: ParameterWithTemplateTagTarget) => {
-  return parameter.hasVariableTemplateTagTarget
+  const sourceType = getSourceType(parameter);
+
+  return sourceType === null && parameter.hasVariableTemplateTagTarget
     ? "card"
-    : getSourceType(parameter);
+    : sourceType;
 };
 
 export default ValuesSourceModal;

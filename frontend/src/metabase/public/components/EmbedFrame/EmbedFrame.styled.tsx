@@ -64,12 +64,35 @@ export const Body = styled.main`
   position: relative;
 `;
 
-export const Footer = styled.footer`
+export const ActionButtonsContainer = styled.div`
+  color: ${color("text-medium")};
+  margin-left: auto;
+`;
+
+export type FooterVariant = "default" | "large";
+
+const footerVariantStyles = {
+  default: css`
+    border-top: 1px solid ${color("border")};
+  `,
+  large: css`
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+
+    ${ActionButtonsContainer} {
+      display: none;
+    }
+  `,
+};
+
+export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
 
-  border-top: 1px solid ${color("border")};
+  ${props => footerVariantStyles[props.variant]}
+
   padding: 0.5rem;
 
   ${breakpointMinMedium} {
@@ -79,9 +102,4 @@ export const Footer = styled.footer`
   ${breakpointMinLarge} {
     padding: 1.5rem;
   }
-`;
-
-export const ActionButtonsContainer = styled.div`
-  color: ${color("text-medium")};
-  margin-left: auto;
 `;

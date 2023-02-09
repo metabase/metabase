@@ -22,6 +22,7 @@ export default class ChartSettingsSidebar extends React.Component {
       onClose,
       onOpenChartType,
       visualizationSettings,
+      isRunning,
     } = this.props;
     const { sidebarPropsOverride } = this.state;
     return (
@@ -48,6 +49,7 @@ export default class ChartSettingsSidebar extends React.Component {
             initial={initialChartSetting}
             setSidebarPropsOverride={this.setSidebarPropsOverride}
             computedSettings={visualizationSettings}
+            isQueryRunning={isRunning}
           />
         </SidebarContent>
       )

@@ -1,7 +1,6 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -21,6 +20,7 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -54,11 +54,10 @@
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} body]
-  (api/check-500
-   (db/update! Table id
-               (u/select-keys-when body
-                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                 :present [:description :caveats :points_of_interest :visibility_type])))
+  (when-let [changes (not-empty (u/select-keys-when body
+                                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+    (api/check-500 (db/update! Table id changes)))
   (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
