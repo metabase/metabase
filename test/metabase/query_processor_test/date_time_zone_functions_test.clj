@@ -5,6 +5,7 @@
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -711,14 +712,15 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (letfn [(query [x y unit]
-                (->> (mt/run-mbql-query orders
-                       {:limit 1
-                        :expressions {"diff"     [:datetime-diff x y unit]
-                                      "diff-rev" [:datetime-diff y x unit]}
-                        :fields [[:expression "diff"]
-                                 [:expression "diff-rev"]]})
-                     (mt/formatted-rows [int int])
-                     first))]
+                (mt/mbql-query orders
+                  {:limit 1
+                   :expressions {"diff"     [:datetime-diff x y unit]
+                                 "diff-rev" [:datetime-diff y x unit]}
+                   :fields [[:expression "diff"]
+                            [:expression "diff-rev"]]}))
+              (results [a-query]
+                (first (mt/formatted-rows [int int]
+                         (qp/process-query a-query))))]
         (doseq [[unit cases] [[:year [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0 "same time"]
                                       ["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
                                       ["2021-10-03T09:19:09" "2022-10-03T09:18:09" 1 "ignores time"]
@@ -768,7 +770,10 @@
                 [x y expected description] cases]
           (testing (name unit)
             (testing description
-              (is (= [expected (- expected)] (query x y unit))))))))))
+              (let [query (query x y unit)]
+                (mt/with-native-query-testing-context query
+                  (is (= [expected (- expected)]
+                         (results query))))))))))))
 
 (deftest datetime-diff-mixed-types-test
   (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
