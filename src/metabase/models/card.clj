@@ -274,12 +274,12 @@
   pre-update-check-sandbox-constraints
   (atom identity))
 
-(defn- update-parameters-using-card-as-values-sources
+(defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
 
   Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
   - card is archived
-  - card.result_metadata changes"
+  - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
   (let [parameter-cards   (db/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
@@ -287,20 +287,20 @@
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
             {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
-                                     ;; update all parameter that use this card as source
+                                     ;; update all parameters that use this card as source
                                      (:archived changes)
                                      (set (map :parameter_id param-cards))
 
-                                     ;; update only parameter that has value_field no longer in this card
+                                     ;; update only parameters that have value_field no longer in this card
                                      (:result_metadata changes)
                                      (let [param-id->parameter (m/index-by :id parameters)]
-                                       (->> (for [param-card param-cards]
-                                              ;; if cant find the value-field in result_metadata, then we should remove it
-                                              (when (nil? (qp.util/field->field-info
-                                                            (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
-                                                            (:result_metadata changes)))
-                                                (:parameter_id param-card)))
-                                            (filter some?)
+                                       (->> param-cards
+                                            (filter (fn [param-card]
+                                                      ;; if cant find the value-field in result_metadata, then we should remove it
+                                                      (nil? (qp.util/field->field-info
+                                                              (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                              (:result_metadata changes)))))
+                                            (map :parameter_id)
                                             set))
 
                                      :else #{})
@@ -353,7 +353,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
-      (update-parameters-using-card-as-values-sources changes)
+      (update-parameters-using-card-as-values-source changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
