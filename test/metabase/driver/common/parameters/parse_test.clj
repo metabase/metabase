@@ -85,6 +85,7 @@
 
            "Queries with params in SQL comments (#7742)"
            {"SELECT -- {{foo}}" ["SELECT -- {{foo}}"]
+            "[[{{this}} -- and]] that" [(optional (param "this") " -- and") " that"]
             "SELECT /* \n --{{foo}} */ {{bar}}" ["SELECT /* \n --{{foo}} */ " (param "bar")]}
 
            "JSON queries that contain non-param fragments like '}}'"
