@@ -9,7 +9,7 @@ import DeleteGroupMappingModal, {
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 
 const DEFAULT_PROPS = {
-  dn: "cn=People",
+  name: "cn=People",
   groupIds: [1],
   onConfirm: jest.fn(),
   onHide: jest.fn(),
@@ -78,7 +78,7 @@ describe("DeleteGroupMappingModal", () => {
     expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith(
       "clear",
       DEFAULT_PROPS.groupIds,
-      DEFAULT_PROPS.dn,
+      DEFAULT_PROPS.name,
     );
   });
 
@@ -94,7 +94,7 @@ describe("DeleteGroupMappingModal", () => {
     expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith(
       "delete",
       DEFAULT_PROPS.groupIds,
-      DEFAULT_PROPS.dn,
+      DEFAULT_PROPS.name,
     );
   });
 });
