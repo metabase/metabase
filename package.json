@@ -51,6 +51,7 @@
     "iframe-resizer": "^4.3.2",
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",
+    "json-to-pretty-yaml": "^1.2.2",
     "jsrsasign": "^10.5.25",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",

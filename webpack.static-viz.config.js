@@ -1,4 +1,5 @@
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const YAML = require("json-to-pretty-yaml");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
@@ -73,16 +74,19 @@ module.exports = (env = {}) => {
           reasons: false,
           excludeModules: [/node_modules/],
         },
-        filename: "transformed-compilation-stats.json",
+        filename: "transformed-compilation-stats.yaml",
         transform: stats =>
-          stats.modules
-            .filter(
-              module =>
-                module.type !== "hidden modules" &&
-                module.moduleType !== "runtime",
-            )
-            .map(module => module.nameForCondition)
-            .join(",\n"),
+          YAML.stringify({
+            static_viz_sources: stats.modules
+              .filter(
+                module =>
+                  module.type !== "hidden modules" &&
+                  module.moduleType !== "runtime",
+              )
+              .map(module =>
+                module.nameForCondition.replace(`${__dirname}/`, ""),
+              ),
+          }),
       }),
     ],
   };
