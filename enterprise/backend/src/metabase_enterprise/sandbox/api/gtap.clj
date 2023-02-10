@@ -2,7 +2,7 @@
   "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -61,6 +61,15 @@
       (u/select-keys-when body
         :present #{:card_id :attribute_remappings})))
   (db/select-one GroupTableAccessPolicy :id id))
+
+(api/defendpoint GET "/validate"
+  "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
+  sandbox is saved, but doesn't actually save the sandbox."
+  [:as {{:keys [table_id card_id]} :body}]
+  {table_id             pos-int?
+   card_id              [:maybe pos-int?]}
+  (gtap/check-columns-match-table {:table_id table_id
+                                   :card_id  card_id}))
 
 (api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
