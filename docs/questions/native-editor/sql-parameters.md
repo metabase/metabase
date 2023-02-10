@@ -198,6 +198,7 @@ A MongoDB native query example might look like this:
 ```
 {% raw %}[ {$match: {{date_var}} } ]{% endraw %}
 ```
+
 For a more in-depth guide, check out [Field Filters: create smart filter widgets for SQL questions][field-filter].
 
 ## How to create different types of filter widgets
@@ -259,7 +260,7 @@ Your main query should be aware of all the tables that your Field Filter variabl
 SELECT *
 FROM ORDERS
 WHERE {% raw %}{{ product_category }}{% endraw %}
-``` 
+```
 
 Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
@@ -275,10 +276,10 @@ WHERE {% raw %}{{ product_category }}{% endraw %}
 
 Make sure your SQL dialect matches the database you've selected. Common errors:
 
-| Database | Do this                    | Not this               |
-|----------|----------------------------|------------------------|
-| BigQuery | `` FROM `dataset.table` `` | ``FROM dataset.table`` |
-| Oracle   | `FROM "schema"."table"`     | `FROM schema.table`   |
+| Database | Do this                    | Not this             |
+| -------- | -------------------------- | -------------------- |
+| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
+| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
 
 For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
@@ -286,7 +287,7 @@ For more help, see [Troubleshooting SQL error messages](../../troubleshooting-gu
 
 In order for a saved SQL/native question to be usable with a dashboard filter, the question must contain at least one variable.
 
-The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard (or go to an existing dashboard), click the __Pencil icon__ to enter __Dashboard edit mode__, add the SQL question that contains your State Field Filter variable, add a new dashboard filter (or edit an existing Location filter), then click the dropdown on the SQL question card to see the State Field Filter.
+The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard (or go to an existing dashboard), click the **Pencil icon** to enter **Dashboard edit mode**, add the SQL question that contains your State Field Filter variable, add a new dashboard filter (or edit an existing Location filter), then click the dropdown on the SQL question card to see the State Field Filter.
 
 If you add a **Date** variable to the question, then it's only possible to use the dashboard filter option **Single Date**. So if you are trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [Field Filter](#the-field-filter-variable-type) variable and map it to a date column.
 
