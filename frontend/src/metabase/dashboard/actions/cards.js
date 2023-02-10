@@ -96,6 +96,30 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
+export const addLinkDashCardToDashboard = function ({ dashId }) {
+  const DEFAULT_HEIGHT = 2;
+  const DEFAULT_WIDTH = 4;
+
+  const virtualLinkCard = {
+    ...createCard(),
+    display: "link",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualLinkCard,
+    size_x: DEFAULT_WIDTH,
+    size_y: DEFAULT_HEIGHT,
+    visualization_settings: {
+      virtual_card: virtualLinkCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
 const estimateCardSize = (displayType, action, buttonLabel) => {
   const BASE_HEIGHT = 3;
   const HEIGHT_PER_FIELD = 1.5;
