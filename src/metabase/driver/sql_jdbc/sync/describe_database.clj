@@ -19,6 +19,7 @@
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
+(set! *warn-on-reflection* true)
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)
 

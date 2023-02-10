@@ -10,6 +10,8 @@
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- Hierarchy ----------------------------------------------------
 
 (defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `register!`."}

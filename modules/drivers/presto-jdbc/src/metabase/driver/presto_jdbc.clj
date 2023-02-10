@@ -33,6 +33,8 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :presto-jdbc, :parent #{:presto-common
                                           :sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})

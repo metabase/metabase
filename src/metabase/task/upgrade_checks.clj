@@ -13,6 +13,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- get-version-info []
   (let [version-info-url-key  (if config/ee-available? :mb-version-info-ee-url :mb-version-info-url)
         version-info-url      (config/config-str version-info-url-key)

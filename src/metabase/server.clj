@@ -17,6 +17,8 @@
    (org.eclipse.jetty.server Request Server)
    (org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler)))
 
+(set! *warn-on-reflection* true)
+
 (defn- jetty-ssl-config []
   (m/filter-vals
    some?

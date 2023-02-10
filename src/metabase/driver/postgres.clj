@@ -40,6 +40,8 @@
    (java.util Date UUID)
    (metabase.util.honey_sql_1 Identifier)))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me

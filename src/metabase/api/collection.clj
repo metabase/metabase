@@ -39,6 +39,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 ;;; when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
 (comment collection.root/keep-me)
 

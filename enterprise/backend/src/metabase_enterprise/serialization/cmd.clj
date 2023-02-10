@@ -29,6 +29,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private Mode
   (su/with-api-error-message (s/enum :skip :update)
     (deferred-trs "invalid --mode value")))

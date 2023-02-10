@@ -11,6 +11,8 @@
             EOFException FilterOutputStream InputStream OutputStream)
    (java.util.zip GZIPInputStream GZIPOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (defn- max-bytes-output-stream ^OutputStream
   [max-bytes ^OutputStream os]
   (let [byte-count  (atom 0)

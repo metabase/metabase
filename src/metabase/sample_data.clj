@@ -13,6 +13,8 @@
   (:import
    (java.net URL)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^String sample-database-name     "Sample Database")
 (def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 

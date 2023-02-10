@@ -41,6 +41,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
@@ -320,8 +322,7 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (-> (action/actions-with-implicit-params nil :public_uuid uuid)
-      first
+  (-> (action/select-action :public_uuid uuid)
       api/check-404
       (select-keys action-public-keys)))
 
@@ -584,7 +585,7 @@
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
-          (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+          (let [action (api/check-404 (action/select-action :public_uuid uuid))]
             ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 

@@ -38,6 +38,8 @@
   (:import
    (java.time ZonedDateTime ZoneId)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (defmacro ^:private with-collection-hierarchy

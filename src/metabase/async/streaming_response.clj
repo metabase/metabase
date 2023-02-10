@@ -24,6 +24,8 @@
    (org.eclipse.jetty.io EofException)
    (org.eclipse.jetty.server Request)))
 
+(set! *warn-on-reflection* true)
+
 (defn- write-to-output-stream!
   ([^OutputStream os x]
    (if (int? x)

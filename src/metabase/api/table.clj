@@ -26,6 +26,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
   (apply s/enum (map name table/visibility-types)))

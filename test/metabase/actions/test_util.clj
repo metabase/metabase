@@ -17,6 +17,8 @@
    [toucan.db :as db]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
 

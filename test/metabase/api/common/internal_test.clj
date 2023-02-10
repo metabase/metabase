@@ -16,6 +16,8 @@
    [metabase.util :as u]
    [ring.adapter.jetty9 :as jetty]))
 
+(set! *warn-on-reflection* true)
+
 (def TestAddress
   [:map
    {:title "Address"}

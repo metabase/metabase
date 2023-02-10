@@ -29,6 +29,8 @@
   (:import
    (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase.models.field/keep-me) ; for FieldInstance
 
 (def source-query-alias
