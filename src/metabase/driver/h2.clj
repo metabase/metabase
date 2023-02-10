@@ -374,8 +374,7 @@
                                                 ;; http://h2database.com/html/features.html#execute_sql_on_connection
                                                 (remove (fn [[k _]] (= (u/lower-case-en k) "init")))
                                                 (into {}))
-                                           {"IFEXISTS"         "TRUE"
-                                            "ACCESS_MODE_DATA" "r"}))))
+                                           {"IFEXISTS" "TRUE"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
