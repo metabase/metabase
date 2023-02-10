@@ -74,7 +74,8 @@ describe("scenarios > models > actions", () => {
       idAlias: "modelId",
     });
 
-    cy.intercept("/api/card/*").as("getModel");
+    cy.intercept("GET", "/api/card/*").as("getModel");
+    cy.intercept("PUT", "/api/action/*").as("updateAction");
   });
 
   it("should allow to view, create and edit model actions", () => {
@@ -139,7 +140,7 @@ describe("scenarios > models > actions", () => {
     openActionEditorFor(SAMPLE_QUERY_ACTION.name);
 
     cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Action settings" }).click();
+      cy.button("Action settings").click();
       cy.findByLabelText("Success message").clear().type("Thanks!");
       cy.findByLabelText("Make public").should("not.be.checked").click();
       cy.findByLabelText("Public action link URL")
@@ -147,6 +148,8 @@ describe("scenarios > models > actions", () => {
         .then(url => {
           cy.wrap(url).as("publicUrl");
         });
+      cy.button("Update").click();
+      cy.wait("@updateAction");
     });
 
     cy.get("@publicUrl").then(url => {
