@@ -1,21 +1,6 @@
 ;; shadow-cljs configuration
-{:source-paths
- ["src"
-  "test"
-  "shared/src"
-  "shared/test"]
+{:deps {:aliases [:cljs]}
 
- ;; TODO -- share deps with deps.edn -- see https://shadow-cljs.github.io/docs/UsersGuide.html#deps-edn
- :dependencies
- [[org.clojure/core.match "1.0.0"]
-  [medley "1.4.0"]
-  [net.cgrand/macrovich "0.2.1"]
-  [prismatic/schema "1.2.0"]
-
-  ;; new stuff
-  [camel-snake-kebab "0.4.3"]
-  [org.clojure/tools.logging "1.2.4"] ; required at macro time by metabase.util.log
-  [com.lambdaisland/glogi "1.2.164"]]
  :nrepl
  {:middleware
   [cider.nrepl/cider-middleware

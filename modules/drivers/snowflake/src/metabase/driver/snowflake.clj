@@ -34,7 +34,7 @@
    (java.nio.charset StandardCharsets)
    (java.sql ResultSet Types)
    (java.time OffsetDateTime ZonedDateTime)
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (metabase.util.honey_sql_1 Identifier)))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 

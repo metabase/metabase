@@ -1,11 +1,11 @@
-(ns metabase.util.honey-sql-2-extensions-test
+(ns metabase.util.honey-sql-2-test
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
