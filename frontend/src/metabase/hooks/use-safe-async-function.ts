@@ -3,8 +3,10 @@ import { useMountedState } from "react-use";
 
 type AsyncFn = (...args: any[]) => Promise<any>;
 
-// wraps the given async function in a promise that does not resolve
-// after the component has unmounted
+/**
+ * wraps the given async function in a promise that does not resolve after the component has unmounted
+ * @deprecated — use `useAsyncFn` from react-use instead
+ */
 export function useSafeAsyncFunction(fn: AsyncFn, deps?: any[]): AsyncFn {
   const isMounted = useMountedState();
 
