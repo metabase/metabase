@@ -266,9 +266,9 @@ Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to a
 
 ```
 SELECT *
-FROM ORDERS o
-JOIN PRODUCTS p
-ON o.product_id = p.id
+FROM ORDERS
+JOIN PRODUCTS
+ON ORDERS.product_id = PRODUCTS.id
 WHERE {% raw %}{{ product_category }}{% endraw %}
 ```
 
