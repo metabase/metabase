@@ -4,9 +4,13 @@ import { isAdminGroup } from "metabase/lib/groups";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
+import Confirm from "metabase/components/Confirm";
 
 import Selectbox from "../GroupSelect";
 import { DeleteMappingButton } from "./MappingRow.styled";
+
+type OnDeleteMappingType = (dn: string) => void;
+type OnShowDeleteMappingModalType = (selectedGroupIds: any, dn: any) => void;
 
 type MappingRowProps = {
   dn: any;
@@ -14,8 +18,8 @@ type MappingRowProps = {
   selectedGroupIds: any;
   savedMappings: any;
   onChange: () => void;
-  onShowDeleteMappingModal: (selectedGroupIds: any, dn: any) => void;
-  onDeleteMapping: (dn: any) => void;
+  onShowDeleteMappingModal: OnShowDeleteMappingModalType;
+  onDeleteMapping: OnDeleteMappingType;
 };
 
 const MappingRow = ({
@@ -35,8 +39,9 @@ const MappingRow = ({
     selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;
 
   const onDelete = shouldUseDeleteMappingModal
-    ? () => onShowDeleteMappingModal(selectedGroupIds, dn)
-    : () => onDeleteMapping(dn);
+    ? (e?: React.MouseEventHandler<HTMLButtonElement>) =>
+        onShowDeleteMappingModal(selectedGroupIds, dn)
+    : (e?: React.MouseEventHandler<HTMLButtonElement>) => onDeleteMapping(dn);
 
   return (
     <tr>
@@ -50,15 +55,27 @@ const MappingRow = ({
       </td>
       <td className="Table-actions">
         <div className="float-right mr1">
-          <Tooltip tooltip={t`Remove mapping`} placement="top">
-            <DeleteMappingButton onClick={onDelete}>
-              <Icon name="close" />
-            </DeleteMappingButton>
-          </Tooltip>
+          {shouldUseDeleteMappingModal ? (
+            <DeleteButton onDelete={onDelete} />
+          ) : (
+            <Confirm action={onDelete} title={t`Delete this mapping?`}>
+              <DeleteButton />
+            </Confirm>
+          )}
         </div>
       </td>
     </tr>
   );
 };
+
+type OnDeleteProps = OnDeleteMappingType | OnShowDeleteMappingModalType;
+
+const DeleteButton = ({ onDelete }: { onDelete?: OnDeleteProps }) => (
+  <Tooltip tooltip={t`Remove mapping`} placement="top">
+    <DeleteMappingButton onClick={onDelete}>
+      <Icon name="close" />
+    </DeleteMappingButton>
+  </Tooltip>
+);
 
 export default MappingRow;
