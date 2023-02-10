@@ -15,7 +15,7 @@ function toJSMap(m) {
 }
 
 function row_chart(settings, data, colors) {
-  return StaticViz.RenderChart("row", {
+  return RenderStaticChart("row", {
     settings: JSON.parse(settings),
     data: JSON.parse(data),
     colors: JSON.parse(colors),
@@ -24,7 +24,7 @@ function row_chart(settings, data, colors) {
 
 function combo_chart(series, settings, instanceColors) {
   // Thinking of combo as similar to multiple, although they're different in BE
-  return StaticViz.RenderChart("combo-chart", {
+  return RenderStaticChart("combo-chart", {
     multipleSeries: JSON.parse(series),
     settings: JSON.parse(settings),
     colors: JSON.parse(instanceColors),
@@ -32,14 +32,14 @@ function combo_chart(series, settings, instanceColors) {
 }
 
 function gauge(card, data) {
-  return StaticViz.RenderChart("gauge", {
+  return RenderStaticChart("gauge", {
     card: JSON.parse(card),
     data: JSON.parse(data),
   });
 }
 
 function waterfall(data, labels, settings, waterfallType, instanceColors) {
-  return StaticViz.RenderChart("waterfall", {
+  return RenderStaticChart("waterfall", {
     data: toJSArray(data),
     labels: toJSMap(labels),
     settings: JSON.parse(settings),
@@ -49,14 +49,14 @@ function waterfall(data, labels, settings, waterfallType, instanceColors) {
 }
 
 function funnel(data, settings) {
-  return StaticViz.RenderChart("funnel", {
+  return RenderStaticChart("funnel", {
     data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }
 
 function categorical_donut(rows, legendColors, settings) {
-  return StaticViz.RenderChart("categorical/donut", {
+  return RenderStaticChart("categorical/donut", {
     data: toJSArray(rows),
     colors: toJSMap(legendColors),
     settings: JSON.parse(settings),
@@ -64,7 +64,7 @@ function categorical_donut(rows, legendColors, settings) {
 }
 
 function progress(data, settings, instanceColors) {
-  return StaticViz.RenderChart("progress", {
+  return RenderStaticChart("progress", {
     data: JSON.parse(data),
     settings: JSON.parse(settings),
     colors: JSON.parse(instanceColors),
