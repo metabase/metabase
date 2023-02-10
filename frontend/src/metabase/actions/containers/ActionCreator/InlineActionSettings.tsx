@@ -14,6 +14,7 @@ import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { checkNotNull } from "metabase/core/utils/types";
 
 import Icon from "metabase/components/Icon";
 import Actions from "metabase/entities/actions/actions";
@@ -30,10 +31,6 @@ import {
   ToggleLabel,
 } from "./InlineActionSettings.styled";
 
-type PublicWritebackAction = WritebackAction & {
-  public_uuid: string;
-};
-
 interface OwnProps {
   onClose: () => void;
   actionId: WritebackActionId;
@@ -45,11 +42,17 @@ interface EntityLoaderProps {
 
 interface StateProps {
   siteUrl: string;
+}
+
+interface DispatchProps {
   createPublicLink: ({ id }: { id: WritebackActionId }) => void;
   deletePublicLink: ({ id }: { id: WritebackActionId }) => void;
 }
 
-type ActionSettingsInlineProps = OwnProps & EntityLoaderProps & StateProps;
+type ActionSettingsInlineProps = OwnProps &
+  EntityLoaderProps &
+  StateProps &
+  DispatchProps;
 
 export const ActionSettingsTriggerButton = ({
   onClick,
@@ -67,11 +70,11 @@ export const ActionSettingsTriggerButton = ({
   </Tooltip>
 );
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State): StateProps => ({
   siteUrl: getSetting(state, "site-url"),
 });
 
-const mapDispatchToProps = {
+const mapDispatchToProps: DispatchProps = {
   createPublicLink: Actions.actions.createPublicLink,
   deletePublicLink: Actions.actions.deletePublicLink,
 };
@@ -85,7 +88,7 @@ const InlineActionSettings = ({
   deletePublicLink,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const isPublic = isActionPublic(action);
+  const isPublic = action.public_uuid != null;
 
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
 
@@ -127,7 +130,10 @@ const InlineActionSettings = ({
           {isPublic && (
             <CopyWidgetContainer>
               <CopyWidget
-                value={Urls.publicAction(siteUrl, action.public_uuid)}
+                value={Urls.publicAction(
+                  siteUrl,
+                  checkNotNull(action.public_uuid),
+                )}
                 aria-label={t`Public action link URL`}
               />
             </CopyWidgetContainer>
@@ -138,15 +144,9 @@ const InlineActionSettings = ({
   );
 };
 
-function isActionPublic(
-  action: WritebackAction,
-): action is PublicWritebackAction {
-  return Boolean(action.public_uuid);
-}
-
 export default _.compose(
   Actions.load({
     id: (_: State, props: OwnProps) => props.actionId,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(InlineActionSettings) as (props: OwnProps) => JSX.Element;
+)(InlineActionSettings);

@@ -140,8 +140,8 @@ export default function ActionCreatorView({
                 dataReference: <DataReferenceInline onClose={closeSideView} />,
                 actionSettings: actionId ? (
                   <InlineActionSettings
-                    onClose={closeSideView}
                     actionId={actionId}
+                    onClose={closeSideView}
                   />
                 ) : null,
               } as Record<SideView, React.ReactElement>
