@@ -19,6 +19,7 @@ import FormField from "metabase/core/components/FormField";
 import TextArea from "metabase/core/components/TextArea";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Actions from "metabase/entities/actions/actions";
 import ConfirmContent from "metabase/components/ConfirmContent";
@@ -41,6 +42,8 @@ interface OwnProps {
 
 interface StateProps {
   siteUrl: string;
+  isAdmin: boolean;
+  isPublicSharingEnabled: boolean;
 }
 
 interface DispatchProps {
@@ -68,6 +71,8 @@ export const ActionSettingsTriggerButton = ({
 
 const mapStateToProps = (state: State): StateProps => ({
   siteUrl: getSetting(state, "site-url"),
+  isAdmin: getUserIsAdmin(state),
+  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
 });
 
 const mapDispatchToProps: DispatchProps = {
@@ -79,6 +84,8 @@ const InlineActionSettings = ({
   action,
   formSettings,
   siteUrl,
+  isAdmin,
+  isPublicSharingEnabled,
   onChangeFormSettings,
   onCreatePublicLink,
   onDeletePublicLink,
@@ -86,6 +93,7 @@ const InlineActionSettings = ({
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
+  const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
@@ -112,7 +120,7 @@ const InlineActionSettings = ({
     <ActionSettingsContainer>
       <SidebarContent title={t`Action settings`} onClose={onClose}>
         <ActionSettingsContent>
-          {action && (
+          {action && hasSharingPermission && (
             <FormField
               title={t`Make public`}
               description={t`Creates a publicly shareable link to this action.`}
@@ -126,6 +134,14 @@ const InlineActionSettings = ({
               />
             </FormField>
           )}
+          {action?.public_uuid && hasSharingPermission && (
+            <CopyWidgetContainer>
+              <CopyWidget
+                value={Urls.publicAction(siteUrl, action.public_uuid)}
+                aria-label={t`Public action link URL`}
+              />
+            </CopyWidgetContainer>
+          )}
           {isModalOpen && (
             <Modal>
               <ConfirmContent
@@ -135,14 +151,6 @@ const InlineActionSettings = ({
                 onClose={closeModal}
               />
             </Modal>
-          )}
-          {action?.public_uuid && (
-            <CopyWidgetContainer>
-              <CopyWidget
-                value={Urls.publicAction(siteUrl, action.public_uuid)}
-                aria-label={t`Public action link URL`}
-              />
-            </CopyWidgetContainer>
           )}
           <FormField title={t`Success message`} htmlFor={`${id}-message`}>
             <TextArea

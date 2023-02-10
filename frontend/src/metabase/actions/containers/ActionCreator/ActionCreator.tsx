@@ -18,8 +18,6 @@ import type {
 import type { State } from "metabase-types/store";
 
 import Modal from "metabase/components/Modal";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getSetting } from "metabase/selectors/settings";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
@@ -37,8 +35,6 @@ const mapStateToProps = (
   action,
   question: action ? createQuestionFromAction(state, action) : undefined,
   metadata: getMetadata(state),
-  isAdmin: getUserIsAdmin(state),
-  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
 });
 
 const mapDispatchToProps = {
@@ -78,8 +74,6 @@ function ActionCreatorComponent({
   databaseId,
   update,
   onClose,
-  isAdmin,
-  isPublicSharingEnabled,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
@@ -155,7 +149,6 @@ function ActionCreatorComponent({
     <>
       <ActionCreatorView
         isNew={isNew}
-        hasSharingPermission={isAdmin && isPublicSharingEnabled}
         canSave={query.isEmpty()}
         action={action}
         question={question}

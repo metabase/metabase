@@ -30,7 +30,6 @@ import InlineActionSettings, {
 
 interface ActionCreatorProps {
   isNew: boolean;
-  hasSharingPermission: boolean;
   canSave: boolean;
 
   action: WritebackAction | undefined;
@@ -49,7 +48,6 @@ const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
 export default function ActionCreatorView({
   isNew,
-  hasSharingPermission,
   canSave,
   action,
   question,
@@ -102,12 +100,10 @@ export default function ActionCreatorView({
                   key="dataReference"
                   onClick={toggleDataRef}
                 />,
-                !isNew && hasSharingPermission ? (
-                  <ActionSettingsTriggerButton
-                    key="actionSettings"
-                    onClick={toggleActionSettings}
-                  />
-                ) : null,
+                <ActionSettingsTriggerButton
+                  key="actionSettings"
+                  onClick={toggleActionSettings}
+                />,
               ].filter(isNotNull)}
             />
             <EditorContainer>
