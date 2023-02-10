@@ -32,7 +32,7 @@ interface ActionCreatorProps {
   isNew: boolean;
   canSave: boolean;
 
-  action: WritebackAction | undefined;
+  action?: WritebackAction;
   question: Question;
   formSettings: ActionFormSettings;
 
