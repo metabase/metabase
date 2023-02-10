@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import _ from "underscore";
 import { jt, t } from "ttag";
+import { useAsyncFn } from "react-use";
 
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
@@ -16,6 +17,7 @@ import {
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import { GTAPApi } from "metabase/services";
 import Question from "metabase-lib/Question";
 import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
@@ -83,7 +85,17 @@ const EditSandboxingModal = ({
   const normalizedPolicy = getNormalizedPolicy(policy, shouldUseSavedQuestion);
   const isValid = isPolicyValid(normalizedPolicy, shouldUseSavedQuestion);
 
-  const save = () => onSave(normalizedPolicy);
+  const [validationState, validatePolicy] = useAsyncFn(async () => {
+    return await GTAPApi.validate({ policy: normalizedPolicy });
+  }, [normalizedPolicy]);
+
+  const save = async () => {
+    await validatePolicy();
+    if (validationState.error) {
+      return;
+    }
+    onSave(normalizedPolicy);
+  };
 
   const remainingAttributesOptions = attributes.filter(
     attribute => !(attribute in policy.attribute_remappings),
@@ -179,6 +191,7 @@ const EditSandboxingModal = ({
         <div className="flex align-center justify-end">
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
+            error={validationState.error}
             className="ml1"
             actionFn={save}
             primary
@@ -187,6 +200,13 @@ const EditSandboxingModal = ({
             {t`Save`}
           </ActionButton>
         </div>
+        {validationState.error && (
+          <div className="flex align-center my2 text-error">
+            {typeof validationState.error === "string"
+              ? validationState.error
+              : validationState.error?.data ?? t`An error occurred.`}
+          </div>
+        )}
       </div>
     </div>
   );
