@@ -46,11 +46,17 @@
 
 (defn- coll-query
   "Generate a query to return collections viewable by the current user.
-  If provided, additional and clauses will be added to the final where clause.
-  Note that and clauses should be aliased as c (for collection). Note also that
-  MySQL 5.7 does not support CTEs so this was all inlined. A much more readable
-  solution existed with CTEs, but we needed to inline for backwards compatibility."
-  [owner-id & and-clauses]
+  The user-id is required as well as a boolean flag indicating whether other
+  users' collections (including subcollections) should be ignored (e.g. if the
+  specified user is an admin). Additional where clauses can be provided and
+  will be and'ed in on the where.
+
+  Note that and-clauses should be aliased as c (for collection).
+
+  Also, MySQL 5.7 does not support CTEs so this was all inlined. A much more
+  readable solution existed with CTEs, but we needed to inline for backwards
+  compatibility. TODO: Use CTEs when we drop MySQL 5.7."
+  [owner-id exclude-other-user-collections? & and-clauses]
   {:select    [:c.*]
    :from      [[:collection :c]]
    :left-join [[{:select [[:cwo.id :id]
@@ -69,7 +75,8 @@
                           [:= :cwo.owner owner-id]
                           [:= :cwo.owner nil]]} :a]
                [:= :a.id :c.id]]
-   :where     (into [:and [:= :a.visible true]] and-clauses)
+   :where     (cond-> (into [:and] (or and-clauses [true]))
+                      exclude-other-user-collections? (conj [:= :a.visible true]))
    :order-by  [[:%lower.name :asc]]})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -77,19 +84,26 @@
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
-  By default, this returns non-archived Collections, but instead you can show archived ones by passing
-  `?archived=true`."
-  [archived namespace]
-  {archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
+  By default, this returns non-archived Collections, but instead you can show archived ones by passing\n
+  `?archived=true`.
+
+  By default, admin users will see all collections. To hide other user's collections pass in\n
+  `?exclude-other-user-collections=true`.
+  "
+  [archived exclude-other-user-collections namespace]
+  {archived                       (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
+   namespace                      (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
         q         (coll-query
                    api/*current-user-id*
+                   (Boolean/parseBoolean exclude-other-user-collections)
                    [:= :c.archived archived?]
                    [:= :c.namespace namespace]
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :c.id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))]
+                    (collection/permissions-set->visible-collection-ids
+                     @api/*current-user-permissions-set*)))]
     (as-> (->> (mdb.query/query q)
                (map (partial models/do-post-select Collection))) collections
           ;; include Root Collection at beginning or results if archived isn't `true`
@@ -129,27 +143,32 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived namespace]
-  {exclude-archived (s/maybe su/BooleanString)
-   namespace        (s/maybe su/NonBlankString)}
-  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                (update acc (if dataset :dataset :card) conj collection_id))
-                              {:dataset #{}
-                               :card    #{}}
-                              (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                          :from            [:report_card]
-                                                          :where           [:= :archived false]}))
-        q             (coll-query
-                       api/*current-user-id*
-                       (when exclude-archived
-                         [:= :c.archived false])
-                       [:= :c.namespace namespace]
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        :c.id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))
-        colls         (->> (mdb.query/query q)
-                           (map (partial models/do-post-select Collection)))
-        colls         (map collection/personal-collection-with-ui-details colls)]
+  [exclude-archived exclude-other-user-collections namespace]
+  {exclude-archived               (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
+   namespace                      (s/maybe su/NonBlankString)}
+  (let [exclude-archived?               (Boolean/parseBoolean exclude-archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+        coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                                  (update acc (if dataset :dataset :card) conj collection_id))
+                                                {:dataset #{}
+                                                 :card    #{}}
+                                                (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                            :from            [:report_card]
+                                                                            :where           [:= :archived false]}))
+        q                               (coll-query
+                                         api/*current-user-id*
+                                         (Boolean/parseBoolean exclude-other-user-collections)
+                                         (when exclude-archived? [:= :c.archived false])
+                                         [:= :c.namespace namespace]
+                                         (collection/visible-collection-ids->honeysql-filter-clause
+                                          :c.id
+                                          (collection/permissions-set->visible-collection-ids
+                                           @api/*current-user-permissions-set*)))
+        colls                           (->> (mdb.query/query q)
+                                             (map (comp
+                                                   collection/personal-collection-with-ui-details
+                                                   (partial models/do-post-select Collection))))]
     (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
