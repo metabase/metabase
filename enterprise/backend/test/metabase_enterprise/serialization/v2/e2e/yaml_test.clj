@@ -298,7 +298,8 @@
               (testing "for Actions"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
-                         (->> (action/select-action-without-implicit-params :entity_id entity_id)
+                         (->> (db/select-one 'Action :entity_id entity_id)
+                              action/hydrate-subtype
                               (serdes.base/extract-one "Action" {})
                               clean-entity)))))
 

@@ -764,7 +764,7 @@
                                                :kind          "row/update"
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action (action/select-action-without-implicit-params :id action-id)]
+          (let [action (action/select-action :id action-id)]
             (testing "implicit action"
               (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
@@ -800,7 +800,7 @@
                                                :template      {}
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action (action/select-action-without-implicit-params :id action-id)]
+          (let [action (action/select-action :id action-id)]
             (testing "action"
               (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
@@ -836,7 +836,7 @@
                                                :database_id   db-id
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action (action/select-action-without-implicit-params :id action-id)]
+          (let [action (action/select-action :id action-id)]
             (testing "action"
               (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta   (s/eq [{:model "Action"

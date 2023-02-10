@@ -143,9 +143,10 @@
                      (select-keys implicit-action [:kind]))))
            actions))))
 
-(defn select-actions-without-implicit-params
-  "Select Actions and fill in sub type information.
-   `options` is passed to `db/select` `& options` arg"
+(defn- select-actions-without-implicit-params
+  "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
+   for implicit actions, use [[select-action]] instead.
+   `options` is passed to `db/select` `& options` arg."
   [& options]
   (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
         query-actions (normalize-query-actions query)
@@ -158,7 +159,7 @@
   [fields]
   (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
 
-(defn implicit-action-parameters
+(defn- implicit-action-parameters
   "Return a set of parameters for the given models"
   [cards]
   (let [card-by-table-id (into {}
@@ -229,13 +230,6 @@
   [& options]
   (first (apply select-actions nil options)))
 
-(defn select-action-without-implicit-params
-  "Selects an Action and fills in the subtype data. Doesn't include generated parameters for implicit actions,
-   like [[select-action]]. `options` is passed to `db/select-one` `& options` arg.
-   Only use this if you know you don't need implicit parameters."
-  [& options]
-  (hydrate-subtype (apply db/select-one Action options)))
-
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
   "Hydrates action from DashboardCard."
@@ -272,7 +266,7 @@
 (defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
   (update! (assoc ingested :id (:id local)) local)
-  (select-action-without-implicit-params :id (:id local)))
+  (select-action :id (:id local)))
 
 (defmethod serdes.base/load-insert! "Action" [_model-name ingested]
   (log/tracef "Inserting Action: %s" (pr-str ingested))
