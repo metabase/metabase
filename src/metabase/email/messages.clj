@@ -4,7 +4,6 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
@@ -33,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -41,6 +41,8 @@
    (java.io File IOException OutputStream)
    (java.time LocalTime)
    (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated

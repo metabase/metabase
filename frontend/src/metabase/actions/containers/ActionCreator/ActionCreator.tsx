@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import type { LocationDescriptor } from "history";
 
-import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 
-import { useToggle } from "metabase/hooks/use-toggle";
-import Actions, { ActionParams } from "metabase/entities/actions";
+import Actions, {
+  CreateQueryActionParams,
+  UpdateQueryActionParams,
+} from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -17,45 +18,35 @@ import { createQuestionFromAction } from "metabase/actions/selectors";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
+  WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { SavedCard } from "metabase-types/types/Card";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
-import CreateActionForm from "../CreateActionForm";
-import ActionCreatorHeader from "./ActionCreatorHeader";
-import QueryActionEditor from "./QueryActionEditor";
-import FormCreator from "./FormCreator";
-import {
-  DataReferenceTriggerButton,
-  DataReferenceInline,
-} from "./InlineDataReference";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
-import {
-  ActionCreatorBodyContainer,
-  EditorContainer,
-  ModalRoot,
-  ModalActions,
-  ModalLeft,
-} from "./ActionCreator.styled";
-
-import { newQuestion, convertActionToQuestionCard } from "./utils";
+import { getDefaultFormSettings } from "../../utils";
+import { newQuestion, convertQuestionToAction } from "./utils";
+import ActionCreatorView from "./ActionCreatorView";
+import CreateActionForm, {
+  FormValues as CreateActionFormValues,
+} from "./CreateActionForm";
 
 const mapStateToProps = (
   state: State,
   { action }: { action: WritebackQueryAction },
 ) => ({
-  metadata: getMetadata(state),
+  action,
   question: action ? createQuestionFromAction(state, action) : undefined,
-  actionId: action ? action.id : undefined,
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
-  push,
-  update: Actions.actions.update,
+  onCreateAction: Actions.actions.create,
+  onUpdateAction: Actions.actions.update,
 };
 
 const EXAMPLE_QUERY =
@@ -68,43 +59,51 @@ interface OwnProps {
 }
 
 interface StateProps {
-  actionId?: number;
+  action?: WritebackAction;
   question?: Question;
   metadata: Metadata;
 }
 
 interface DispatchProps {
-  push: (url: string) => void;
-  update: (action: ActionParams) => void;
+  onCreateAction: (params: CreateQueryActionParams) => void;
+  onUpdateAction: (params: UpdateQueryActionParams) => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
 
 function ActionCreatorComponent({
-  metadata,
+  action,
   question: passedQuestion,
-  actionId,
+  metadata,
   modelId,
   databaseId,
-  update,
+  onCreateAction,
+  onUpdateAction,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
-  const [formSettings, setFormSettings] = useState<
-    ActionFormSettings | undefined
-  >(undefined);
+  const [formSettings, setFormSettings] = useState<ActionFormSettings>(
+    getDefaultFormSettings(action?.visualization_settings),
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
-
-  const [isDataRefOpen, { toggle: toggleDataRef, turnOff: closeDataRef }] =
-    useToggle(false);
 
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
-  }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChangeQuestionQuery = useCallback(
+    (newQuery: NativeQuery) => {
+      const newQuestion = newQuery.question();
+      const newParams = getTemplateTagParametersFromCard(newQuestion.card());
+      setQuestion(newQuestion.setQuery(newQuery).setParameters(newParams));
+    },
+    [setQuestion],
+  );
 
   const defaultModelId: number | undefined = useMemo(() => {
     if (modelId) {
@@ -121,34 +120,38 @@ function ActionCreatorComponent({
 
   const query = question.query() as NativeQuery;
 
-  const isNew = !actionId && !(question.card() as SavedCard).id;
+  const isNew = !action && !question.isSaved();
 
-  const handleSaveClick = () => {
+  const handleClickSave = () => {
     if (isNew) {
       setShowSaveModal(true);
     } else {
-      update({
-        id: question.id(),
-        name: question.displayName() ?? "",
-        description: question.description() ?? null,
-        model_id: defaultModelId as number,
-        formSettings: formSettings as ActionFormSettings,
-        question,
-      });
+      const action = convertQuestionToAction(question, formSettings);
+      onUpdateAction({ ...action, model_id: defaultModelId as number });
       onClose?.();
     }
   };
 
-  const handleOnSave = (action: WritebackQueryAction) => {
-    const actionCard = convertActionToQuestionCard(action);
-    setQuestion(question.setCard(actionCard));
-    setTimeout(() => setShowSaveModal(false), 1000);
+  const handleCreate = async (values: CreateActionFormValues) => {
+    const action = convertQuestionToAction(question, formSettings);
+    await onCreateAction({
+      ...action,
+      ...values,
+      type: "query",
+    });
+
+    const nextQuestion = question
+      .setDisplayName(values.name)
+      .setDescription(values.description);
+    setQuestion(nextQuestion);
+
+    setShowSaveModal(false);
     onClose?.();
   };
 
-  const handleClose = () => setShowSaveModal(false);
+  const handleCloseNewActionModal = () => setShowSaveModal(false);
 
-  const handleExampleClick = () => {
+  const handleClickExample = () => {
     setQuestion(
       question.setQuery(query.setQueryText(query.queryText() + EXAMPLE_QUERY)),
     );
@@ -156,64 +159,31 @@ function ActionCreatorComponent({
 
   return (
     <>
-      <Modal wide onClose={onClose}>
-        <ModalRoot>
-          <ActionCreatorBodyContainer>
-            <ModalLeft>
-              <DataReferenceTriggerButton onClick={toggleDataRef} />
-              <ActionCreatorHeader
-                type="query"
-                name={question.displayName() ?? t`New Action`}
-                onChangeName={newName =>
-                  setQuestion(q => q.setDisplayName(newName))
-                }
-              />
-              <EditorContainer>
-                <QueryActionEditor
-                  question={question}
-                  setQuestion={setQuestion}
-                />
-              </EditorContainer>
-              <ModalActions>
-                <Button onClick={onClose} borderless>
-                  {t`Cancel`}
-                </Button>
-                <Button
-                  primary
-                  disabled={query.isEmpty()}
-                  onClick={handleSaveClick}
-                >
-                  {isNew ? t`Save` : t`Update`}
-                </Button>
-              </ModalActions>
-            </ModalLeft>
-
-            <DataReferenceInline
-              isOpen={isDataRefOpen}
-              onClose={closeDataRef}
-            />
-
-            {!isDataRefOpen && (
-              <FormCreator
-                params={question?.parameters() ?? []}
-                formSettings={
-                  question?.card()?.visualization_settings as ActionFormSettings
-                }
-                onChange={setFormSettings}
-                onExampleClick={handleExampleClick}
-              />
-            )}
-          </ActionCreatorBodyContainer>
-        </ModalRoot>
-      </Modal>
+      <ActionCreatorView
+        isNew={isNew}
+        canSave={query.isEmpty()}
+        action={action}
+        question={question}
+        formSettings={formSettings}
+        onChangeQuestionQuery={handleChangeQuestionQuery}
+        onChangeName={newName =>
+          setQuestion(question => question.setDisplayName(newName))
+        }
+        onCloseModal={onClose}
+        onChangeFormSettings={setFormSettings}
+        onClickSave={handleClickSave}
+        onClickExample={handleClickExample}
+      />
       {showSaveModal && (
-        <Modal title={t`New Action`} onClose={handleClose}>
+        <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
-            question={question}
-            formSettings={formSettings as ActionFormSettings}
-            modelId={defaultModelId}
-            onCreate={handleOnSave}
-            onCancel={handleClose}
+            initialValues={{
+              name: question.displayName() ?? "",
+              description: question.description(),
+              model_id: defaultModelId,
+            }}
+            onCreate={handleCreate}
+            onCancel={handleCloseNewActionModal}
           />
         </Modal>
       )}

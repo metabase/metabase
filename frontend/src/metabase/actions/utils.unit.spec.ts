@@ -65,7 +65,7 @@ describe("sortActionParams", () => {
     it("should generate settings for a string field", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field" })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -84,7 +84,7 @@ describe("sortActionParams", () => {
       const params = [
         createParameter({ id: "test-field", type: "type/Integer" }),
       ];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -103,7 +103,7 @@ describe("sortActionParams", () => {
       const params = [
         createParameter({ id: "test-field", type: "type/Float" }),
       ];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -116,7 +116,7 @@ describe("sortActionParams", () => {
         createField({ name: "test-field", semantic_type: "type/Category" }),
       ];
       const params = [createParameter({ id: "test-field", type: "type/Text" })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -127,7 +127,7 @@ describe("sortActionParams", () => {
     it("should set the parameter id as the object key", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field" })];
-      const [id, settings] = getFirstEntry(
+      const [id, _settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -137,7 +137,7 @@ describe("sortActionParams", () => {
     it("should get display name from field metadata", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field" })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -161,7 +161,7 @@ describe("sortActionParams", () => {
     it("sets settings from parameter if there is no corresponding field", () => {
       const fields = [createField({ name: "xyz", description: "foo bar baz" })];
       const params = [createParameter({ id: "test-field", name: null })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -173,7 +173,7 @@ describe("sortActionParams", () => {
     it("sets required prop to true", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field", required: true })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -183,7 +183,7 @@ describe("sortActionParams", () => {
     it("sets required prop to false", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field", required: false })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 
@@ -195,7 +195,7 @@ describe("sortActionParams", () => {
         createField({ name: "test-field", description: "foo bar baz" }),
       ];
       const params = [createParameter({ id: "test-field" })];
-      const [id, settings] = getFirstEntry(
+      const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
 

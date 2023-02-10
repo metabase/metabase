@@ -149,6 +149,7 @@ interface SetupOpts {
   hasDataAccess?: boolean;
   hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
+  hasSavedQuestions?: boolean;
   hasModels?: boolean;
   hasNestedQueriesEnabled?: boolean;
 }
@@ -160,6 +161,7 @@ export async function setup({
   hasDataAccess = true,
   hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
+  hasSavedQuestions = true,
   hasModels = true,
   hasNestedQueriesEnabled = true,
 }: SetupOpts = {}) {
@@ -178,9 +180,9 @@ export async function setup({
       databases.push(EMPTY_DATABASE);
     }
 
-    setupDatabasesEndpoints(scope, databases);
+    setupDatabasesEndpoints(scope, databases, { hasSavedQuestions });
   } else {
-    setupDatabasesEndpoints(scope, []);
+    setupDatabasesEndpoints(scope, [], { hasSavedQuestions: false });
   }
 
   scope

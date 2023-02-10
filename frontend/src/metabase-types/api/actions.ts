@@ -28,7 +28,13 @@ export interface WritebackActionBase {
   creator: UserInfo;
   updated_at: string;
   created_at: string;
+  public_uuid: string | null;
 }
+
+export type PublicWritebackAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "parameters" | "visualization_settings"
+>;
 
 export interface QueryAction {
   type: "query";

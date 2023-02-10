@@ -1,4 +1,3 @@
-import { createMockDashboard } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 
 export const createMockDashboardState = (

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, navigationSidebar } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > onboarding > URLs", () => {
@@ -35,9 +35,14 @@ describe("visual tests > onboarding > URLs", () => {
     cy.wait("@collection-items");
     cy.wait("@collection-items");
 
-    cy.findByText("First collection");
-    cy.findByText("Your personal collection");
-    cy.findByText("Orders");
+    navigationSidebar().within(() => {
+      cy.findByText("First collection");
+      cy.findByText("Your personal collection");
+    });
+    cy.get("main").within(() => {
+      cy.findByText("Orders");
+      cy.findByText("First collection");
+    });
 
     cy.createPercySnapshot();
   });

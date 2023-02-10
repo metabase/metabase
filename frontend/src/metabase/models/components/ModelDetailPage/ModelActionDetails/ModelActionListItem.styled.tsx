@@ -17,6 +17,14 @@ export const ActionSubtitle = styled.span`
   margin-top: 4px;
 `;
 
+export const ActionSubtitlePart = styled.span`
+  &:not(:last-child)::after {
+    content: "·";
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+`;
+
 export const Card = styled.div`
   display: block;
   position: relative;

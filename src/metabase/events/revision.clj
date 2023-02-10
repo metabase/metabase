@@ -1,13 +1,13 @@
 (ns metabase.events.revision
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.revision :refer [push-revision!]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (def ^:private revisions-topics

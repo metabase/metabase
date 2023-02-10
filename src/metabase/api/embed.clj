@@ -17,7 +17,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.card :as api.card]
@@ -36,9 +35,12 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
@@ -51,14 +53,14 @@
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
         "disabled" (api/check (not (contains? all-params param))
-                     [400 (tru "You''re not allowed to specify a value for {0}." param)])
+                              [400 (tru "You''re not allowed to specify a value for {0}." param)])
         ;; enabled means either JWT *or* user can specify the param, but not both. Param is *not* required
         "enabled"  (api/check (not (contains? duplicated-params param))
-                     [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
+                              [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                       (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
-                       (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+                    (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."

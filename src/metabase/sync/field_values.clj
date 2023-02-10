@@ -1,7 +1,6 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -10,7 +9,10 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -74,13 +76,14 @@
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [conditions [:field_id   (:id field),
-                      :type       [:in field-values/advanced-field-values-types],
-                      :created_at [:< (sql.qp/add-interval-honeysql-form
-                                        (mdb/db-type)
-                                        :%now
-                                        (- (t/as field-values/advanced-field-values-max-age :days))
-                                        :day)]]
+    (let [conditions [:field_id   (:id field)
+                      :type       [:in field-values/advanced-field-values-types]
+                      :created_at [:< (binding [hx/*honey-sql-version* 2]
+                                        (sql.qp/add-interval-honeysql-form
+                                         (mdb/db-type)
+                                         :%now
+                                         (- (t/as field-values/advanced-field-values-max-age :days))
+                                         :day))]]
           rows-count (apply db/count FieldValues conditions)]
       (apply db/delete! FieldValues conditions)
       rows-count)))

@@ -5,9 +5,9 @@ import cx from "classnames";
 import _ from "underscore";
 import type { Location } from "history";
 
+import { useMount } from "react-use";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { getSetting } from "metabase/selectors/settings";
 import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -22,6 +22,7 @@ import Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   Root,
   ContentContainer,
@@ -39,6 +40,7 @@ interface OwnProps {
   question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
+  footerVariant?: FooterVariant;
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
@@ -76,6 +78,7 @@ function EmbedFrame({
   question,
   dashboard,
   actionButtons,
+  footerVariant = "default",
   location,
   hasEmbedBranding,
   parameters,
@@ -84,7 +87,7 @@ function EmbedFrame({
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
-  useOnMount(() => {
+  useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
 
@@ -144,8 +147,10 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer">
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
+        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+          {hasEmbedBranding && (
+            <LogoBadge variant={footerVariant} dark={theme === "night"} />
+          )}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}

@@ -24,7 +24,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -39,10 +38,13 @@
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [weavejester.dependency :as dep]))
+
+(set! *warn-on-reflection* true)
 
 ;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
 ;; entire query

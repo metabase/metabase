@@ -7,6 +7,10 @@ on:
       - 'release-**'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
 
   shared-tests-cljs:
@@ -16,5 +20,9 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - name: Run Cljs tests for shared/ code
       run: yarn run test-cljs

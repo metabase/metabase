@@ -4,7 +4,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
@@ -13,7 +14,8 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
+  {:left-join [(t2/table-name (db/resolve-model dest-entity))
+               [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword
   (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))

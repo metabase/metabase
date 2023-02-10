@@ -1,15 +1,17 @@
 (ns metabase.email
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [postal.core :as postal]
    [postal.support :refer [make-props]]
    [schema.core :as s])
   (:import
    (javax.mail Session)))
+
+(set! *warn-on-reflection* true)
 
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*
@@ -198,7 +200,7 @@
 
 (def ^:private email-security-order [:tls :starttls :ssl])
 
-(def ^:private retry-delay-ms
+(def ^:private ^Long retry-delay-ms
   "Amount of time to wait between retrying SMTP connections with different security options. This delay exists to keep
   us from getting banned on Outlook.com."
   500)

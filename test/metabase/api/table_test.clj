@@ -18,6 +18,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -591,10 +593,9 @@
         :when (contains? (set category-names) (:name field))]
     (-> field
         (select-keys [:id :table_id :name :values :dimensions])
-        (update :dimensions (fn [dim]
-                              (if (map? dim)
-                                (dissoc dim :id :entity_id :created_at :updated_at)
-                                dim))))))
+        (update :dimensions (fn [dimensions]
+                              (for [dim dimensions]
+                                (dissoc dim :id :entity_id :created_at :updated_at)))))))
 
 (defn- category-id-semantic-type
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
@@ -610,10 +611,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -628,10 +629,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -647,10 +648,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [external remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id (mt/id :categories :name)
-                              :type                    "external"}}
+                 :dimensions [{:name                    "Category ID [external remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id (mt/id :categories :name)
+                               :type                    "external"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -829,7 +830,7 @@
                                           {:field_order :database})
                     :fields
                     (map :name)))))
-      (testing "Cane we set custom field ordering?"
+      (testing "Can we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))

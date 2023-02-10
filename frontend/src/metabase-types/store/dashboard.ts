@@ -15,8 +15,6 @@ export type DashboardSidebarName =
   | "sharing"
   | "info";
 
-type ParameterValueCacheKey = string;
-
 export interface DashboardState {
   dashboardId: DashboardId | null;
   dashboards: Record<DashboardId, Dashboard>;

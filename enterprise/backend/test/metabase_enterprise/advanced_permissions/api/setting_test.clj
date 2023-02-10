@@ -14,6 +14,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest email-api-test

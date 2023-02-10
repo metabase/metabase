@@ -17,6 +17,8 @@
   (:import
    (java.net URLEncoder)))
 
+(set! *warn-on-reflection* true)
+
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
   [first-name last-name email user-attributes]

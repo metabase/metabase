@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import {
   PERSONAL_COLLECTIONS,
   buildCollectionTree as _buildCollectionTree,

@@ -31,6 +31,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; this has to be loaded for the Google Auth tests to work
   metabase.integrations.google/keep-me)

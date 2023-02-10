@@ -7,3 +7,7 @@ export function setupParameterValuesEndpoints(
 ) {
   scope.post("/api/dataset/parameter/values").reply(200, parameterValues);
 }
+
+export function setupErrorParameterValuesEndpoints(scope: Scope) {
+  scope.post("/api/dataset/parameter/values").reply(500);
+}

@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -55,11 +54,12 @@ import {
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
+  const table = getTableMetadata(state);
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
   if (!isZooming) {
-    zoomedRowID = getIdValue({ data });
+    zoomedRowID = getIdValue({ data, tableId: table?.id });
   }
 
   const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
@@ -70,7 +70,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     // FIXME: remove the non-null assertion operator
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     question: getQuestion(state)!,
-    table: getTableMetadata(state),
+    table,
     // FIXME: remove the type cast
     tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
@@ -160,7 +160,7 @@ export function ObjectDetailFn({
     }
   }, [zoomedRowID, loadObjectDetailFKReferences]);
 
-  useOnMount(() => {
+  useMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
       setHasNotFoundError(true);
@@ -243,7 +243,12 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    tableId: table?.id,
+  });
+
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);

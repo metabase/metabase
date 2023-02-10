@@ -2,7 +2,6 @@
   "Serialize entities into a directory structure of YAMLs."
   (:require
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.serialization.names
     :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
@@ -20,15 +19,18 @@
    [metabase.models.user :refer [User]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [yaml.core :as yaml]
    [yaml.writer :as y.writer])
   (:import
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (extend-type Temporal y.writer/YAMLWriter
-  (encode [data]
-    (u.date/format data)))
+             (encode [data]
+               (u.date/format data)))
 
 (defn- spit-yaml
   [filename obj]

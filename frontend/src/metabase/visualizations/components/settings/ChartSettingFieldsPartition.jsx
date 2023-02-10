@@ -36,7 +36,7 @@ class ChartSettingFieldsPartition extends React.Component {
 
   handleEditFormatting = (column, targetElement) => {
     if (column) {
-      this.props.onShowWidget(
+      this.props.onShowPopoverWidget(
         {
           id: "column_settings",
           props: {

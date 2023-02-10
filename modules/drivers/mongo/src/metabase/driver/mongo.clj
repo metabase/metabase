@@ -1,33 +1,37 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.mongo.execute :as mongo.execute]
-            [metabase.driver.mongo.parameters :as mongo.params]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [monger.command :as cmd]
-            [monger.conversion :as m.conversion]
-            [monger.core :as mg]
-            [monger.db :as mdb]
-            monger.json
-            [monger.query :as mq]
-            [taoensso.nippy :as nippy]
-            [toucan.db :as db])
-  (:import com.mongodb.DB
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           org.bson.types.ObjectId))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.execute :as mongo.execute]
+   [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Field]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [monger.command :as cmd]
+   [monger.conversion :as m.conversion]
+   [monger.core :as mg]
+   [monger.db :as mdb]
+   [monger.json]
+   [monger.query :as mq]
+   [taoensso.nippy :as nippy]
+   [toucan.db :as db])
+  (:import
+   (com.mongodb DB)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (org.bson.types ObjectId)))
+
+(set! *warn-on-reflection* true)
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
 ;; integrations with Cheshire.
@@ -189,6 +193,13 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defn- sample-documents [^com.mongodb.DB conn table sort-direction]
+  (-> (.getCollection conn (:name table))
+      mq/empty-query
+      (assoc :sort {:_id sort-direction}
+             :limit metadata-queries/nested-field-sample-limit)
+      mq/exec))
+
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
    sample. The results will look something like:
@@ -204,11 +215,7 @@
            fields
            (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
      {}
-     (-> (.getCollection conn (:name table))
-         mq/empty-query
-         (assoc :sort {:_id -1}
-                :limit metadata-queries/nested-field-sample-limit)
-         mq/exec))
+     (concat (sample-documents conn table 1) (sample-documents conn table -1)))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
@@ -226,9 +233,11 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
+                 :expression-aggregations
                  :nested-fields
                  :nested-queries
                  :native-parameters
+                 :set-timezone
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 

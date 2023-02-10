@@ -12,10 +12,9 @@ import type { OnScrollParams } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious, useMount } from "react-use";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { sumArray } from "metabase/core/utils/arrays";
 
@@ -54,7 +53,6 @@ import {
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
   getCellWidthsForSection,
-  getWidthForRange,
 } from "./utils";
 
 import {
@@ -92,7 +90,6 @@ function PivotTable({
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const columnWidthSettings = settings["pivot_table.column_widths"];
-  const previousColumnWidthSettings = usePrevious(columnWidthSettings);
 
   const [
     { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },
@@ -161,7 +158,7 @@ function PivotTable({
     (bodyRef.current as Grid | null)?.recomputeGridSize?.();
   }, [data, leftHeaderRef, topHeaderRef, leftHeaderWidths, valueHeaderWidths]);
 
-  useOnMount(() => {
+  useMount(() => {
     setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
   });
 

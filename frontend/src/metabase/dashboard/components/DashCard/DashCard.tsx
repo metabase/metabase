@@ -2,13 +2,12 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
+import { useMount } from "react-use";
 import { IconProps } from "metabase/components/Icon";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
-
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import {
   getGenericErrorMessage,
@@ -152,7 +151,7 @@ function DashCard({
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
   }, []);
 
-  useOnMount(() => {
+  useMount(() => {
     if (dashcard.justAdded) {
       cardRootRef?.current?.scrollIntoView({
         block: "nearest",
@@ -291,6 +290,7 @@ function DashCard({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            metadata={metadata}
           />
         </DashboardCardActionsPanel>
       );
@@ -310,6 +310,7 @@ function DashCard({
     onReplaceAllVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
+    metadata,
   ]);
 
   return (

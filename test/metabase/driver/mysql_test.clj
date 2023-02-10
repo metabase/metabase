@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.config :as config]
@@ -29,9 +28,12 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql

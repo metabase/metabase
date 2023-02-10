@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [java-time :as t]
    [metabase.driver.common.parameters :as params]
@@ -17,11 +16,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
    (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
+
+(set! *warn-on-reflection* true)
 
 (defn- ->utc-instant [t]
   (t/instant

@@ -1,28 +1,32 @@
 (ns metabase.driver.presto
   "Presto driver. Executes queries via the REST API. See https://prestodb.io/docs/current/ for complete dox."
-  (:require [clj-http.client :as http]
-            [clojure.core.async :as a]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.presto-common :as presto-common]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [metabase.util.ssh :as ssh]
-            [schema.core :as s]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.presto-common :as presto-common]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [metabase.util.ssh :as ssh]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :presto, :parent :presto-common)
 

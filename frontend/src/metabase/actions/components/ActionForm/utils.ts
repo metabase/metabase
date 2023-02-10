@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import type {

@@ -1,0 +1,228 @@
+version: '3.1'
+
+# A useful compose file for local development.
+# This compose file contains preconfigured services for many common development
+# tasks. The local-dev and *-app-db services will stand up an instance of
+# metabase and a corresponding app-db. The *-data services are sample QA images
+# that can be used as warehouses.
+#
+# Examples: Which services you run are configured by profiles and can be run as
+#  shown in the following examples:
+#
+# ;; Run a postgres app db and a sample postgres 14 and mongo warehouses
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mongodata docker-compose --file dev/docker-compose.yml up
+# ;; Run a postgres app db and a sample postgres 14 and mysql 5.7 warehouses
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file dev/docker-compose.yml up
+# ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
+# ;; If you use this option, once the application starts you can jack in on 50505 and REPL away.
+# ;; Be aware that if you use this option your app will be running a docker
+# ;; network with ports 3001 and 50505 exposed to the outside. This means that
+# ;; when you connect to data warehouses, you'll use docker networking to
+# ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
+# ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
+# ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
+#
+# TODOs:
+# - Get the fe-builder service working correctly. If anyone wants to see what it
+#   does, uncomment it and try
+#   COMPOSE_PROFILES=fe-builder docker-compose --file dev/docker-compose.yml up
+#   It will hang on step 4/5.
+# - Consider using swarm to declaratively scale up/down.
+services:
+
+  # The local-dev profile enables development against a metabase instance.
+  # This does the following:
+  # - Launch metabase in a clojure container with the most common dev profiles enabled
+  # - Expose 3001 for local access to metabase
+  # - Expose 50505 for socket repl jack-in
+  # Note that the default config is for a postgres backend. You can set the
+  # environment differently (see https://docs.docker.com/compose/environment-variables/set-environment-variables/)
+  # for other backends (e.g. MySQL).
+  local-dev:
+    image: clojure
+    container_name: metabase-app
+    ports:
+      - "3001:3000"
+      - "50505:50505"
+    working_dir: /dev/metabase
+    volumes:
+      - ../:/dev/metabase
+      - ~/.m2:/root/.m2
+    environment:
+      MB_API_KEY: METABASE
+      MB_DB_CONNECTION_URI: "${MB_DB_CONNECTION_URI:-jdbc:postgresql://metabase-postgres-app-db:5432/metabase?user=mbuser&password=password}"
+      MB_DB_HOST: "${MB_DB_HOST:-metabase-postgres-app-db}"
+      MB_DB_PORT: "${MB_DB_PORT:-5432}"
+      MB_MYSQL_TEST_USER: root
+      MB_MYSQL_TEST_PASSWORD: metasample123
+      MB_MYSQL_TEST_HOST: metabasedb_mysql_5_7_data
+      MB_MYSQL_TEST_PORT: 3306
+      MB_POSTGRESQL_TEST_DB: clean
+      MB_POSTGRESQL_TEST_PASSWORD: password
+      MB_POSTGRESQL_TEST_PORT: 5432
+      MB_POSTGRESQL_TEST_USER: user
+    command: ["clojure", "-M:run:dev:drivers:drivers-dev:ee:ee-dev:socket"]
+    profiles:
+      - dev-app
+    networks:
+      - metabasenet
+
+# NOTE: This service isn't ready for prime time. It takes a LONG time to start
+#       up. I think there's some mounts to caches that are needed or something.
+#       Hopefully one of our node geniuses can figure it out.
+  # Just build the frontend. Mounts local dev so nothing else needed
+  fe-builder:
+    image: node:18.14
+    container_name: fe-builder
+    working_dir: /dev/metabase
+    volumes:
+      - ../:/dev/metabase
+      - ~/.npm:/root/.npm
+      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
+    command:
+      - /bin/sh
+      - -c
+      - |
+        yarn install
+        yarn build-hot
+    profiles:
+      - fe-builder
+
+  # App dbs. You only need one. If running metabase containerized, use the
+  # corresponding service.
+  metabase-postgres-app-db:
+    image: postgres
+    container_name: metabase-postgres-app-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mbuser
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: metabase
+    profiles:
+      - postgresappdb
+    networks:
+      - metabasenet
+
+  # If using the mysql app db, be sure to set the environment correctly for the
+  # metabase app, whether running the app containerized or locally
+  metabase-mysql-5.7-app-db:
+    image: mysql:5.7
+    container_name: metabase-mysql57-app-db
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_USER: mbuser
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: metabase
+    profiles:
+      - mysql57appdb
+    networks:
+      - metabasenet
+
+  # The following *-data instances are sample warehouse dbs that can be found at
+  # https://hub.docker.com/r/metabase/qa-databases/tags.
+  # For reference, these are the env vars used for these that might be useful
+  # when configuring your app db.
+  # ENV MYSQL_DATABASE=sample
+  # ENV MYSQL_USER=metabase
+  # ENV MYSQL_PASSWORD=metasample123
+  postgres-sample-14-data:
+    image: metabase/qa-databases:postgres-sample-14
+    container_name: metabasedb_postgres_14_data
+    ports:
+      - "15432:5432"
+    restart: always
+    profiles:
+      - postgres14data
+    networks:
+      - metabasenet
+
+  mysql-sample-5.7-data:
+    image: metabase/qa-databases:mysql-sample-5.7
+    container_name: metabasedb_mysql_5_7_data
+    ports:
+      - "23306:3306"
+    restart: always
+    profiles:
+      - mysql57data
+    networks:
+      - metabasenet
+
+  mysql-sample-8-data:
+    image: metabase/qa-databases:mysql-sample-8
+    container_name: metabasedb_mysql_8_data
+    ports:
+      - "13306:3306"
+    restart: always
+    profiles:
+      - mysql8data
+    networks:
+      - metabasenet
+
+  mongo-data:
+    image: metabase/qa-databases:mongo-sample-6
+    container_name: metabasedb_mongo_6_data
+    restart: always
+    ports:
+      - "27017:27017"
+    profiles:
+      - mongodata
+    networks:
+      - metabasenet
+
+  vertica-data:
+    image: vertica/vertica-ce:12.0.2-0
+    container_name: vertica_data
+    restart: always
+    ports:
+      - "5433:5433"
+    profiles:
+      - verticadata
+    networks:
+      - metabasenet
+
+
+  # Used this if you need to test metabase's email capabilities
+  maildev:
+    image: maildev/maildev:latest
+    container_name: maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    profiles:
+      - pulse
+    networks:
+      - metabasenet
+
+  # Used for testing with SAML
+  saml:
+    build: https://github.com/mcguinness/saml-idp.git
+    volumes:
+      - ./idp-private-key.pem:/idp-private-key.pem
+      - ./idp-public-cert.pem:/idp-public-cert.pem
+    ports:
+      - "7000:7000"
+    entrypoint:
+      - node
+      - app.js
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "7000"
+      - --acs
+      - https://foo.okta.com/auth/saml20/example
+      - --aud
+      - https://www.okta.com/saml2/service-provider/spf5aFRRXFGIMAYXQPNV"
+    profiles:
+      - sso
+    networks:
+      - metabasenet
+
+networks:
+  metabasenet:

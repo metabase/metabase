@@ -4,12 +4,12 @@
   (:refer-clojure :exclude [format range])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [java-time.core :as t.core]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
@@ -17,6 +17,8 @@
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle)
    (java.time.temporal Temporal TemporalAdjuster WeekFields)
    (org.threeten.extra PeriodDuration)))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."

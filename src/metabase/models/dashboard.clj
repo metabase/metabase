@@ -4,7 +4,6 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -30,11 +29,13 @@
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -42,17 +43,17 @@
   :ordered_cards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
-  (db/do-post-select DashboardCard
-    (mdb.query/query {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-                      :from      [[:report_dashboardcard :dashcard]]
-                      :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                                  [:collection :collection] [:= :collection.id :card.collection_id]]
-                      :where     [:and
-                                  [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
-                                  [:or
-                                   [:= :card.archived false]
-                                   [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                      :order-by  [[:dashcard.created_at :asc]]})))
+  (t2/select DashboardCard
+             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+              :from      [[:report_dashboardcard :dashcard]]
+              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
+                          [:collection :collection] [:= :collection.id :card.collection_id]]
+              :where     [:and
+                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
+                          [:or
+                           [:= :card.archived false]
+                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+              :order-by  [[:dashcard.created_at :asc]]}))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
@@ -436,6 +437,7 @@
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
       (update :card_id                serdes.util/export-fk 'Card)
+      (update :action_id              serdes.util/export-fk 'Action)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)))
 
@@ -489,19 +491,22 @@
        (set/union (serdes.util/parameters-deps parameters))))
 
 (defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
-  (let [dashcards (db/select ['DashboardCard :card_id :parameter_mappings]
+  (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
         dashboard (db/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-      ;; here. So their cards, both direct and mentioned in their parameters.
-      (set (for [{:keys [card_id parameter_mappings]} dashcards
+      ;; here. So their actions, and their cards both direct and mentioned in their parameters
+     (set (for [{:keys [card_id parameter_mappings]} dashcards
                  ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-                 card-id (cond-> (set (keep :card_id parameter_mappings))
-                           card_id (conj card_id))]
-             ["Card" card-id]))
+                card-id (cond-> (set (keep :card_id parameter_mappings))
+                          card_id (conj card_id))]
+            ["Card" card-id]))
+     (set (for [{:keys [action_id]} dashcards
+                :when action_id]
+            ["Action" action_id]))
       ;; parameter with values_source_type = "card" will depend on a card
-      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-             ["Card" card-id])))))
+     (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
+            ["Card" card-id])))))
 
 (serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

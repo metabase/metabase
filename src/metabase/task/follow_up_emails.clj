@@ -1,7 +1,6 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
   (:require
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -13,7 +12,10 @@
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             send follow-up emails                                              |

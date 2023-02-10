@@ -94,8 +94,15 @@ export const getDefaultFormSettings = (
   description: "",
   fields: {},
   confirmMessage: "",
+  successMessage: getSuccessMessage(overrides),
   ...overrides,
 });
+
+export const getSuccessMessage = (
+  formSettings: Partial<ActionFormSettings> = {},
+) => {
+  return formSettings.successMessage ?? t`Thanks for your submission.`;
+};
 
 export const getDefaultFieldSettings = (
   overrides: Partial<LocalFieldSettings> = {},

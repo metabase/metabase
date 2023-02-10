@@ -3,11 +3,11 @@
   and [[metabase-enterprise.audit-app.pages.alerts]]."
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [metabase.models.collection :as collection]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honey-sql-2-extensions :as h2x]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (def table-metadata
   "Common Metadata for the columns returned by both the [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]

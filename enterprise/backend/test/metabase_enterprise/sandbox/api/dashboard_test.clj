@@ -81,13 +81,22 @@
                                                           :value_field (mt/$ids $categories.name)}}]}]]
 
         (testing "when getting values"
-          (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard-id "abc")]
+          (let [get-values (fn [user]
+                             (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
+
+            (is (> (-> (get-values :crowberto) :values count) 3))
             (is (= {:values          ["African" "American" "Artisan"]
                     :has_more_values false}
-                   (mt/user-http-request :rasta :get 200 url)))))
+                   (get-values :rasta)))))
+
 
         (testing "when search values"
-          (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "red")]
+          (let [search (fn [user]
+                         (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]
+            (is (= {:values          ["BBQ"]
+                    :has_more_values false}
+                   (search :crowberto)))
+
             (is (= {:values          []
                     :has_more_values false}
-                   (mt/user-http-request :rasta :get 200 url)))))))))
+                   (search :rasta)))))))))

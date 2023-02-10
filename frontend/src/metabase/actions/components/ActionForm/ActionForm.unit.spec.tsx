@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -60,6 +59,7 @@ const setup = ({
     <ActionForm
       initialValues={initialValues}
       parameters={parameters}
+      submitTitle="Save"
       formSettings={formSettings}
       setFormSettings={isSettings ? setFormSettings : undefined}
       onSubmit={onSubmit}

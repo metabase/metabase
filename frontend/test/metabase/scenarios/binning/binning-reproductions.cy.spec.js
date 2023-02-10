@@ -206,7 +206,8 @@ describe("binning related reproductions", () => {
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At").siblings(".Icon-eye_outline").click();
+      cy.findByText("Add or remove columns").click();
+      cy.findByText("Created At").click();
       cy.button("Done").click();
     });
 

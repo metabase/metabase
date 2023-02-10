@@ -18,7 +18,7 @@ const questionDetails = {
   display: "line",
 };
 
-describe.skip("issue 27380", () => {
+describe("issue 27380", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -40,10 +40,10 @@ describe.skip("issue 27380", () => {
 
     // Graph should still exist
     // Let's check only the y-axis label
-    cy.get("y-axis-label").invoke("text").should("eq", "Count");
+    cy.get(".y-axis-label").invoke("text").should("eq", "Count");
 
     cy.icon("notebook").click();
     cy.findByText("Pick a column to group by").should("not.exist");
-    cy.findByText(/Products? → Created At: Month/);
+    cy.findByText("Count by Product → Created At: Week");
   });
 });

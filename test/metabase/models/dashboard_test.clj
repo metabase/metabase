@@ -23,6 +23,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;; ## Dashboard Revisions
 
 (deftest serialize-dashboard-test
@@ -416,6 +418,15 @@
                                                                                :value_field [:field (:id field) nil]}}]}]]
       (is (= #{["Card" (:id card)]}
              (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard which has a dashcard with an action"
+    (mt/with-actions [{:keys [action-id]} {}]
+      (mt/with-temp* [Dashboard [dashboard {:name "A dashboard"}]
+                      DashboardCard [_ {:action_id          action-id
+                                        :dashboard_id       (:id dashboard)
+                                        :parameter_mappings []}]]
+        (is (= #{["Action" action-id]}
+               (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
     (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
