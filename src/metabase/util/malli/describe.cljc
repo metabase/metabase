@@ -64,10 +64,10 @@
            (str " "
                 (when-not just-one "which is: ")
                 (diamond
-                  (str/join ", "
-                            (for [[name schema] (:registry (mc/properties schema))]
-                              (str (when-not just-one (str name " is "))
-                                   (describe schema))))))))))
+                 (str/join ", "
+                           (for [[name schema] (:registry (mc/properties schema))]
+                             (str (when-not just-one (str name " is "))
+                                  (describe schema))))))))))
 
 (defmethod accept :schema [_ schema children options] (-schema schema children options))
 (defmethod accept ::mc/schema [_ schema children options] (-schema schema children options))
@@ -113,7 +113,7 @@
                        (-> s mc/properties :dispatch))]
     (str "one of "
          (diamond
-           (str/join " | " (map (fn [[title _ shape]] (str title " = " shape)) children)))
+          (str/join " | " (map (fn [[title _ shape]] (str title " = " shape)) children)))
          " dispatched by " dispatcher)))
 
 (defmethod accept :map-of [_ schema children _]
@@ -207,7 +207,7 @@
 (defmethod accept :fn [_ _ _ _] "function")
 
 (defn- tagged [children]
-  (map (fn [[tag _ c]] (str c " (tag: " tag ")" )) children))
+  (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children))
 
 (defmethod accept :or [_ _ children _] (str/join ", or " children))
 (defmethod accept :orn [_ _ children _] (str/join ", or " (tagged children)))
@@ -239,7 +239,6 @@
      (cond-> (str "map " (titled schema))
        (seq kv-description) (str "where {" kv-description "} ")
        additional-properties (str "with no other keys ")))))
-
 
 (defmethod accept ::mc/val [_ _ children _] (first children))
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
