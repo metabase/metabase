@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useMount } from "react-use";
 import title from "metabase/hoc/Title";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { PublicApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
@@ -42,7 +42,7 @@ function PublicAction({ action, publicId, onError }: Props) {
     [publicId, onError],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     if (!hasParameters) {
       handleSubmit({});
     }
