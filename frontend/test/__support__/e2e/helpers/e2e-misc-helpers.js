@@ -43,14 +43,12 @@ export function openNativeEditor({
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
  */
-export function runNativeQuery({ wait = true, callback } = {}) {
+export function runNativeQuery({ wait = true } = {}) {
   cy.intercept("POST", "api/dataset").as("dataset");
   cy.get(".NativeQueryEditor .Icon-play").click();
 
   if (wait) {
-    cy.wait("@dataset").then(({ response }) => {
-      callback && callback(response);
-    });
+    cy.wait("@dataset");
   }
 
   cy.icon("play").should("not.exist");
