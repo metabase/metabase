@@ -24,6 +24,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere

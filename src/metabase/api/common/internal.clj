@@ -17,6 +17,8 @@
   (:import
    (metabase.async.streaming_response StreamingResponse)))
 
+(set! *warn-on-reflection* true)
+
 (comment streaming-response/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

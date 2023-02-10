@@ -12,7 +12,10 @@
    [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [ring.util.codec :as codec]))
+   #?@(:clj [[ring.util.codec :as codec]])))
+
+(core/defn- encode-uri [fragment]
+  (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
 
 (core/defn- ->malli-io-link
   ([schema]
@@ -20,12 +23,12 @@
                              ;; try to make a sample value
                              (mg/generate schema {:seed 1 :size 1})
                              ;; not all schemas can generate values
-                             (catch Exception _ ::none))))
+                             (catch #?(:clj Exception :cljs js/Error) _ ::none))))
   ([schema value]
-   (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
+   (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
          url-value (if (= ::none value)
                      ""
-                     (codec/url-encode (u/pprint-to-str value)))
+                     (encode-uri (u/pprint-to-str value)))
          url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
      (cond
        ;; functions are not going to work

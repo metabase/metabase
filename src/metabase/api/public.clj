@@ -41,6 +41,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 

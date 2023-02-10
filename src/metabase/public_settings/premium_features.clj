@@ -18,6 +18,8 @@
    [schema.core :as schema]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^[0-9a-f]{64}$")

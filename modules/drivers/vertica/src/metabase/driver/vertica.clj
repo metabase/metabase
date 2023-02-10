@@ -23,6 +23,8 @@
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})

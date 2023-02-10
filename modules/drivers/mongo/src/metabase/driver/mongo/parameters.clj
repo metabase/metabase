@@ -23,6 +23,8 @@
    (java.time.temporal Temporal)
    (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
 
+(set! *warn-on-reflection* true)
+
 (defn- ->utc-instant [t]
   (t/instant
    (condp instance? t

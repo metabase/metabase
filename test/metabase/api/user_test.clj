@@ -25,6 +25,8 @@
    [toucan.db :as db]
    [toucan.hydrate :as hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures
   :once
   (fixtures/initialize :test-users-personal-collections))

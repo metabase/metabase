@@ -16,6 +16,8 @@
    (java.io File)
    (java.nio.file Files Path)))
 
+(set! *warn-on-reflection* true)
+
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
       (.getAbsolutePath (io/file "plugins"))))

@@ -27,6 +27,8 @@
    (org.apache.http.client.utils URLEncodedUtils)
    (org.apache.http.message BasicNameValuePair)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]

@@ -11,6 +11,8 @@
   (:import
    (javax.mail Session)))
 
+(set! *warn-on-reflection* true)
+
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*
   (System/setProperty "mail.mime.splitlongparameters" "false"))
@@ -198,7 +200,7 @@
 
 (def ^:private email-security-order [:tls :starttls :ssl])
 
-(def ^:private retry-delay-ms
+(def ^:private ^Long retry-delay-ms
   "Amount of time to wait between retrying SMTP connections with different security options. This delay exists to keep
   us from getting banned on Outlook.com."
   500)

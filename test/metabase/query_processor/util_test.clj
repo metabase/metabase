@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.query-processor.util :as qp.util]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel query-without-aggregations-or-limits?-test
   (are [x expected] (= expected
                        (qp.util/query-without-aggregations-or-limits? x))

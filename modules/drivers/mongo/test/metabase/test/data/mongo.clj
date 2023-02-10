@@ -1,15 +1,19 @@
 (ns metabase.test.data.mongo
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as tx]
-            [monger.collection :as mcoll]
-            [monger.core :as mg])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.test.data.interface :as tx]
+   [monger.collection :as mcoll]
+   [monger.core :as mg])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (tx/add-test-extensions! :mongo)
 

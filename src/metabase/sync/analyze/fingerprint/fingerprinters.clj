@@ -19,6 +19,8 @@
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
   [& rfs]

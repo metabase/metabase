@@ -23,6 +23,8 @@
    [toucan.db :as db]
    [yaml.core :as yaml]))
 
+(set! *warn-on-reflection* true)
+
 (defn- dir->contents-set [p dir]
   (->> dir
        .listFiles

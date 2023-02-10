@@ -1,6 +1,7 @@
 (ns metabase.models.setting-test
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
@@ -21,14 +22,14 @@
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
-  (deferred-tru "Test setting - this only shows up in dev (1)"))
+  "Test setting - this only shows up in dev (1)")
 
 (defsetting test-setting-2
-  (deferred-tru "Test setting - this only shows up in dev (2)")
+  "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
 (defsetting test-setting-3
-  (deferred-tru "Test setting - this only shows up in dev (3)")
+  "Test setting - this only shows up in dev (3)"
   :visibility :internal)
 
 (defsetting test-boolean-setting
@@ -37,7 +38,7 @@
   :type :boolean)
 
 (defsetting test-json-setting
-  (deferred-tru "Test setting - this only shows up in dev (4)")
+  "Test setting - this only shows up in dev (4)"
   :type :json)
 
 (defsetting test-csv-setting
@@ -963,3 +964,14 @@
                  Exception
                  #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
                  (validate tag value)))))))))
+
+(deftest validate-description-translation-test
+  (with-redefs [metabase.models.setting/in-test? (constantly false)]
+    (testing "When not in a test, defsetting descriptions must be i18n'ed"
+      (try
+        (walk/macroexpand-all
+         `(defsetting ~'test-asdf-asdf-asdf
+            "untranslated description"))
+        (catch Exception e
+          (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
+                          (:cause (Throwable->map e)))))))))

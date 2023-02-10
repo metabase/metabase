@@ -32,11 +32,13 @@
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 ;;; when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
 (comment collection.root/keep-me)

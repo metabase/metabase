@@ -12,6 +12,8 @@
    [metabase.util.password :as u.password]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 (defn InstanceOf
@@ -22,8 +24,8 @@
       ...)"
   [model]
   (mc/schema
-    [:fn {:error/fn (fn [_ _] (deferred-tru "value must be an instance of {0}" (name model)))}
-     #(models.dispatch/instance-of? model %)]))
+   [:fn {:error/fn (fn [_ _] (deferred-tru "value must be an instance of {0}" (name model)))}
+    #(models.dispatch/instance-of? model %)]))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 

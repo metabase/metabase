@@ -26,6 +26,8 @@
   (:import
    (java.sql Connection ResultSet)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :sparksql, :parent :hive-like)
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------

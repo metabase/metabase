@@ -16,7 +16,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [ring.adapter.jetty :as jetty]))
+   [ring.adapter.jetty9 :as jetty]))
+
+(set! *warn-on-reflection* true)
 
 (def TestAddress
   [:map
