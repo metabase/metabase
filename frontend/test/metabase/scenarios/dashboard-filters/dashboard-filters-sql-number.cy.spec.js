@@ -13,7 +13,7 @@ import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filte
 import {
   DASHBOARD_SQL_NUMBER_FILTERS,
   questionDetails,
-} from "./dashboard-filters-sql-number";
+} from "./shared/dashboard-filters-sql-number";
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
