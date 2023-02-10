@@ -64,9 +64,19 @@ export type PivotTableCollapsedRowsSetting = {
   value: string[]; // identifiers for collapsed rows
 };
 
+export type TableColumnOrderSetting = {
+  name: string;
+  enabled: boolean;
+  fieldRef?: FieldReference;
+  field_ref?: FieldReference;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
+
+  // Table
+  "table.columns"?: TableColumnOrderSetting[];
 
   // X-axis
   "graph.x_axis.title_text"?: string;
