@@ -11,6 +11,8 @@
   (:import
    (java.nio.file Files)))
 
+(set! *warn-on-reflection* true)
+
 ;;; Generic utils
 
 (defn- head

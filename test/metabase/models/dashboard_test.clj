@@ -23,6 +23,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;; ## Dashboard Revisions
 
 (deftest serialize-dashboard-test

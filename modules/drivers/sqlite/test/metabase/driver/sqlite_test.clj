@@ -1,20 +1,23 @@
 (ns metabase.driver.sqlite-test
-  (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite

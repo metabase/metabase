@@ -14,19 +14,21 @@
   (:import
    (java.sql SQLNonTransientConnectionException)))
 
+(set! *warn-on-reflection* true)
+
 (defn- exec-async [conn-chan db-spec sql+params]
   (a/thread
-   (jdbc/with-db-connection [conn db-spec]
-     (try
-       (let [pid (:pid (first (sql.ddl/jdbc-query conn ["select connection_id() pid"])))]
-         (a/put! conn-chan pid)
-         (sql.ddl/jdbc-query conn sql+params))
-       (catch SQLNonTransientConnectionException _e
-         ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
-         nil)
-       (catch Exception e
-         (log/warn e)
-         e)))))
+    (jdbc/with-db-connection [conn db-spec]
+      (try
+        (let [pid (:pid (first (sql.ddl/jdbc-query conn ["select connection_id() pid"])))]
+          (a/put! conn-chan pid)
+          (sql.ddl/jdbc-query conn sql+params))
+        (catch SQLNonTransientConnectionException _e
+          ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
+          nil)
+        (catch Exception e
+          (log/warn e)
+          e)))))
 
 (defn- kill [conn pid]
   (let [results (sql.ddl/jdbc-query conn ["show processlist"])

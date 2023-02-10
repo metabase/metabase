@@ -20,6 +20,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 ;;; # Migration Helpers
 
 (models/defmodel ^:deprecated DataMigrations :data_migrations)

@@ -18,9 +18,11 @@
    (java.sql ResultSet Types)
    (java.time LocalDate OffsetDateTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :hive-like
-  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
-  :abstract? true)
+                  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
+                  :abstract? true)
 
 (defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
 (defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)

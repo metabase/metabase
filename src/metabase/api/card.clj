@@ -60,6 +60,8 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
 (defmulti ^:private cards-for-filter-option*

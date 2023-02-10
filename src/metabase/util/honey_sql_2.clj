@@ -14,6 +14,8 @@
   (:import
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
   but always converts the string to upper-case characters in the English locale. Using `clojure.string/upper-case` for

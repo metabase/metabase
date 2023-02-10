@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.pulse.render.png :as png]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private test-table-html-1
   "<table><tr><th>Column 1</th><th>Column 2</th></tr><tr><td>Data</td><td>Data</td></tr></table>")
 

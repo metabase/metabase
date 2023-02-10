@@ -40,6 +40,7 @@
   :use                                      {:level :warning}
   :redundant-fn-wrapper                     {:level :warning}
   :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
+  :warn-on-reflection                       {:level :warning}
   ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
   ;; :docstring-no-summary                  {:level :warning}
   ;; :docstring-leading-trailing-whitespace {:level :warning}

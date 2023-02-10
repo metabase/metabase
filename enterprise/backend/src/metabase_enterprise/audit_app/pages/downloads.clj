@@ -10,6 +10,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
+(set! *warn-on-reflection* true)
+
 ;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
 ;; past 30 days. Intended to power scatter plot.
 (defmethod audit.i/internal-query ::per-day-by-size

@@ -32,13 +32,15 @@
    (metabase.driver.common.parameters FieldFilter)
    (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 
+(set! *warn-on-reflection* true)
+
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
   letters, numbers, and underscores, cannot start with a number, and for project-id, can be at most 30 characters long."
   [s]
   (boolean (or (nil? s)
                (and (string? s)
-                 (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
+                    (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
 
 (def ^:private ProjectIdentifierString
   (s/pred valid-project-identifier? "Valid BigQuery project-id"))

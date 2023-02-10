@@ -8,6 +8,8 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private latest-activity (atom nil))
 
 (def ^:private ^java.time.Duration recent-window-duration (t/seconds 15))

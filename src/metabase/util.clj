@@ -26,6 +26,8 @@
    (java.util.concurrent TimeoutException)
    (org.apache.commons.validator.routines RegexValidator UrlValidator)))
 
+(set! *warn-on-reflection* true)
+
 (comment shared.u/keep-me)
 
 (p/import-vars

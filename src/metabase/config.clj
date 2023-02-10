@@ -10,6 +10,8 @@
    (clojure.lang Keyword)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try

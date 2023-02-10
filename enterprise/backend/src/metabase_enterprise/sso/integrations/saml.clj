@@ -38,6 +38,8 @@
    [schema.core :as s])
   (:import [java.util Base64 UUID]))
 
+(set! *warn-on-reflection* true)
+
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]

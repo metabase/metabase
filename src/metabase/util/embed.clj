@@ -12,6 +12,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [ring.util.codec :as codec]))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
 
 (defn- oembed-url

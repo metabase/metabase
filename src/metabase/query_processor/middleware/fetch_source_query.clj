@@ -44,6 +44,8 @@
    [toucan.db :as db]
    [weavejester.dependency :as dep]))
 
+(set! *warn-on-reflection* true)
+
 ;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
 ;; entire query
 (def ^:private SourceQueryAndMetadata

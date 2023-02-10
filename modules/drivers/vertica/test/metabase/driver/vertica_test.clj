@@ -1,25 +1,27 @@
 (ns metabase.driver.vertica-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest db-timezone-test
   (mt/test-driver :vertica
     (is (= nil
            (driver/db-default-timezone :vertica (mt/db))))))
 
-(deftest additional-connection-string-options-test
-  (mt/test-driver :vertica
-    (testing "Make sure you can add additional connection string options (#6651)"
-      (is (= {:classname   "com.vertica.jdbc.Driver"
-              :subprotocol "vertica"
-              :subname     "//localhost:5433/birds-near-me?ConnectionLoadBalance=1"}
-             (sql-jdbc.conn/connection-details->spec :vertica {:host               "localhost"
-                                                               :port               5433
-                                                               :db                 "birds-near-me"
-                                                               :additional-options "ConnectionLoadBalance=1"}))))))
+(deftest ^:parallel additional-connection-string-options-test
+  (testing "Make sure you can add additional connection string options (#6651)"
+    (is (= {:classname   "com.vertica.jdbc.Driver"
+            :subprotocol "vertica"
+            :subname     "//localhost:5433/birds-near-me?ConnectionLoadBalance=1"}
+           (sql-jdbc.conn/connection-details->spec :vertica {:host               "localhost"
+                                                             :port               5433
+                                                             :db                 "birds-near-me"
+                                                             :additional-options "ConnectionLoadBalance=1"})))))
 
 (deftest dots-in-column-names-test
   (mt/test-driver :vertica

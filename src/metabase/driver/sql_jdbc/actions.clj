@@ -24,6 +24,8 @@
   (:import
    (java.sql Connection)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
   of maps with a :column and :message key indicating what went wrong."

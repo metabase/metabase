@@ -33,6 +33,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

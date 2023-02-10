@@ -8,6 +8,8 @@
    [metabase.util.password :as u.password]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
                         (premium-features-test/with-premium-features #{:advanced-config}

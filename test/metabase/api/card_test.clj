@@ -55,6 +55,8 @@
    (java.util UUID)
    (org.quartz.impl StdSchedulerFactory)))
 
+(set! *warn-on-reflection* true)
+
 (comment api.card/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

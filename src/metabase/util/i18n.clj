@@ -13,6 +13,8 @@
    (java.text MessageFormat)
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (p/import-vars
  [i18n.impl
   available-locale?
