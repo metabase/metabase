@@ -29,7 +29,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
-  const [savedMappings, setSavedMappings] = useState({});
   const [saveError, setSaveError] = useState(null);
   const [dnForVisibleDeleteMappingModal, setDnForVisibleDeleteMappingModal] =
     useState(null);
@@ -45,7 +44,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       });
 
       setMappings(setting?.value || {});
-      setSavedMappings(setting?.value || {});
 
       PermissionsApi.groups().then(groups =>
         setGroups(groups.filter(groupIsMappable)),
@@ -208,7 +206,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 key={dn}
                 dn={dn}
                 groups={groups || []}
-                savedMappings={savedMappings}
                 selectedGroupIds={ids}
                 onChange={handleChangeMapping(dn)}
                 onShowDeleteMappingModal={handleShowDeleteMappingModal}

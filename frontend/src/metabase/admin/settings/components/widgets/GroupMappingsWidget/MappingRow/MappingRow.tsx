@@ -22,7 +22,6 @@ const MappingRow = ({
   dn,
   groups,
   selectedGroupIds,
-  savedMappings,
   onChange,
   onShowDeleteMappingModal,
   onDeleteMapping,
@@ -32,12 +31,8 @@ const MappingRow = ({
     selectedGroupIds.length === 1 &&
     isAdminGroup(groups.find((group: any) => group.id === selectedGroupIds[0]));
 
-  const isSavedMapping = Object.keys(savedMappings).includes(dn);
-
   const shouldUseDeleteMappingModal =
-    selectedGroupIds.length > 0 &&
-    !isMappingLinkedOnlyToAdminGroup &&
-    isSavedMapping;
+    selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;
 
   const onDelete = shouldUseDeleteMappingModal
     ? () => onShowDeleteMappingModal(selectedGroupIds, dn)
