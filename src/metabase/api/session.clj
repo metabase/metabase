@@ -30,6 +30,8 @@
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
   (db/insert! LoginHistory (merge {:user_id    user-id

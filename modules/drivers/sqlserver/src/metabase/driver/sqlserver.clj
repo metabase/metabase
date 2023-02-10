@@ -27,6 +27,8 @@
    (java.sql Connection ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (defmethod driver/supports? [:sqlserver :regex] [_ _] false)

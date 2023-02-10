@@ -140,9 +140,9 @@ class Visualization extends React.PureComponent {
       : null;
     const series = transformed && transformed.series;
     const visualization = transformed && transformed.visualization;
-    const computedSettings = series
+    const computedSettings = !this.isLoading(series)
       ? getComputedSettingsForSeries(series)
-      : null;
+      : {};
     this.setState({
       hovered: null,
       error: null,

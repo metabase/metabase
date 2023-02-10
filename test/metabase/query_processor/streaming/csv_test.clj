@@ -11,6 +11,8 @@
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (defn- parse-and-sort-csv [response]
   (assert (some? response))
   (sort-by

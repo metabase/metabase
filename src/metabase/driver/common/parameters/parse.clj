@@ -10,6 +10,8 @@
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :optional-end :param-end)))
 
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))

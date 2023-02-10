@@ -8,6 +8,8 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;; [[install-pretty-formatters!]] -- tweaks the actual methods HoneySQL uses to generate SQL strings to add indentation
 
 (defonce ^:private ^clojure.lang.MultiFn orig-format-clause hformat/format-clause)

@@ -14,6 +14,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 ;;; ----------------------------------------------- valid-path? -----------------------------------------------

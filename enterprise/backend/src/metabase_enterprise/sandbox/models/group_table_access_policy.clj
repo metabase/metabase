@@ -24,6 +24,8 @@
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (models/defmodel GroupTableAccessPolicy :sandboxes)
 
 ;;; only admins can work with GTAPs

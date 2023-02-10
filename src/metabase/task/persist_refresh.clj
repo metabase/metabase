@@ -35,6 +35,8 @@
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException Trigger)))
 
+(set! *warn-on-reflection* true)
+
 (defn- job-context->job-type
   [job-context]
   (select-keys (qc/from-job-data job-context) ["db-id" "persisted-id" "type"]))

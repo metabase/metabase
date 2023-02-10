@@ -10,6 +10,8 @@
   (:import
    (java.time.temporal ChronoField)))
 
+(set! *warn-on-reflection* true)
+
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]

@@ -13,6 +13,8 @@
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+

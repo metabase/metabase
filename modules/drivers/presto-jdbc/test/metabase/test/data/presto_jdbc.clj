@@ -1,22 +1,26 @@
 (ns metabase.test.data.presto-jdbc
   "Presto JDBC driver test extensions."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [metabase.util.log :as log])
-  (:import [java.sql Connection DriverManager PreparedStatement]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection DriverManager PreparedStatement)))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
 

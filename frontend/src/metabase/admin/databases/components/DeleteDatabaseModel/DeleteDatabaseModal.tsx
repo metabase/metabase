@@ -1,13 +1,14 @@
 import React, { FormEvent, useState } from "react";
 import { jt, t } from "ttag";
+import { useAsync } from "react-use";
 
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import type { DatabaseUsageInfo } from "metabase-types/api";
-import useFetch from "metabase/hooks/use-fetch";
 import Alert from "metabase/core/components/Alert";
 import Input from "metabase/core/components/Input";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { MetabaseApi } from "metabase/services";
 import type Database from "metabase-lib/metadata/Database";
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
 import {
@@ -52,8 +53,8 @@ const DeleteDatabaseModal = ({
   onClose,
   onDelete,
 }: DeleteDatabaseModalProps) => {
-  const { data: usageInfo, isLoading } = useFetch<DatabaseUsageInfo>(
-    `/api/database/${database.id}/usage_info`,
+  const { value: usageInfo, loading } = useAsync(
+    async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
   );
 
   const [isContentRemovalConfirmed, setIsContentRemovalConfirmed] =
@@ -99,7 +100,7 @@ const DeleteDatabaseModal = ({
       title={t`Delete the ${database.name} database?`}
       onClose={onClose}
     >
-      <LoadingAndErrorWrapper loading={isLoading}>
+      <LoadingAndErrorWrapper loading={loading}>
         <DeleteDatabaseModalRoot
           onSubmit={canDelete ? handleSubmit : undefined}
         >

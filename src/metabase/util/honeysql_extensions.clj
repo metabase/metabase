@@ -1,14 +1,14 @@
 (ns metabase.util.honeysql-extensions
   "Honey SQL 1 extensions. This is only used for QP stuff at this point in time -- application database stuff uses
-  Toucan 2 and thus Honey SQL 2; the new namespace [[metabase.util.honey-sql-2-extensions]] provides Honey SQL 2
+  Toucan 2 and thus Honey SQL 2; the new namespace [[metabase.util.honey-sql-2]] provides Honey SQL 2
   versions of these functions."
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
   (:require
    [honeysql.core :as hsql]
-   [metabase.util.honey-sql-1-extensions :as h1x]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-1 :as h1x]
+   [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]))
 
 (def ^:dynamic ^{:added "0.46.0"} *honey-sql-version*

@@ -161,6 +161,9 @@ const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
   action: GET("/api/public/action/:uuid"),
+  executeDashcardAction: POST(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
   executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
@@ -171,6 +174,9 @@ export const PublicApi = {
   ),
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
+  prefetchValues: GET(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
 
@@ -256,6 +262,7 @@ export const MetabaseApi = {
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
+  db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
   table_update: PUT("/api/table/:id"),

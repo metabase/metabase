@@ -11,6 +11,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (deftest update-test
   (testing "Updating"
     (mt/with-temp Segment [{:keys [id]} {:creator_id (mt/user->id :rasta)}]

@@ -19,6 +19,8 @@
    (java.io File)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Secret :secret)

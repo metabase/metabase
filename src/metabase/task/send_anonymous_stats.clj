@@ -10,6 +10,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (jobs/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
   (when (public-settings/anon-tracking-enabled)
     (log/debug (trs "Sending anonymous usage stats."))

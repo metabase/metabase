@@ -1,12 +1,13 @@
 import React from "react";
 import nock from "nock";
+import userEvent, { specialChars } from "@testing-library/user-event";
 
 import {
+  getIcon,
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
-  getIcon,
 } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
@@ -128,11 +129,11 @@ describe("ActionCreator", () => {
       expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
     });
 
-    it("should not show action settings button", async () => {
+    it("should show action settings button", async () => {
       await setup({ isAdmin: true, isPublicSharingEnabled: true });
       expect(
-        screen.queryByRole("button", { name: "Action settings" }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: "Action settings" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -240,28 +241,57 @@ describe("ActionCreator", () => {
           screen.queryByRole("textbox", { name: "Public action link URL" }),
         ).not.toBeInTheDocument();
       });
+
+      it("should be able to set success message", async () => {
+        await setupEditing();
+
+        userEvent.click(
+          screen.getByRole("button", { name: "Action settings" }),
+        );
+        expect(
+          screen.getByRole("textbox", { name: "Success message" }),
+        ).toHaveValue("Thanks for your submission.");
+
+        userEvent.type(
+          screen.getByRole("textbox", { name: "Success message" }),
+          `${specialChars.selectAll}Thanks!`,
+        );
+        expect(
+          screen.getByRole("textbox", { name: "Success message" }),
+        ).toHaveValue("Thanks!");
+      });
     });
 
-    describe("no permission to see action settings", () => {
-      it("should not show action settings button when user is admin but public sharing is disabled", async () => {
+    describe("no permission to see public sharing", () => {
+      it("should not show sharing settings when user is admin but public sharing is disabled", async () => {
         await setupEditing({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
 
+        userEvent.click(
+          screen.getByRole("button", { name: "Action settings" }),
+        );
         expect(
-          screen.queryByRole("button", { name: "Action settings" }),
+          screen.queryByRole("switch", {
+            name: "Make public",
+          }),
         ).not.toBeInTheDocument();
       });
 
-      it("should not show action settings button when user is not admin but public sharing is enabled", async () => {
+      it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
         await setupEditing({
           isAdmin: false,
           isPublicSharingEnabled: true,
         });
 
+        userEvent.click(
+          screen.getByRole("button", { name: "Action settings" }),
+        );
         expect(
-          screen.queryByRole("button", { name: "Action settings" }),
+          screen.queryByRole("switch", {
+            name: "Make public",
+          }),
         ).not.toBeInTheDocument();
       });
     });
