@@ -23,6 +23,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 

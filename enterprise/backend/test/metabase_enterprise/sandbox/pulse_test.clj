@@ -17,6 +17,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (deftest sandboxed-pulse-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]

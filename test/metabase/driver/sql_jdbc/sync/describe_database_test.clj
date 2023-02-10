@@ -19,6 +19,8 @@
   (:import
    (java.sql ResultSet)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest simple-select-probe-query-test

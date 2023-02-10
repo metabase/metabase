@@ -7,6 +7,8 @@
   (:import
    (java.util TimeZone)))
 
+(set! *warn-on-reflection* true)
+
 (defn do-with-system-timezone-id [^String timezone-id thunk]
   ;; skip all the property changes if the system timezone doesn't need to be changed.
   (let [original-timezone        (TimeZone/getDefault)

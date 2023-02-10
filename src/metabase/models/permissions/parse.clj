@@ -12,6 +12,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
   "permission = ( all | execute | db | block | download | data-model | details | collection )

@@ -20,12 +20,15 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [schema.core :as s])
   (:import
-   (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
+   (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.models.field/keep-me) ; for FieldInstance
 
@@ -584,14 +587,14 @@
         p     (->honeysql driver p)]
     (case hx/*honey-sql-version*
       1 (hx/call :percentile-cont field p)
-      2 [:metabase.util.honey-sql-2-extensions/percentile-cont field p])))
+      2 [::h2x/percentile-cont field p])))
 
 (defmethod ->honeysql [:sql :distinct]
   [driver [_ field]]
   (let [field (->honeysql driver field)]
     (case hx/*honey-sql-version*
       1 (hx/call :distinct-count field)
-      2 [:metabase.util.honey-sql-2-extensions/distinct-count field])))
+      2 [::h2x/distinct-count field])))
 
 (defmethod ->honeysql [:sql :floor] [driver [_ field]] (hx/call :floor (->honeysql driver field)))
 (defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hx/call :ceil  (->honeysql driver field)))

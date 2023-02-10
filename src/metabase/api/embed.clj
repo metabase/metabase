@@ -40,6 +40,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
 (defn- check-params-are-allowed
@@ -51,14 +53,14 @@
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
         "disabled" (api/check (not (contains? all-params param))
-                     [400 (tru "You''re not allowed to specify a value for {0}." param)])
+                              [400 (tru "You''re not allowed to specify a value for {0}." param)])
         ;; enabled means either JWT *or* user can specify the param, but not both. Param is *not* required
         "enabled"  (api/check (not (contains? duplicated-params param))
-                     [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
+                              [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                       (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
-                       (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+                    (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."

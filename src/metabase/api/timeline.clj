@@ -15,6 +15,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (def Include
   "Events Query Parameters Schema"
   (s/enum "events"))

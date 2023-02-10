@@ -21,6 +21,8 @@
    (java.sql Time)
    (java.time OffsetDateTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (defmethod driver/database-supports? [:presto-common :now] [_driver _feat _db] true)
 
 (driver/register! :presto-common, :abstract? true, :parent :sql)

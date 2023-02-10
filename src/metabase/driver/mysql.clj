@@ -34,6 +34,8 @@
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; method impls live in these namespaces.
   mysql.actions/keep-me

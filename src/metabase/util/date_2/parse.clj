@@ -11,6 +11,8 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal Temporal TemporalAccessor TemporalField TemporalQueries)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^{:arglists '([temporal-accessor query])} query
   (let [queries {:local-date  (TemporalQueries/localDate)
                  :local-time  (TemporalQueries/localTime)

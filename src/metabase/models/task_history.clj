@@ -18,6 +18,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 (models/defmodel TaskHistory :task_history)
 
 (doto TaskHistory

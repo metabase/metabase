@@ -10,7 +10,9 @@
    [metabase.util.log :as log]
    [schema.core :as s])
   (:import
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (metabase.util.honey_sql_1 Identifier)))
+
+(set! *warn-on-reflection* true)
 
 (s/defn quote-name
   "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`

@@ -1,11 +1,13 @@
 (ns metabase.util.date-2.common
   (:require
-   [camel-snake-kebab.core :as csk]
+   [clojure.string :as str]
    [java-time :as t]
    [metabase.util :as u])
   (:import
    (java.time ZoneId ZoneOffset)
    (java.time.temporal ChronoField IsoFields TemporalField WeekFields)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - not sure this belongs here, it seems to be a bit more general than just `date-2`.
 
@@ -17,7 +19,7 @@
   ([^Class klass ^Class target-class]
    (into {} (for [^java.lang.reflect.Field f (.getFields klass)
                   :when                      (.isAssignableFrom target-class (.getType f))]
-              [(keyword (u/lower-case-en (csk/->kebab-case (.getName f))))
+              [(keyword (u/lower-case-en (str/replace (.getName f) #"_" "-")))
                (.get f nil)]))))
 
 (def ^TemporalField temporal-field

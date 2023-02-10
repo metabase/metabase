@@ -17,6 +17,8 @@
    (org.graalvm.polyglot Context Value)
    (org.w3c.dom Element Node)))
 
+(set! *warn-on-reflection* true)
+
 (def parse-svg #'js-svg/parse-svg-string)
 
 (use-fixtures :each

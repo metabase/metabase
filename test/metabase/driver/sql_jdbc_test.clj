@@ -11,6 +11,8 @@
    [metabase.test :as mt]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
                          {:name table, :schema "PUBLIC", :description nil}))}

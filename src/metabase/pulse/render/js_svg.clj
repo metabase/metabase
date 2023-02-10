@@ -19,6 +19,8 @@
    (org.graalvm.polyglot Context)
    (org.w3c.dom Element Node)))
 
+(set! *warn-on-reflection* true)
+
 ;; the bundle path goes through webpack. Changes require a `yarn build-static-viz`
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")

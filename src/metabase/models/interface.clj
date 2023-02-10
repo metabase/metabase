@@ -36,6 +36,8 @@
    (java.util.zip GZIPInputStream)
    (toucan2.instance Instance)))
 
+(set! *warn-on-reflection* true)
+
 (p/import-vars
  [models.dispatch
   toucan-instance?

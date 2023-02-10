@@ -23,6 +23,8 @@
    [toucan.db :as db]
    [yaml.core :as yaml]))
 
+(set! *warn-on-reflection* true)
+
 (defn- dir->contents-set [p dir]
   (->> dir
        .listFiles
@@ -298,7 +300,8 @@
               (testing "for Actions"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
-                         (->> (action/select-one :entity_id entity_id)
+                         (->> (db/select-one 'Action :entity_id entity_id)
+                              (@#'action/hydrate-subtype)
                               (serdes.base/extract-one "Action" {})
                               clean-entity)))))
 

@@ -14,6 +14,8 @@
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))
 
+(set! *warn-on-reflection* true)
+
 (defn- seconds-ago [n]
   (let [[unit n] (if-not (integer? n)
                    [:millisecond (long (* 1000 n))]

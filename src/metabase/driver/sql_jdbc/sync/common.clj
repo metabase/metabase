@@ -4,6 +4,8 @@
   (:import
    (java.sql Connection PreparedStatement ResultSet)))
 
+(set! *warn-on-reflection* true)
+
 (defn prepare-statement
   "Create a PreparedStatement for metadata queries; set `TYPE_FORWARD_ONLY`/`CONCUR_READ_ONLY`/`FETCH_FORWARD` options
   if possible. These queries return no rows."

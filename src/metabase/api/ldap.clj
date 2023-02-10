@@ -11,6 +11,8 @@
    [metabase.util.schema :as su]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
   [{:keys [status message]}]

@@ -35,6 +35,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk]
                       (binding [hx/*honey-sql-version* 2]
                         (thunk))))

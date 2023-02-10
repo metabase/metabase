@@ -20,6 +20,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 

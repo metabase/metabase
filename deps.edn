@@ -62,13 +62,14 @@
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML. Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
                                              :exclusions  [org.clojure/clojure
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.516"}
-  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.516"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.519"}
+  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.519"}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
@@ -126,7 +127,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.50.v20221201"}   ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.13"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
@@ -146,7 +147,6 @@
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.9.6"}              ; web server (Jetty wrapper)
-  ring/ring-jetty-adapter                   {:mvn/version "1.9.6"}              ; Ring adapter using Jetty webserver
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
@@ -279,6 +279,13 @@
 
   :oss-dev
   {}
+
+  :cljs
+  {:extra-paths ["test" "shared/test"]
+   :extra-deps
+   {com.lambdaisland/glogi  {:mvn/version "1.2.164"}
+    io.github.metabase/hawk {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
+    thheller/shadow-cljs    {:mvn/version "2.19.6"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -481,6 +488,9 @@
   :nrepl
   {:extra-deps {nrepl/nrepl {:mvn/version "0.9.0"}}
    :main-opts  ["-m" "nrepl.cmdline"]}
+
+  ;; - start a Socket REPL on port 50505 that you can connect your editor to:
+  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;

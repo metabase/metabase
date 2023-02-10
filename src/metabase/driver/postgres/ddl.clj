@@ -11,6 +11,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- set-statement-timeout!
   "Must be called within a transaction.
    Sets the current transaction `statement_timeout` to the minimum

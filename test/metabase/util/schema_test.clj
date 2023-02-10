@@ -12,6 +12,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"
     (is (= (str "value may be nil, or if non-nil, value must satisfy one of the following requirements: "
