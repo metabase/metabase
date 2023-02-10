@@ -158,7 +158,6 @@ function ActionCreatorComponent({
         isNew={isNew}
         hasSharingPermission={isAdmin && isPublicSharingEnabled}
         canSave={query.isEmpty()}
-        actionId={actionId}
         question={question}
         onChangeQuestionQuery={handleChangeQuestionQuery}
         onChangeName={newName =>

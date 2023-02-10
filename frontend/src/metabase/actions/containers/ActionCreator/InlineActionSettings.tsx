@@ -1,12 +1,11 @@
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type { WritebackActionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -14,7 +13,6 @@ import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { checkNotNull } from "metabase/core/utils/types";
 
 import Icon from "metabase/components/Icon";
 import Actions from "metabase/entities/actions/actions";
@@ -22,6 +20,8 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
+
+import Question from "metabase-lib/Question";
 
 import {
   ActionSettingsContainer,
@@ -32,12 +32,8 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
+  question: Question;
   onClose: () => void;
-  actionId: WritebackActionId;
-}
-
-interface EntityLoaderProps {
-  action: WritebackAction;
 }
 
 interface StateProps {
@@ -45,14 +41,11 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  createPublicLink: ({ id }: { id: WritebackActionId }) => void;
-  deletePublicLink: ({ id }: { id: WritebackActionId }) => void;
+  onCreatePublicLink: ({ id }: { id: WritebackActionId }) => void;
+  onDeletePublicLink: ({ id }: { id: WritebackActionId }) => void;
 }
 
-type ActionSettingsInlineProps = OwnProps &
-  EntityLoaderProps &
-  StateProps &
-  DispatchProps;
+type ActionSettingsInlineProps = OwnProps & StateProps & DispatchProps;
 
 export const ActionSettingsTriggerButton = ({
   onClick,
@@ -75,33 +68,33 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps: DispatchProps = {
-  createPublicLink: Actions.actions.createPublicLink,
-  deletePublicLink: Actions.actions.deletePublicLink,
+  onCreatePublicLink: Actions.actions.createPublicLink,
+  onDeletePublicLink: Actions.actions.deletePublicLink,
 };
 
 const InlineActionSettings = ({
-  onClose,
-  actionId,
-  action,
+  question,
   siteUrl,
-  createPublicLink,
-  deletePublicLink,
+  onCreatePublicLink,
+  onDeletePublicLink,
+  onClose,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const isPublic = action.public_uuid != null;
+  const publicUuid = question.publicUUID();
+  const isPublic = publicUuid != null;
 
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      createPublicLink({ id: actionId });
+      onCreatePublicLink({ id: question.id() });
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    deletePublicLink({ id: actionId });
+    onDeletePublicLink({ id: question.id() });
   };
 
   return (
@@ -130,10 +123,7 @@ const InlineActionSettings = ({
           {isPublic && (
             <CopyWidgetContainer>
               <CopyWidget
-                value={Urls.publicAction(
-                  siteUrl,
-                  checkNotNull(action.public_uuid),
-                )}
+                value={Urls.publicAction(siteUrl, publicUuid)}
                 aria-label={t`Public action link URL`}
               />
             </CopyWidgetContainer>
@@ -144,9 +134,7 @@ const InlineActionSettings = ({
   );
 };
 
-export default _.compose(
-  Actions.load({
-    id: (_: State, props: OwnProps) => props.actionId,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+export default connect<StateProps, DispatchProps, OwnProps, State>(
+  mapStateToProps,
+  mapDispatchToProps,
 )(InlineActionSettings);

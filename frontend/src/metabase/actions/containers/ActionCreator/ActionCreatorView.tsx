@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
-import { ActionFormSettings, WritebackActionId } from "metabase-types/api";
+import { ActionFormSettings } from "metabase-types/api";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
 import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
@@ -33,7 +33,6 @@ interface ActionCreatorProps {
   hasSharingPermission: boolean;
   canSave: boolean;
 
-  actionId?: WritebackActionId;
   question: Question;
 
   onChangeQuestionQuery: (query: NativeQuery) => void;
@@ -50,7 +49,6 @@ export default function ActionCreatorView({
   isNew,
   hasSharingPermission,
   canSave,
-  actionId,
   question,
   onChangeQuestionQuery,
   onChangeName,
@@ -138,9 +136,9 @@ export default function ActionCreatorView({
                   />
                 ),
                 dataReference: <DataReferenceInline onClose={closeSideView} />,
-                actionSettings: actionId ? (
+                actionSettings: question.isSaved() ? (
                   <InlineActionSettings
-                    actionId={actionId}
+                    question={question}
                     onClose={closeSideView}
                   />
                 ) : null,
