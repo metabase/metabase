@@ -36,6 +36,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)

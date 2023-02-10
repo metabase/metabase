@@ -7,6 +7,8 @@
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! ::timezone-driver, :abstract? true)
 
 (defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)

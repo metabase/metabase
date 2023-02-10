@@ -22,6 +22,8 @@
    (org.apache.sshd.common.util.security SecurityUtils)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^Long default-ssh-timeout 30000)
 
 (def ^:private ^SshClient client

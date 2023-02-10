@@ -26,6 +26,8 @@
   (:import
    (org.eclipse.jetty.io EofException)))
 
+(set! *warn-on-reflection* true)
+
 (comment backend.db/keep-me)
 
 (def ^:private cache-version

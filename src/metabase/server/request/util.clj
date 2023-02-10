@@ -14,6 +14,8 @@
    [schema.core :as s]
    [user-agent :as user-agent]))
 
+(set! *warn-on-reflection* true)
+
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]

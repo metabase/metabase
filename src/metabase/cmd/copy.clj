@@ -61,6 +61,8 @@
   (:import
    (java.sql SQLException)))
 
+(set! *warn-on-reflection* true)
+
 (defn- log-ok []
   (log/info (u/colorize 'green "[OK]")))
 

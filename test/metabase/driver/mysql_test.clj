@@ -33,6 +33,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "

@@ -18,6 +18,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint

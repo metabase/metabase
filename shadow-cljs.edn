@@ -17,7 +17,6 @@
                 metabase.shared.formatting.date
                 metabase.shared.formatting.numbers
                 metabase.shared.formatting.time
-                metabase.shared.util
                 metabase.shared.util.currency
                 metabase.shared.util.time
                 metabase.shared.parameters.parameters]}

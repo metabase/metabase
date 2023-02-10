@@ -14,6 +14,8 @@
   (:import
    (java.util LinkedHashMap)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (def ^:dynamic *snowplow-collector*

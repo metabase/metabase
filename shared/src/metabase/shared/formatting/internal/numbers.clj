@@ -9,6 +9,8 @@
    (java.text DecimalFormat NumberFormat)
    (java.util Currency Locale)))
 
+(set! *warn-on-reflection* true)
+
 ;; Clojure helpers ================================================================================================
 (defn- sig-figs [number figures]
   (BigDecimal. (double number) (MathContext. figures RoundingMode/HALF_UP)))

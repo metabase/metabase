@@ -21,6 +21,8 @@
   (:import
    (java.text DecimalFormat DecimalFormatSymbols)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private card-error-rendered-info
   "Default rendered-info map when there is an error running a card on the card run.
   Is a delay due to the call to `trs`."

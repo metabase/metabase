@@ -34,6 +34,8 @@
    (java.io ByteArrayInputStream)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn- shared-obj []

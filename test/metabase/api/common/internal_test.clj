@@ -14,7 +14,9 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [ring.adapter.jetty :as jetty]))
+   [ring.adapter.jetty9 :as jetty]))
+
+(set! *warn-on-reflection* true)
 
 (def TestAddress
   [:map

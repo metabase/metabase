@@ -13,6 +13,8 @@
    (java.sql DriverManager)
    (java.util Properties)))
 
+(set! *warn-on-reflection* true)
+
 (p/deftype+ DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
   (pretty [_]

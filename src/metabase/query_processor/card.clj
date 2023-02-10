@@ -25,6 +25,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- query-magic-ttl
   "Compute a 'magic' cache TTL time (in seconds) for `query` by multipling its historic average execution times by the
   `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be

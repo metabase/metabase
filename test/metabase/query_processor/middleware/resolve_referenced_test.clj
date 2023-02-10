@@ -13,6 +13,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 (deftest tags-referenced-cards-lookup-test
   (testing "returns Card instances from raw query"
     (mt/with-temp* [Card [c1 {}]
