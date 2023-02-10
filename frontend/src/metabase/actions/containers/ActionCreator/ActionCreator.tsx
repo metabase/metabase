@@ -13,10 +13,9 @@ import { createQuestionFromAction } from "metabase/actions/selectors";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
-  WritebackActionId,
+  WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { SavedCard } from "metabase-types/types/Card";
 
 import Modal from "metabase/components/Modal";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -34,9 +33,9 @@ const mapStateToProps = (
   state: State,
   { action }: { action: WritebackQueryAction },
 ) => ({
-  metadata: getMetadata(state),
+  action,
   question: action ? createQuestionFromAction(state, action) : undefined,
-  actionId: action ? action.id : undefined,
+  metadata: getMetadata(state),
   isAdmin: getUserIsAdmin(state),
   isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
 });
@@ -56,7 +55,7 @@ interface OwnProps {
 }
 
 interface StateProps {
-  actionId?: WritebackActionId;
+  action?: WritebackAction;
   question?: Question;
   metadata: Metadata;
   isAdmin: boolean;
@@ -71,9 +70,9 @@ interface DispatchProps {
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
 
 function ActionCreatorComponent({
-  metadata,
+  action,
   question: passedQuestion,
-  actionId,
+  metadata,
   modelId,
   databaseId,
   update,
@@ -93,7 +92,7 @@ function ActionCreatorComponent({
     setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
-  }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChangeQuestionQuery = useCallback(
     (newQuery: NativeQuery) => {
@@ -118,8 +117,7 @@ function ActionCreatorComponent({
   }
 
   const query = question.query() as NativeQuery;
-
-  const isNew = !actionId && !(question.card() as SavedCard).id;
+  const isNew = !action && !question.isSaved();
 
   const handleClickSave = () => {
     if (isNew) {
@@ -158,6 +156,7 @@ function ActionCreatorComponent({
         isNew={isNew}
         hasSharingPermission={isAdmin && isPublicSharingEnabled}
         canSave={query.isEmpty()}
+        action={action}
         question={question}
         onChangeQuestionQuery={handleChangeQuestionQuery}
         onChangeName={newName =>

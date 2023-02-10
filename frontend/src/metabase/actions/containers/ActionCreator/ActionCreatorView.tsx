@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
-import { ActionFormSettings } from "metabase-types/api";
+import { ActionFormSettings, WritebackAction } from "metabase-types/api";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
 import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
@@ -33,6 +33,7 @@ interface ActionCreatorProps {
   hasSharingPermission: boolean;
   canSave: boolean;
 
+  action: WritebackAction | undefined;
   question: Question;
 
   onChangeQuestionQuery: (query: NativeQuery) => void;
@@ -49,6 +50,7 @@ export default function ActionCreatorView({
   isNew,
   hasSharingPermission,
   canSave,
+  action,
   question,
   onChangeQuestionQuery,
   onChangeName,
@@ -120,31 +122,20 @@ export default function ActionCreatorView({
               </Button>
             </ModalActions>
           </ModalLeft>
-
-          {
-            (
-              {
-                actionForm: (
-                  <FormCreator
-                    params={question?.parameters() ?? []}
-                    formSettings={
-                      question?.card()
-                        ?.visualization_settings as ActionFormSettings
-                    }
-                    onChange={onChangeFormSettings}
-                    onExampleClick={onClickExample}
-                  />
-                ),
-                dataReference: <DataReferenceInline onClose={closeSideView} />,
-                actionSettings: question.isSaved() ? (
-                  <InlineActionSettings
-                    question={question}
-                    onClose={closeSideView}
-                  />
-                ) : null,
-              } as Record<SideView, React.ReactElement>
-            )[activeSideView]
-          }
+          {activeSideView === "actionForm" ? (
+            <FormCreator
+              params={question?.parameters() ?? []}
+              formSettings={
+                question?.card()?.visualization_settings as ActionFormSettings
+              }
+              onChange={onChangeFormSettings}
+              onExampleClick={onClickExample}
+            />
+          ) : activeSideView === "dataReference" ? (
+            <DataReferenceInline onClose={closeSideView} />
+          ) : activeSideView === "actionSettings" && action ? (
+            <InlineActionSettings action={action} onClose={closeSideView} />
+          ) : null}
         </ActionCreatorBodyContainer>
       </ModalRoot>
     </Modal>

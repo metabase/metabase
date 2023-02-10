@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 
-import type { WritebackActionId } from "metabase-types/api";
+import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -21,8 +21,6 @@ import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 
-import Question from "metabase-lib/Question";
-
 import {
   ActionSettingsContainer,
   ActionSettingsContent,
@@ -32,7 +30,7 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
-  question: Question;
+  action: WritebackAction;
   onClose: () => void;
 }
 
@@ -73,28 +71,28 @@ const mapDispatchToProps: DispatchProps = {
 };
 
 const InlineActionSettings = ({
-  question,
+  action,
   siteUrl,
   onCreatePublicLink,
   onDeletePublicLink,
   onClose,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const publicUuid = question.publicUUID();
+  const publicUuid = action.public_uuid;
   const isPublic = publicUuid != null;
 
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      onCreatePublicLink({ id: question.id() });
+      onCreatePublicLink({ id: action.id });
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    onDeletePublicLink({ id: question.id() });
+    onDeletePublicLink({ id: action.id });
   };
 
   return (
