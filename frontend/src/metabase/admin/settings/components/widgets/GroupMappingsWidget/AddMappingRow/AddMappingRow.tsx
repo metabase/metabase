@@ -37,7 +37,7 @@ function AddMappingRow({
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
         <form
-          className="my2 pl1 p1 bordered border-brand justify-between rounded relative flex align-center"
+          className="m2 p1 bordered border-brand justify-between rounded relative flex align-center"
           onSubmit={isValid ? handleSubmit : undefined}
         >
           <input
