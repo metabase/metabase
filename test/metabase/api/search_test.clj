@@ -613,29 +613,30 @@
                     (map :name))))))))
 
 (deftest search-db-call-count-test
-  (t2.with-temp/with-temp [:metabase.models.card/Card           _              {:name "card db count test 1"}
-                           :metabase.models.card/Card           _              {:name "card db count test 2"}
-                           :metabase.models.card/Card           _              {:name "card db count test 3"}
-                           :metabase.models.dashboard/Dashboard _              {:name "dash count test 1"}
-                           :metabase.models.dashboard/Dashboard _              {:name "dash count test 2"}
-                           :metabase.models.dashboard/Dashboard _              {:name "dash count test 3"}
-                           :metabase.models.database/Database   {db-id :id}    {:name "database count test 1"}
-                           :metabase.models.database/Database   _              {:name "database count test 2"}
-                           :metabase.models.database/Database   _              {:name "database count test 3"}
-                           :metabase.models.table/Table         {table-id :id} {:db_id  db-id
-                                                                                 :schema nil}
-                           :metabase.models.metric/Metric        _             {:table_id table-id
-                                                                                :name     "metric count test 1"}
-                           :metabase.models.metric/Metric        _             {:table_id table-id
-                                                                                :name     "metric count test 1"}
-                           :metabase.models.metric/Metric        _             {:table_id table-id
-                                                                                :name     "metric count test 2"}
-                           :metabase.models.segment/Segment      _             {:table_id table-id
-                                                                                :name     "segment count test 1"}
-                           :metabase.models.segment/Segment      _             {:table_id table-id
-                                                                                :name     "segment count test 2"}
-                           :metabase.models.segment/Segment      _             {:table_id table-id
-                                                                                :name     "segment count test 3"}]
+  (t2.with-temp/with-temp
+    [Card      _              {:name "card db count test 1"}
+     Card      _              {:name "card db count test 2"}
+     Card      _              {:name "card db count test 3"}
+     Dashboard _              {:name "dash count test 1"}
+     Dashboard _              {:name "dash count test 2"}
+     Dashboard _              {:name "dash count test 3"}
+     Database  {db-id :id}    {:name "database count test 1"}
+     Database  _              {:name "database count test 2"}
+     Database  _              {:name "database count test 3"}
+     Table     {table-id :id} {:db_id  db-id
+                               :schema nil}
+     Metric    _              {:table_id table-id
+                                :name     "metric count test 1"}
+     Metric    _              {:table_id table-id
+                               :name     "metric count test 1"}
+     Metric    _              {:table_id table-id
+                               :name     "metric count test 2"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 1"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 2"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 3"}]
     (toucan2.execute/with-call-count [call-count]
       (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
       ;; the call count number here are expected to change if we change the search api

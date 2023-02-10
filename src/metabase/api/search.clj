@@ -365,16 +365,16 @@
   true)
 
 (defmethod check-permissions-for-model :metric
-  [o]
-  (mi/can-read? o))
+  [instance]
+  (mi/can-read? instance))
 
 (defmethod check-permissions-for-model :segment
-  [o]
-  (mi/can-read? o))
+  [instance]
+  (mi/can-read? instance))
 
 (defmethod check-permissions-for-model :database
-  [o]
-  (mi/can-read? o))
+  [instance]
+  (mi/can-read? instance))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"

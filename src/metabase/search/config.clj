@@ -39,14 +39,14 @@
 
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"dashboard"  :metabase.models.dashboard/Dashboard
-   "metric"     :metabase.models.metric/Metric
-   "segment"    :metabase.models.segment/Segment
-   "card"       :metabase.models.card/Card
-   "dataset"    :metabase.models.card/Card
-   "collection" :metabase.models.collection/Collection
-   "table"      :metabase.models.table/Table
-   "database"   :metabase.models.database/Database})
+  {"dashboard"  Dashboard
+   "metric"     Metric
+   "segment"    Segment
+   "card"       Card
+   "dataset"    Card
+   "collection" Collection
+   "table"      Table
+   "database"   Database})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
