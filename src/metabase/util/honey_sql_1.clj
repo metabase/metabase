@@ -118,6 +118,11 @@
          :when     (some? component)]
      (u/qualified-name component))))
 
+(defn identifier?
+  "Whether `x` is an instance of `Identifier`."
+  [x]
+  (instance? Identifier x))
+
 ;; Single-quoted string literal
 (p.types/defrecord+ Literal [literal]
   ToSql
