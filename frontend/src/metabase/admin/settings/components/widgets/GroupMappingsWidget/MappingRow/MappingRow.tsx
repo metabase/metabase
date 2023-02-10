@@ -11,14 +11,14 @@ import Selectbox from "../GroupSelect";
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 
 import type { DeleteMappingModalValueType } from "../DeleteGroupMappingModal";
-import type { DNType, GroupIds } from "../types";
+import type { GroupIds } from "../types";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
-type OnDeleteMappingType = (dn: string, onSuccess?: () => void) => void;
+type OnDeleteMappingType = (name: string, onSuccess?: () => void) => void;
 
 type MappingRowProps = {
-  dn: DNType;
+  name: string;
   groups: GroupIds;
   selectedGroupIds: GroupIds;
   onChange: () => void;
@@ -26,7 +26,7 @@ type MappingRowProps = {
 };
 
 const MappingRow = ({
-  dn,
+  name,
   groups,
   selectedGroupIds,
   onChange,
@@ -51,7 +51,7 @@ const MappingRow = ({
       groups,
     );
 
-    onDeleteMapping(dn, onSuccess);
+    onDeleteMapping(name, onSuccess);
   };
 
   const getCallbackForGroupsAfterDeletingMapping = (
@@ -79,12 +79,12 @@ const MappingRow = ({
 
   const onDelete = shouldUseDeleteMappingModal
     ? () => handleShowDeleteMappingModal()
-    : () => onDeleteMapping(dn);
+    : () => onDeleteMapping(name);
 
   return (
     <>
       <tr>
-        <td>{dn}</td>
+        <td>{name}</td>
         <td>
           <Selectbox
             groups={groups}
@@ -106,7 +106,7 @@ const MappingRow = ({
       </tr>
       {showDeleteMappingModal && (
         <DeleteGroupMappingModal
-          dn={dn}
+          name={name}
           groupIds={selectedGroupIds}
           onHide={handleHideDeleteMappingModal}
           onConfirm={handleConfirmDeleteMapping}

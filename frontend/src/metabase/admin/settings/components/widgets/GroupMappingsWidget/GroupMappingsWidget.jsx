@@ -45,8 +45,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     fetchData();
   }, [mappingSetting]);
 
-  const handleShowAddRow = e => {
-    e.preventDefault();
+  const handleShowAddRow = () => {
     setShowAddRow(true);
   };
 
@@ -54,8 +53,8 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     setShowAddRow(false);
   };
 
-  const handleAddMapping = dn => {
-    const mappingsPlusNewMapping = { ...mappings, [dn]: [] };
+  const handleAddMapping = name => {
+    const mappingsPlusNewMapping = { ...mappings, [name]: [] };
 
     SettingsApi.put({
       key: mappingSetting,
@@ -63,8 +62,8 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     }).then(
       () => {
         props.onChangeSetting(mappingSetting, mappingsPlusNewMapping);
-        setMappings(mappingsPlusNewMapping);
 
+        setMappings(mappingsPlusNewMapping);
         setShowAddRow(false);
         setSaveError(null);
       },
@@ -72,12 +71,12 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     );
   };
 
-  const handleChangeMapping = dn => (group, selected) => {
+  const handleChangeMapping = name => (group, selected) => {
     const updatedMappings = selected
-      ? { ...mappings, [dn]: [...mappings[dn], group.id] }
+      ? { ...mappings, [name]: [...mappings[name], group.id] }
       : {
           ...mappings,
-          [dn]: mappings[dn].filter(id => id !== group.id),
+          [name]: mappings[name].filter(id => id !== group.id),
         };
 
     SettingsApi.put({
@@ -94,8 +93,8 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     );
   };
 
-  const handleDeleteMapping = (dn, onSuccess) => {
-    const mappingsMinusDeletedMapping = _.omit(mappings, dn);
+  const handleDeleteMapping = (name, onSuccess) => {
+    const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
     SettingsApi.put({
       key: mappingSetting,
@@ -157,13 +156,13 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 <td>&nbsp;</td>
               </tr>
             )}
-            {Object.entries(mappings).map(([dn, selectedGroupIds]) => (
+            {Object.entries(mappings).map(([name, selectedGroupIds]) => (
               <MappingRow
-                key={dn}
-                dn={dn}
+                key={name}
+                name={name}
                 groups={groups || []}
                 selectedGroupIds={selectedGroupIds}
-                onChange={handleChangeMapping(dn)}
+                onChange={handleChangeMapping(name)}
                 onDeleteMapping={handleDeleteMapping}
               />
             ))}

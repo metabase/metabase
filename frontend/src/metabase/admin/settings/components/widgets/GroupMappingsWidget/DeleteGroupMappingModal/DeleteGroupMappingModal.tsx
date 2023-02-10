@@ -6,7 +6,7 @@ import { ModalFooter } from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
 
-import type { DNType, GroupIds } from "../types";
+import type { GroupIds } from "../types";
 import {
   ModalHeader,
   ModalSubtitle,
@@ -16,29 +16,33 @@ import {
 export type DeleteMappingModalValueType = "nothing" | "clear" | "delete";
 
 export type DeleteGroupMappingModalProps = {
-  dn: DNType;
+  name: string;
   groupIds: GroupIds;
-  onConfirm: (value: ValueType, groupIds: GroupIds, dn: DNType) => void;
+  onConfirm: (
+    value: DeleteMappingModalValueType,
+    groupIds: GroupIds,
+    name: string,
+  ) => void;
   onHide: () => void;
 };
 
 const DeleteGroupMappingModal = ({
-  dn,
+  name,
   groupIds,
   onConfirm,
   onHide,
 }: DeleteGroupMappingModalProps) => {
-  const [value, setValue] = useState<ValueType>("nothing");
+  const [value, setValue] = useState<DeleteMappingModalValueType>("nothing");
 
-  const handleChange = (newValue: ValueType) => {
+  const handleChange = (newValue: DeleteMappingModalValueType) => {
     setValue(newValue);
   };
 
   const handleConfirm = () => {
-    onConfirm(value, groupIds, dn);
+    onConfirm(value, groupIds, name);
   };
 
-  const submitButtonLabels: Record<ValueType, string> = {
+  const submitButtonLabels: Record<DeleteMappingModalValueType, string> = {
     nothing: t`Remove mapping`,
     clear: t`Remove mapping and members`,
     delete:
@@ -68,7 +72,7 @@ const DeleteGroupMappingModal = ({
           <Radio
             className="ml2"
             vertical
-            value={value as ValueType | undefined}
+            value={value as DeleteMappingModalValueType | undefined}
             options={[
               {
                 name: t`Nothing, just remove the mapping`,
@@ -93,7 +97,7 @@ const DeleteGroupMappingModal = ({
         <ModalFooter fullPageModal={false} formModal={true}>
           <Button onClick={onHide}>{t`Cancel`}</Button>
           <Button danger onClick={handleConfirm}>
-            {submitButtonLabels[value as ValueType]}
+            {submitButtonLabels[value as DeleteMappingModalValueType]}
           </Button>
         </ModalFooter>
       </div>
