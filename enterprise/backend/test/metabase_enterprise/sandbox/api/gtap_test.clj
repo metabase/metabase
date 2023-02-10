@@ -128,6 +128,35 @@
                                                 :card_id              card-id
                                                 :attribute_remappings {"foo" 1}})))))))))
 
+(deftest validate-sandbox-test
+  (testing "GET /api/mt/gtap/validate"
+    (mt/with-temp* [Table            [{table-id :id}]
+                    PermissionsGroup [{group-id :id}]]
+      (testing "A valid sandbox passes validation and returns no error"
+        (mt/with-temp Card [{card-id :id}]
+          (with-gtap-cleanup
+            (mt/user-http-request :crowberto :get 204 "mt/gtap/validate"
+                                  {:table_id             table-id
+                                   :group_id             group-id
+                                   :card_id              card-id
+                                   :attribute_remappings {"foo" 1}}))))
+
+      (testing "An invalid sandbox results in a 400 error being returned"
+        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
+                        Card  [{card-id :id} {:dataset_query (mt/mbql-query venues
+                                                               {:fields      [[:expression "My field"]]
+                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+          (with-gtap-cleanup
+            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
+                          :expected (s/eq "type/Integer")
+                          :actual   (s/eq "type/Text")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :get 400 "mt/gtap/validate"
+                                               {:table_id             table-id
+                                                :group_id             group-id
+                                                :card_id              card-id
+                                                :attribute_remappings {"foo" 1}})))))))))
+
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
     (testing "Test that we can delete a GTAP"
