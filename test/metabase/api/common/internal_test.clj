@@ -14,6 +14,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]))
 
@@ -62,7 +63,7 @@
   {address ClosedTestAddress}
   {:status 200 :body address})
 
-(api/defendpoint POST "/test-localized-respoinse"
+(api/defendpoint POST "/test-localized-error"
   [:as {address :body :as _request}]
   {address NonBlankString}
   {:status 200 :body address})
@@ -152,7 +153,7 @@
         (metabase.test/with-temporary-setting-values [site-locale "es"]
           (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                   :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco."]}}
-                 (:body (post! "/sup" {:address ""})))))))))
+                 (:body (post! "/test-localized-error" {:address ""})))))))))
 
 (deftest route-fn-name-test
   (are [method route expected] (= expected
