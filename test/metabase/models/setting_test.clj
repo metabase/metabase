@@ -763,23 +763,24 @@
 (deftest database-local-settings-api-functions-test
   ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
   ;; with a `nil` value)
-  (doseq [[fn-name f] {`setting/writable-settings
-                       (fn [k]
-                         (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
-                           (get m k ::not-present)))
+  (mt/with-test-user :crowberto
+    (doseq [[fn-name f] {`setting/writable-settings
+                         (fn [k]
+                           (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
+                             (get m k ::not-present)))
 
-                       `setting/user-readable-values-map
-                       (fn [k]
-                         (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
-    (testing fn-name
-      (testing "should return Database-local-allowed Settings (site-wide-value only)"
-        (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
-          (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
-            (is (= 2
-                   (f :test-database-local-allowed-setting))))))
-      (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
-        (is (= ::not-present
-               (f :test-database-local-only-setting-with-default)))))))
+                         `setting/user-readable-values-map
+                         (fn [k]
+                           (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
+      (testing fn-name
+        (testing "should return Database-local-allowed Settings (site-wide-value only)"
+          (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
+            (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
+              (is (= 2
+                     (f :test-database-local-allowed-setting))))))
+        (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
+          (is (= ::not-present
+                 (f :test-database-local-only-setting-with-default))))))))
 
 
 ;;; ------------------------------------------------- User-local Settings ----------------------------------------------

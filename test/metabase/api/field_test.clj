@@ -64,6 +64,7 @@
                  :has_field_values "list"
                  :database_required false
                  :dimensions       []
+                 :settings         nil
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
