@@ -132,16 +132,6 @@ function ActionCreator({
     [setQuestion],
   );
 
-  const handleClickSave = () => {
-    if (isNew) {
-      setShowSaveModal(true);
-    } else {
-      const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: model.id() });
-      onClose?.();
-    }
-  };
-
   const handleCreate = async (values: CreateActionFormValues) => {
     const action = convertQuestionToAction(question, formSettings);
     await onCreateAction({
@@ -157,6 +147,20 @@ function ActionCreator({
 
     setShowSaveModal(false);
     onClose?.();
+  };
+
+  const handleUpdate = () => {
+    const action = convertQuestionToAction(question, formSettings);
+    onUpdateAction({ ...action, model_id: model.id() });
+  };
+
+  const handleClickSave = () => {
+    if (isNew) {
+      setShowSaveModal(true);
+    } else {
+      handleUpdate();
+      onClose?.();
+    }
   };
 
   const handleCloseNewActionModal = () => setShowSaveModal(false);
