@@ -14208,6 +14208,29 @@ databaseChangeLog:
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
 
+  - changeSet:
+      id: v46.00-076
+      author: noahmoss
+      comment: Remove foreign key constraint on sandboxes.permission_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+
+  - changeSet:
+      id: v46.00-077
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id with the appropriate onDelete policy
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
