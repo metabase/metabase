@@ -1,2 +1,2 @@
 export { default } from "./DeleteGroupMappingModal";
-export type { ValueType } from "./DeleteGroupMappingModal";
+export type { DeleteMappingModalValueType } from "./DeleteGroupMappingModal";

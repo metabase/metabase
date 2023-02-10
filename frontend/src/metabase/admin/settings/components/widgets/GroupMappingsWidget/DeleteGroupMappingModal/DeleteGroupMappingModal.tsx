@@ -13,7 +13,7 @@ import {
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
-export type ValueType = "nothing" | "clear" | "delete";
+export type DeleteMappingModalValueType = "nothing" | "clear" | "delete";
 
 export type DeleteGroupMappingModalProps = {
   dn: DNType;

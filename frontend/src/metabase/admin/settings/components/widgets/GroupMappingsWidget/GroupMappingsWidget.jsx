@@ -20,22 +20,14 @@ import {
   AddMappingButton,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
-import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
 function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState(null);
-  const [dnForVisibleDeleteMappingModal, setDnForVisibleDeleteMappingModal] =
-    useState(null);
-  const [
-    groupIdsForVisibleDeleteMappingModal,
-    setGroupIdsForVisibleDeleteMappingModal,
-  ] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -102,43 +94,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     );
   };
 
-  const handleShowDeleteMappingModal = (groups, dn) => {
-    setShowDeleteMappingModal(true);
-    setDnForVisibleDeleteMappingModal(dn);
-    setGroupIdsForVisibleDeleteMappingModal(groups);
-  };
-
-  const handleHideDeleteMappingModal = () => {
-    setShowDeleteMappingModal(false);
-    setDnForVisibleDeleteMappingModal(null);
-    setGroupIdsForVisibleDeleteMappingModal(null);
-  };
-
-  const handleConfirmDeleteMapping = (whatToDoAboutGroups, groups, dn) => {
-    const onSuccess = getCallbackForGroupsAfterDeletingMapping(
-      whatToDoAboutGroups,
-      groups,
-    );
-
-    handleDeleteMapping(dn, onSuccess);
-    setShowDeleteMappingModal(false);
-  };
-
-  const getCallbackForGroupsAfterDeletingMapping = (
-    whatToDoAboutGroups,
-    groups,
-  ) => {
-    switch (whatToDoAboutGroups) {
-      case "clear":
-        return () =>
-          groups.forEach(id => PermissionsApi.clearGroupMembership({ id }));
-      case "delete":
-        return () => groups.forEach(id => PermissionsApi.deleteGroup({ id }));
-      default:
-        return () => {};
-    }
-  };
-
   const handleDeleteMapping = (dn, onSuccess) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, dn);
 
@@ -189,9 +144,10 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
             {showAddRow && (
               <AddMappingRow
                 mappings={mappings}
+                placeholder={props.groupPlaceholder}
                 onCancel={handleHideAddRow}
                 onAdd={handleAddMapping}
-                placeholder={props.groupPlaceholder}
+                onDeleteMapping={handleDeleteMapping}
               />
             )}
             {Object.keys(mappings).length === 0 && !showAddRow && (
@@ -201,14 +157,13 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 <td>&nbsp;</td>
               </tr>
             )}
-            {Object.entries(mappings).map(([dn, ids]) => (
+            {Object.entries(mappings).map(([dn, selectedGroupIds]) => (
               <MappingRow
                 key={dn}
                 dn={dn}
                 groups={groups || []}
-                selectedGroupIds={ids}
+                selectedGroupIds={selectedGroupIds}
                 onChange={handleChangeMapping(dn)}
-                onShowDeleteMappingModal={handleShowDeleteMappingModal}
                 onDeleteMapping={handleDeleteMapping}
               />
             ))}
@@ -222,14 +177,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
           )}
         </div>
       </div>
-      {showDeleteMappingModal && (
-        <DeleteGroupMappingModal
-          dn={dnForVisibleDeleteMappingModal}
-          groupIds={groupIdsForVisibleDeleteMappingModal}
-          onHide={handleHideDeleteMappingModal}
-          onConfirm={handleConfirmDeleteMapping}
-        />
-      )}
     </Root>
   );
 }
