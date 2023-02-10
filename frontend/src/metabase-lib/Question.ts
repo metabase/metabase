@@ -713,7 +713,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: getBaseDimensionReference(dimension.mbql()),
+              fieldRef: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
