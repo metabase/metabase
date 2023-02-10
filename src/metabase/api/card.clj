@@ -38,6 +38,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -791,16 +792,17 @@ saved later when it is ready."
                                           {:executed-by api/*current-user-id*
                                            :context     :pulse
                                            :card-id     card-id})
-        png-bytes                        (render/render-pulse-card-to-png (pulse-impl/defaulted-timezone card)
-                                                                          card
-                                                                          query-results
-                                                                          1000)]
+        png-bytes                        (render/render-pulse-card-to-png
+                                          (-> query-results :data :results_timezone)
+                                          card
+                                          query-results
+                                          1000)]
     (-> png-bytes
         image-response
         (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" card-id)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
+(api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint

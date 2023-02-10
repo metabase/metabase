@@ -15,6 +15,7 @@
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
+   [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -27,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
+   [ring.util.response :as response]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -82,12 +84,12 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
-(def ^:private formats-list
+(def ^:private export-format-list
   (conj (map u/qualified-name (qp.streaming/export-formats)) "png"))
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum formats-list))
+  (apply s/enum export-format-list))
 
 (s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -100,9 +102,8 @@
 (def export-format-regex
   "Regex for matching valid export formats (e.g., `json`) for queries.
    Inteneded for use in an endpoint definition:
-
      (api/defendpoint-schema POST [\"/:export-format\", :export-format export-format-regex]"
-  (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
+  (re-pattern (str "(" (str/join "|" export-format-list) ")")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")
 
