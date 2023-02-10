@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.serialization
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
@@ -14,6 +15,7 @@
    (java.io
     BufferedInputStream
     BufferedOutputStream
+    ByteArrayInputStream
     ByteArrayOutputStream
     DataInputStream
     DataOutputStream
@@ -113,6 +115,7 @@
             (f nil)
             (f [metadata (reducible-rows is')])))))))
 
+
 (def unbounded-edn-serializer
   "Unbounded edn serializer."
   (let [eof      (Object.)
@@ -151,3 +154,46 @@
                                        (if (reduced? result)
                                          @result
                                          (recur result))))))))]))))))))
+
+(defonce in-memory-cache (atom {}))
+
+(comment
+  (reset! in-memory-cache {})
+  @in-memory-cache
+  (instance? (Class/forName "[B") (:results (val (first @in-memory-cache)))))
+
+(defmethod i/cache-backend :atom
+  [_]
+  (reify
+    i/CacheBackend
+    (cached-results [_ query-hash _max-age respond]
+      (let [entry (@in-memory-cache (codecs/bytes->hex query-hash))]
+        (if (instance? (Class/forName "[B") (:results (val (first @in-memory-cache))))
+          (with-open [is (ByteArrayInputStream. (:results (val (first @in-memory-cache))))]
+            (respond (assoc entry :results is)))
+          (respond entry))))
+    (save-results! [_ query-hash in serializer-name]
+      (swap! in-memory-cache assoc (codecs/bytes->hex query-hash)
+             {:results in
+              :serializer serializer-name}))
+    (purge-old-entries! [_ _max-age-seconds]
+      nil)))
+
+(def in-memory-cache-serializer
+  "Can only be used with the `:atom` backend. The db backend needs bytes to serialize."
+  (reify
+    i/Ser
+    (-get-accumulator [_ _options]
+      (let [acc (atom [])]
+        [acc (fn [] (deref acc))]))
+    (-add! [_ a obj]
+      (swap! a conj obj))
+    (-options [_] {})
+    (-name [_] "in-memory-cache-serializer")
+
+    i/Des
+    (-metadata-and-reducible-rows [_ in f]
+      (let [metadata (first in)]
+        (if (= metadata nil)
+          (f nil)
+          (f [metadata (rest in)]))))))

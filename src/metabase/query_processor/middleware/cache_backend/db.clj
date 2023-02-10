@@ -106,7 +106,7 @@
       (cached-results query-hash max-age-seconds respond))
 
     (save-results! [_ query-hash is serializer-name]
-      (save-results! query-hash is serializer-name)
+      (save-results! ^bytes query-hash ^bytes is serializer-name)
       nil)
 
     (purge-old-entries! [_ max-age-seconds]

@@ -36,7 +36,7 @@
 
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
-  (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
+  (i/cache-backend #_(config/config-kw :mb-qp-cache-backend) :atom))
 
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
@@ -86,7 +86,12 @@
     (let [bytez (serialized-bytes)
           serializer-name (when *serializer*
                             (i/-name *serializer*))]
-      (if-not (instance? (Class/forName "[B") bytez)
+      (do
+          (log/trace "Got serialized bytes; saving to cache backend")
+          (i/save-results! *backend* query-hash bytez serializer-name)
+          (log/debug "Successfully cached results for query.")
+          (purge! *backend*))
+      #_(if-not #_(instance? (Class/forName "[B") bytez) false
         (log/error (trs "Cannot cache results: expected byte array, got {0}" (class bytez)))
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
@@ -155,6 +160,23 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
+(defn- serializer-for-cache-info
+  "Return the serializer."
+  [cache-info]
+  ;; need a better way to discover the different serializers
+  (if config/is-prod?
+    cache.serdes/nippy-bounded-serializer
+    (case (:serializer cache-info)
+      "v3-unbounded-edn-serializer"
+      cache.serdes/unbounded-edn-serializer
+
+      "v3-nippy-bounded-serializer"
+      cache.serdes/nippy-bounded-serializer
+
+      "in-memory-cache-serializer"
+      cache.serdes/in-memory-cache-serializer
+      (throw (ex-info "Don't recorgnize serializer" {})))))
+
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [ignore-cache? query-hash max-age-seconds rff context]
@@ -163,20 +185,13 @@
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [cache-info]
-            ;; todo: grab version from cache results
             (when (:results cache-info)
-              (let [serializer (case (:serializer cache-info)
-                                 "v3-unbounded-edn-serializer"
-                                 cache.serdes/unbounded-edn-serializer
-
-                                 "v3-nippy-bounded-serializer"
-                                 cache.serdes/nippy-bounded-serializer
-                                 (throw (ex-info "Don't recorgnize serializer" {})))]
+              (let [serializer (serializer-for-cache-info cache-info)]
                 (i/with-reducible-deserialized-results serializer [[metadata reducible-rows]
                                                                    (:results cache-info)]
-                  (log/tracef "Found cached results. Version: %s Serialized: %s"
-                              (pr-str (:cache-version metadata))
-                              (:serializer cache-info))
+                  (log/infof "Found cached results. Version: %s Serialized: %s"
+                             (pr-str (:cache-version metadata))
+                             (:serializer cache-info))
                   (when (and (= (:cache-version metadata) cache-version)
                              reducible-rows)
                     (log/tracef "Reducing cached rows...")
@@ -201,7 +216,8 @@
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qp.util/query-hash query)
         serializer (rand-nth [cache.serdes/nippy-bounded-serializer
-                              cache.serdes/unbounded-edn-serializer])
+                                cache.serdes/unbounded-edn-serializer])
+        #_cache.serdes/in-memory-cache-serializer
         ;; cache is used here
         result     (maybe-reduce-cached-results false #_(:ignore-cached-results? middleware) ;; nocommit
                                                 query-hash
@@ -227,7 +243,9 @@
               (assoc context :reducef reducef')))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]
-  (and (public-settings/enable-query-caching)
+  true
+  ;; nocommit
+  #_(and (public-settings/enable-query-caching)
        cache-ttl))
 
 (defn maybe-return-cached-results

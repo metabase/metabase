@@ -16,7 +16,7 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  (^{:style/indent 3} cached-results [this ^bytes query-hash max-age-seconds respond]
+  (^{:style/indent 3} cached-results [this query-hash max-age-seconds respond]
     "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
   expired; otherwise, call `respond` with `nil.
 
@@ -26,7 +26,7 @@
 
   `max-age-seconds` may be floating-point. This method *must* return the result of `respond`.")
 
-  (save-results! [this ^bytes query-hash ^bytes results serializer-name]
+  (save-results! [this query-hash results serializer-name]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
   entries for `query-hash` and update the cache timestamp to the current system time.")
 
