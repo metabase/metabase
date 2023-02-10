@@ -1,4 +1,4 @@
-import { version } from "./cross-version-target-helpers";
+import { version } from "./helpers/cross-version-target-helpers";
 
 describe(`smoke test the migration to the version ${version}`, () => {
   it("should already be set up", () => {

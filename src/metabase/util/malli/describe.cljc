@@ -268,4 +268,4 @@
                         {::mc/walk-entry-vals true,
                          ::definitions definitions,
                          ::describe -describe})]
-     (str/trim (-describe ?schema options)))))
+     (str/trim (str (-describe ?schema options))))))

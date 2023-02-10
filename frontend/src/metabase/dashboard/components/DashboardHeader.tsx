@@ -8,7 +8,7 @@ import React, {
 import { t } from "ttag";
 import cx from "classnames";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useMount } from "react-use";
 
 import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
@@ -106,7 +106,7 @@ const DashboardHeader = ({
     [setDashboardAttribute, onSave, isEditing],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);

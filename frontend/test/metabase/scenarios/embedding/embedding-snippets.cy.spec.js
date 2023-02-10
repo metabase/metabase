@@ -6,7 +6,7 @@ import {
   isEE,
 } from "__support__/e2e/helpers";
 
-import { JS_CODE, IFRAME_CODE } from "./embedding-snippets";
+import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 
 describe("scenarios > embedding > code snippets", () => {
   beforeEach(() => {

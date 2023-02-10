@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
+import { useMount } from "react-use";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
   Archived,
@@ -18,7 +19,6 @@ import {
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { setErrorPage } from "metabase/redux/app";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
 import AppBanner from "metabase/components/AppBanner";
@@ -91,7 +91,7 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
-  useOnMount(() => {
+  useMount(() => {
     initializeIframeResizer();
   });
 

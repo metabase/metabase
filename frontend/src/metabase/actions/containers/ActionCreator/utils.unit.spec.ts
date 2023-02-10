@@ -177,8 +177,8 @@ describe("entities > actions > utils", () => {
       });
 
       const newQuestion = setTemplateTagTypesFromFieldSettings(
-        formSettings,
         question,
+        formSettings,
       );
 
       const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
@@ -200,8 +200,8 @@ describe("entities > actions > utils", () => {
       });
 
       const newQuestion = setTemplateTagTypesFromFieldSettings(
-        formSettings,
         question,
+        formSettings,
       );
 
       const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)

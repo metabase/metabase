@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -161,7 +160,7 @@ export function ObjectDetailFn({
     }
   }, [zoomedRowID, loadObjectDetailFKReferences]);
 
-  useOnMount(() => {
+  useMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
       setHasNotFoundError(true);
