@@ -39,9 +39,8 @@ const MappingRow = ({
     selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;
 
   const onDelete = shouldUseDeleteMappingModal
-    ? (e?: React.MouseEventHandler<HTMLButtonElement>) =>
-        onShowDeleteMappingModal(selectedGroupIds, dn)
-    : (e?: React.MouseEventHandler<HTMLButtonElement>) => onDeleteMapping(dn);
+    ? () => onShowDeleteMappingModal(selectedGroupIds, dn)
+    : () => onDeleteMapping(dn);
 
   return (
     <tr>
@@ -68,9 +67,11 @@ const MappingRow = ({
   );
 };
 
-type OnDeleteProps = OnDeleteMappingType | OnShowDeleteMappingModalType;
-
-const DeleteButton = ({ onDelete }: { onDelete?: OnDeleteProps }) => (
+const DeleteButton = ({
+  onDelete,
+}: {
+  onDelete?: React.MouseEventHandler<HTMLButtonElement>;
+}) => (
   <Tooltip tooltip={t`Remove mapping`} placement="top">
     <DeleteMappingButton onClick={onDelete}>
       <Icon name="close" />

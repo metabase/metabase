@@ -8,7 +8,7 @@ import type { GroupIds } from "../types";
 
 type Props = {
   groups: GroupIds;
-  selectedGroupIds: any;
+  selectedGroupIds: GroupIds;
   onGroupChange: () => void;
 };
 
