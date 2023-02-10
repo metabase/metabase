@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+import { useUnmount } from "react-use";
 
 import { t } from "ttag";
 
@@ -15,7 +16,6 @@ import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
@@ -130,7 +130,7 @@ const DashboardApp = props => {
 
   const [requestPermission, showNotification] = useWebNotification();
 
-  useOnUnmount(props.reset);
+  useUnmount(props.reset);
 
   useEffect(() => {
     if (isLoadingComplete) {

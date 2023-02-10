@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
+import { usePrevious } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -25,7 +26,6 @@ import {
 } from "metabase/query_builder/selectors";
 
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";

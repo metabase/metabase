@@ -1,12 +1,12 @@
 import { useCallback } from "react";
-import { useIsMounted } from "./use-is-mounted";
+import { useMountedState } from "react-use";
 
 type AsyncFn = (...args: any[]) => Promise<any>;
 
 // wraps the given async function in a promise that does not resolve
 // after the component has unmounted
 export function useSafeAsyncFunction(fn: AsyncFn, deps?: any[]): AsyncFn {
-  const isMounted = useIsMounted();
+  const isMounted = useMountedState();
 
   const safeFn: AsyncFn = useCallback(
     (...args: any[]) =>

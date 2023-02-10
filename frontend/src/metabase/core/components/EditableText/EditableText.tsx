@@ -10,7 +10,7 @@ import React, {
   useRef,
 } from "react";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
