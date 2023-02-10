@@ -3,8 +3,7 @@ import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 export const ButtonGroupRoot = styled.div`
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
 
   ${Button.Root} {
     border: 1px solid ${color("border")};
