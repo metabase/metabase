@@ -6,22 +6,13 @@ import { ModalFooter } from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
 
-<<<<<<< HEAD
 import type { DeleteMappingModalValueType, GroupIds } from "../types";
-=======
-import type { DNType, GroupIds } from "../types";
->>>>>>> 59a9dfe51d (Break down two components)
 import {
   ModalHeader,
   ModalSubtitle,
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
-<<<<<<< HEAD
-=======
-export type ValueType = "nothing" | "clear" | "delete";
-
->>>>>>> 59a9dfe51d (Break down two components)
 export type DeleteGroupMappingModalProps = {
   name: string;
   groupIds: GroupIds;
