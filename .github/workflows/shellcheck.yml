@@ -1,0 +1,19 @@
+name: YAML
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+  pull_request:
+
+jobs:
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
