@@ -10,7 +10,6 @@
    [metabase.core :as mbc]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
-   [metabase.db.query :as mdb.query]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -28,7 +27,6 @@
    [potemkin :as p]
    [toucan.db :as db]
    [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
 (comment debug-qp/keep-me)
@@ -155,7 +153,8 @@
                        direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :metabase.models.database/Database
-  "Support running arbitrary queries against data warehouse DBs for easy REPL debugging.
+  "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
+  right now!
 
     ;; use Honey SQL
     (t2/query (t2/select-one 'Database :engine :postgres, :name \"test-data\")
@@ -180,11 +179,16 @@
 (methodical/defmethod t2.pipeline/compile [#_query-type  :default
                                            #_model       :default
                                            #_built-query :mbql]
-  "Run arbitrary MBQL queries.
+  "Run arbitrary MBQL queries. Only works for SQL right now!
 
     ;; Run a query against a Data warehouse DB
-    (t2/query (t2/select-one 'Database :name \"test-data\")
-              (with-meta (mt/mbql-query venues) {:type :mbql}))"
+    (t2/query (t2/select-one Database :name \"test-data\")
+              (mt/mbql-query venues) {:type :mbql})
+
+    ;; Run MBQL queries against the application database
+    (t2/query (dev/with-app-db (mt/mbql-query core_user {:aggregation [[:min [:get-year $date_joined]]]})))
+    =>
+    [{:min 2023}]"
   [_query-type _model built-query]
   ;; make sure we use the application database when compiling the query and not something goofy like a connection for a
   ;; Data warehouse DB, if we're using this in combination with a Database as connectable
@@ -214,8 +218,3 @@
      (mt/with-driver (:engine db#)
        (mt/with-db db#
          ~@body))))
-
-(methodical/defmethod t2.connection/do-with-connection :qp/app-db
-  "Use the application database as a data warehouse DB to run MBQL queries?!"
-  [_connectable f]
-  (t2.connection/do-with-connection (app-db-as-data-warehouse) f))
