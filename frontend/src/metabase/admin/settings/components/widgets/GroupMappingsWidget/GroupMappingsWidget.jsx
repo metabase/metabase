@@ -113,70 +113,70 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   return (
-    <Root>
-      <Header>
-        <ToggleRoot>
-          <span>{t`Synchronize Group Memberships`}</span>
-          <SettingToggle {...props} hideLabel />
-        </ToggleRoot>
-        <About>
-          <Tooltip
-            tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
-            placement="top"
-          >
-            <AboutContentRoot>
-              <Icon name="info" />
-              <span>{t`About mappings`}</span>
-            </AboutContentRoot>
-          </Tooltip>
-        </About>
-      </Header>
+    <>
+      <Root>
+        <Header>
+          <ToggleRoot>
+            <span>{t`Synchronize Group Memberships`}</span>
+            <SettingToggle {...props} hideLabel />
+          </ToggleRoot>
+          <About>
+            <Tooltip
+              tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
+              placement="top"
+            >
+              <AboutContentRoot>
+                <Icon name="info" />
+                <span>{t`About mappings`}</span>
+              </AboutContentRoot>
+            </Tooltip>
+          </About>
+        </Header>
 
-      <div>
         <div>
-          {!showAddRow && (
-            <AddMappingButton primary small onClick={handleShowAddRow}>
-              {t`New mapping`}
-            </AddMappingButton>
-          )}
-          <AdminContentTable columnTitles={[props.groupHeading, t`Groups`, ""]}>
-            {showAddRow && (
-              <AddMappingRow
-                mappings={mappings}
-                placeholder={props.groupPlaceholder}
-                onCancel={handleHideAddRow}
-                onAdd={handleAddMapping}
-                onDeleteMapping={handleDeleteMapping}
-              />
+          <div>
+            {!showAddRow && (
+              <AddMappingButton primary small onClick={handleShowAddRow}>
+                {t`New mapping`}
+              </AddMappingButton>
             )}
-            {Object.keys(mappings).length === 0 && !showAddRow && (
-              <tr>
-                <td>&nbsp;</td>
-                <td> {t`No mappings yet`}</td>
-                <td>&nbsp;</td>
-              </tr>
-            )}
-            {Object.entries(mappings).map(([name, selectedGroupIds]) => (
-              <MappingRow
-                key={name}
-                name={name}
-                groups={groups || []}
-                selectedGroupIds={selectedGroupIds}
-                onChange={handleChangeMapping(name)}
-                onDeleteMapping={handleDeleteMapping}
-              />
-            ))}
-          </AdminContentTable>
+            <AdminContentTable
+              columnTitles={[props.groupHeading, t`Groups`, ""]}
+            >
+              {showAddRow && (
+                <AddMappingRow
+                  mappings={mappings}
+                  placeholder={props.groupPlaceholder}
+                  onCancel={handleHideAddRow}
+                  onAdd={handleAddMapping}
+                  onDeleteMapping={handleDeleteMapping}
+                />
+              )}
+              {Object.keys(mappings).length === 0 && !showAddRow && (
+                <tr>
+                  <td>&nbsp;</td>
+                  <td> {t`No mappings yet`}</td>
+                  <td>&nbsp;</td>
+                </tr>
+              )}
+              {Object.entries(mappings).map(([name, selectedGroupIds]) => (
+                <MappingRow
+                  key={name}
+                  name={name}
+                  groups={groups || []}
+                  selectedGroupIds={selectedGroupIds}
+                  onChange={handleChangeMapping(name)}
+                  onDeleteMapping={handleDeleteMapping}
+                />
+              ))}
+            </AdminContentTable>
+          </div>
         </div>
-        <div>
-          {saveError?.data?.message && (
-            <span className="text-error text-bold">
-              {saveError.data.message}
-            </span>
-          )}
-        </div>
-      </div>
-    </Root>
+      </Root>
+      {saveError?.data?.message && (
+        <div className="text-error text-bold m1">{saveError.data.message}</div>
+      )}
+    </>
   );
 }
 
