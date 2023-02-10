@@ -78,7 +78,7 @@
                          :type                   qp.error-type/invalid-parameter
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
-    (actions/check-actions-enabled-for-database! action)
+    (actions/check-actions-enabled! action)
     (try
       (case action-type
         :query

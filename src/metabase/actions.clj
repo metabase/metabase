@@ -142,8 +142,8 @@
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
    otherwise returns nil."
-  ([action-or-id]
-   (check-actions-enabled-for-database! (database-for-action action-or-id))))
+  [action-or-id]
+  (check-actions-enabled-for-database! (database-for-action action-or-id)))
 
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
