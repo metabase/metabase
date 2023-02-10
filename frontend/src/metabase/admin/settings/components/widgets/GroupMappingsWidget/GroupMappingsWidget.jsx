@@ -196,7 +196,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 placeholder={props.groupPlaceholder}
               />
             )}
-            {Object.keys(mappings).length === 0 && (
+            {Object.keys(mappings).length === 0 && !showAddRow && (
               <tr>
                 <td>&nbsp;</td>
                 <td> {t`No mappings yet`}</td>
