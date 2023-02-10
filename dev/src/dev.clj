@@ -1,23 +1,35 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require [clojure.core.async :as a]
-            [dev.debug-qp :as debug-qp]
-            [honeysql.core :as hsql]
-            [malli.dev :as malli-dev]
-            [metabase.api.common :as api]
-            [metabase.config :as config]
-            [metabase.core :as mbc]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.setup :as mdb.setup]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.server :as server]
-            [metabase.server.handler :as handler]
-            [metabase.test :as mt]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.util :as u]
-            [potemkin :as p]))
+  (:require
+   [clojure.core.async :as a]
+   [dev.debug-qp :as debug-qp]
+   [honeysql.core :as hsql]
+   [malli.dev :as malli-dev]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
+   [metabase.core :as mbc]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.env :as mdb.env]
+   [metabase.db.query :as mdb.query]
+   [metabase.db.setup :as mdb.setup]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.server :as server]
+   [metabase.server.handler :as handler]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.util :as u]
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan.db :as db]
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (comment debug-qp/keep-me)
 
@@ -141,3 +153,75 @@
   ([direction & [version]]
    (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
                        direction version)))
+
+(methodical/defmethod t2.connection/do-with-connection :metabase.models.database/Database
+  "Support running arbitrary queries against data warehouse DBs for easy REPL debugging.
+
+    ;; use Honey SQL
+    (t2/query (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+              {:select [:*], :from [:venues]})
+
+    ;; use it with `select`
+    (t2/select :conn (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+               \"venues\")
+
+    ;; use it with raw SQL
+    (t2/query (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+              \"SELECT * FROM venues;\")"
+  [database f]
+  (t2.connection/do-with-connection (sql-jdbc.conn/db->pooled-connection-spec database) f))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :default
+                                         #_model          :default
+                                         #_resolved-query :mbql]
+  [_query-type _model _parsed-args resolved-query]
+  resolved-query)
+
+(methodical/defmethod t2.pipeline/compile [#_query-type  :default
+                                           #_model       :default
+                                           #_built-query :mbql]
+  "Run arbitrary MBQL queries.
+
+    ;; Run a query against a Data warehouse DB
+    (t2/query (t2/select-one 'Database :name \"test-data\")
+              (with-meta (mt/mbql-query venues) {:type :mbql}))"
+  [_query-type _model built-query]
+  ;; make sure we use the application database when compiling the query and not something goofy like a connection for a
+  ;; Data warehouse DB, if we're using this in combination with a Database as connectable
+  (let [{:keys [query params]} (binding [t2.connection/*current-connectable* nil]
+                                 (qp/compile built-query))]
+    (println (mdb.query/format-sql query (mdb.connection/db-type)))
+    (println (pr-str (vec params)))
+    (into [query] params)))
+
+(defn app-db-as-data-warehouse []
+  (binding [t2.connection/*current-connectable* nil]
+    (or (db/select-one Database :name "Application Database")
+        (let [details (#'metabase.db.env/broken-out-details
+                       (mdb.connection/db-type)
+                       @#'metabase.db.env/env)
+              app-db  (db/insert! Database {:name    "Application Database"
+                                            :engine  (mdb.connection/db-type)
+                                            :details details})]
+          (sync/sync-database! app-db)
+          app-db))))
+
+(defmacro with-app-db [& body]
+  `(let [db# (app-db-as-data-warehouse)]
+     (mt/with-driver (:engine db#)
+       (mt/with-db db#
+         ~@body))))
+
+(methodical/defmethod t2.connection/do-with-connection :qp/app-db
+  "Use the application database as a data warehouse DB to run MBQL queries?!"
+  [_connectable f]
+  (t2.connection/do-with-connection (app-db-as-data-warehouse) f))
+
+(defn x []
+  (t2/query :qp/app-db (with-app-db
+                         (mt/mbql-query core_user {:aggregation [[:max [:expression "id + 1"]]]
+                                                   :expressions {"id + 1" [:+ $id 1]}}))))
+
+
+
+;; => {:max 5}
