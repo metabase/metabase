@@ -18,6 +18,8 @@
   (:import
    (java.io FileNotFoundException)))
 
+(set! *warn-on-reflection* true)
+
 (defn- base-href []
   (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
     (str path "/")))

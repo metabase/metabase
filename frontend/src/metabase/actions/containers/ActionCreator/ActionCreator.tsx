@@ -2,9 +2,14 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import type { LocationDescriptor } from "history";
 
-import Actions, { ActionParams } from "metabase/entities/actions";
+import Modal from "metabase/components/Modal";
+
+import Actions, {
+  CreateQueryActionParams,
+  UpdateQueryActionParams,
+} from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -18,7 +23,6 @@ import type {
 import type { State } from "metabase-types/store";
 import type { SavedCard } from "metabase-types/types/Card";
 
-import Modal from "metabase/components/Modal";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/selectors/settings";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -26,9 +30,12 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import CreateActionForm from "../CreateActionForm";
-import { newQuestion, convertActionToQuestionCard } from "./utils";
+
+import { newQuestion, convertQuestionToAction } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
+import CreateActionForm, {
+  FormValues as CreateActionFormValues,
+} from "./CreateActionForm";
 
 const mapStateToProps = (
   state: State,
@@ -42,8 +49,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  push,
-  update: Actions.actions.update,
+  onCreateAction: Actions.actions.create,
+  onUpdateAction: Actions.actions.update,
 };
 
 const EXAMPLE_QUERY =
@@ -64,8 +71,9 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  push: (url: string) => void;
-  update: (action: ActionParams) => void;
+  onCreateAction: (params: CreateQueryActionParams) => void;
+  onUpdateAction: (params: UpdateQueryActionParams) => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
@@ -76,7 +84,8 @@ function ActionCreatorComponent({
   actionId,
   modelId,
   databaseId,
-  update,
+  onCreateAction,
+  onUpdateAction,
   onClose,
   isAdmin,
   isPublicSharingEnabled,
@@ -84,9 +93,10 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
-  const [formSettings, setFormSettings] = useState<
-    ActionFormSettings | undefined
-  >(undefined);
+  const [formSettings, setFormSettings] = useState<ActionFormSettings>({
+    type: "button",
+    fields: {},
+  });
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -125,22 +135,26 @@ function ActionCreatorComponent({
     if (isNew) {
       setShowSaveModal(true);
     } else {
-      update({
-        id: question.id(),
-        name: question.displayName() ?? "",
-        description: question.description() ?? null,
-        model_id: defaultModelId as number,
-        formSettings: formSettings as ActionFormSettings,
-        question,
-      });
+      const action = convertQuestionToAction(question, formSettings);
+      onUpdateAction({ ...action, model_id: defaultModelId as number });
       onClose?.();
     }
   };
 
-  const handleSave = (action: WritebackQueryAction) => {
-    const actionCard = convertActionToQuestionCard(action);
-    setQuestion(question.setCard(actionCard));
-    setTimeout(() => setShowSaveModal(false), 1000);
+  const handleCreate = async (values: CreateActionFormValues) => {
+    const action = convertQuestionToAction(question, formSettings);
+    await onCreateAction({
+      ...action,
+      ...values,
+      type: "query",
+    });
+
+    const nextQuestion = question
+      .setDisplayName(values.name)
+      .setDescription(values.description);
+    setQuestion(nextQuestion);
+
+    setShowSaveModal(false);
     onClose?.();
   };
 
@@ -172,10 +186,12 @@ function ActionCreatorComponent({
       {showSaveModal && (
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
-            question={question}
-            formSettings={formSettings as ActionFormSettings}
-            modelId={defaultModelId}
-            onCreate={handleSave}
+            initialValues={{
+              name: question.displayName() ?? "",
+              description: question.description(),
+              model_id: defaultModelId,
+            }}
+            onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
           />
         </Modal>

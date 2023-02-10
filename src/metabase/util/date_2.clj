@@ -18,6 +18,8 @@
    (java.time.temporal Temporal TemporalAdjuster WeekFields)
    (org.threeten.extra PeriodDuration)))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
   [t timezone-id]

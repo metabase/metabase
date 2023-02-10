@@ -8,6 +8,8 @@
    [metabase.util.i18n :refer [trs]]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
 (def ^:private ^{:arglists '([])} js-engine

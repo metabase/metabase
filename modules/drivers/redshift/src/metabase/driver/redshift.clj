@@ -25,6 +25,8 @@
    (java.sql Connection PreparedStatement ResultSet Types)
    (java.time OffsetTime)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/database-supports? [:redshift :test/jvm-timezone-setting]

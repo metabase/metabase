@@ -13,6 +13,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (deftest first-login-on-this-device?-test
   (let [device-1 (str (java.util.UUID/randomUUID))
         device-2 (str (java.util.UUID/randomUUID))]
@@ -34,7 +36,7 @@
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
-                   (#'login-history/first-login-ever? history-1))))))))))
+                     (#'login-history/first-login-ever? history-1))))))))))
 
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"

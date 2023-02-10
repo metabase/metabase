@@ -42,6 +42,8 @@
    (java.time LocalTime)
    (java.time.format DateTimeFormatter)))
 
+(set! *warn-on-reflection* true)
+
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
   via tru if a name isn't configured."

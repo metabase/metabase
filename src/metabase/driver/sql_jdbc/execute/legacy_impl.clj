@@ -13,6 +13,8 @@
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Calendar TimeZone)))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO - need to do a legacy implementation using the new methods as well...
 
 ;; method impls for JDBC drivers that aren't fully JDBC 4.2 compliant/don't support the new `java.time` methods

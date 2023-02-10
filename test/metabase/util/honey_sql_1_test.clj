@@ -1,13 +1,13 @@
-(ns ^:mb/once metabase.util.honey-sql-1-extensions-test
+(ns ^:mb/once metabase.util.honey-sql-1-test
   (:require
    [clojure.test :refer :all]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-1-extensions :as h1x]
+   [metabase.util.honey-sql-1 :as h1x]
    [metabase.util.honeysql-extensions :as hx])
   (:import
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (metabase.util.honey_sql_1 Identifier)))
 
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"

@@ -5,25 +5,28 @@ on:
     branches:
       - 'master'
       - 'release-**'
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      # frontend and E2E tests
-      - "**/frontend/test/**"
-      - "**/frontend/**.unit.*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      # frontend and E2E tests
-      - "**/frontend/test/**"
-      - "**/frontend/**.unit.*"
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      backend_all: ${{ steps.changes.outputs.backend_all }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
 
   be-linter-cloverage:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
@@ -43,6 +46,8 @@ jobs:
         flags: back-end
 
   be-linter-clj-kondo:
+    needs: files-changed
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -94,7 +99,8 @@ jobs:
         /work/modules/drivers/presto-jdbc/test
 
   be-linter-eastwood:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
@@ -110,7 +116,8 @@ jobs:
   # we have to extract that job manually here. Backend developers have requested that this
   # test runs at all times to give them an early warning sign is something is broken.
   be-tests-java-11-ee-pre-check:
-    if: github.event.pull_request.draft == true
+    needs: files-changed
+    if: github.event.pull_request.draft == true && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 25
@@ -139,7 +146,8 @@ jobs:
         reporter: java-junit
 
   be-tests:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 25
@@ -172,10 +180,29 @@ jobs:
         name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
         reporter: java-junit
 
+  be-tests-stub:
+    needs: files-changed
+    if: |
+      always() &&
+      github.event.pull_request.draft == false &&
+      needs.files-changed.outputs.backend_all == 'false'
+    runs-on: ubuntu-20.04
+    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [oss, ee]
+        java-version: [11, 17]
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10

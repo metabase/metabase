@@ -9,6 +9,8 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.util.concurrent ThreadPoolExecutor)))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
 ;; 2020. No longer needed
 

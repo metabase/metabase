@@ -1,10 +1,14 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
-  (:require [metabase.models :refer [Database]]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import com.google.auth.oauth2.ServiceAccountCredentials
-           java.io.ByteArrayInputStream))
+  (:require
+   [metabase.models :refer [Database]]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (com.google.auth.oauth2 ServiceAccountCredentials)
+   (java.io ByteArrayInputStream)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic ^String *bigquery-timezone-id*
   "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a

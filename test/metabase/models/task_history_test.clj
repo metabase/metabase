@@ -11,6 +11,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn add-second
   "Adds one second to `t`"
   [t]

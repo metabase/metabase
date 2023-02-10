@@ -7,6 +7,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (deftest snapshot-test
   (when (= (mdb.connection/db-type) :h2)
     (let [snapshot-name (mt/random-name)]

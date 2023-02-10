@@ -36,6 +36,8 @@
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
+(set! *warn-on-reflection* true)
+
 (defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})

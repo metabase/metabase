@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (deftest group-bitmask-test
   (doseq [[indices expected] {[0]     6
                               [0 1]   4

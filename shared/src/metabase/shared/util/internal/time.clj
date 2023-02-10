@@ -6,6 +6,8 @@
   (:import
    java.util.Locale))
 
+(set! *warn-on-reflection* true)
+
 (defn- now [] (t/offset-date-time))
 
 ;;; ----------------------------------------------- predicates -------------------------------------------------------
