@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { PublicApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
+import { getSuccessMessage } from "metabase/actions/utils";
 
 import type {
   ParametersForActionExecution,
@@ -50,7 +50,9 @@ function PublicAction({ action, publicId, onError }: Props) {
 
   if (isSubmitted) {
     return (
-      <FormResultMessage>{t`Thanks for your submission.`}</FormResultMessage>
+      <FormResultMessage>
+        {getSuccessMessage(action.visualization_settings)}
+      </FormResultMessage>
     );
   }
 
