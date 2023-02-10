@@ -1,20 +1,25 @@
-import React from "react";
+import React, { ChangeEvent } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  WritebackAction,
+  WritebackActionId,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
+import FormField from "metabase/core/components/FormField";
+import TextArea from "metabase/core/components/TextArea";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
-import Icon from "metabase/components/Icon";
 import Actions from "metabase/entities/actions/actions";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
@@ -25,12 +30,12 @@ import {
   ActionSettingsContainer,
   ActionSettingsContent,
   CopyWidgetContainer,
-  ToggleContainer,
-  ToggleLabel,
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
   action: WritebackAction;
+  formSettings: ActionFormSettings;
+  onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClose: () => void;
 }
 
@@ -72,7 +77,9 @@ const mapDispatchToProps: DispatchProps = {
 
 const InlineActionSettings = ({
   action,
+  formSettings,
   siteUrl,
+  onChangeFormSettings,
   onCreatePublicLink,
   onDeletePublicLink,
   onClose,
@@ -95,21 +102,33 @@ const InlineActionSettings = ({
     onDeletePublicLink({ id: action.id });
   };
 
+  const handleSuccessMessageChange = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    onChangeFormSettings({
+      ...formSettings,
+      successMessage: event.target.value,
+    });
+  };
+
   return (
     <ActionSettingsContainer>
       <SidebarContent title={t`Action settings`} onClose={onClose}>
         <ActionSettingsContent>
-          <ToggleContainer>
-            <span>
-              <ToggleLabel htmlFor={id}>{t`Make public`}</ToggleLabel>
-              <Tooltip
-                tooltip={t`Creates a publicly shareable link to this action.`}
-              >
-                <Icon name="info" size={10} />
-              </Tooltip>
-            </span>
-            <Toggle id={id} value={isPublic} onChange={handleTogglePublic} />
-            <Modal isOpen={isModalOpen}>
+          <FormField
+            title={t`Make public`}
+            description={t`Creates a publicly shareable link to this action.`}
+            orientation="horizontal"
+            htmlFor={`${id}-public`}
+          >
+            <Toggle
+              id={`${id}-public`}
+              value={isPublic}
+              onChange={handleTogglePublic}
+            />
+          </FormField>
+          {isModalOpen && (
+            <Modal>
               <ConfirmContent
                 title={t`Disable this public link?`}
                 content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
@@ -117,7 +136,7 @@ const InlineActionSettings = ({
                 onClose={closeModal}
               />
             </Modal>
-          </ToggleContainer>
+          )}
           {isPublic && (
             <CopyWidgetContainer>
               <CopyWidget
@@ -126,6 +145,14 @@ const InlineActionSettings = ({
               />
             </CopyWidgetContainer>
           )}
+          <FormField title={t`Success message`} htmlFor={`${id}-message`}>
+            <TextArea
+              id={`${id}-message`}
+              value={formSettings.successMessage ?? ""}
+              fullWidth
+              onChange={handleSuccessMessageChange}
+            />
+          </FormField>
         </ActionSettingsContent>
       </SidebarContent>
     </ActionSettingsContainer>

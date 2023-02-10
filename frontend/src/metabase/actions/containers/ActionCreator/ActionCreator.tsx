@@ -25,6 +25,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import { getDefaultFormSettings } from "../../utils";
 import CreateActionForm from "../CreateActionForm";
 import { newQuestion, convertActionToQuestionCard } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
@@ -83,9 +84,9 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
-  const [formSettings, setFormSettings] = useState<
-    ActionFormSettings | undefined
-  >(undefined);
+  const [formSettings, setFormSettings] = useState(
+    action?.visualization_settings ?? getDefaultFormSettings(),
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -158,6 +159,7 @@ function ActionCreatorComponent({
         canSave={query.isEmpty()}
         action={action}
         question={question}
+        formSettings={formSettings}
         onChangeQuestionQuery={handleChangeQuestionQuery}
         onChangeName={newName =>
           setQuestion(question => question.setDisplayName(newName))
@@ -171,7 +173,7 @@ function ActionCreatorComponent({
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
             question={question}
-            formSettings={formSettings as ActionFormSettings}
+            formSettings={formSettings}
             modelId={defaultModelId}
             onCreate={handleSave}
             onCancel={handleCloseNewActionModal}

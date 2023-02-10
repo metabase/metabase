@@ -35,6 +35,7 @@ interface ActionCreatorProps {
 
   action: WritebackAction | undefined;
   question: Question;
+  formSettings: ActionFormSettings;
 
   onChangeQuestionQuery: (query: NativeQuery) => void;
   onChangeName: (name: string) => void;
@@ -52,6 +53,7 @@ export default function ActionCreatorView({
   canSave,
   action,
   question,
+  formSettings,
   onChangeQuestionQuery,
   onChangeName,
   onCloseModal,
@@ -85,6 +87,7 @@ export default function ActionCreatorView({
   const closeSideView = useCallback(() => {
     setActiveSideView(DEFAULT_SIDE_VIEW);
   }, []);
+
   return (
     <Modal wide onClose={onCloseModal}>
       <ModalRoot>
@@ -124,17 +127,20 @@ export default function ActionCreatorView({
           </ModalLeft>
           {activeSideView === "actionForm" ? (
             <FormCreator
-              params={question?.parameters() ?? []}
-              formSettings={
-                question?.card()?.visualization_settings as ActionFormSettings
-              }
+              params={question.parameters() ?? []}
+              formSettings={formSettings}
               onChange={onChangeFormSettings}
               onExampleClick={onClickExample}
             />
           ) : activeSideView === "dataReference" ? (
             <DataReferenceInline onClose={closeSideView} />
           ) : activeSideView === "actionSettings" && action ? (
-            <InlineActionSettings action={action} onClose={closeSideView} />
+            <InlineActionSettings
+              action={action}
+              formSettings={formSettings}
+              onChangeFormSettings={onChangeFormSettings}
+              onClose={closeSideView}
+            />
           ) : null}
         </ActionCreatorBodyContainer>
       </ModalRoot>
