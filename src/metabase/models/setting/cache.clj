@@ -13,6 +13,8 @@
   (:import
    (java.util.concurrent.locks ReentrantLock)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti call-on-change
   "Whenever something changes in the Settings cache it will invoke
 

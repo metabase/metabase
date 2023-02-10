@@ -10,6 +10,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 (models/defmodel Query :query)
 
 (mi/define-methods

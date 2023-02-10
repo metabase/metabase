@@ -25,6 +25,8 @@
   (:import
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- do-with-encrypted-json-caching-disabled

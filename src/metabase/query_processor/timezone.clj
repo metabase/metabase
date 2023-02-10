@@ -10,6 +10,8 @@
   (:import
    (java.time ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:dynamic *report-timezone-id-override* nil)
 
 (def ^:private ^:dynamic *database-timezone-id-override* nil)

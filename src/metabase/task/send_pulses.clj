@@ -16,6 +16,8 @@
    [metabase.util.log :as log]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- log-pulse-exception [pulse-id exception]

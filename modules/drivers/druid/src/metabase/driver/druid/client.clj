@@ -8,6 +8,8 @@
             [metabase.util.log :as log]
             [metabase.util.ssh :as ssh]))
 
+(set! *warn-on-reflection* true)
+
 (defn details->url
   "Helper for building a Druid URL.
 

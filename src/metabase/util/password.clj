@@ -7,6 +7,8 @@
   (:import
    (org.mindrot.jbcrypt BCrypt)))
 
+(set! *warn-on-reflection* true)
+
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
 

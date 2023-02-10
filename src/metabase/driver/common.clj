@@ -19,6 +19,8 @@
    (org.joda.time DateTime)
    (org.joda.time.format DateTimeFormatter)))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
 (def default-host-details

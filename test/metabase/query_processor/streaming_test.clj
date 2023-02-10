@@ -22,6 +22,8 @@
    (jakarta.servlet.http HttpServletResponse)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (defn- maybe-remove-checksum
   "remove metadata checksum if present because it can change between runs if encryption is in play"
   [x]

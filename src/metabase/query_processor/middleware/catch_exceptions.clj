@@ -13,6 +13,8 @@
    (java.sql SQLException)
    (schema.utils NamedError ValidationError)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti ^:private format-exception
   "Format an Exception thrown by the Query Processor into a userland error response map."
   {:arglists '([^Throwable e])}

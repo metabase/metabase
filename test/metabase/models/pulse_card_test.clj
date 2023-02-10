@@ -13,6 +13,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (deftest test-next-position-for
   (testing "No existing cards"
     (tt/with-temp Pulse [{pulse-id :id}]

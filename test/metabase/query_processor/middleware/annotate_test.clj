@@ -12,6 +12,8 @@
    [toucan.db :as db]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
     (driver/with-driver :h2

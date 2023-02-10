@@ -1,22 +1,25 @@
 (ns metabase.test.data.sparksql
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [metabase.util.log :as log]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
 

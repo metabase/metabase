@@ -14,6 +14,8 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]

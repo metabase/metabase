@@ -35,6 +35,8 @@
   (:import
    (java.util Base64)))
 
+(set! *warn-on-reflection* true)
+
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
           [["You should be able to connect with an SID"
