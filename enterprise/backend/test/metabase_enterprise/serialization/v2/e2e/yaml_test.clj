@@ -299,7 +299,7 @@
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
                          (->> (db/select-one 'Action :entity_id entity_id)
-                              action/hydrate-subtype
+                              @#'action/hydrate-subtype
                               (serdes.base/extract-one "Action" {})
                               clean-entity)))))
 
