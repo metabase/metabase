@@ -5,29 +5,32 @@ on:
     branches:
       - 'master'
       - 'release-**'
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      # frontend and E2E tests
-      - "**/frontend/test/**"
-      - "**/frontend/**.unit.*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      # frontend and E2E tests
-      - "**/frontend/test/**"
-      - "**/frontend/**.unit.*"
 
 concurrency:
   group: ${{ github.head_ref || github.run_id}}
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      backend_all: ${{ steps.changes.outputs.backend_all }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
 
   be-tests-athena-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -46,7 +49,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-bigquery-cloud-sdk-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -67,7 +71,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-druid-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     env:
@@ -89,7 +94,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-googleanalytics-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -104,7 +110,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-google-related-classpath-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     strategy:
@@ -128,7 +135,8 @@ jobs:
         test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
 
   be-tests-mariadb-10-2-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -153,7 +161,8 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -178,7 +187,8 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-2-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -200,7 +210,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-4-2-ssl-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -234,7 +245,8 @@ jobs:
           test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -256,7 +268,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ssl-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -290,7 +303,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-latest-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -315,7 +329,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mysql-5-7-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -340,7 +355,8 @@ jobs:
         junit-name: 'be-tests-mysql-5-7-ee'
 
   be-tests-mysql-latest-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -377,7 +393,8 @@ jobs:
         junit-name: 'be-tests-mysql-latest-ee'
 
   be-tests-oracle-18-4-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -403,7 +420,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-oracle-21-3-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -438,7 +456,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-postgres-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -466,7 +485,8 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -498,7 +518,8 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-186-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -520,7 +541,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-presto-jdbc-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -571,7 +593,8 @@ jobs:
       run: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
 
   be-tests-redshift-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -590,7 +613,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-snowflake-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -611,7 +635,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sparksql-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     env:
@@ -631,7 +656,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sqlite-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -646,7 +672,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sqlserver-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -673,7 +700,8 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-vertica-ee:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
