@@ -66,6 +66,10 @@ export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
 }
 
+export function isItemCollection(item: CollectionItem) {
+  return item.model === "collection";
+}
+
 export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }

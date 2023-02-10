@@ -4,8 +4,10 @@ import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isFullyParametrized,
+  isItemCollection,
   isItemPinned,
   isItemQuestion,
+  isPersonalCollection,
   isPreviewEnabled,
   isPreviewShown,
 } from "metabase/collections/utils";
@@ -50,8 +52,16 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const isPreviewOptionShown =
+  const canPin = collection.can_write && item.setPinned != null;
+  const canPreview =
     isItemPinned(item) && isItemQuestion(item) && collection.can_write;
+  const canMove =
+    collection.can_write &&
+    item.setCollection != null &&
+    (!isItemCollection(item) || !isPersonalCollection(item));
+  const canArchive =
+    collection.can_write &&
+    (!isItemCollection(item) || !isPersonalCollection(item));
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -88,12 +98,12 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isPreviewShown={isPreviewShown(item)}
         isPreviewAvailable={isFullyParametrized(item)}
-        onPin={collection.can_write && item.setPinned ? handlePin : null}
-        onMove={collection.can_write && item.setCollection ? handleMove : null}
+        onPin={canPin && item.setPinned ? handlePin : null}
+        onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={collection.can_write ? handleArchive : null}
+        onArchive={canArchive ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
+        onTogglePreview={canPreview ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
