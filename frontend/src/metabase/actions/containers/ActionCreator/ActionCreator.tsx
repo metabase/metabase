@@ -85,7 +85,7 @@ function ActionCreatorComponent({
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
   const [formSettings, setFormSettings] = useState(
-    action?.visualization_settings ?? getDefaultFormSettings(),
+    getDefaultFormSettings(action?.visualization_settings),
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
 
