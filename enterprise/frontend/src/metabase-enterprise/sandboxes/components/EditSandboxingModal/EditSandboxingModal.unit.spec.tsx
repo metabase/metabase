@@ -1,7 +1,11 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 
 import { GroupTableAccessPolicy } from "metabase-types/api";
 import EditSandboxingModal from "./EditSandboxingModal";
@@ -19,6 +23,8 @@ const setup = ({
   shouldMockQuestions?: boolean;
   policy?: GroupTableAccessPolicy;
 } = {}) => {
+  nock(location.origin).post("/api/mt/gtap/validate").reply(204);
+
   if (shouldMockQuestions) {
     nock(location.origin)
       .get("/api/collection")
@@ -108,6 +114,8 @@ describe("EditSandboxingModal", () => {
 
         userEvent.click(screen.getByText("Save"));
 
+        await waitForElementToBeRemoved(() => screen.queryByText("Saving..."));
+
         expect(onSave).toHaveBeenCalledWith({
           attribute_remappings: {},
           card_id: 1,
@@ -149,6 +157,8 @@ describe("EditSandboxingModal", () => {
       userEvent.click(await screen.findByText("sandbox question"));
 
       userEvent.click(screen.getByText("Save"));
+
+      await waitForElementToBeRemoved(() => screen.queryByText("Saving..."));
 
       expect(onSave).toHaveBeenCalledWith({
         id: 1,

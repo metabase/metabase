@@ -129,7 +129,7 @@
                                                 :attribute_remappings {"foo" 1}})))))))))
 
 (deftest validate-sandbox-test
-  (testing "GET /api/mt/gtap/validate"
+  (testing "POST /api/mt/gtap/validate"
     (mt/with-temp* [Table            [{table-id :id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "A valid sandbox passes validation and returns no error"

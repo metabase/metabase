@@ -707,7 +707,7 @@ describeEE("formatting > sandboxes", () => {
       const ERROR_MESSAGE =
         "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
 
-      cy.intercept("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.intercept("POST", "/api/mt/gtap/validate").as("sandboxTable");
       cy.intercept("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table

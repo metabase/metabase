@@ -23,6 +23,8 @@ import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
 } from "../AttributeMappingEditor";
 
+const ERROR_MESSAGE = t`An error occurred.`;
+
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
@@ -85,17 +87,13 @@ const EditSandboxingModal = ({
   const normalizedPolicy = getNormalizedPolicy(policy, shouldUseSavedQuestion);
   const isValid = isPolicyValid(normalizedPolicy, shouldUseSavedQuestion);
 
-  const [validationState, validatePolicy] = useAsyncFn(async () => {
-    return await GTAPApi.validate({ policy: normalizedPolicy });
-  }, [normalizedPolicy]);
-
-  const save = async () => {
-    await validatePolicy();
-    if (validationState.error) {
-      return;
+  const [{ error }, savePolicy] = useAsyncFn(async () => {
+    const shouldValidate = normalizedPolicy.card_id != null;
+    if (shouldValidate) {
+      await GTAPApi.validate(normalizedPolicy);
     }
     onSave(normalizedPolicy);
-  };
+  }, [normalizedPolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     attribute => !(attribute in policy.attribute_remappings),
@@ -191,20 +189,20 @@ const EditSandboxingModal = ({
         <div className="flex align-center justify-end">
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
-            error={validationState.error}
+            error={error}
             className="ml1"
-            actionFn={save}
+            actionFn={savePolicy}
             primary
             disabled={!canSave}
           >
             {t`Save`}
           </ActionButton>
         </div>
-        {validationState.error && (
+        {error && (
           <div className="flex align-center my2 text-error">
-            {typeof validationState.error === "string"
-              ? validationState.error
-              : validationState.error?.data ?? t`An error occurred.`}
+            {typeof error === "string"
+              ? error
+              : error.data.message ?? ERROR_MESSAGE}
           </div>
         )}
       </div>

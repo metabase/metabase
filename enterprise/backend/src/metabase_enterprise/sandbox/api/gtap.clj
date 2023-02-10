@@ -62,7 +62,7 @@
         :present #{:card_id :attribute_remappings})))
   (db/select-one GroupTableAccessPolicy :id id))
 
-(api/defendpoint GET "/validate"
+(api/defendpoint POST "/validate"
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
   sandbox is saved, but doesn't actually save the sandbox."
   [:as {{:keys [table_id card_id]} :body}]
