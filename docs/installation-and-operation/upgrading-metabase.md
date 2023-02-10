@@ -135,7 +135,7 @@ But if you've made changes to your application database since upgrading that you
    java -jar metabase.jar migrate down
    ```
 
-   You can also specify a major version to downgrade to.
+   The default is to migrate down by one major version, but can also specify a major version to downgrade to.
 
    ```
    java -jar metabase.jar migrate down 44
@@ -163,7 +163,7 @@ You should be back up and running on the old version.
    docker run --rm metabase/metabase migrate down
    ```
 
-   You can also specify a major version to downgrade to.
+   The default is to migrate down by one major version, but can also specify a major version to downgrade to.
 
    ```
    docker run --rm metabase/metabase migrate down 44
