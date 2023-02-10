@@ -104,6 +104,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.15",
     "underscore": "~1.13.3",
+    "webpack-stats-plugin": "^1.1.1",
     "yarn.lock": "^0.0.1-security",
     "yup": "^0.32.11",
     "z-index": "0.0.1"
@@ -299,7 +300,7 @@
     "build-hot": "yarn concurrently -n 'cljs,js' 'yarn build-hot:cljs' 'yarn build-hot:js'",
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
-    "build-static-viz": "yarn && yarn build:cljs && webpack --config webpack.static-viz.config.js --profile --json=compilation-stats.json",
+    "build-static-viz": "yarn && yarn build:cljs && webpack --config webpack.static-viz.config.js",
     "build-static-viz:watch": "webpack --config webpack.static-viz.config.js --watch",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",

@@ -1,3 +1,5 @@
+const { StatsWriterPlugin } = require("webpack-stats-plugin");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
@@ -62,5 +64,26 @@ module.exports = (env = {}) => {
       nestedModules: false,
       optimizationBailout: false,
     },
+    plugins: [
+      new StatsWriterPlugin({
+        stats: {
+          modules: true,
+          assets: false,
+          nestedModules: false,
+          reasons: false,
+          excludeModules: [/node_modules/],
+        },
+        filename: "transformed-compilation-stats.json",
+        transform: stats =>
+          stats.modules
+            .filter(
+              module =>
+                module.type !== "hidden modules" &&
+                module.moduleType !== "runtime",
+            )
+            .map(module => module.nameForCondition)
+            .join(",\n"),
+      }),
+    ],
   };
 };
