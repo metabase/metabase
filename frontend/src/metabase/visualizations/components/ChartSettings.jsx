@@ -373,7 +373,7 @@ class ChartSettings extends Component {
           optionNameFn={v => v}
           optionValueFn={v => v}
           optionKeyFn={v => v}
-          variant="bubble"
+          variant="underlined"
         />
       </SectionContainer>
     );
@@ -400,7 +400,7 @@ class ChartSettings extends Component {
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
           <div
-            className={cx("flex flex-no-shrink pl4 pb1", {
+            className={cx("flex flex-no-shrink pt1 pb1", {
               pt3: isDashboard,
             })}
           >

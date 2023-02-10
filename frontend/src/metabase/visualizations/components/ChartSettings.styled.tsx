@@ -5,12 +5,27 @@ import Button from "metabase/core/components/Button";
 import Warnings from "metabase/query_builder/components/Warnings";
 
 export const SectionContainer = styled.div`
+  ${({ isDashboard }) =>
+    isDashboard &&
+    css`
+      margin-top: 1rem;
+    `}
+  width: 100%;
   ${Radio.RadioGroupVariants.join(", ")} {
-    flex-wrap: wrap;
+    border-bottom: 1px solid ${color("border")};
   }
-
   ${Radio.RadioContainerVariants.join(", ")} {
-    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  ${Radio.RadioLabelVariants.join(", ")} {
+    flex-grow: 1;
+    margin-right: 0;
+    display: flex;
+    justify-content: center;
+    &:not(:last-child) {
+      margin-right: 0;
+    }
   }
 `;
 

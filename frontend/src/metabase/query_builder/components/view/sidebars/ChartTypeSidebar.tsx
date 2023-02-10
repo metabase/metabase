@@ -16,6 +16,7 @@ import {
   OptionRoot,
   OptionText,
   OptionLabel,
+  SettingsButton,
 } from "./ChartTypeSidebar.styled";
 
 const DEFAULT_ORDER = [
@@ -41,7 +42,10 @@ const DEFAULT_ORDER = [
 interface ChartTypeSidebarProps {
   question: Question;
   result: any;
-  onOpenChartSettings: (props: { section: string }) => void;
+  onOpenChartSettings: (props: {
+    initialChartSettings: { section: string };
+    showSidebarTitle: boolean;
+  }) => void;
   onCloseChartType: () => void;
   updateQuestion: (
     question: Question,
@@ -88,14 +92,29 @@ const ChartTypeSidebar = ({
         reload: false,
         shouldUpdateUrl: question.query().isEditable(),
       });
-      onOpenChartSettings({ section: t`Data` });
       setUIControls({ isShowingRawTable: false });
+      console.log("clicky clicky");
     },
-    [question, updateQuestion, onOpenChartSettings, setUIControls],
+    [question, updateQuestion, setUIControls],
+  );
+
+  const handleSettingsClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      });
+    },
+    [onOpenChartSettings],
   );
 
   return (
-    <SidebarContent className="full-height px1" onDone={onCloseChartType}>
+    <SidebarContent
+      className="full-height px1"
+      onDone={() => onCloseChartType()}
+    >
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);
@@ -107,6 +126,7 @@ const ChartTypeSidebar = ({
                 isSelected={type === question.display()}
                 isSensible
                 onClick={() => handleClick(type)}
+                onSettingsClick={handleSettingsClick}
               />
             )
           );
@@ -124,6 +144,7 @@ const ChartTypeSidebar = ({
                 isSelected={type === question.display()}
                 isSensible={false}
                 onClick={() => handleClick(type)}
+                onSettingsClick={handleSettingsClick}
               />
             )
           );
@@ -137,6 +158,7 @@ interface ChartTypeOptionProps {
   isSelected: boolean;
   isSensible: boolean;
   onClick: () => void;
+  onSettingsClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   visualization: Visualization;
 }
 
@@ -145,6 +167,7 @@ const ChartTypeOption = ({
   isSelected,
   isSensible,
   onClick,
+  onSettingsClick,
 }: ChartTypeOptionProps) => (
   <OptionRoot
     isSelected={isSelected}
@@ -158,6 +181,14 @@ const ChartTypeOption = ({
       data-testid={`${visualization.uiName}-button`}
     >
       <Icon name={visualization.iconName} size={20} />
+      {isSelected && (
+        <SettingsButton
+          onlyIcon
+          icon="gear"
+          iconSize={12}
+          onClick={onSettingsClick}
+        />
+      )}
     </OptionIconContainer>
     <OptionText>{visualization.uiName}</OptionText>
   </OptionRoot>
