@@ -87,6 +87,7 @@ const defaultConfig = {
   },
   supportFile: "frontend/test/__support__/e2e/cypress.js",
   videoUploadOnPasses: false,
+  browser: "chrome",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
 };
