@@ -1,39 +1,75 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import GroupSelect from "metabase/admin/people/components/GroupSelect";
+import Icon from "metabase/components/Icon";
+import Select from "metabase/core/components/Select";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-<<<<<<< HEAD
-import type { GroupIds, UserGroupsType } from "../types";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  canEditMembership,
+  getGroupColor,
+  getGroupNameLocalized,
+} from "metabase/lib/groups";
+import GroupSummary from "./GroupSummary";
 
-type Props = {
-  groups: UserGroupsType;
-  selectedGroupIds: GroupIds;
-=======
-import type { GroupIds } from "../types";
-
-type Props = {
-  groups: GroupIds;
-  selectedGroupIds: any;
->>>>>>> 16c625d11f (Improve components’ responsibility distribution)
-  onGroupChange: () => void;
-};
-
-const GroupMappingsWidgetGroupSelect = ({
+export const GroupSelect = ({
   groups,
-  selectedGroupIds,
+  selectedGroupIds = [],
   onGroupChange,
-}: Props) =>
-  groups ? (
-    <GroupSelect
-      groups={groups}
-      selectedGroupIds={selectedGroupIds}
-      onGroupChange={onGroupChange}
-      emptyListMessage={t`No mappable groups`}
-    />
-  ) : (
-    <LoadingSpinner />
+  isCurrentUser = false,
+  emptyListMessage = t`No groups`,
+}) => {
+  const triggerElement = (
+    <div className="flex align-center">
+      <span className="mr1 text-medium">
+        <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
+      </span>
+      <Icon className="text-light" name="chevrondown" size={10} />
+    </div>
   );
 
-export default GroupMappingsWidgetGroupSelect;
+  if (groups.length === 0) {
+    return (
+      <PopoverWithTrigger triggerElement={triggerElement}>
+        <span className="p1">{emptyListMessage}</span>
+      </PopoverWithTrigger>
+    );
+  }
+  const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
+  const adminGroup = groups.find(isAdminGroup);
+  const defaultGroup = groups.find(isDefaultGroup);
+  const topGroups = [defaultGroup, adminGroup].filter(g => g != null);
+
+  return (
+    <Select
+      triggerElement={triggerElement}
+      onChange={({ target: { value } }) => {
+        groups
+          .filter(
+            // find the differing groups between the new `value` on previous `selectedGroupIds`
+            group =>
+              selectedGroupIds.includes(group.id) ^ value.includes(group.id),
+          )
+          .forEach(group => onGroupChange(group, value.includes(group.id)));
+      }}
+      optionDisabledFn={group =>
+        (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)
+      }
+      optionValueFn={group => group.id}
+      optionNameFn={getGroupNameLocalized}
+      optionStylesFn={group => ({ color: getGroupColor(group) })}
+      value={selectedGroupIds}
+      sections={
+        topGroups.length > 0
+          ? [{ items: topGroups }, { items: other, name: t`Groups` }]
+          : [{ items: other }]
+      }
+      multiple
+    />
+  );
+};
+
+export default GroupSelect;
