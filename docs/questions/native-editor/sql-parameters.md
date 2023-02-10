@@ -240,7 +240,7 @@ If however, there are too many different values in that column to display in a d
 
 ## Field filter limitations
 
-Some things that could trip you up when trying to set up a Field Filter variable:
+Some things that could trip you up when trying to set up a Field Filter variable.
 
 ### Table aliases
 
@@ -276,7 +276,7 @@ WHERE {% raw %}{{ product_category }}{% endraw %}
 
 Make sure your SQL dialect matches the database you've selected. Common errors:
 
-| Database | Do this                    | Not this             |
+| Database | Do this                    | Avoid                |
 | -------- | -------------------------- | -------------------- |
 | BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
 | Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
