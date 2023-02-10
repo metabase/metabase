@@ -13964,6 +13964,7 @@ databaseChangeLog:
                   constraints:
                     unique: true
 
+  - changeSet:
       id: v46.00-046
       author: adam-james
       comment: added 0.46.0 -- activity_log added to consolidate events in one place for auditing
