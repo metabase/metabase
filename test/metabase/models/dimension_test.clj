@@ -10,6 +10,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (deftest identity-hash-test
   (testing "Dimension hashes are composed of the proper field hash, and the human-readable field hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]

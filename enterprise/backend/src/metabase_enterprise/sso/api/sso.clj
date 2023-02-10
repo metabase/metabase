@@ -15,6 +15,8 @@
    [metabase.util.log :as log]
    [stencil.core :as stencil]))
 
+(set! *warn-on-reflection* true)
+
 ;; load the SSO integrations so their implementations for the multimethods below are available.
 (comment metabase-enterprise.sso.integrations.jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)

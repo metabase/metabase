@@ -13,6 +13,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^Long grid-width
   "Total grid width."
   18)

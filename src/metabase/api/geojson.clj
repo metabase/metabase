@@ -16,6 +16,8 @@
    (java.net InetAddress URL)
    (org.apache.commons.io.input ReaderInputStream)))
 
+(set! *warn-on-reflection* true)
+
 (defsetting custom-geojson-enabled
   (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")
   :visibility :admin

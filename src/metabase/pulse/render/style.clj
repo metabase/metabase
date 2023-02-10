@@ -7,6 +7,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.
 

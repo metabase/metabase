@@ -18,6 +18,8 @@
    (java.nio.file.attribute FileAttribute)
    (java.util Collections)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 
 (defn- get-path-in-filesystem ^Path [^FileSystem filesystem ^String path-component & more-components]

@@ -27,6 +27,7 @@
   (:import
    (java.text NumberFormat)))
 
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 

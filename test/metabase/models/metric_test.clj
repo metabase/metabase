@@ -11,6 +11,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private metric-defaults
   {:description             nil
    :how_is_this_calculated  nil

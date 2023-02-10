@@ -23,6 +23,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private root-collection-path "/collections/root")
 
 (defn safe-name

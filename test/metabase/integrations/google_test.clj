@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------- google-auth-client-id ----------------------------------------------
 
 (deftest google-auth-client-id-test

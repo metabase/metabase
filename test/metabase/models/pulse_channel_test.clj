@@ -15,6 +15,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;; Test out our predicate functions
 
 (deftest day-of-week?-test

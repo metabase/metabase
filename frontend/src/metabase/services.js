@@ -162,6 +162,9 @@ const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
   action: GET("/api/public/action/:uuid"),
+  executeDashcardAction: POST(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
   executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
@@ -172,6 +175,9 @@ export const PublicApi = {
   ),
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
+  prefetchValues: GET(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
 

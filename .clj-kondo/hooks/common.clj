@@ -242,3 +242,24 @@
                 (hooks/token-node 'do)
                 body))]
     {:node node*}))
+
+(defn with-used-first-arg
+  "For macros like
+
+    (with-drivers (filter pred? some-drivers)
+      ...)
+
+    =>
+
+    (let [_1234 (filter pred? some-drivers)]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ arg & body] :children} :node}]
+  (let [node* (hooks/list-node
+                (list*
+                  (hooks/token-node 'let)
+                  (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                      arg])
+                  body))]
+    {:node node*}))

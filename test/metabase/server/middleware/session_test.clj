@@ -25,6 +25,8 @@
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fn [thunk]
                       (init-status/set-complete!)
                       (thunk)))

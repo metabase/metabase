@@ -16,7 +16,9 @@
   (:import
    (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
    (java.util.concurrent TimeUnit)
-   (org.bson BsonInt32 BsonBoolean)))
+   (org.bson BsonBoolean BsonInt32)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 

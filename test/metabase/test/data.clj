@@ -44,6 +44,8 @@
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset

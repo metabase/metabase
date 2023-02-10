@@ -16,6 +16,8 @@
   (:import
    (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 
 (def ^:private filter-placeholder

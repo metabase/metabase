@@ -24,6 +24,8 @@
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :sqlite, :parent :sql-jdbc)
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface

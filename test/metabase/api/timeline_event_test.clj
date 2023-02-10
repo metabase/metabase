@@ -11,6 +11,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (deftest auth-tests
   (testing "Authentication"
     (is (= (get mw.util/response-unauthentic :body)

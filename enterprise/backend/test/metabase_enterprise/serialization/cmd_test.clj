@@ -15,6 +15,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest no-collections-test

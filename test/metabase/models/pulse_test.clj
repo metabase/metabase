@@ -29,6 +29,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (defn- user-details
   [username]
   (mt/derecordize (dissoc (mt/fetch-user username) :date_joined :last_login)))
