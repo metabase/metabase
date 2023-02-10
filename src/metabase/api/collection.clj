@@ -235,8 +235,8 @@
    (pinned-state->clause pinned-state :collection_position))
   ([pinned-state col]
    (case pinned-state
-     :all always-true-hsql-expr
-     :is_pinned [:<> col nil]
+     :all           always-true-hsql-expr
+     :is_pinned     [:<> col nil]
      :is_not_pinned [:= col nil]
      always-true-hsql-expr)))
 
@@ -267,10 +267,10 @@
        :from            [[:pulse :p]]
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
        :where           [:and
-                         [:= :p.collection_id (:id collection)]
-                         [:= :p.archived (boolean archived?)]
+                         [:= :p.collection_id      (:id collection)]
+                         [:= :p.archived           (boolean archived?)]
                          ;; exclude alerts
-                         [:= :p.alert_condition nil]
+                         [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
                          [:= :p.dashboard_id nil]]}
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
@@ -457,15 +457,15 @@
               collection
               [:= :archived archived?]
               [:= :namespace (u/qualified-name collection-namespace)])
-        ;; We get from the effective-children-query a normal set of columns selected:
-        ;; want to make it fit the others to make UNION ALL work
-        :select [:id
-                 :name
-                 :description
-                 :entity_id
-                 :personal_owner_id
-                 [(h2x/literal "collection") :model]
-                 :authority_level])
+             ;; We get from the effective-children-query a normal set of columns selected:
+             ;; want to make it fit the others to make UNION ALL work
+             :select [:id
+                      :name
+                      :description
+                      :entity_id
+                      :personal_owner_id
+                      [(h2x/literal "collection") :model]
+                      :authority_level])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
@@ -481,11 +481,11 @@
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
     (cond-> row
-            ;; when fetching root collection, we might have personal collection
-            (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
-            true (assoc :can_write (mi/can-write? Collection (:id row)))
-            true (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
-                         :collection_preview :dataset_query))))
+      ;; when fetching root collection, we might have personal collection
+      (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
+      true                     (assoc :can_write (mi/can-write? Collection (:id row)))
+      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
+                                       :collection_preview :dataset_query))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -501,8 +501,8 @@
                    :last_edit_email      :email
                    :last_edit_timestamp  :timestamp}]
       (cond-> (apply dissoc row :model_ranking (keys mapping))
-              ;; don't use contains as they all have the key, we care about a value present
-              (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
+        ;; don't use contains as they all have the key, we care about a value present
+        (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -520,12 +520,12 @@
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
-    :card Card
-    :dataset Card
-    :dashboard Dashboard
-    :pulse Pulse
-    :snippet NativeQuerySnippet
-    :timeline Timeline))
+    :card       Card
+    :dataset    Card
+    :dashboard  Dashboard
+    :pulse      Pulse
+    :snippet    NativeQuerySnippet
+    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -584,56 +584,56 @@
   treatment of nulls in the different app db types."
   [sort-info db-type]
   (case sort-info
-    nil [[:%lower.name :asc]]
-    [:name :asc] [[:%lower.name :asc]]
-    [:name :desc] [[:%lower.name :desc]]
-    [:last-edited-at :asc] [(if (= db-type :mysql)
-                              [:%isnull.last_edit_timestamp]
-                              [:last_edit_timestamp :nulls-last])
-                            [:last_edit_timestamp :asc]
-                            [:%lower.name :asc]]
+    nil                     [[:%lower.name :asc]]
+    [:name :asc]            [[:%lower.name :asc]]
+    [:name :desc]           [[:%lower.name :desc]]
+    [:last-edited-at :asc]  [(if (= db-type :mysql)
+                               [:%isnull.last_edit_timestamp]
+                               [:last_edit_timestamp :nulls-last])
+                             [:last_edit_timestamp :asc]
+                             [:%lower.name :asc]]
     [:last-edited-at :desc] (remove nil?
                                     [(case db-type
-                                       :mysql [:%isnull.last_edit_timestamp]
+                                       :mysql    [:%isnull.last_edit_timestamp]
                                        :postgres [:last_edit_timestamp :desc-nulls-last]
-                                       :h2 nil)
+                                       :h2       nil)
                                      [:last_edit_timestamp :desc]
                                      [:%lower.name :asc]])
-    [:last-edited-by :asc] [(if (= db-type :mysql)
-                              [:%isnull.last_edit_last_name]
-                              [:last_edit_last_name :nulls-last])
-                            [:last_edit_last_name :asc]
-                            (if (= db-type :mysql)
-                              [:%isnull.last_edit_first_name]
-                              [:last_edit_first_name :nulls-last])
-                            [:last_edit_first_name :asc]
-                            [:%lower.name :asc]]
+    [:last-edited-by :asc]  [(if (= db-type :mysql)
+                               [:%isnull.last_edit_last_name]
+                               [:last_edit_last_name :nulls-last])
+                             [:last_edit_last_name :asc]
+                             (if (= db-type :mysql)
+                               [:%isnull.last_edit_first_name]
+                               [:last_edit_first_name :nulls-last])
+                             [:last_edit_first_name :asc]
+                             [:%lower.name :asc]]
     [:last-edited-by :desc] (remove nil?
                                     [(case db-type
-                                       :mysql [:%isnull.last_edit_last_name]
+                                       :mysql    [:%isnull.last_edit_last_name]
                                        :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2 nil)
+                                       :h2       nil)
                                      [:last_edit_last_name :desc]
                                      (case db-type
-                                       :mysql [:%isnull.last_edit_first_name]
+                                       :mysql    [:%isnull.last_edit_first_name]
                                        :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2 nil)
+                                       :h2       nil)
                                      [:last_edit_first_name :desc]
                                      [:%lower.name :asc]])
-    [:model :asc] [[:model_ranking :asc] [:%lower.name :asc]]
-    [:model :desc] [[:model_ranking :desc] [:%lower.name :asc]]))
+    [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+    [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
   (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models
-                          :let [query              (collection-children-query model collection options)
-                                select-clause-type (some
-                                                    (fn [k]
-                                                      (when (get query k)
-                                                        k))
-                                                    [:select :select-distinct])]]
+                          :let  [query              (collection-children-query model collection options)
+                                 select-clause-type (some
+                                                     (fn [k]
+                                                       (when (get query k)
+                                                         k))
+                                                     [:select :select-distinct])]]
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
                           (update select-clause-type add-model-ranking model)))
@@ -650,14 +650,14 @@
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                        :limit mw.offset-paging/*limit*
-                        :offset mw.offset-paging/*offset*))
+                             :limit  mw.offset-paging/*limit*
+                             :offset mw.offset-paging/*offset*))
         res         {:total  (->> (mdb.query/query total-query) first :count)
                      :data   (->> (mdb.query/query limit-query) post-process-rows)
                      :models models}
         limit-res   (assoc res
-                      :limit mw.offset-paging/*limit*
-                      :offset mw.offset-paging/*offset*)]
+                           :limit  mw.offset-paging/*limit*
+                           :offset mw.offset-paging/*offset*)]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -665,14 +665,14 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models], :as options} :- CollectionChildrenOptions]
+   {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
-                           :when (or (empty? models) (contains? models model-kw))
-                           :let [toucan-model       (model-name->toucan-model model-kw)
-                                 allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                           :when (or (= model-kw :collection)
-                                     (contains? allowed-namespaces (keyword collection-namespace)))]
+                           :when    (or (empty? models) (contains? models model-kw))
+                           :let     [toucan-model       (model-name->toucan-model model-kw)
+                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                           :when    (or (= model-kw :collection)
+                                        (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
@@ -794,12 +794,12 @@
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
-     root-collection
-     {:models       model-kwds
-      :archived?    (Boolean/parseBoolean archived)
-      :pinned-state (keyword pinned_state)
-      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+      root-collection
+      {:models       model-kwds
+       :archived?    (Boolean/parseBoolean archived)
+       :pinned-state (keyword pinned_state)
+       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -811,7 +811,7 @@
   (api/write-check (if collection-id
                      (db/select-one Collection :id collection-id)
                      (cond-> collection/root-collection
-                             collection-namespace (assoc :namespace collection-namespace)))))
+                       collection-namespace (assoc :namespace collection-namespace)))))
 
 (defn create-collection!
   "Create a new collection."
@@ -823,11 +823,11 @@
                      (and api/*is-superuser?* authority_level)))
   (db/insert! Collection
     (merge
-     {:name            name
-      :color           color
-      :description     description
+     {:name        name
+      :color       color
+      :description description
       :authority_level authority_level
-      :namespace       namespace}
+      :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
@@ -878,7 +878,7 @@
     ;; Check that we have approprate perms
     (api/check-403
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                              (collection/perms-for-archiving collection-before-update)))))
+       (collection/perms-for-archiving collection-before-update)))))
 
 (defn- maybe-send-archived-notificaitons!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
@@ -894,12 +894,12 @@
 (api/defendpoint-schema PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name            (s/maybe su/NonBlankString)
-   color           (s/maybe collection/hex-color-regex)
-   description     (s/maybe su/NonBlankString)
-   archived        (s/maybe s/Bool)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   authority_level collection/AuthorityLevel}
+  {name                                   (s/maybe su/NonBlankString)
+   color                                  (s/maybe collection/hex-color-regex)
+   description                            (s/maybe su/NonBlankString)
+   archived                               (s/maybe s/Bool)
+   parent_id                              (s/maybe su/IntGreaterThanZero)
+   authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
