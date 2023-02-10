@@ -125,54 +125,24 @@ In general, regular backups (especially backups before upgrading), are the best 
 
 But if you've made changes to your application database since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running. When Metabase upgrades to a new version, it runs migrations that may change the application database schema. The `migrate down` command undoes those schema changes. In general, we recommend restoring from a backup (the backup that you definitely remembered to generate before upgrading), and only using the `migrate down` command if you really need to keep changes made after your upgrade.
 
-### Migrating down using the JAR file
+### Using the migrate down command
 
-1. Change into the directory where you're running the upgraded Metabase JAR.
-2. If you haven't already, stop the current, upgraded instance.
-3. Use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the following command:
+Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the following command:
 
-   ```
-   java -jar metabase.jar migrate down
-   ```
+```
+java -jar metabase.jar migrate down
+```
 
-   The default is to migrate down by one major version, but can also specify a major version to downgrade to.
+If you're running Docker, the command would be:
 
-   ```
-   java -jar metabase.jar migrate down 44
-   ```
+```
+docker run --rm metabase/metabase migrate down
+```
 
-4. [Download the JAR](https://github.com/metabase/metabase/releases) for the previous version that you were running, and move the older Metabase JAR into the directory, replacing the newer JAR, and start the instance:
+The default is to migrate down by one major version, but you can also specify a major version (as an integer) to downgrade to:
 
-   ```
-   java -jar metabase.jar
-   ```
+```
+java -jar metabase.jar migrate down 44
+```
 
-You should be back up and running on the old version.
-
-### Migrating down using Docker
-
-1. [Stop](https://docs.docker.com/engine/reference/commandline/stop/) the existing, upgraded container. E.g.,
-
-   ```
-   docker stop my_metabase_container
-   ```
-
-2. Run the command to perform the migration.
-
-   ```
-   docker run --rm metabase/metabase migrate down
-   ```
-
-   The default is to migrate down by one major version, but can also specify a major version to downgrade to.
-
-   ```
-   docker run --rm metabase/metabase migrate down 44
-   ```
-
-3. Pull the [Docker image](https://hub.docker.com/r/metabase/metabase/tags) for the version you were running and start it up. For example, if you were migrating down to `v0.45.2.1`, you'd run:
-
-   ```
-   docker run -d -p 3000:3000 --name metabase metabase/metabase:v0.45.2.1
-   ```
-
-You should be back up and running on the old version.
+Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.
