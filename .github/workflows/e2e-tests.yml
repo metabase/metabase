@@ -3,21 +3,30 @@ name: E2E Tests for PR
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - ".circleci/**"
-      - "**.unit.spec.*"
-      - "**_test.clj"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
 
   build:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 25
     strategy:
@@ -27,23 +36,27 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: e2e-tests
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: e2e-tests
 
-    - run: ./bin/build version translations frontend licenses drivers uberjar
+      - run: ./bin/build version translations frontend licenses drivers uberjar
 
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
+    needs: [build, files-changed]
+    if: |
+      always() &&
+      needs.files-changed.outputs.e2e_all == 'true' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    needs: build
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -51,8 +64,8 @@ jobs:
       QA_DB_ENABLED: true
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
-      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
+      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
     strategy:
       fail-fast: false
       matrix:
@@ -120,60 +133,102 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Set conditional ENVs
-      run: |
-        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-        fi
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare JDK ${{ matrix.java-version }}
-      uses: actions/setup-java@v3
-      with:
-        java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-    - name: Prepare Cypress environment
-      uses: ./.github/actions/prepare-cypress
-    - name: Run Snowplow micro
-      uses: ./.github/actions/run-snowplow-micro
+      - uses: actions/checkout@v3
+      - name: Set conditional ENVs
+        run: |
+          if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
+            echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+          fi
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v3
-      name: Retrieve uberjar artifact for ${{ matrix.edition }}
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Get the version info
-      run: |
-        jar xf target/uberjar/metabase.jar version.properties
-        mv version.properties resources/
+      - uses: actions/download-artifact@v3
+        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
-    - name: Run OSS-specific Cypress tests
-      if: matrix.edition == 'oss'
-      run: |
-        yarn run test-cypress-run \
-        --env grepTags=@OSS \
-        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
-      env:
-        TERM: xterm
+      - name: Run OSS-specific Cypress tests
+        if: matrix.edition == 'oss'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags=@OSS \
+          --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+        env:
+          TERM: xterm
 
-    - name: Run EE Cypress tests on ${{ matrix.folder }}
-      if: matrix.edition == 'ee'
-      run: |
-        yarn run test-cypress-run \
-        --env grepTags="-@quarantine" \
-        --folder ${{ matrix.folder }}
-      env:
-        TERM: xterm
+      - name: Run EE Cypress tests on ${{ matrix.folder }}
+        if: matrix.edition == 'ee'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@quarantine" \
+          --folder ${{ matrix.folder }}
+        env:
+          TERM: xterm
 
-    - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v3
-      if: failure()
-      with:
-        name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
-        path: |
-          ./cypress
-          ./logs/test.log
-        if-no-files-found: ignore
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
+
+  e2e-tests-skipped-stub:
+    needs: [build, files-changed]
+    if: |
+      always() &&
+      needs.files-changed.outputs.e2e_all == 'false' &&
+      needs.build.result == 'skipped'
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version: [11]
+        edition: [ee]
+        folder:
+          - "admin"
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "downloads"
+          - "embedding"
+          - "filters"
+          - "joins"
+          - "models"
+          - "native"
+          - "native-filters"
+          - "onboarding"
+          - "organization"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
+        include:
+          - edition: oss
+            context: grep
+            java-version: 11
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
     runs-on: ubuntu-20.04
@@ -197,24 +252,24 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare JDK ${{ matrix.java-version }}
-      uses: actions/setup-java@v3
-      with:
-        java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-    - name: Prepare Cypress environment
-      uses: ./.github/actions/prepare-cypress
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
 
-    - uses: actions/download-artifact@v3
-      name: Retrieve uberjar artifact for ${{ matrix.edition }}
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Get the version info
-      run: |
-        jar xf target/uberjar/metabase.jar version.properties
-        mv version.properties resources/
-    - name: Percy Test
-      run: yarn run test-visual-run
+      - uses: actions/download-artifact@v3
+        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Percy Test
+        run: yarn run test-visual-run

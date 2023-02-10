@@ -20,6 +20,8 @@
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)
    (org.h2.tools Server)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")
 (def ^:private ssh-publickey "test_resources/ssh/ssh_test.pub")

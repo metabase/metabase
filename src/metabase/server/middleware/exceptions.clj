@@ -10,6 +10,8 @@
    (java.sql SQLException)
    (org.eclipse.jetty.io EofException)))
 
+(set! *warn-on-reflection* true)
+
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
   information available to bad actors when exceptions occur on public endpoints."

@@ -11,6 +11,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defsetting test-api-setting-boolean

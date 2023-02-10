@@ -26,6 +26,8 @@
    (liquibase Contexts Liquibase)
    (liquibase.changelog ChangeSet DatabaseChangeLog)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
   before and after running `f` as needed."

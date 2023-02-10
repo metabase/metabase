@@ -14,6 +14,8 @@
    (javax.crypto SecretKey)
    (javax.crypto.spec SecretKeySpec)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn create-test-jks-instance

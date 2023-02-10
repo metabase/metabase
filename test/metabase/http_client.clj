@@ -19,6 +19,8 @@
    [ring.util.codec :as codec]
    [schema.core :as schema]))
 
+(set! *warn-on-reflection* true)
+
 ;;; build-url
 
 (def ^:dynamic *url-prefix*

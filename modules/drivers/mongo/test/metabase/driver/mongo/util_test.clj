@@ -1,9 +1,13 @@
 (ns metabase.driver.mongo.util-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.mongo.util :as mongo.util]
-            [metabase.driver.util :as driver.u]
-            [metabase.test :as mt])
-  (:import [com.mongodb MongoClient MongoClientOptions$Builder ReadPreference ServerAddress]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.util :as driver.u]
+   [metabase.test :as mt])
+  (:import
+   (com.mongodb MongoClient MongoClientOptions$Builder ReadPreference ServerAddress)))
+
+(set! *warn-on-reflection* true)
 
 (defn- connect-mongo ^MongoClient [opts]
   (let [connection-info (#'mongo.util/details->mongo-connection-info

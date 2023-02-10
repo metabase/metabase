@@ -12,6 +12,8 @@
    (java.util Base64)
    (javax.net.ssl SSLSocketFactory)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
 (deftest generate-identity-store-test

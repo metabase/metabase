@@ -10,6 +10,8 @@
    [saml20-clj.core :as saml]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private GroupMappings
   (s/maybe {su/KeywordOrString [su/IntGreaterThanZero]}))
 

@@ -11,6 +11,8 @@
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (defmethod qp.si/stream-options :json
   ([_]
    (qp.si/stream-options :json "query_result"))

@@ -10,6 +10,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- remove-backticks [id]
   (when id
     (-> id

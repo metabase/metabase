@@ -16,6 +16,8 @@
    (java.net MalformedURLException URL URLDecoder)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private UserAttributes
   {:first_name       (s/maybe su/NonBlankString)
    :last_name        (s/maybe su/NonBlankString)

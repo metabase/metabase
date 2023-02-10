@@ -18,6 +18,8 @@
    [toucan.db :as db]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")
 
