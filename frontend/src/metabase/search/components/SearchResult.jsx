@@ -91,10 +91,10 @@ function Context({ context }) {
 
 export default function SearchResult({
   result,
-  compact,
+  compact = false,
   hasDescription = true,
-  onClick,
-  isSelected,
+  onClick = undefined,
+  isSelected = false,
 }) {
   const active = isItemActive(result);
   const loading = isItemLoading(result);

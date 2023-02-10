@@ -1,18 +1,10 @@
 import { t } from "ttag";
+import type { SearchEntity } from "metabase-types/api/search";
 
 export interface LinkCardSettings {
   link: {
-    url?: string;
-    entity?: {
-      type:
-        | "dashboard"
-        | "card"
-        | "dataset"
-        | "collection"
-        | "table"
-        | "database";
-      id: number;
-    };
+    url: string;
+    entity?: SearchEntity;
   };
 }
 
