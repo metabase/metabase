@@ -3,9 +3,13 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import Select, { Option } from "metabase/core/components/Select";
+import Select, {
+  Option,
+  SelectChangeEvent,
+} from "metabase/core/components/Select";
 import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
 
 import MappingEditor from "../MappingEditor";
@@ -15,7 +19,7 @@ interface AttributeMappingEditorProps {
   onChange: (value: any) => void;
   shouldUseSavedQuestion: boolean;
   attributesOptions: UserAttribute[];
-  policy: GroupTableAccessPolicy;
+  policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
 }
 
 const AttributeMappingEditor = ({
@@ -103,7 +107,7 @@ const AttributePicker = ({
   <div style={{ minWidth: 200 }}>
     <Select
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e: SelectChangeEvent<string>) => onChange(e.target.value)}
       placeholder={
         attributesOptions.length === 0
           ? t`No user attributes`

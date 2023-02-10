@@ -20,3 +20,12 @@ export interface SandboxesState extends State {
     };
   };
 }
+
+export type GroupTableAccessPolicyDraft = Pick<
+  GroupTableAccessPolicy,
+  "card_id" | "table_id" | "group_id"
+> & {
+  attribute_remappings: {
+    [key: string]: string | null;
+  };
+};

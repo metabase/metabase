@@ -11,7 +11,10 @@ import EntityName from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
-import { GroupTableAccessPolicyParams } from "metabase-enterprise/sandboxes/types";
+import {
+  GroupTableAccessPolicyDraft,
+  GroupTableAccessPolicyParams,
+} from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import Question from "metabase-lib/Question";
 import AttributeMappingEditor, {
@@ -19,7 +22,7 @@ import AttributeMappingEditor, {
 } from "../AttributeMappingEditor";
 
 const getNormalizedPolicy = (
-  policy: GroupTableAccessPolicy,
+  policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
   return {
@@ -32,7 +35,10 @@ const getNormalizedPolicy = (
   } as GroupTableAccessPolicy;
 };
 
-const getDraftPolicy = ({ tableId, groupId }: GroupTableAccessPolicyParams) => {
+const getDraftPolicy = ({
+  tableId,
+  groupId,
+}: GroupTableAccessPolicyParams): GroupTableAccessPolicyDraft => {
   return {
     table_id: parseInt(tableId),
     group_id: parseInt(groupId),
@@ -52,8 +58,8 @@ const isPolicyValid = (
   return Object.entries(policy.attribute_remappings).length > 0;
 };
 
-interface EditSandboxingModalProps {
-  policy: GroupTableAccessPolicy;
+export interface EditSandboxingModalProps {
+  policy?: GroupTableAccessPolicy;
   attributes: UserAttribute[];
   params: GroupTableAccessPolicyParams;
   onCancel: () => void;
@@ -67,9 +73,9 @@ const EditSandboxingModal = ({
   onCancel,
   onSave,
 }: EditSandboxingModalProps) => {
-  const [policy, setPolicy] = useState<GroupTableAccessPolicy>(
-    originalPolicy ?? getDraftPolicy(params),
-  );
+  const [policy, setPolicy] = useState<
+    GroupTableAccessPolicy | GroupTableAccessPolicyDraft
+  >(originalPolicy ?? getDraftPolicy(params));
   const [shouldUseSavedQuestion, setShouldUseSavedQuestion] = useState(
     policy.card_id != null,
   );
@@ -77,9 +83,7 @@ const EditSandboxingModal = ({
   const normalizedPolicy = getNormalizedPolicy(policy, shouldUseSavedQuestion);
   const isValid = isPolicyValid(normalizedPolicy, shouldUseSavedQuestion);
 
-  const save = async () => {
-    onSave(normalizedPolicy);
-  };
+  const save = () => onSave(normalizedPolicy);
 
   const remainingAttributesOptions = attributes.filter(
     attribute => !(attribute in policy.attribute_remappings),
