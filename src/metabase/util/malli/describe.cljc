@@ -244,12 +244,14 @@
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
 (defmethod accept :map [n schema children o] (-map n schema children o))
 
-(defn- -descriptor-walker [schema _ children options]
+(defn- -descriptor-walker [schema path children options]
   (let [p (merge (mc/type-properties schema) (mc/properties schema))]
     (or (get p :description)
         (if (satisfies? Descriptor schema)
           (-accept schema children options)
-          (accept (mc/type schema) schema children options)))))
+          (cond->> (accept (mc/type schema) schema children options)
+            ;; add a prefix "value must be a" at top level
+            (empty? path) (str "value must be a "))))))
 
 (defn- -describe [?schema options]
   (mc/walk ?schema -descriptor-walker options))
