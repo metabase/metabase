@@ -26,6 +26,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string                (s/maybe su/NonBlankString)

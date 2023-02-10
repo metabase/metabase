@@ -15,6 +15,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+(set! *warn-on-reflection* true)
+
 (defn collection-set-for-user
   "Given an optional user ID, find the transitive set of all Collection IDs which are either:
   (a) global (ie. no one's personal collection);

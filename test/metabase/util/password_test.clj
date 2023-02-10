@@ -5,6 +5,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.password :as u.password]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; Password Complexity testing

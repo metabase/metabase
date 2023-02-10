@@ -11,6 +11,8 @@
   (:import
    (java.sql Driver DriverManager)))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------------- Proxy Driver --------------------------------------------------
 
 ;; TODO -- why not use `java.sql.Wrapper` here instead of defining a new protocol that basically does the same thing?

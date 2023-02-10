@@ -18,6 +18,8 @@
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! ::test-driver)
 
 (def ^:private canceled? (atom false))

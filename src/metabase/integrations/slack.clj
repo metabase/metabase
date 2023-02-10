@@ -15,6 +15,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting slack-token
   (deferred-tru
     (str "Deprecated Slack API token for connecting the Metabase Slack bot. "

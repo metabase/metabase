@@ -14,6 +14,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms

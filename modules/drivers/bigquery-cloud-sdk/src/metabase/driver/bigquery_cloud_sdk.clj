@@ -35,6 +35,8 @@
                               DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
                               TableDefinition$Type TableId TableResult)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
 
