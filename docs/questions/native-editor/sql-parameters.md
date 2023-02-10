@@ -237,21 +237,19 @@ If the field you want to create a dropdown for is not set to the type "Category"
 
 If however, there are too many different values in that column to display in a dropdown menu, Metabase will simply display a search box instead. So if you have a lot of email addresses, you may just get a search box anyway. The dropdown menu widgets work better when there's a small set of values to choose from (like the fifty U.S. states).
 
-## Field filter gotchas
+## Field filter limitations
 
 Some things that could trip you up when trying to set up a Field Filter variable:
 
-### Field filters don't work with table aliases
+### Table aliases
 
-Table aliases are not supported. The reason is that field filters generate SQL based on the mapped field; Metabase doesn't parse the SQL, so it can't tell what an alias refers to.
+You won't be able to select values from field filters in queries that use table aliases for joins or CTEs.
 
-The workaround is to either avoid aliases and use full table names, or instead use a subquery, for example, a query nested inside a SELECT statement. Alternatively, you could create a view in your database that shows the results of a complicated query, and then query that view.
+The reason is that field filters generate SQL based on the mapped field; Metabase doesn't parse the SQL, so it can't tell what an alias refers to. You have three options for workarounds, depending on the complexity of your query.
 
-### Some databases require the schema in the FROM clause
-
-An example for **BigQuery**, back ticks are needed, like `` FROM `dataset.table` ``. If "Project ID (override)" is used in the connection settings, then it should be `` FROM `project.dataset.table` ``.
-
-For **Oracle** it would be `FROM "schema"."table"`.
+1. Use full table names.
+2. Replace CTEs with subqueries.
+3. Create a view in your database, and use the view as the basis of your query.
 
 ### Include dependencies in your query
 
@@ -272,6 +270,17 @@ JOIN PRODUCTS p
 ON o.product_id = p.id
 WHERE {% raw %}{{ product_category }}{% endraw %}
 ```
+
+### SQL syntax
+
+Make sure your SQL dialect matches the database you've selected. Common errors:
+
+| Database | Do this                    | Not this               |
+|----------|----------------------------|------------------------|
+| BigQuery | `` FROM `dataset.table` `` | ``FROM dataset.table`` |
+| Oracle   | `FROM "schema"."table"`     | `FROM schema.table`   |
+
+For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
 ## Connecting a SQL question to a dashboard filter
 
