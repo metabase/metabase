@@ -10,24 +10,24 @@ version: '3.1'
 #  shown in the following examples:
 #
 # ;; Run a postgres app db and a sample postgres 14 and mongo warehouses
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mongodata docker-compose --file docker-compose-dev.yml up
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mongodata docker-compose --file dev/docker-compose.yml up
 # ;; Run a postgres app db and a sample postgres 14 and mysql 5.7 warehouses
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file docker-compose-dev.yml up
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file dev/docker-compose.yml up
 # ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
 # ;; If you use this option, once the application starts you can jack in on 50505 and REPL away.
 # ;; Be aware that if you use this option your app will be running a docker
 # ;; network with ports 3001 and 50505 exposed to the outside. This means that
 # ;; when you connect to data warehouses, you'll use docker networking to
 # ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file docker-compose-dev.yml up
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
 # ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
 # ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file docker-compose-dev.yml up
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
 #
 # TODOs:
 # - Get the fe-builder service working correctly. If anyone wants to see what it
 #   does, uncomment it and try
-#   COMPOSE_PROFILES=fe-builder docker-compose --file docker-compose-dev.yml up
+#   COMPOSE_PROFILES=fe-builder docker-compose --file dev/docker-compose.yml up
 #   It will hang on step 4/5.
 # - Consider using swarm to declaratively scale up/down.
 services:
@@ -48,7 +48,7 @@ services:
       - "50505:50505"
     working_dir: /dev/metabase
     volumes:
-      - .:/dev/metabase
+      - ../:/dev/metabase
       - ~/.m2:/root/.m2
     environment:
       MB_API_KEY: METABASE
@@ -78,7 +78,7 @@ services:
     container_name: fe-builder
     working_dir: /dev/metabase
     volumes:
-      - .:/dev/metabase
+      - ../:/dev/metabase
       - ~/.npm:/root/.npm
       - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
     command:
@@ -165,9 +165,9 @@ services:
     networks:
       - metabasenet
 
-  mongo:
+  mongo-data:
     image: metabase/qa-databases:mongo-sample-6
-    container_name: metabasedb_mongo_6
+    container_name: metabasedb_mongo_6_data
     restart: always
     ports:
       - "27017:27017"
@@ -175,6 +175,18 @@ services:
       - mongodata
     networks:
       - metabasenet
+
+  vertica-data:
+    image: vertica/vertica-ce:12.0.2-0
+    container_name: vertica_data
+    restart: always
+    ports:
+      - "5433:5433"
+    profiles:
+      - verticadata
+    networks:
+      - metabasenet
+
 
   # Used this if you need to test metabase's email capabilities
   maildev:
