@@ -1,7 +1,6 @@
 (ns metabase.actions.execution
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
@@ -17,6 +16,7 @@
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
@@ -178,7 +178,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -211,7 +211,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
     (if (= :implicit (:type action))
       (fetch-implicit-action-values dashboard-id action request-parameters)
       {})))

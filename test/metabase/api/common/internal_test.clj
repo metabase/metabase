@@ -14,7 +14,9 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [ring.adapter.jetty :as jetty]))
+   [ring.adapter.jetty9 :as jetty]))
+
+(set! *warn-on-reflection* true)
 
 (def TestAddress
   [:map
@@ -98,7 +100,9 @@
                                       :zip    2999
                                       :lonlat [0.0 0.0]}}))))
       (is (some (fn [{message :msg, :as entry}]
-                  (when (str/includes? (str message) "Unexpected parameters")
+                  (when (str/includes? (str message)
+                                       (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                            "Please add them to the schema or remove them from the API client"))
                     entry))
                 (mb.logger/messages))))
 

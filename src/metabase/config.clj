@@ -3,12 +3,14 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log])
   (:import
    (clojure.lang Keyword)
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?

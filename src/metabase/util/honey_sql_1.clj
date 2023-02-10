@@ -1,4 +1,4 @@
-(ns ^{:deprecated "0.46.0"} metabase.util.honey-sql-1-extensions
+(ns ^{:deprecated "0.46.0"} metabase.util.honey-sql-1
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
@@ -16,6 +16,8 @@
   (:import
    (honeysql.format ToSql)
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (comment honeysql.types/keep-me)
 

@@ -12,17 +12,21 @@
     :as qp.middleware.audit]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.urls :as urls]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
@@ -99,7 +103,7 @@
     (let [honeysql-query (cond-> honeysql-query
                            ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
                            (= driver :mysql) CTEs->subselects)]
-      (sql/format (add-default-params honeysql-query)))
+      (mdb.query/compile (add-default-params honeysql-query)))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
                       {:driver driver, :honeysql-query honeysql-query}

@@ -15,6 +15,8 @@
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
    (metabase.db.connection_pool_setup DbActivityTracker)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest connection-pool-spec-test

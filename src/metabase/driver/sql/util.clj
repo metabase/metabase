@@ -2,16 +2,18 @@
   "Utility functions for writing SQL drivers."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (metabase.util.honey_sql_1 Identifier)))
+
+(set! *warn-on-reflection* true)
 
 (s/defn quote-name
   "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
@@ -27,8 +29,8 @@
   [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
   (first
    (hsql/format (sql.qp/->honeysql driver (apply hx/identifier identifier-type components))
-     :quoting             (sql.qp/quote-style driver)
-     :allow-dashed-names? true)))
+                :quoting             (sql.qp/quote-style driver)
+                :allow-dashed-names? true)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |

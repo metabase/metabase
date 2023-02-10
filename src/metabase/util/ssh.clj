@@ -3,10 +3,10 @@
   this all. We should consider moving some or all of this code to a new namespace like
   `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import
    (java.io ByteArrayInputStream)
    (java.util.concurrent TimeUnit)
@@ -21,6 +21,8 @@
    (org.apache.sshd.common.util.net SshdSocketAddress)
    (org.apache.sshd.common.util.security SecurityUtils)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^Long default-ssh-timeout 30000)
 

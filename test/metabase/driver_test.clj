@@ -6,6 +6,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.test.data.env :as tx.env]))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! ::test-driver, :abstract? true)
 
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)

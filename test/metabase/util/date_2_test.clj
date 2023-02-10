@@ -10,6 +10,8 @@
   (:import
    (java.time.temporal ChronoField)))
 
+(set! *warn-on-reflection* true)
+
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
@@ -349,11 +351,11 @@
                (u.date/add t unit n))
             (format "%s plus %d %ss should be %s" t n unit expected))))))
 
-(deftest ^:parallel range-test
+(deftest range-test
   (testing "with 1 arg (range relative to now)"
     (is (= {:start (t/zoned-date-time "2019-11-17T00:00Z[UTC]")
             :end   (t/zoned-date-time "2019-11-24T00:00Z[UTC]")}
-           (t/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
+           (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
              (u.date/range :week)))))
   (testing "with 2 args"
     (is (= {:start (t/zoned-date-time "2019-10-27T00:00Z[UTC]")
@@ -473,7 +475,7 @@
 
 (deftest older-than-test
   (let [now (t/instant "2019-12-04T00:45:00Z")]
-    (t/with-clock (t/mock-clock now (t/zone-id "America/Los_Angeles"))
+    (mt/with-clock (t/mock-clock now (t/zone-id "America/Los_Angeles"))
       (testing (str "now = " now)
         (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
                    (t/zoned-date-time "2019-11-01T00:00-08:00[US/Pacific]"))]

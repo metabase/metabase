@@ -15,6 +15,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;; Test out our predicate functions
 
 (deftest day-of-week?-test
@@ -141,8 +143,7 @@
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
-        (m/dissoc-in [:details :emails])
-        mt/derecordize)))
+        (m/dissoc-in [:details :emails]))))
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
@@ -151,8 +152,7 @@
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
-      (m/dissoc-in [:details :emails])
-      mt/derecordize))
+      (m/dissoc-in [:details :emails])))
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test

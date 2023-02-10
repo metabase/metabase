@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -29,6 +28,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -72,8 +72,9 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
+                                   [[table (sql.qp/->honeysql
+                                            :sparksql
+                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
 (defn- venues-category-native-gtap-def []
@@ -321,6 +322,12 @@
       (met/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                        :attributes {"cat" "50"}}
         (is (= [[10]]
+               (run-venues-count-query)))))
+
+    (testing "Admins always bypass sandboxes, even if they are in a sandboxed group"
+      (met/with-gtaps-for-user :crowberto {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                           :attributes {"cat" 50}}
+        (is (= [[100]]
                (run-venues-count-query)))))
 
     (testing "Users with view access to the related collection should bypass segmented permissions"

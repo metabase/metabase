@@ -8,6 +8,8 @@
             [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest query-cancelation-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef

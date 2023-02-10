@@ -21,6 +21,8 @@
    [metabase.test :as mt]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (deftest get-or-create-advanced-field-values!
   (doseq [fv-type [:sandbox :linked-filter]]
     (testing "create a new field values and fix up the human readable values"
@@ -61,8 +63,8 @@
             (is (= [(range 4 6)
                     (range 2 4)]
                    (->> (db/select [FieldValues :values]
-                          :field_id categories-id :type fv-type
-                          {:order-by [:id]})
+                                   :field_id categories-id :type fv-type
+                                   {:order-by [:id]})
                         (map :values))))))))
 
     (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"

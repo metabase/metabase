@@ -1,25 +1,28 @@
 (ns metabase.test.data.bigquery-cloud-sdk
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [flatland.ordered.map :as ordered-map]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.bigquery-cloud-sdk :as bigquery]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption
-                                      BigQuery$DatasetOption BigQuery$TableListOption BigQuery$TableOption Dataset
-                                      DatasetId DatasetInfo Field  InsertAllRequest InsertAllRequest$RowToInsert
-                                      InsertAllResponse LegacySQLTypeName Schema StandardTableDefinition TableId
-                                      TableInfo TableResult]))
+  (:require
+   [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
+                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
+                              InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
+                              StandardTableDefinition TableId TableInfo TableResult)))
+
+(set! *warn-on-reflection* true)
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 

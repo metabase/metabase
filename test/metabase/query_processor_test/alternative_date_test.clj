@@ -14,6 +14,8 @@
   (:import
    (java.time OffsetDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]

@@ -87,7 +87,7 @@ export const TableHeaderCellContent = styled.button<{
   }
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 `;
 
@@ -113,7 +113,7 @@ export const PaginationButton = styled.button<{
   cursor: pointer;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 
   ${props =>

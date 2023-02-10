@@ -18,7 +18,6 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
@@ -31,6 +30,7 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 

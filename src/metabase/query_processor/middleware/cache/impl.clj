@@ -1,15 +1,17 @@
 (ns metabase.query-processor.middleware.cache.impl
   (:require
-   [clojure.tools.logging :as log]
    [flatland.ordered.map :as ordered-map]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
    (java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
             EOFException FilterOutputStream InputStream OutputStream)
    (java.util.zip GZIPInputStream GZIPOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (defn- max-bytes-output-stream ^OutputStream
   [max-bytes ^OutputStream os]

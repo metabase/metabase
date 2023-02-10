@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
@@ -13,6 +12,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])
@@ -24,30 +24,32 @@
    (javax.net SocketFactory)
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
   of [[metabase.driver/humanize-connection-error-message]]."
   {:cannot-connect-check-host-and-port
    {:message (deferred-tru
-              (str "Hmm, we couldn''t connect to the database."
-                   " "
-                   "Make sure your Host and Port settings are correct"))
+               (str "Hmm, we couldn''t connect to the database."
+                    " "
+                    "Make sure your Host and Port settings are correct"))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 
    :ssh-tunnel-auth-fail
    {:message (deferred-tru
-              (str "We couldn''t connect to the SSH tunnel host."
-                   " "
-                   "Check the Username and Password."))
+               (str "We couldn''t connect to the SSH tunnel host."
+                    " "
+                    "Check the Username and Password."))
     :errors  {:tunnel-user (deferred-tru "check your username")
               :tunnel-pass (deferred-tru "check your password")}}
 
    :ssh-tunnel-connection-fail
    {:message (deferred-tru
-              (str "We couldn''t connect to the SSH tunnel host."
-                   " "
-                   "Check the Host and Port."))
+               (str "We couldn''t connect to the SSH tunnel host."
+                    " "
+                    "Check the Host and Port."))
     :errors  {:tunnel-host (deferred-tru "check your host settings")
               :tunnel-port (deferred-tru "check your port settings")}}
 

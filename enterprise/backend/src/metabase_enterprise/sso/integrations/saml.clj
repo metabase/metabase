@@ -19,7 +19,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
@@ -33,10 +32,13 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
    [schema.core :as s])
   (:import [java.util Base64 UUID]))
+
+(set! *warn-on-reflection* true)
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"

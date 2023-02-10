@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
-   [clojure.tools.logging :as log]
    [java-time]
    [metabase.config :as config]
    [metabase.server.middleware.session :as mw.session]
@@ -15,9 +14,12 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as schema]))
+
+(set! *warn-on-reflection* true)
 
 ;;; build-url
 

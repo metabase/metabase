@@ -7,6 +7,8 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.test.util.async :as tu.async]))
 
+(set! *warn-on-reflection* true)
+
 (deftest driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
     (is (= 'metabase.driver.sql-jdbc

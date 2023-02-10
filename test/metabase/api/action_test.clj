@@ -13,6 +13,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (comment api.action/keep-me)
 
 (def ^:private ExpectedGetQueryActionAPIResponse

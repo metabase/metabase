@@ -6,10 +6,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [metabase.util.files :as u.files])
+   [metabase.util.files :as u.files]
+   [metabase.util.log :as log])
   (:import
    (java.nio.file Files)))
+
+(set! *warn-on-reflection* true)
 
 ;;; Generic utils
 

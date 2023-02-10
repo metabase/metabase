@@ -3,15 +3,17 @@
   (:require
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (p/import-vars
  [i18n.impl

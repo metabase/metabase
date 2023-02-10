@@ -1,7 +1,6 @@
 (ns metabase.models.action
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -10,9 +9,11 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
@@ -84,7 +85,7 @@
   (db/transaction
     (let [action (db/insert! Action (select-keys action-data action-columns))
           model  (type->model (:type action))]
-      (db/execute! {:insert-into model
+      (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
                                  (u/update-if-exists :dataset_query json/encode)
@@ -111,12 +112,6 @@
     (-> action
         (merge (db/select-one subtype :action_id (:id action)))
         (dissoc :action_id))))
-
-(defn select-one
-  "Selects an action and fills in the subtype data.
-   `options` is passed to `db/select-one` `& options` arg."
-  [& options]
-  (hydrate-subtype (apply db/select-one Action options)))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
@@ -148,9 +143,10 @@
                      (select-keys implicit-action [:kind]))))
            actions))))
 
-(defn select-actions
-  "Select Actions and fill in sub type information.
-   `options` is passed to `db/select` `& options` arg"
+(defn- select-actions-without-implicit-params
+  "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
+   for implicit actions, use [[select-action]] instead.
+   `options` is passed to `db/select` `& options` arg."
   [& options]
   (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
         query-actions (normalize-query-actions query)
@@ -163,7 +159,7 @@
   [fields]
   (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
 
-(defn implicit-action-parameters
+(defn- implicit-action-parameters
   "Return a set of parameters for the given models"
   [cards]
   (let [card-by-table-id (into {}
@@ -191,12 +187,12 @@
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
-(defn actions-with-implicit-params
+(defn select-actions
   "Find actions with given options and generate implicit parameters for execution.
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [actions                         (apply select-actions options)
+  (let [actions                         (apply select-actions-without-implicit-params options)
         implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
         models-with-implicit-actions    (if known-models
                                           (->> known-models
@@ -228,12 +224,18 @@
 
                                     :always seq))))))
 
+(defn select-action
+  "Selects an Action and fills in the subtype data and implicit parameters.
+   `options` is passed to `db/select-one` `& options` arg."
+  [& options]
+  (first (apply select-actions nil options)))
+
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
   "Hydrates action from DashboardCard."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (m/index-by :id (actions-with-implicit-params (map :card dashcards) :id [:in action-ids])))]
+                        (m/index-by :id (select-actions (map :card dashcards) :id [:in action-ids])))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
@@ -264,7 +266,7 @@
 (defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
   (update! (assoc ingested :id (:id local)) local)
-  (select-one :id (:id local)))
+  (select-action :id (:id local)))
 
 (defmethod serdes.base/load-insert! "Action" [_model-name ingested]
   (log/tracef "Inserting Action: %s" (pr-str ingested))

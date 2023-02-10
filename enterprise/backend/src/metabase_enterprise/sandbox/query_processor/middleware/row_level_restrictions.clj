@@ -4,7 +4,6 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -29,9 +28,12 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
@@ -70,11 +72,11 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
-                                  (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+                                (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
                                (db/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
-          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes)]
+          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))

@@ -23,7 +23,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
 
   &:focus,
   &:hover {
-    border-color: ${() => color("brand")};
+    border-color: ${color("brand")};
     transition: border 300ms ease-in-out;
   }
   ${css`

@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
@@ -19,10 +18,13 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db])
   (:import
    (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence

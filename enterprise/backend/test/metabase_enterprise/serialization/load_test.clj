@@ -30,19 +30,21 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.models.visualization-settings-test :as mb.viz-test]
-   [metabase.shared.util.log :as log]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (org.apache.commons.io FileUtils)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once
-              mb.viz-test/with-spec-instrumentation-fixture
-              (fixtures/initialize :test-users-personal-collections))
+  mb.viz-test/with-spec-instrumentation-fixture
+  (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
   [file-or-filename]

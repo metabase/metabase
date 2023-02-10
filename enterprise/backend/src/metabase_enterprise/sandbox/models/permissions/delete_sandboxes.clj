@@ -1,12 +1,12 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
-   [clojure.tools.logging :as log]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase.db.query :as mdb.query]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn- delete-gtaps-with-condition! [group-or-id condition]
