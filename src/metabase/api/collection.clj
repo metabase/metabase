@@ -148,7 +148,6 @@
    exclude-other-user-collections (s/maybe su/BooleanString)
    namespace                      (s/maybe su/NonBlankString)}
   (let [exclude-archived?               (Boolean/parseBoolean exclude-archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
         coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                                   (update acc (if dataset :dataset :card) conj collection_id))
                                                 {:dataset #{}
