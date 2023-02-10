@@ -21,6 +21,8 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (deftest dump-deletes-target-db-files-tests
   ;; test fails when the application db is anything but H2 presently
   ;; TODO: make this test work with postgres / mysql / mariadb

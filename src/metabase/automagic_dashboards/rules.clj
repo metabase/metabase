@@ -15,6 +15,8 @@
   (:import
    (java.nio.file Files Path)))
 
+(set! *warn-on-reflection* true)
+
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)

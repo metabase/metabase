@@ -33,6 +33,8 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :presto-jdbc, :parent #{:presto-common
                                           :sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
@@ -150,6 +152,10 @@
 (defmethod sql.qp/date [:presto-jdbc :year]
   [_ _ expr]
   (hx/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :year-of-era]
+  [_ _ expr]
+  (hx/call :year (in-report-zone expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]

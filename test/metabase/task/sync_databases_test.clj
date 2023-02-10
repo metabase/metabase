@@ -16,6 +16,8 @@
    [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
+(set! *warn-on-reflection* true)
+
 (deftest annotations-test
   (testing "make sure our annotations are present"
     (is (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))

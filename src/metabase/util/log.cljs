@@ -18,10 +18,17 @@
 (defn is-loggable?
   "Part of the internals of [[glogi-logp]] etc."
   [logger-name level]
-  (glog/isLoggable (log/logger logger-name) (log/levels level)))
+  (glog/isLoggable (log/logger logger-name) (log/level level)))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn format-msg
   "Part of the internals of [[logf]]."
   [fmt & args]
   (apply gstring/format fmt args))
+
+(defn glogi-level
+  "Converts our standard `metabase.util.log` levels to those understood by glogi."
+  [level]
+  (if (= level :fatal)
+    :shout
+    level))

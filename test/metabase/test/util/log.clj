@@ -7,6 +7,7 @@
    [clojure.tools.logging.impl :as log.impl]
    [hawk.parallel]
    [metabase.plugins.classloader :as classloader]
+   [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [schema.core :as s])
   (:import
@@ -227,8 +228,7 @@
       (finally
         (.removeAppender logger appender-name)))))
 
-;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
-(defmacro with-log-messages-for-level
+(defmacro with-log-messages-for-level-clj
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
   higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
   to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
@@ -255,6 +255,14 @@
            ~@body
            (logs#)))))))
 
+;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
+(defmacro with-log-messages-for-level [ns+level & body]
+  (macros/case
+    :clj  `(with-log-messages-for-level-clj ~ns+level ~@body)
+    :cljs (let [[log-ns level] (if (sequential? ns+level)
+                                 ns+level
+                                 [(str (ns-name *ns*)) ns+level])]
+            `(do-with-glogi-logs ~log-ns ~level (fn [] ~@body)))))
 
 ;;;; tests
 

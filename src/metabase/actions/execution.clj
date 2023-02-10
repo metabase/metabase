@@ -176,7 +176,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -209,7 +209,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
     (if (= :implicit (:type action))
       (fetch-implicit-action-values dashboard-id action request-parameters)
       {})))

@@ -33,6 +33,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -70,11 +72,11 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
-                                  (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+                                (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
                                (db/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
-          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes)]
+          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))

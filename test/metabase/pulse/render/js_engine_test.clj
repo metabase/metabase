@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.pulse.render.js-engine :as js]))
 
+(set! *warn-on-reflection* true)
+
 (deftest make-context-test
   (testing "can make a context that evaluates javascript"
     (let [context (js/context)]

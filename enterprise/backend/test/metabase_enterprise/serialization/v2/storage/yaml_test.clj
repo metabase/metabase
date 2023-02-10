@@ -12,6 +12,8 @@
    [toucan.db :as db]
    [yaml.core :as yaml]))
 
+(set! *warn-on-reflection* true)
+
 (defn- file-set [dir]
   (let [base (.toPath dir)]
     (set (for [file (file-seq dir)

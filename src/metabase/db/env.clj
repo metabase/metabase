@@ -28,6 +28,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 ;;;; [[env->db-type]]
 
 (defn- raw-connection-string->type [s]

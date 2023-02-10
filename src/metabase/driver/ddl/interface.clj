@@ -27,13 +27,6 @@
 
 (defmethod format-name :default [_ table-or-field-name] table-or-field-name)
 
-(defmulti field-base-type->sql-type
-  "A suitable db type for a base-type per database."
-  {:arglists '([driver base-type])}
-  (fn [driver base-type]
-    [(driver/dispatch-on-initialized-driver driver) (keyword base-type)])
-  :hierarchy #'driver/hierarchy)
-
 (defmulti check-can-persist
   "Verify that the source database is acceptable to persist. Returns a tuple of a boolean and `:persist.check/valid` in
   the event it was successful or a keyword indicating the reason for failure.

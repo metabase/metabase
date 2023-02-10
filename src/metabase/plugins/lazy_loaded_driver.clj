@@ -16,6 +16,8 @@
   (:import
    (clojure.lang MultiFn)))
 
+(set! *warn-on-reflection* true)
+
 (defn- parse-connection-property [prop]
   (cond
     (string? prop)

@@ -34,6 +34,8 @@
   (:import
    (java.io ByteArrayInputStream)))
 
+(set! *warn-on-reflection* true)
+
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 

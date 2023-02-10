@@ -7,6 +7,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private plugins-with-unsatisfied-deps
   (atom #{}))
 

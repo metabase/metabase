@@ -11,6 +11,8 @@
   (:import
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
+(set! *warn-on-reflection* true)
+
 ;; See test_resources/ldap.ldif for fixtures
 
 ;; The connection test should pass with valid settings
