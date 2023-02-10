@@ -123,9 +123,9 @@ If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Met
 
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade. 
 
-But if you've made changes to your application database since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running.
+But if you've made changes to your application database since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running. When Metabase upgrades to a new version, it runs migrations that may change the application database schema. The `migrate down` command undoes those schema changes. In general, we recommend restoring from a backup (the backup that you definitely remembered to generate before upgrading), and only using the `migrate down` command if you really need to keep changes made after your upgrade.
 
-To roll back your Metabase application database: 
+### Migrating down using the JAR file
 
 1. Change into the directory where you're running the upgraded Metabase JAR. 
 2. If you haven't already, stop the current, upgraded instance.
@@ -138,3 +138,11 @@ To roll back your Metabase application database:
    java -jar metabase.jar
    ```
    You should be back up and running on the old version.
+
+### Migrating down using Docker
+
+All you need to do is run:
+
+```
+docker run --rm metabase/metabase migrate down
+```
