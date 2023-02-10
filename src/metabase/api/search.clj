@@ -410,7 +410,7 @@
         _                  (log/tracef "Searching with query:\n%s\n%s"
                                        (u/pprint-to-str search-query)
                                        (mdb.query/format-sql (first (mdb.query/compile search-query))))
-        to-toucan-instance (fn [o] (t2.instance/instance (search-config/model-to-db-model (:model o)) o))
+        to-toucan-instance (fn [row] (t2.instance/instance (search-config/model-to-db-model (:model row)) row))
         reducible-results  (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
         xf                 (comp
                             (map t2.realize/realize)
