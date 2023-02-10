@@ -67,6 +67,9 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+
+  // We have some corrupted visualization settings where both names are mixed
+  // We should settle on `fieldRef`, make it required and remove `field_ref`
   fieldRef?: FieldReference;
   field_ref?: FieldReference;
 };
