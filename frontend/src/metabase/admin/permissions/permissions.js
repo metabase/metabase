@@ -178,7 +178,7 @@ const savePermission = {
     return (
       (payload && typeof payload.data === "string"
         ? payload.data
-        : payload.data.message) || t`Sorry, an error occurred.`
+        : payload.data?.message) || t`Sorry, an error occurred.`
     );
   },
 };

@@ -93,7 +93,10 @@ const EditSandboxingModal = ({
   const hasValidMappings =
     Object.keys(normalizedPolicy.attribute_remappings || {}).length > 0;
 
-  const canSave = isValid && !_.isEqual(originalPolicy, normalizedPolicy);
+  const canSave =
+    isValid &&
+    (!_.isEqual(originalPolicy, normalizedPolicy) ||
+      normalizedPolicy.id == null);
 
   return (
     <div>
