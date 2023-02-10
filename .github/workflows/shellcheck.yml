@@ -1,4 +1,4 @@
-name: YAML
+name: Shellcheck
 
 on:
   push:
