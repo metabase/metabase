@@ -190,11 +190,11 @@
   ;; Data warehouse DB, if we're using this in combination with a Database as connectable
   (let [{:keys [query params]} (binding [t2.connection/*current-connectable* nil]
                                  (qp/compile built-query))]
-    (println (mdb.query/format-sql query (mdb.connection/db-type)))
-    (println (pr-str (vec params)))
     (into [query] params)))
 
-(defn app-db-as-data-warehouse []
+(defn app-db-as-data-warehouse
+  "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
+  []
   (binding [t2.connection/*current-connectable* nil]
     (or (db/select-one Database :name "Application Database")
         (let [details (#'metabase.db.env/broken-out-details
@@ -206,7 +206,10 @@
           (sync/sync-database! app-db)
           app-db))))
 
-(defmacro with-app-db [& body]
+(defmacro with-app-db
+  "Use the app DB as a `Database` and bind it so [[metabase.test/db]], [[metabase.test/mbql-query]], and the like use
+  it."
+  [& body]
   `(let [db# (app-db-as-data-warehouse)]
      (mt/with-driver (:engine db#)
        (mt/with-db db#
@@ -216,12 +219,3 @@
   "Use the application database as a data warehouse DB to run MBQL queries?!"
   [_connectable f]
   (t2.connection/do-with-connection (app-db-as-data-warehouse) f))
-
-(defn x []
-  (t2/query :qp/app-db (with-app-db
-                         (mt/mbql-query core_user {:aggregation [[:max [:expression "id + 1"]]]
-                                                   :expressions {"id + 1" [:+ $id 1]}}))))
-
-
-
-;; => {:max 5}
