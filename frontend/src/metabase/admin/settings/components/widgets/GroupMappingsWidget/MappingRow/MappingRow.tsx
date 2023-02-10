@@ -10,8 +10,11 @@ import Confirm from "metabase/components/Confirm";
 import Selectbox from "../GroupSelect";
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 
-import type { DeleteMappingModalValueType } from "../DeleteGroupMappingModal";
-import type { GroupIds } from "../types";
+import type {
+  DeleteMappingModalValueType,
+  GroupIds,
+  UserGroupsType,
+} from "../types";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
@@ -19,7 +22,7 @@ type OnDeleteMappingType = (name: string, onSuccess?: () => void) => void;
 
 type MappingRowProps = {
   name: string;
-  groups: GroupIds;
+  groups: UserGroupsType;
   selectedGroupIds: GroupIds;
   onChange: () => void;
   onDeleteMapping: OnDeleteMappingType;
@@ -43,8 +46,8 @@ const MappingRow = ({
   };
 
   const handleConfirmDeleteMapping = (
-    whatToDoAboutGroups: any,
-    groups: any,
+    whatToDoAboutGroups: DeleteMappingModalValueType,
+    groups: GroupIds,
   ) => {
     const onSuccess = getCallbackForGroupsAfterDeletingMapping(
       whatToDoAboutGroups,
@@ -72,7 +75,7 @@ const MappingRow = ({
   const isMappingLinkedOnlyToAdminGroup =
     groups.length > 0 &&
     selectedGroupIds.length === 1 &&
-    isAdminGroup(groups.find((group: any) => group.id === selectedGroupIds[0]));
+    isAdminGroup(groups.find(group => group.id === selectedGroupIds[0]));
 
   const shouldUseDeleteMappingModal =
     selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;

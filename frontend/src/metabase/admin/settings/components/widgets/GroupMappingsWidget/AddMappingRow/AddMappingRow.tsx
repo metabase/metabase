@@ -4,8 +4,10 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 
+import type { MappingsType } from "../types";
+
 type AddMappingRowProps = {
-  mappings: any;
+  mappings: MappingsType;
   placeholder: string;
   onCancel: () => void;
   onAdd: (value: string) => void;

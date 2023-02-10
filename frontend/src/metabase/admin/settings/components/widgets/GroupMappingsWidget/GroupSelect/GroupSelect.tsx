@@ -4,10 +4,10 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 
-import type { GroupIds } from "../types";
+import type { GroupIds, UserGroupsType } from "../types";
 
 type Props = {
-  groups: GroupIds;
+  groups: UserGroupsType;
   selectedGroupIds: GroupIds;
   onGroupChange: () => void;
 };
