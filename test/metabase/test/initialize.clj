@@ -8,6 +8,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."
   {:arglists '([init-step])}

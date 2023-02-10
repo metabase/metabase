@@ -10,6 +10,8 @@
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private StringOrToken  (s/cond-pre s/Str {:token s/Keyword
                                                  :text  s/Str}))
 

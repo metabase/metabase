@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import type { Location, LocationDescriptor } from "history";
 
+import { useMount } from "react-use";
 import * as Urls from "metabase/lib/urls";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -107,7 +107,7 @@ function ModelDetailPage({
     return tab ?? FALLBACK_TAB;
   }, [location.pathname]);
 
-  useOnMount(() => {
+  useMount(() => {
     loadMetadataForCard(model.card());
   });
 

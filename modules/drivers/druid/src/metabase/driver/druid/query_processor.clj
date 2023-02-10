@@ -17,6 +17,8 @@
             [metabase.util.log :as log]
             [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
 

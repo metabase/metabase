@@ -13,6 +13,8 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]))
 
+(set! *warn-on-reflection* true)
+
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]

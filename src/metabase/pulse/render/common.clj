@@ -14,6 +14,8 @@
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
 
+(set! *warn-on-reflection* true)
+
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
 

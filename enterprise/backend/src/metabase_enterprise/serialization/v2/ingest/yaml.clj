@@ -13,9 +13,11 @@
    (java.io File)
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- build-settings [file]
   (let [settings (yaml/from-file file)]

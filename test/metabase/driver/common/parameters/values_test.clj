@@ -24,6 +24,8 @@
    (java.util UUID)
    (metabase.driver.common.parameters ReferencedCardQuery)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private test-uuid (str (UUID/randomUUID)))
 
 (deftest variable-value-test

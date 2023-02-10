@@ -71,6 +71,8 @@
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
+(set! *warn-on-reflection* true)
+
 (comment tu.log/keep-me
          test-runner.assert-exprs/keep-me)
 

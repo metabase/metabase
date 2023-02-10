@@ -27,6 +27,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:const ^Long serialization-protocol-version
   "Current serialization protocol version.
 

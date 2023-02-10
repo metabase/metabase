@@ -7,6 +7,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase.db.jdbc-protocols/keep-me)
 
 (defn- jdbc-spec [db-file]

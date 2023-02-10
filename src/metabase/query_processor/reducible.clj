@@ -7,6 +7,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn identity-qp
   "The initial value of `qp` passed to QP middleware."
   [query rff context]

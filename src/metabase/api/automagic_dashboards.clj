@@ -26,6 +26,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
     (deferred-tru "invalid show value")))

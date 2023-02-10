@@ -12,6 +12,8 @@
    [toucan.models :as models]
    [toucan2.connection :as t2.conn]))
 
+(set! *warn-on-reflection* true)
+
 (defn- timezone-display-name [^java.time.ZoneId zone-id]
   (when zone-id
     (.getDisplayName zone-id
