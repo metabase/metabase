@@ -20,6 +20,8 @@
   (:import
    (java.sql SQLException)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti load-data!
   "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
   implementation (see below); several other implementations like `load-data-all-at-once!` and

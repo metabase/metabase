@@ -5,6 +5,8 @@
             [metabase.test.data.interface :as tx]
             [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (tx/add-test-extensions! :druid)
 
 (defn- host []

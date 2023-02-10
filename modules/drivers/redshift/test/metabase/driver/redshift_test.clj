@@ -31,6 +31,8 @@
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
 

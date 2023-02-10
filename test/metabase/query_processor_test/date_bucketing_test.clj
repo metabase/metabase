@@ -38,6 +38,8 @@
    [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]))
 
+(set! *warn-on-reflection* true)
+
 (defn- ->long-if-number [x]
   (if (number? x)
     (long x)

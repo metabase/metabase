@@ -8,6 +8,8 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;;;; [[query->sql-map]] and [[sql->sql-map]] -- these parse an actual SQL map into a pseudo-HoneySQL form
 
 (defn pretty-sql

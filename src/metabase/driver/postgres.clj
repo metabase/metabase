@@ -37,6 +37,8 @@
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me

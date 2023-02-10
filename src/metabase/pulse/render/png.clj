@@ -26,6 +26,8 @@
    (org.fit.cssbox.layout Dimension)
    (org.w3c.dom Document)))
 
+(set! *warn-on-reflection* true)
+
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]
   (ImageIO/write image format-name output-stream))

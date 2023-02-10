@@ -17,6 +17,8 @@
    [potemkin :as p]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (declare notify-database-updated)
 
 (defn- notify-all-databases-updated

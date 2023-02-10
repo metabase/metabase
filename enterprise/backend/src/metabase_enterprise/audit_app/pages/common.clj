@@ -26,6 +26,8 @@
    [metabase.util.urls :as urls]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
 (defn- add-default-params [honeysql-query]

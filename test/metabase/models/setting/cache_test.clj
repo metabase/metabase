@@ -10,6 +10,8 @@
    [metabase.test.fixtures :as fixtures]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------

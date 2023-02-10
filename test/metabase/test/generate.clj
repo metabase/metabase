@@ -15,6 +15,8 @@
    [talltale.core :as tt]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
                 Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]

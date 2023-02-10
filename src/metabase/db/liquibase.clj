@@ -18,6 +18,8 @@
    (liquibase.exception LockException)
    (liquibase.resource ClassLoaderResourceAccessor)))
 
+(set! *warn-on-reflection* true)
+
 ;; register our custom MySQL SQL generators
 (liquibase.mysql/register-mysql-generators!)
 

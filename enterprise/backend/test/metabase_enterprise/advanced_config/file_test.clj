@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [yaml.core :as yaml]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1.0, :max 1.999}]
                         (premium-features-test/with-premium-features #{:advanced-config}

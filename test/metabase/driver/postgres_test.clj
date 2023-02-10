@@ -37,6 +37,8 @@
   (:import
    (java.sql DatabaseMetaData)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.

@@ -12,6 +12,8 @@
   (:import
    (metabase.util.honey_sql_1 Identifier)))
 
+(set! *warn-on-reflection* true)
+
 (s/defn quote-name
   "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
   on the resulting `Identifier`. Uses the `sql.qp/quote-style` of the current driver. You can implement `->honeysql`

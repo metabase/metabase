@@ -26,9 +26,11 @@
   (:import
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (extend-type Temporal y.writer/YAMLWriter
-  (encode [data]
-    (u.date/format data)))
+             (encode [data]
+               (u.date/format data)))
 
 (defn- spit-yaml
   [filename obj]

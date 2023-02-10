@@ -14,6 +14,8 @@
    [metabase.test.data.env.impl :as tx.env.impl]
    [metabase.test.initialize :as initialize]))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private env-test-drivers
   (delay
     (let [drivers (tx.env.impl/get-test-drivers)]

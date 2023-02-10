@@ -26,6 +26,8 @@
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
 
+(set! *warn-on-reflection* true)
+
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 

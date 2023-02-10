@@ -8,6 +8,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private history-rows-to-keep
   "Maximum number of TaskHistory rows."
   100000)

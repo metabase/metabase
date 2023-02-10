@@ -17,6 +17,8 @@
    (honeysql.format ToSql)
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (comment honeysql.types/keep-me)
 
 (defn- english-upper-case

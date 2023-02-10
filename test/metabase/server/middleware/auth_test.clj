@@ -14,6 +14,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
