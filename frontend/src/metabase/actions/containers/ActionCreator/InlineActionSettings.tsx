@@ -33,7 +33,7 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
-  action: WritebackAction;
+  action?: WritebackAction;
   formSettings: ActionFormSettings;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClose: () => void;
@@ -85,21 +85,18 @@ const InlineActionSettings = ({
   onClose,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const publicUuid = action.public_uuid;
-  const isPublic = publicUuid != null;
-
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      onCreatePublicLink({ id: action.id });
+      action && onCreatePublicLink({ id: action.id });
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    onDeletePublicLink({ id: action.id });
+    action && onDeletePublicLink({ id: action.id });
   };
 
   const handleSuccessMessageChange = (
@@ -115,18 +112,20 @@ const InlineActionSettings = ({
     <ActionSettingsContainer>
       <SidebarContent title={t`Action settings`} onClose={onClose}>
         <ActionSettingsContent>
-          <FormField
-            title={t`Make public`}
-            description={t`Creates a publicly shareable link to this action.`}
-            orientation="horizontal"
-            htmlFor={`${id}-public`}
-          >
-            <Toggle
-              id={`${id}-public`}
-              value={isPublic}
-              onChange={handleTogglePublic}
-            />
-          </FormField>
+          {action && (
+            <FormField
+              title={t`Make public`}
+              description={t`Creates a publicly shareable link to this action.`}
+              orientation="horizontal"
+              htmlFor={`${id}-public`}
+            >
+              <Toggle
+                id={`${id}-public`}
+                value={action.public_uuid != null}
+                onChange={handleTogglePublic}
+              />
+            </FormField>
+          )}
           {isModalOpen && (
             <Modal>
               <ConfirmContent
@@ -137,10 +136,10 @@ const InlineActionSettings = ({
               />
             </Modal>
           )}
-          {isPublic && (
+          {action?.public_uuid && (
             <CopyWidgetContainer>
               <CopyWidget
-                value={Urls.publicAction(siteUrl, publicUuid)}
+                value={Urls.publicAction(siteUrl, action.public_uuid)}
                 aria-label={t`Public action link URL`}
               />
             </CopyWidgetContainer>

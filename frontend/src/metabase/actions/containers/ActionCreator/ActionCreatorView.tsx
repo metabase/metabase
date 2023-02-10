@@ -134,7 +134,7 @@ export default function ActionCreatorView({
             />
           ) : activeSideView === "dataReference" ? (
             <DataReferenceInline onClose={closeSideView} />
-          ) : activeSideView === "actionSettings" && action ? (
+          ) : activeSideView === "actionSettings" ? (
             <InlineActionSettings
               action={action}
               formSettings={formSettings}
