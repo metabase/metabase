@@ -215,7 +215,7 @@
             (testing "Template needs method and url"
               (is (partial= {:errors
                              {:template
-                              "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length <= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"},
+                              "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"},
                              :specific-errors {:template {:method ["missing required key"],
                                                           :url ["missing required key"]}}}
                             (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))

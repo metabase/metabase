@@ -50,9 +50,9 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 *  **`card-id`** integer greater than or equal to 1
 
-*  **`param-key`** string with length <= 1
+*  **`param-key`** string with length >= 1
 
-*  **`query`** string with length <= 1
+*  **`query`** string with length >= 1
 
 ## `GET /api/card/:card-id/params/:param-key/values`
 
@@ -65,7 +65,7 @@ Fetch possible values of the parameter whose ID is `:param-key`.
 
 *  **`card-id`** integer greater than or equal to 1
 
-*  **`param-key`** string with length <= 1
+*  **`param-key`** string with length >= 1
 
 ## `GET /api/card/:id`
 

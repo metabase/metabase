@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { adhocQuestionHash, popover, restore } from "__support__/e2e/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -128,6 +128,45 @@ describe("scenarios > embedding > full app", () => {
       cy.icon("notebook").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
+    });
+
+    describe("question creation", () => {
+      beforeEach(() => {
+        cy.signOut();
+        cy.signInAsNormalUser();
+      });
+
+      it("should allow to create a new question from the navbar (metabase#21511)", () => {
+        visitUrl({
+          url: "/collection/root",
+          qs: { top_nav: true, new_button: true, side_nav: false },
+        });
+
+        cy.findByText("New").click();
+        popover().findByText("Question").click();
+        popover().findByText("Sample Database").click();
+        popover().findByText("Orders").click();
+      });
+
+      it("should show the database for a new native question (metabase#21511)", () => {
+        const newQuestionQuery = {
+          dataset_query: {
+            database: null,
+            native: {
+              query: "",
+            },
+            type: "native",
+          },
+          visualization_settings: {},
+        };
+
+        visitUrl({
+          url: `/question#${adhocQuestionHash(newQuestionQuery)}`,
+          qs: { side_nav: false },
+        });
+
+        cy.findByText("Sample Database").should("be.visible");
+      });
     });
 
     describe("desktop logo", () => {

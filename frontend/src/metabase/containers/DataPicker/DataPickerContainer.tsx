@@ -1,11 +1,10 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
+import { useMount } from "react-use";
 
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
-
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
@@ -46,10 +45,10 @@ type DataPickerProps = DataPickerOwnProps &
   DatabaseListLoaderProps &
   SearchListLoaderProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases }: DatabaseListLoaderProps) {
   return {
     hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-    hasDataAccess: getHasDataAccess(state),
+    hasDataAccess: getHasDataAccess(databases),
   };
 }
 
@@ -122,7 +121,7 @@ function DataPicker({
     [databases, onChange],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     if (dataTypes.length === 1 && value.type !== dataTypes[0].id) {
       handleDataTypeChange(dataTypes[0].id);
     }
