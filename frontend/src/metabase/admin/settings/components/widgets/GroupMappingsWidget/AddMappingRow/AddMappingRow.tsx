@@ -23,24 +23,23 @@ function AddMappingRow({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onAdd && onAdd(value);
+    onAdd(value);
     setValue("");
   };
 
-  const handleCancelClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    onCancel && onCancel();
+  const handleCancelClick = () => {
+    onCancel();
     setValue("");
   };
 
-  const isValid = value && mappings[value] === undefined;
+  const isMappingNameUnique = value && mappings[value] === undefined;
 
   return (
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
         <form
           className="m2 p1 bordered border-brand justify-between rounded relative flex align-center"
-          onSubmit={isValid ? handleSubmit : undefined}
+          onSubmit={isMappingNameUnique ? handleSubmit : undefined}
         >
           <input
             className="input--borderless h3 ml1 flex-full"
@@ -55,8 +54,8 @@ function AddMappingRow({
             <Button
               className="ml2"
               type="submit"
-              primary={!!isValid}
-              disabled={!isValid}
+              primary={!!isMappingNameUnique}
+              disabled={!isMappingNameUnique}
             >{t`Add`}</Button>
           </div>
         </form>
