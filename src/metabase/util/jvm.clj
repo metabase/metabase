@@ -14,6 +14,8 @@
    (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue Random)
    (java.util.concurrent TimeoutException)))
 
+(set! *warn-on-reflection* true)
+
 (defn generate-nano-id
   "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
