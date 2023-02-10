@@ -157,15 +157,15 @@
   right now!
 
     ;; use Honey SQL
-    (t2/query (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+    (t2/query (t2/select-one Database :engine :postgres, :name \"test-data\")
               {:select [:*], :from [:venues]})
 
     ;; use it with `select`
-    (t2/select :conn (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+    (t2/select :conn (t2/select-one Database :engine :postgres, :name \"test-data\")
                \"venues\")
 
     ;; use it with raw SQL
-    (t2/query (t2/select-one 'Database :engine :postgres, :name \"test-data\")
+    (t2/query (t2/select-one Database :engine :postgres, :name \"test-data\")
               \"SELECT * FROM venues;\")"
   [database f]
   (t2.connection/do-with-connection (sql-jdbc.conn/db->pooled-connection-spec database) f))
