@@ -23,6 +23,8 @@
    (org.apache.batik.anim.dom SVGOMDocument)
    (org.w3c.dom Element Node)))
 
+(set! *warn-on-reflection* true)
+
 (def test-card
   {:visualization_settings
    {:graph.metrics ["NumPurchased"]

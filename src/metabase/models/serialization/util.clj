@@ -17,6 +17,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 ;; -------------------------------------------- General Foreign Keys -------------------------------------------------
 (defn export-fk
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID

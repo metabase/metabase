@@ -8,6 +8,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-file-prefix-if-needed [h2-filename]
   (letfn [(prepend-protocol [s]
             (str "file:" (.getAbsolutePath (io/file s))))

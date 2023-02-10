@@ -27,6 +27,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
 (comment h2/keep-me)

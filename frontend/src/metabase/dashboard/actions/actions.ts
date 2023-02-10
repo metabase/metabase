@@ -7,7 +7,7 @@ import {
 
 import { addUndo } from "metabase/redux/undo";
 
-import { ActionsApi } from "metabase/services";
+import { ActionsApi, PublicApi } from "metabase/services";
 
 import type {
   ActionDashboardCard,
@@ -21,6 +21,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
 
@@ -91,7 +92,10 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  const executeAction = ActionsApi.execute;
+  const executeAction =
+    getDashboardType(dashboard.id) === "public"
+      ? PublicApi.executeDashcardAction
+      : ActionsApi.execute;
 
   try {
     const result = await executeAction({

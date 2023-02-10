@@ -24,6 +24,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   [{:keys [persisted-info-id card-id db-ids]} limit offset]

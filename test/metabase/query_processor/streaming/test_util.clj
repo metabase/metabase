@@ -11,6 +11,8 @@
   (:import
    (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}
   (fn [export-format _ _] (keyword export-format)))

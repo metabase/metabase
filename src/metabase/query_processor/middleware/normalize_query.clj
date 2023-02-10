@@ -6,6 +6,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn normalize
   "Middleware that converts a query into a normalized, canonical form, including things like converting all identifiers
   into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to

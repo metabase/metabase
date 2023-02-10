@@ -36,6 +36,8 @@
    (java.time OffsetDateTime ZonedDateTime)
    (metabase.util.honey_sql_1 Identifier)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)

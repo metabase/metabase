@@ -7,6 +7,8 @@
    [metabase.server.handler :as handler]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- test-handler
   ([request]
    (try

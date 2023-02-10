@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]))
 
+(set! *warn-on-reflection* true)
+
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
   first)

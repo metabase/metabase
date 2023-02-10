@@ -21,6 +21,8 @@
    (metabase.async.streaming_response StreamingResponse)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
+(set! *warn-on-reflection* true)
+
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
 ;; looks like
 ;;

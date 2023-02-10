@@ -29,6 +29,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 (models/defmodel Card :report_card)
 
 ;;; You can read/write a Card if you can read/write its parent Collection

@@ -49,6 +49,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (su/with-api-error-message (s/constrained

@@ -13,6 +13,8 @@
    (com.fasterxml.jackson.databind ObjectMapper)
    (net.thisptr.jackson.jq BuiltinFunctionLoader JsonQuery Output Scope Versions)))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private root-scope
   (delay
     (let [scope (Scope/newEmptyScope)]

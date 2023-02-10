@@ -6,6 +6,8 @@
    [potemkin :as p]
    [pretty.core :as pretty]))
 
+(set! *warn-on-reflection* true)
+
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
   (pretty [_]

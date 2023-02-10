@@ -38,6 +38,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- merge-count-maps
   "Merge sequence of maps `ms` by summing counts inside them. Non-integer values are allowed; truthy values are
   considered to add a count of `1`, while non-truthy values do not affect the result count."

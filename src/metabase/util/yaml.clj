@@ -10,6 +10,8 @@
   (:import
    (java.nio.file Files Path)))
 
+(set! *warn-on-reflection* true)
+
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."
   ([f] (load identity f))

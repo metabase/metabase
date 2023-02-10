@@ -13,6 +13,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
 (def ^:private FieldID->Filters {su/IntGreaterThanZero [mbql.s/Filter]})
