@@ -405,6 +405,7 @@
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
+  metabase.domain-entities.malli/defn                                                  schema.core/defn
   metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.mongo.util/with-mongo-connection                                     clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
