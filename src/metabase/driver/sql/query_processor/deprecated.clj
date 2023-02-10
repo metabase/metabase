@@ -16,6 +16,8 @@
    [potemkin :as p]
    [pretty.core :as pretty]))
 
+(set! *warn-on-reflection* true)
+
 ;;; This is unused at this moment in time but we can leave it around in case we want to use it again in the
 ;;; future (likely). See the code at `v0.45.0` for example where we were using this a lot
 
