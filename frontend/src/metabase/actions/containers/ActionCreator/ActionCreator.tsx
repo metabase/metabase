@@ -18,19 +18,17 @@ import { createQuestionFromAction } from "metabase/actions/selectors";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
-  WritebackActionId,
+  WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { SavedCard } from "metabase-types/types/Card";
 
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getSetting } from "metabase/selectors/settings";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
+import { getDefaultFormSettings } from "../../utils";
 import { newQuestion, convertQuestionToAction } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
 import CreateActionForm, {
@@ -41,11 +39,9 @@ const mapStateToProps = (
   state: State,
   { action }: { action: WritebackQueryAction },
 ) => ({
-  metadata: getMetadata(state),
+  action,
   question: action ? createQuestionFromAction(state, action) : undefined,
-  actionId: action ? action.id : undefined,
-  isAdmin: getUserIsAdmin(state),
-  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -63,11 +59,9 @@ interface OwnProps {
 }
 
 interface StateProps {
-  actionId?: WritebackActionId;
+  action?: WritebackAction;
   question?: Question;
   metadata: Metadata;
-  isAdmin: boolean;
-  isPublicSharingEnabled: boolean;
 }
 
 interface DispatchProps {
@@ -79,31 +73,28 @@ interface DispatchProps {
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
 
 function ActionCreatorComponent({
-  metadata,
+  action,
   question: passedQuestion,
-  actionId,
+  metadata,
   modelId,
   databaseId,
   onCreateAction,
   onUpdateAction,
   onClose,
-  isAdmin,
-  isPublicSharingEnabled,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
-  const [formSettings, setFormSettings] = useState<ActionFormSettings>({
-    type: "button",
-    fields: {},
-  });
+  const [formSettings, setFormSettings] = useState<ActionFormSettings>(
+    getDefaultFormSettings(action?.visualization_settings),
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
-  }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChangeQuestionQuery = useCallback(
     (newQuery: NativeQuery) => {
@@ -129,7 +120,7 @@ function ActionCreatorComponent({
 
   const query = question.query() as NativeQuery;
 
-  const isNew = !actionId && !(question.card() as SavedCard).id;
+  const isNew = !action && !question.isSaved();
 
   const handleClickSave = () => {
     if (isNew) {
@@ -170,10 +161,10 @@ function ActionCreatorComponent({
     <>
       <ActionCreatorView
         isNew={isNew}
-        hasSharingPermission={isAdmin && isPublicSharingEnabled}
         canSave={query.isEmpty()}
-        actionId={actionId}
+        action={action}
         question={question}
+        formSettings={formSettings}
         onChangeQuestionQuery={handleChangeQuestionQuery}
         onChangeName={newName =>
           setQuestion(question => question.setDisplayName(newName))
