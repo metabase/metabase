@@ -74,7 +74,7 @@ Timestamps, in particular, are the root of all evil, so please be patient with y
 ## Related topics
 
 - [Troubleshooting linked filters](./linked-filters.md)
-- [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters)
+- [Troubleshooting SQL variables and field filters](./sql.md#sql-variables-and-field-filters)
 - [Troubleshooting dates and times](./timezones.md)
 - [Creating dropdown filters](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
 - [Creating SQL filters](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type)
