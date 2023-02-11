@@ -14,6 +14,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host
    :email-smtp-username :user

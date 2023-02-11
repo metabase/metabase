@@ -5,6 +5,8 @@
    (io.github.resilience4j.retry Retry RetryConfig)
    (java.util.function Predicate)))
 
+(set! *warn-on-reflection* true)
+
 (defn- make-predicate [f]
   (reify Predicate (test [_ x] (f x))))
 

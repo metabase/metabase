@@ -37,6 +37,7 @@ import {
   canListParameterValues,
   canSearchFieldValues,
   canSearchParameterValues,
+  getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -549,6 +550,7 @@ export function searchField(field, disablePKRemappingForSearch) {
 }
 
 function getSearchableTokenFieldPlaceholder(
+  parameter,
   fields,
   firstField,
   disablePKRemappingForSearch,
@@ -561,7 +563,10 @@ function getSearchableTokenFieldPlaceholder(
     ),
   );
 
-  if (names.size > 1) {
+  if (
+    names.size !== 1 ||
+    (parameter != null && getSourceType(parameter) != null)
+  ) {
     placeholder = t`Search`;
   } else {
     const [name] = names;
@@ -647,6 +652,7 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return getSearchableTokenFieldPlaceholder(
+      parameter,
       fields,
       firstField,
       disablePKRemappingForSearch,

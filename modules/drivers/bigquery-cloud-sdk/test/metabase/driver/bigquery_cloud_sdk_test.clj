@@ -21,6 +21,8 @@
   (:import
    (com.google.cloud.bigquery BigQuery)))
 
+(set! *warn-on-reflection* true)
+
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [db-details (:details (mt/db))

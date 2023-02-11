@@ -13,6 +13,8 @@
    [metabase.util.log :as log]
    [ring.util.codec :as codec]))
 
+(set! *warn-on-reflection* true)
+
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of `secret-key` using 100,000 iterations of PBKDF2+SHA512."
   ^bytes [^String secret-key]

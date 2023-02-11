@@ -6,9 +6,11 @@
    [metabase.db :as mdb]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
    [toucan.models :as models]))
+
+(set! *warn-on-reflection* true)
 
 (models/defmodel Query :query)
 

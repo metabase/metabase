@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest can-connect-with-details?-test

@@ -26,8 +26,12 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (query driver database (merge {:from [(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]}
-                                 honeysql-form))))
+   (let [table-identifier (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                            (->> (hx/identifier :table (:schema table) (:name table))
+                                 (sql.qp/->honeysql driver)
+                                 sql.qp/maybe-wrap-unaliased-expr))]
+     (query driver database (merge {:from [table-identifier]}
+                                   honeysql-form)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

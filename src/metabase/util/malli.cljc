@@ -11,7 +11,11 @@
    [malli.instrument :as minst]
    [malli.util :as mut]
    [metabase.util :as u]
-   [ring.util.codec :as codec]))
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   #?@(:clj [[ring.util.codec :as codec]])))
+
+(core/defn- encode-uri [fragment]
+  (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
 
 (core/defn- ->malli-io-link
   ([schema]
@@ -19,12 +23,12 @@
                              ;; try to make a sample value
                              (mg/generate schema {:seed 1 :size 1})
                              ;; not all schemas can generate values
-                             (catch Exception _ ::none))))
+                             (catch #?(:clj Exception :cljs js/Error) _ ::none))))
   ([schema value]
-   (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
+   (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
          url-value (if (= ::none value)
                      ""
-                     (codec/url-encode (u/pprint-to-str value)))
+                     (encode-uri (u/pprint-to-str value)))
          url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
      (cond
        ;; functions are not going to work
@@ -35,13 +39,14 @@
 
 (core/defn- humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
-  [{:keys [value message]}] (str message ", received: " (pr-str value)))
+  [{:keys [value message]}]
+  (str message ", " (deferred-tru "received") ": "(pr-str value)))
 
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
   (let [{:keys [input args output value]} data
-        humanized (cond input (me/humanize (mc/explain input args) {:wrap humanize-include-value})
+        humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
                         output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))]
     (throw (ex-info
             (pr-str humanized)
@@ -100,16 +105,25 @@ explain-fn-fail!
   [:and any?
    [:fn {:description "a malli schema"} mc/schema]])
 
-(defn with-api-error-message :- Schema
-  "Update a malli schema to have a :description (picked up by api docs),
-  and a :error/message (used by defendpoint). They don't have to be the same, but usually are."
-  ([mschema :- Schema message :- string?]
-   (with-api-error-message mschema message message))
-  ([mschema :- Schema
-    docs-message :- string?
-    error-message :- string?]
-   (mut/update-properties mschema assoc
-                          ;; override generic description in api docs
-                          :description docs-message
-                          ;; override generic description in defendpoint api errors
-                          :error/message error-message)))
+(def ^:private localized-string-schema
+  [:fn {:error/message "must be a localized string"}
+   i18n/localized-string?])
+
+(defn with-api-error-message
+  "Update a malli schema to have a :description (used by umd/describe, which is used by api docs),
+  and a :error/fn (used by me/humanize, which is used by defendpoint).
+  They don't have to be the same, but usually are.
+
+  (with-api-error-message
+    [:string {:min 1}]
+    (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
+  ([mschema :- Schema error-message :- localized-string-schema]
+   (with-api-error-message mschema error-message error-message))
+  ([mschema                :- :any
+    description-message    :- localized-string-schema
+    specific-error-message :- localized-string-schema]
+   (mut/update-properties (mc/schema mschema) assoc
+                          ;; override generic description in api docs and :errors key in API's response
+                          :description description-message
+                          ;; override generic description in :specific-errors key in API's response
+                          :error/fn    (fn [_ _] specific-error-message))))

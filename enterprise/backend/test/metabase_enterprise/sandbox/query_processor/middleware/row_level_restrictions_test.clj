@@ -324,6 +324,12 @@
         (is (= [[10]]
                (run-venues-count-query)))))
 
+    (testing "Admins always bypass sandboxes, even if they are in a sandboxed group"
+      (met/with-gtaps-for-user :crowberto {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                           :attributes {"cat" 50}}
+        (is (= [[100]]
+               (run-venues-count-query)))))
+
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]

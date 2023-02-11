@@ -9,6 +9,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
@@ -31,6 +32,8 @@
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
@@ -504,7 +507,9 @@
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                 {:sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                  :params params
+                                                  :type   qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]

@@ -18,6 +18,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (defn remove-ids-and-timestamps [m]
   (let [f (fn [v]
             (cond

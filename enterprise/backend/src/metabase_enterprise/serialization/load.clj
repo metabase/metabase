@@ -42,9 +42,11 @@
    (java.time.temporal Temporal)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- slurp-dir
   [path]

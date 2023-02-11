@@ -50,6 +50,8 @@
    [toucan.models :as models]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (humane-are/install!)
 
 ;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
@@ -256,6 +258,7 @@
   dataset-definition
   db-qualified-table-name
   db-test-env-var
+  db-test-env-var!
   db-test-env-var-or-throw
   dbdef->connection-details
   defdataset

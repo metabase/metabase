@@ -11,6 +11,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
@@ -26,9 +27,7 @@ import {
 } from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
-import { usePrevious } from "metabase/hooks/use-previous";
+
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
@@ -305,16 +304,16 @@ function QueryBuilder(props) {
     ],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     initializeQB(location, params);
   }, []);
 
-  useOnMount(() => {
+  useMount(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  useOnUnmount(() => {
+  useUnmount(() => {
     cancelQuery();
     closeModal();
     clearTimeout(timeout.current);

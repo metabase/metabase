@@ -19,12 +19,14 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.urls :as urls]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
@@ -285,8 +287,8 @@
 
 (defn- format-separator
   [_separator [x y]]
-  (let [[x-sql & x-args] (sql/format-expr x)
-        [y-sql & y-args] (sql/format-expr y)]
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
     (into [(format "%s SEPARATOR %s" x-sql y-sql)]
           cat
           [x-args
