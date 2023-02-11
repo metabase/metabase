@@ -13,11 +13,15 @@ describe("UI elements that make no sense for users without data permissions (met
 
     visitQuestion("1");
 
-    cy.findByText("Settings");
+    cy.findByTestId("viz-settings-button");
     cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
+    cy.findByTestId("Line-button").realHover();
+    cy.findByTestId("Line-button").within(() => {
+      cy.icon("gear").click();
+    });
 
     cy.findByTextEnsureVisible("Line options");
     cy.findByText("Save")
