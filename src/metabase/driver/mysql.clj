@@ -27,7 +27,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log])
   (:import
