@@ -68,10 +68,8 @@ const ChartTypeSidebar = ({
     return _.partition(
       _.union(
         DEFAULT_ORDER,
-        Array.from(visualizations)
-          .filter(([_type, visualization]) => !visualization.hidden)
-          .map(([vizType]) => vizType),
-      ),
+        Array.from(visualizations).map(([vizType]) => vizType),
+      ).filter(vizType => !visualizations.get(vizType).hidden),
       vizType => {
         const visualization = visualizations.get(vizType);
         return (
@@ -93,7 +91,6 @@ const ChartTypeSidebar = ({
         shouldUpdateUrl: question.query().isEditable(),
       });
       setUIControls({ isShowingRawTable: false });
-      console.log("clicky clicky");
     },
     [question, updateQuestion, setUIControls],
   );

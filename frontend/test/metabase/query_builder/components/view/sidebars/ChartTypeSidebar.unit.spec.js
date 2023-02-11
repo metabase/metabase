@@ -33,23 +33,37 @@ describe("ChartSettingsSidebar", () => {
   });
 
   it("should call correct functions when display type is selected", () => {
-    const onOpenChartSettings = jest.fn();
     const updateQuestion = jest.fn();
     const setUIControls = jest.fn();
 
     setup({
-      onOpenChartSettings,
       updateQuestion,
       setUIControls,
     });
 
-    fireEvent.click(
-      within(screen.getByTestId("Progress-button")).getByRole("img"),
-    );
+    fireEvent.click(screen.getByTestId("Progress-button"));
 
-    expect(onOpenChartSettings).toHaveBeenCalledWith({ section: "Data" });
     expect(setUIControls).toHaveBeenCalledWith({ isShowingRawTable: false });
     expect(updateQuestion).toHaveBeenCalled();
+  });
+
+  it("should display a gear icon when hovering selected display type", () => {
+    const onOpenChartSettings = jest.fn();
+    setup({
+      onOpenChartSettings,
+    });
+
+    expect(
+      within(screen.getByTestId("Gauge-button")).getByRole("img", {
+        name: /gear/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("img", { name: /gear/i }));
+    expect(onOpenChartSettings).toHaveBeenCalledWith({
+      initialChartSettings: { section: "Data" },
+      showSidebarTitle: true,
+    });
   });
 
   it("should group sensible and nonsensible options separately and in the correct order", () => {
@@ -62,10 +76,7 @@ describe("ChartSettingsSidebar", () => {
       screen.getByTestId("display-options-not-sensible"),
     ).getAllByTestId(/container/i);
 
-    expect(sensible).toHaveLength(5);
-    expect(nonSensible).toHaveLength(12);
-
-    const sensibleOrder = ["Table", "Number", "Gauge", "Progress", "Detail"];
+    const sensibleOrder = ["Table", "Number", "Gauge", "Progress"];
     const nonSensibleOrder = [
       "Bar",
       "Line",
@@ -80,6 +91,9 @@ describe("ChartSettingsSidebar", () => {
       "Scatter",
       "Waterfall",
     ];
+
+    expect(sensible).toHaveLength(sensibleOrder.length);
+    expect(nonSensible).toHaveLength(nonSensibleOrder.length);
 
     sensible.forEach((node, index) => {
       expect(node).toHaveTextContent(sensibleOrder[index]);
