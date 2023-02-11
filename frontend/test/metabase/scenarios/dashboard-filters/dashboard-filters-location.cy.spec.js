@@ -9,7 +9,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
-import { DASHBOARD_LOCATION_FILTERS } from "./dashboard-filters-location";
+import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {

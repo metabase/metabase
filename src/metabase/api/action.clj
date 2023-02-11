@@ -9,7 +9,7 @@
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.malli :as mu]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]])
@@ -23,12 +23,12 @@
    string?
    (mu/with-api-error-message
      [:fn #(http-action/apply-json-query {} %)]
-     "must be a valid json-query, something like '.item.title'")])
+     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
     [:enum "http" "query" "implicit"]
-    "Unsupported action type"))
+    (deferred-tru "Unsupported action type")))
 
 (def ^:private implicit-action-kind
   (mu/with-api-error-message
@@ -36,7 +36,7 @@
           (for [ns ["row" "bulk"]
                 action ["create" "update" "delete"]]
             (str ns "/" action)))
-    "Unsupported implicit action kind"))
+    (deferred-tru "Unsupported implicit action kind")))
 
 (def ^:private http-action-template
   [:map {:closed true}

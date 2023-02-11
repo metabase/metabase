@@ -12,11 +12,11 @@ import { push } from "react-router-redux";
 import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
+import { usePrevious } from "react-use";
 import Icon from "metabase/components/Icon";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";

@@ -1,21 +1,26 @@
-import React from "react";
+import React, { ChangeEvent } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  WritebackAction,
+  WritebackActionId,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
+import FormField from "metabase/core/components/FormField";
+import TextArea from "metabase/core/components/TextArea";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
-import Icon from "metabase/components/Icon";
 import Actions from "metabase/entities/actions/actions";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
@@ -26,30 +31,27 @@ import {
   ActionSettingsContainer,
   ActionSettingsContent,
   CopyWidgetContainer,
-  ToggleContainer,
-  ToggleLabel,
 } from "./InlineActionSettings.styled";
 
-type PublicWritebackAction = WritebackAction & {
-  public_uuid: string;
-};
-
 interface OwnProps {
+  action?: WritebackAction;
+  formSettings: ActionFormSettings;
+  onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClose: () => void;
-  actionId: WritebackActionId;
-}
-
-interface EntityLoaderProps {
-  action: WritebackAction;
 }
 
 interface StateProps {
   siteUrl: string;
-  createPublicLink: ({ id }: { id: WritebackActionId }) => void;
-  deletePublicLink: ({ id }: { id: WritebackActionId }) => void;
+  isAdmin: boolean;
+  isPublicSharingEnabled: boolean;
 }
 
-type ActionSettingsInlineProps = OwnProps & EntityLoaderProps & StateProps;
+interface DispatchProps {
+  onCreatePublicLink: ({ id }: { id: WritebackActionId }) => void;
+  onDeletePublicLink: ({ id }: { id: WritebackActionId }) => void;
+}
+
+type ActionSettingsInlineProps = OwnProps & StateProps & DispatchProps;
 
 export const ActionSettingsTriggerButton = ({
   onClick,
@@ -67,64 +69,72 @@ export const ActionSettingsTriggerButton = ({
   </Tooltip>
 );
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State): StateProps => ({
   siteUrl: getSetting(state, "site-url"),
+  isAdmin: getUserIsAdmin(state),
+  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
 });
 
-const mapDispatchToProps = {
-  createPublicLink: Actions.actions.createPublicLink,
-  deletePublicLink: Actions.actions.deletePublicLink,
+const mapDispatchToProps: DispatchProps = {
+  onCreatePublicLink: Actions.actions.createPublicLink,
+  onDeletePublicLink: Actions.actions.deletePublicLink,
 };
 
 const InlineActionSettings = ({
-  onClose,
-  actionId,
   action,
+  formSettings,
   siteUrl,
-  createPublicLink,
-  deletePublicLink,
+  isAdmin,
+  isPublicSharingEnabled,
+  onChangeFormSettings,
+  onCreatePublicLink,
+  onDeletePublicLink,
+  onClose,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const isPublic = isActionPublic(action);
-
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
+  const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      createPublicLink({ id: actionId });
+      action && onCreatePublicLink({ id: action.id });
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    deletePublicLink({ id: actionId });
+    action && onDeletePublicLink({ id: action.id });
+  };
+
+  const handleSuccessMessageChange = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    onChangeFormSettings({
+      ...formSettings,
+      successMessage: event.target.value,
+    });
   };
 
   return (
     <ActionSettingsContainer>
       <SidebarContent title={t`Action settings`} onClose={onClose}>
         <ActionSettingsContent>
-          <ToggleContainer>
-            <span>
-              <ToggleLabel htmlFor={id}>{t`Make public`}</ToggleLabel>
-              <Tooltip
-                tooltip={t`Creates a publicly shareable link to this action.`}
-              >
-                <Icon name="info" size={10} />
-              </Tooltip>
-            </span>
-            <Toggle id={id} value={isPublic} onChange={handleTogglePublic} />
-            <Modal isOpen={isModalOpen}>
-              <ConfirmContent
-                title={t`Disable this public link?`}
-                content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-                onAction={handleDisablePublicLink}
-                onClose={closeModal}
+          {action && hasSharingPermission && (
+            <FormField
+              title={t`Make public`}
+              description={t`Creates a publicly shareable link to this action.`}
+              orientation="horizontal"
+              htmlFor={`${id}-public`}
+            >
+              <Toggle
+                id={`${id}-public`}
+                value={action.public_uuid != null}
+                onChange={handleTogglePublic}
               />
-            </Modal>
-          </ToggleContainer>
-          {isPublic && (
+            </FormField>
+          )}
+          {action?.public_uuid && hasSharingPermission && (
             <CopyWidgetContainer>
               <CopyWidget
                 value={Urls.publicAction(siteUrl, action.public_uuid)}
@@ -132,21 +142,31 @@ const InlineActionSettings = ({
               />
             </CopyWidgetContainer>
           )}
+          {isModalOpen && (
+            <Modal>
+              <ConfirmContent
+                title={t`Disable this public link?`}
+                content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+                onAction={handleDisablePublicLink}
+                onClose={closeModal}
+              />
+            </Modal>
+          )}
+          <FormField title={t`Success message`} htmlFor={`${id}-message`}>
+            <TextArea
+              id={`${id}-message`}
+              value={formSettings.successMessage ?? ""}
+              fullWidth
+              onChange={handleSuccessMessageChange}
+            />
+          </FormField>
         </ActionSettingsContent>
       </SidebarContent>
     </ActionSettingsContainer>
   );
 };
 
-function isActionPublic(
-  action: WritebackAction,
-): action is PublicWritebackAction {
-  return Boolean(action.public_uuid);
-}
-
-export default _.compose(
-  Actions.load({
-    id: (_: State, props: OwnProps) => props.actionId,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(InlineActionSettings) as (props: OwnProps) => JSX.Element;
+export default connect<StateProps, DispatchProps, OwnProps, State>(
+  mapStateToProps,
+  mapDispatchToProps,
+)(InlineActionSettings);

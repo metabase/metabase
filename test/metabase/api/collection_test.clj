@@ -418,14 +418,17 @@
          item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
-  (merge {:id              true
-          :description     nil
-          :can_write       (str/ends-with? collection-name "Personal Collection")
-          :model           "collection"
-          :authority_level nil
-          :entity_id       true
-          :name            collection-name}
-         extra-keypairs))
+  (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
+    (merge (cond->
+            {:id              true
+             :description     nil
+             :can_write       personal-collection
+             :model           "collection"
+             :authority_level nil
+             :entity_id       true
+             :name            collection-name}
+            personal-collection (assoc :personal_owner_id personal-collection))
+           extra-keypairs)))
 
 (deftest collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1019,13 +1022,14 @@
                          mt/boolean-ids-and-timestamps))))))))
 
     (testing "So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it..."
-      (is (= [{:name            "Rasta Toucan's Personal Collection"
-               :id              (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
-               :description     nil
-               :model           "collection"
-               :authority_level nil
-               :entity_id       (:entity_id (collection/user->personal-collection (mt/user->id :rasta)))
-               :can_write       true}]
+      (is (= [{:name              "Rasta Toucan's Personal Collection"
+               :id                (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
+               :description       nil
+               :model             "collection"
+               :authority_level   nil
+               :entity_id         (:entity_id (collection/user->personal-collection (mt/user->id :rasta)))
+               :personal_owner_id (:personal_owner_id (collection/user->personal-collection (mt/user->id :rasta)))
+               :can_write         true}]
              (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
@@ -1037,6 +1041,7 @@
                    :model           "collection"
                    :authority_level nil
                    :entity_id       (:entity_id collection)
+                   :personal_owner_id (:personal_owner_id collection)
                    :can_write       true}]
                  (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Taco Bell"))))))))
@@ -1049,6 +1054,7 @@
                  :model           "collection"
                  :authority_level nil
                  :entity_id       (:entity_id collection)
+                 :personal_owner_id (:personal_owner_id collection)
                  :can_write       true})]
              (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
@@ -1064,6 +1070,7 @@
                      :model           "collection"
                      :authority_level nil
                      :entity_id       (:entity_id collection)
+                     :personal_owner_id (:personal_owner_id collection)
                      :can_write       true}])
                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Personal Collection")))))))
