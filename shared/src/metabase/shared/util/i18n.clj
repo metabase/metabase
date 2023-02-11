@@ -1,12 +1,7 @@
 (ns metabase.shared.util.i18n
   (:require
-   [metabase.util.i18n]
+   [metabase.util.i18n :as i18n]
    [net.cgrand.macrovich :as macros]))
-
-;; Needs to be loaded in CLOJURE LAND so people using this stuff will have access to things like
-;; [[metabase.util.i18n/tru]]. For ClojureScript compilation there is nothing of value in this namespace, but it doesn't
-;; really hurt anything to load it.
-(comment metabase.util.i18n/keep-me)
 
 (defmacro tru
   "i18n a string with the user's locale. Format string will be translated to the user's locale when the form is eval'ed.
@@ -16,7 +11,7 @@
   [format-string & args]
   (macros/case
     :clj
-    `(metabase.util.i18n/tru ~format-string ~@args)
+    `(i18n/tru ~format-string ~@args)
 
     :cljs
     `(js-i18n ~format-string ~@args)))
@@ -34,7 +29,7 @@
     :clj
     (do
       (require 'metabase.util.i18n)
-      `(metabase.util.i18n/trs ~format-string ~@args))
+      `(i18n/trs ~format-string ~@args))
 
     :cljs
     `(js-i18n ~format-string ~@args)))
@@ -46,7 +41,7 @@
   [format-string format-string-pl n]
   (macros/case
     :clj
-    `(metabase.util.i18n/trsn ~format-string ~format-string-pl ~n)
+    `(i18n/trsn ~format-string ~format-string-pl ~n)
 
     :cljs
     `(js-i18n-n ~format-string ~format-string-pl ~n)))
