@@ -63,7 +63,7 @@
                          (.getCanonicalName (class params)))
                     {:type  qp.error-type/invalid-query
                      :query params})))
-  (case hx/*honey-sql-version*
+  (case (long hx/*honey-sql-version*)
     1
     #_{:clj-kondo/ignore [:deprecated-var]}
     (sql.qp.deprecated/->SQLSourceQuery sql params)
@@ -271,7 +271,7 @@
   {:added "0.46.0"}
   [n]
   {:pre [(number? n)]}
-  (case hx/*honey-sql-version*
+  (case (long hx/*honey-sql-version*)
     1 n
     2 [:inline n]))
 
@@ -300,9 +300,9 @@
      (zero? offset) day-of-week
      (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
      :else          (hx/call :case
-                             [:=
-                              (mod-fn (hx/+ day-of-week offset) (inline-num 7))
-                              (inline-num 0)]
+                             (hx/call :=
+                                      (mod-fn (hx/+ day-of-week offset) (inline-num 7))
+                                      (inline-num 0))
                              (inline-num 7)
                              :else
                              (mod-fn
@@ -585,14 +585,14 @@
   [driver [_ field p]]
   (let [field (->honeysql driver field)
         p     (->honeysql driver p)]
-    (case hx/*honey-sql-version*
+    (case (long hx/*honey-sql-version*)
       1 (hx/call :percentile-cont field p)
       2 [::h2x/percentile-cont field p])))
 
 (defmethod ->honeysql [:sql :distinct]
   [driver [_ field]]
   (let [field (->honeysql driver field)]
-    (case hx/*honey-sql-version*
+    (case (long hx/*honey-sql-version*)
       1 (hx/call :distinct-count field)
       2 [::h2x/distinct-count field])))
 
@@ -811,7 +811,7 @@
 ;;; TODO -- we should probably mark this as deprecated since in 0.49.0 we can presumably drop [[hx/*honey-sql-version*]]
 ;;; completely
 (defn maybe-wrap-unaliased-expr
-  "Wrap an expression for a `:select` clause or similar in as `[expr]` for Honey SQL 2. For Honey SQL 1, return it as-is.
+  "Wrap an expression for a `:select` clause or similar as `[expr]` for Honey SQL 2. For Honey SQL 1, return it as-is.
 
   Honey SQL 2 generally needs things to be wrapped even if you don't specify an alias, so vector expressions like
   `[::f :x]` are not interpreted as `[expr alias]`. Honey SQL 1 explicitly disallows this, however.
@@ -829,7 +829,7 @@
     {:select [[[:f x] :a]]} => SELECT f(x) AS a"
   {:added "0.46.0"}
   [expr]
-  (case hx/*honey-sql-version*
+  (case (long hx/*honey-sql-version*)
     1 expr
     2 [expr]))
 
@@ -867,7 +867,7 @@
   (let [honeysql-form (->honeysql driver clause)
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
-      [honeysql-form (case hx/*honey-sql-version*
+      [honeysql-form (case (long hx/*honey-sql-version*)
                        1 field-alias
                        2 [field-alias])]
       (maybe-wrap-unaliased-expr honeysql-form))))
@@ -912,7 +912,7 @@
                                       ag-alias (->honeysql driver (hx/identifier
                                                                    :field-alias
                                                                    (driver/escape-alias driver (annotate/aggregation-name ag))))]]
-                            (case hx/*honey-sql-version*
+                            (case (long hx/*honey-sql-version*)
                               1 [ag-expr ag-alias]
                               2 [ag-expr [ag-alias]])))]
     (reduce sql.helpers/select honeysql-form honeysql-ags)))
@@ -1070,7 +1070,7 @@
   [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
   [[(join-source driver join)
     (let [table-alias (->honeysql driver (hx/identifier :table-alias join-alias))]
-      (case hx/*honey-sql-version*
+      (case (long hx/*honey-sql-version*)
         1 table-alias
         2 [table-alias]))]
    (->honeysql driver condition)])
@@ -1206,7 +1206,7 @@
                            ;;
                            ;; Honey SQL 1 = [expr alias]
                            ;; Honey SQL 2 = [expr [alias]]
-                           (case hx/*honey-sql-version*
+                           (case (long hx/*honey-sql-version*)
                              1 (second from)
                              2 (first (second from)))
                            from)
@@ -1246,7 +1246,7 @@
                    (sql-source-query native params)
                    (apply-clauses driver {} source-query))
                  (let [table-alias (->honeysql driver (hx/identifier :table-alias source-query-alias))]
-                   (case hx/*honey-sql-version*
+                   (case (long hx/*honey-sql-version*)
                      1 table-alias
                      2 [table-alias]))]]))
 

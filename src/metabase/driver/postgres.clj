@@ -232,14 +232,31 @@
 (defn- ->timestamp [honeysql-form]
   (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
+(defn- format-interval
+  "Generate a Postgres 'INTERVAL' literal.
+
+    (sql/format-expr [::interval 2 :day])
+    =>
+    [\"INTERVAL '2 day'\"]"
+  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
+  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
+  [_fn [amount unit]]
+  {:pre [(int? amount)
+         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
+  [(format "INTERVAL '%s %s'" (num amount) (name unit))])
+
+(defn- interval [amount unit]
+  (h2x/with-database-type-info [::interval amount unit] "interval"))
+
+(sql/register-fn! ::interval #'format-interval)
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
   (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
-      (-> (h2x/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
-                             [:raw s]))
+      (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
@@ -406,20 +423,41 @@
   [expr psql-type]
   [::pg-conversion expr psql-type])
 
+(defn- format-text-array
+  "Create a Postgres text array literal from a sequence of elements. Used for the `::json-query` stuff
+  below.
+
+    (sql/format-expr [::text-array \"A\" 1 \"B\" 2])
+    =>
+    [\"array[?, 1, ?, 2]::text[]\" \"A\" \"B\"]"
+  [_fn [& elements]]
+  (let [elements (for [element elements]
+                   (if (number? element)
+                     [:inline element]
+                     (name element)))
+        sql-args (map #(sql/format-expr % {:nested true}) elements)
+        sqls     (map first sql-args)
+        args     (mapcat rest sql-args)]
+    (into [(format "array[%s]::text[]" (str/join ", " sqls))]
+          args)))
+
+(sql/register-fn! ::text-array #'format-text-array)
+
 (defn- format-json-query
   "e.g.
 
   ```clj
-  [::json-query [::h2x/identifier :field [\"boop\" \"bleh\"]] \"bigint\" \"{meh}\"]
+  [::json-query [::h2x/identifier :field [\"boop\" \"bleh\"]] \"bigint\" [\"meh\"]]
   =>
-  [\"(boop.bleh#>> ?::text[])::bigint\" \"{meh}\"]
+  [\"(boop.bleh#>> array[?]::text[])::bigint\" \"meh\"]
   ```"
   [_fn [parent-identifier field-type names]]
-  (let [[parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
-        [names-sql & names-args]         (sql/format-expr names {:nested true})]
-    (into [(format "(%s#>> %s::text[])::%s" parent-id-sql names-sql field-type)]
+  (let [names-text-array                 (into [::text-array] names)
+        [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
+        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
+    (into [(format "(%s#>> %s)::%s" parent-id-sql path-sql field-type)]
           cat
-          [parent-id-args names-args])))
+          [parent-id-args path-args])))
 
 (sql/register-fn! ::json-query #'format-json-query)
 
@@ -427,12 +465,10 @@
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
-  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type           (:database_type nfc-field)
-          nfc-path             (:nfc_path nfc-field)
-          parent-identifier    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
-      [::json-query parent-identifier field-type names])))
+  (let [field-type        (:database_type nfc-field)
+        nfc-path          (:nfc_path nfc-field)
+        parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
+    [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
