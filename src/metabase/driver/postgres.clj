@@ -245,10 +245,10 @@
          (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
   [(format "INTERVAL '%s %s'" (num amount) (name unit))])
 
+(sql/register-fn! ::interval #'format-interval)
+
 (defn- interval [amount unit]
   (h2x/with-database-type-info [::interval amount unit] "interval"))
-
-(sql/register-fn! ::interval #'format-interval)
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
