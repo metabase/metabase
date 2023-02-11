@@ -183,7 +183,7 @@
 
     ;; Run a query against a Data warehouse DB
     (t2/query (t2/select-one Database :name \"test-data\")
-              (mt/mbql-query venues) {:type :mbql})
+              (mt/mbql-query venues))
 
     ;; Run MBQL queries against the application database
     (t2/query (dev/with-app-db (mt/mbql-query core_user {:aggregation [[:min [:get-year $date_joined]]]})))
