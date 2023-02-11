@@ -329,7 +329,7 @@
 (defn make-date
   "Create and return a date based on  a year and a number of days value."
   [year-expr number-of-days]
-  (-> [:makedate year-expr number-of-days]
+  (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
       (h2x/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
@@ -345,8 +345,8 @@
 (defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (h2x/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :mysql [:dayofweek expr]))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
@@ -362,7 +362,7 @@
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (h2x/concat (date-format "%Y-%m" expr)
-                          (h2x/literal "-01"))))
+                           (h2x/literal "-01"))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.

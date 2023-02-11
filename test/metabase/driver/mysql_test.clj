@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -68,19 +69,56 @@
                      (mt/rows
                       (mt/run-mbql-query exciting-moments-in-history)))))))))))
 
+(deftest date-test
+  ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
+  ;; See [[metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests]] for something that tests
+  ;; that this actually returns correct results.
+  (testing :week-of-year-instance
+    (doseq [[start-of-week expected] {:sunday
+                                      [["CAST("
+                                        "  1 + CEIL("
+                                        "    ("
+                                        "      DAYOFYEAR(weeks.d) - (8 - DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)))"
+                                        "    ) / 7.0"
+                                        "  ) AS signed"
+                                        ")"]]
+
+                                      :tuesday
+                                      [["CAST("
+                                        "  1 + CEIL("
+                                        "    ("
+                                        "      DAYOFYEAR(weeks.d) - ("
+                                        "        8 - CASE"
+                                        "          WHEN ((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7) = 0 THEN 7"
+                                        "          ELSE (DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7"
+                                        "        END"
+                                        "      )"
+                                        "    ) / 7.0"
+                                        "  ) AS signed"
+                                        ")"]]}]
+      (mt/with-temporary-setting-values [start-of-week start-of-week]
+        (let [honey-sql (sql.qp/date :mysql
+                                     :week-of-year-instance
+                                     (h2x/with-database-type-info (h2x/identifier :field "weeks" "d") "date"))]
+          (testing (format "\nHoney SQL =\n%s" (u/pprint-to-str honey-sql))
+            (is (= expected
+                   (some-> (sql/format-expr honey-sql)
+                           vec
+                           (update 0 #(str/split-lines (mdb.query/format-sql % :mysql))))))))))))
+
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
 (tx/defdataset tiny-int-ones
   [["number-of-cans"
-     [{:field-name "thing",          :base-type :type/Text}
-      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
-     [["Six Pack"              6]
-      ["Toucan"                2]
-      ["Empty Vending Machine" 0]]]])
+    [{:field-name "thing",          :base-type :type/Text}
+     {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
+    [["Six Pack"              6]
+     ["Toucan"                2]
+     ["Empty Vending Machine" 0]]]])
 
 (defn- db->fields [db]
-  (let [table-ids (db/select-ids 'Table :db_id (u/the-id db))]
+  (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
