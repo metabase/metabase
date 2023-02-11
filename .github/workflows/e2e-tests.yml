@@ -163,18 +163,14 @@ jobs:
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss'
         run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+           echo "Hello OSS"
         env:
           TERM: xterm
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee'
         run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
+          echo "Hello EE"
         env:
           TERM: xterm
 

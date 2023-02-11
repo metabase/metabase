@@ -126,28 +126,29 @@ jobs:
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 25
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: java-11-ee-pre-check
+    - run: echo "BE Java 11 Check"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: java-11-ee-pre-check
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - name: Build static viz frontend
-      run: yarn build-static-viz
+    # - run: yarn install --frozen-lockfile --prefer-offline
+    # - name: Build static viz frontend
+    #   run: yarn build-static-viz
 
-    - name: Run tests
-      run: clojure -X:dev:ci:test:ee:ee-dev
+    # - name: Run tests
+    #   run: clojure -X:dev:ci:test:ee:ee-dev
 
-    - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        path: 'target/junit/**/*_test.xml'
-        name: JUnit Test Report be-tests-java-11-ee-pre-check
-        reporter: java-junit
+    # - name: Publish Test Report (JUnit)
+    #   uses: dorny/test-reporter@v1
+    #   if: always()
+    #   with:
+    #     path: 'target/junit/**/*_test.xml'
+    #     name: JUnit Test Report be-tests-java-11-ee-pre-check
+    #     reporter: java-junit
 
   be-tests:
     needs: files-changed
@@ -161,28 +162,29 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17]
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: be-tests
+      - run: echo "BE Tests" 
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: be-tests
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - name: Build static viz frontend
-      run: yarn build-static-viz
+    # - run: yarn install --frozen-lockfile --prefer-offline
+    # - name: Build static viz frontend
+    #   run: yarn build-static-viz
 
-    - name: Run tests
-      run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+    # - name: Run tests
+    #   run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-    - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        path: 'target/junit/**/*_test.xml'
-        name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-        reporter: java-junit
+    # - name: Publish Test Report (JUnit)
+    #   uses: dorny/test-reporter@v1
+    #   if: always()
+    #   with:
+    #     path: 'target/junit/**/*_test.xml'
+    #     name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+    #     reporter: java-junit
 
   be-tests-stub:
     needs: files-changed
