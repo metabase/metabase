@@ -49,6 +49,7 @@
     "iframe-resizer": "^4.3.2",
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",
+    "json-to-pretty-yaml": "^1.2.2",
     "jsrsasign": "^10.5.25",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
@@ -103,6 +104,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.15",
     "underscore": "~1.13.3",
+    "webpack-stats-plugin": "^1.1.1",
     "yarn.lock": "^0.0.1-security",
     "yup": "^0.32.11",
     "z-index": "0.0.1"

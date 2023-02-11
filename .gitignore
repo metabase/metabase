@@ -76,6 +76,8 @@ dev/src/dev/nocommit/
 /frontend/src/cljs
 .shadow-cljs
 
+.github/static-viz-file-paths.yaml
+
 # lsp: ignore all but the config file
 .lsp/*
 !.lsp/config.edn

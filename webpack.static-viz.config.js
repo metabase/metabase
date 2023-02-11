@@ -1,3 +1,6 @@
+const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const YAML = require("json-to-pretty-yaml");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
@@ -53,5 +56,29 @@ module.exports = env => {
     optimization: {
       minimize: !shouldDisableMinimization,
     },
+    plugins: [
+      new StatsWriterPlugin({
+        stats: {
+          modules: true,
+          assets: false,
+          nestedModules: false,
+          reasons: false,
+          excludeModules: [/node_modules/],
+        },
+        filename: "../../../../.github/static-viz-file-paths.yaml",
+        transform: stats =>
+          YAML.stringify({
+            static_viz_sources: stats.modules
+              .filter(
+                module =>
+                  module.type !== "hidden modules" &&
+                  module.moduleType !== "runtime",
+              )
+              .map(module =>
+                module.nameForCondition.replace(`${__dirname}/`, ""),
+              ),
+          }),
+      }),
+    ],
   };
 };
