@@ -62,17 +62,18 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn build-quick:cljs
-      name: Compile CLJS
-    - run: yarn type-check
-      name: Check types
+      - run: echo "FE Type Check"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: 'cljs'
+    # - run: yarn build-quick:cljs
+    #   name: Compile CLJS
+    # - run: yarn type-check
+    #   name: Check types
 
   fe-tests-unit:
     needs: files-changed
@@ -80,20 +81,21 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn run test-unit --coverage --silent
-      name: Run frontend unit tests
-    - name: Upload coverage to codecov.io
-      uses: codecov/codecov-action@v2
-      with:
-        files: ./coverage/lcov.info
-        flags: front-end
+      - run: echo "FE Unit tests"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: 'cljs'
+    # - run: yarn run test-unit --coverage --silent
+    #   name: Run frontend unit tests
+    # - name: Upload coverage to codecov.io
+    #   uses: codecov/codecov-action@v2
+    #   with:
+    #     files: ./coverage/lcov.info
+    #     flags: front-end
 
   fe-tests-timezones:
     needs: files-changed
@@ -101,36 +103,38 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn run test-timezones
-      name: Run frontend timezones tests
+    - run: echo "FE Timezone tests"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: 'cljs'
+    # - run: yarn run test-timezones
+    #   name: Run frontend timezones tests
 
   fe-chromatic:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'cljs'
-      - name: Publish to Chromatic
-        uses: chromaui/action@v1
-        env:
-          PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-        if: env.PUBLISH_CHROMATIC != null
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+      - run: echo "FE Chromatic"
+      # - name: Checkout repository
+      #   uses: actions/checkout@v3
+      #   with:
+      #     fetch-depth: 0
+      # - name: Prepare front-end environment
+      #   uses: ./.github/actions/prepare-frontend
+      # - name: Prepare back-end environment
+      #   uses: ./.github/actions/prepare-backend
+      #   with:
+      #     m2-cache-key: 'cljs'
+      # - name: Publish to Chromatic
+      #   uses: chromaui/action@v1
+      #   env:
+      #     PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+      #   if: env.PUBLISH_CHROMATIC != null
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

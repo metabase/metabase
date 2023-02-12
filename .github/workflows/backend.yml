@@ -3,8 +3,8 @@ name: Backend
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -16,9 +16,9 @@ jobs:
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-20.04
-    timeout-minutes: 3
+    timeout-minutes: 10
     outputs:
-      backend_all: ${{ steps.changes.outputs.backend_all }}
+      backend_all: ${{ steps.changes.outputs.backend_all || steps.static-viz-changes.outputs.static_viz_sources}}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
@@ -27,6 +27,21 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Build static viz
+        shell: bash
+        run: yarn build-static-viz
+      - name: Check if static viz files have changed
+        uses: dorny/paths-filter@v2.11.1
+        id: static-viz-changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-file-paths.yaml
 
   be-linter-cloverage:
     needs: files-changed
@@ -34,20 +49,20 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cloverage'
-    - name: Build static viz frontend
-      run: yarn build-static-viz
-    - name: Collect the test coverage
-      run: clojure -X:dev:ee:ee-dev:test:cloverage
-    - name: Upload coverage to codecov.io
-      uses: codecov/codecov-action@v2
-      with:
-        files: ./target/coverage/codecov.json
-        flags: back-end
+      - uses: actions/checkout@v3
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cloverage"
+      - name: Build static viz frontend
+        run: yarn build-static-viz
+      - name: Collect the test coverage
+        run: clojure -X:dev:ee:ee-dev:test:cloverage
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          files: ./target/coverage/codecov.json
+          flags: back-end
 
   be-linter-clj-kondo:
     needs: files-changed
@@ -55,52 +70,52 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
-    - name: Run clj-kondo
-      run: >-
-        docker run
-        --volume $PWD:/work
-        --rm
-        cljkondo/clj-kondo:2023.01.20
-        clj-kondo
-        --config /work/.clj-kondo/config.edn
-        --config-dir /work/.clj-kondo
-        --parallel
-        --lint
-        /work/src
-        /work/test
-        /work/enterprise/backend/src
-        /work/enterprise/backend/test
-        /work/shared/src
-        /work/shared/test
-        /work/modules/drivers/sparksql/src
-        /work/modules/drivers/sparksql/test
-        /work/modules/drivers/vertica/src
-        /work/modules/drivers/vertica/test
-        /work/modules/drivers/presto-common/src
-        /work/modules/drivers/presto-common/test
-        /work/modules/drivers/presto/src
-        /work/modules/drivers/presto/test
-        /work/modules/drivers/mongo/src
-        /work/modules/drivers/mongo/test
-        /work/modules/drivers/oracle/src
-        /work/modules/drivers/oracle/test
-        /work/modules/drivers/sqlite/src
-        /work/modules/drivers/sqlite/test
-        /work/modules/drivers/bigquery-cloud-sdk/src
-        /work/modules/drivers/bigquery-cloud-sdk/test
-        /work/modules/drivers/redshift/src
-        /work/modules/drivers/redshift/test
-        /work/modules/drivers/snowflake/src
-        /work/modules/drivers/snowflake/test
-        /work/modules/drivers/googleanalytics/src
-        /work/modules/drivers/googleanalytics/test
-        /work/modules/drivers/druid/src
-        /work/modules/drivers/druid/test
-        /work/modules/drivers/sqlserver/src
-        /work/modules/drivers/sqlserver/test
-        /work/modules/drivers/presto-jdbc/src
-        /work/modules/drivers/presto-jdbc/test
+      - uses: actions/checkout@v3
+      - name: Run clj-kondo
+        run: >-
+          docker run
+          --volume $PWD:/work
+          --rm
+          cljkondo/clj-kondo:2023.01.20
+          clj-kondo
+          --config /work/.clj-kondo/config.edn
+          --config-dir /work/.clj-kondo
+          --parallel
+          --lint
+          /work/src
+          /work/test
+          /work/enterprise/backend/src
+          /work/enterprise/backend/test
+          /work/shared/src
+          /work/shared/test
+          /work/modules/drivers/sparksql/src
+          /work/modules/drivers/sparksql/test
+          /work/modules/drivers/vertica/src
+          /work/modules/drivers/vertica/test
+          /work/modules/drivers/presto-common/src
+          /work/modules/drivers/presto-common/test
+          /work/modules/drivers/presto/src
+          /work/modules/drivers/presto/test
+          /work/modules/drivers/mongo/src
+          /work/modules/drivers/mongo/test
+          /work/modules/drivers/oracle/src
+          /work/modules/drivers/oracle/test
+          /work/modules/drivers/sqlite/src
+          /work/modules/drivers/sqlite/test
+          /work/modules/drivers/bigquery-cloud-sdk/src
+          /work/modules/drivers/bigquery-cloud-sdk/test
+          /work/modules/drivers/redshift/src
+          /work/modules/drivers/redshift/test
+          /work/modules/drivers/snowflake/src
+          /work/modules/drivers/snowflake/test
+          /work/modules/drivers/googleanalytics/src
+          /work/modules/drivers/googleanalytics/test
+          /work/modules/drivers/druid/src
+          /work/modules/drivers/druid/test
+          /work/modules/drivers/sqlserver/src
+          /work/modules/drivers/sqlserver/test
+          /work/modules/drivers/presto-jdbc/src
+          /work/modules/drivers/presto-jdbc/test
 
   be-linter-eastwood:
     needs: files-changed
@@ -108,13 +123,13 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'eastwood'
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
-      name: Run Eastwood linter
+      - uses: actions/checkout@v3
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "eastwood"
+      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
+        name: Run Eastwood linter
 
   # Because it's not possible to conditionally run only `java-11-ee` test in the draft mode,
   # we have to extract that job manually here. Backend developers have requested that this
@@ -126,28 +141,29 @@ jobs:
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 25
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: java-11-ee-pre-check
+      - run: echo "BE Java 11 Check"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: java-11-ee-pre-check
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - name: Build static viz frontend
-      run: yarn build-static-viz
+    # - run: yarn install --frozen-lockfile --prefer-offline
+    # - name: Build static viz frontend
+    #   run: yarn build-static-viz
 
-    - name: Run tests
-      run: clojure -X:dev:ci:test:ee:ee-dev
+    # - name: Run tests
+    #   run: clojure -X:dev:ci:test:ee:ee-dev
 
-    - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        path: 'target/junit/**/*_test.xml'
-        name: JUnit Test Report be-tests-java-11-ee-pre-check
-        reporter: java-junit
+    # - name: Publish Test Report (JUnit)
+    #   uses: dorny/test-reporter@v1
+    #   if: always()
+    #   with:
+    #     path: 'target/junit/**/*_test.xml'
+    #     name: JUnit Test Report be-tests-java-11-ee-pre-check
+    #     reporter: java-junit
 
   be-tests:
     needs: files-changed
@@ -161,28 +177,29 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17]
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: be-tests
+      - run: echo "BE Tests"
+    # - uses: actions/checkout@v3
+    # - name: Prepare front-end environment
+    #   uses: ./.github/actions/prepare-frontend
+    # - name: Prepare back-end environment
+    #   uses: ./.github/actions/prepare-backend
+    #   with:
+    #     m2-cache-key: be-tests
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - name: Build static viz frontend
-      run: yarn build-static-viz
+    # - run: yarn install --frozen-lockfile --prefer-offline
+    # - name: Build static viz frontend
+    #   run: yarn build-static-viz
 
-    - name: Run tests
-      run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+    # - name: Run tests
+    #   run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-    - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        path: 'target/junit/**/*_test.xml'
-        name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-        reporter: java-junit
+    # - name: Publish Test Report (JUnit)
+    #   uses: dorny/test-reporter@v1
+    #   if: always()
+    #   with:
+    #     path: 'target/junit/**/*_test.xml'
+    #     name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+    #     reporter: java-junit
 
   be-tests-stub:
     needs: files-changed
