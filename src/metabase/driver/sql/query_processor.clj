@@ -128,7 +128,7 @@
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
   making this easy to override in any places needed for a given driver."
-  {:arglists '([driver x])}
+  {:arglists '([driver mbql-expr-or-object])}
   (fn [driver x]
     [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
@@ -423,27 +423,53 @@
 ;;; |                                           Low-Level ->honeysql impls                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- registered-honey-sql-2-clause?
-  [x]
-  (and (vector? x)
-       (let [f (first x)]
-         (and (keyword? f)
-              ;; this is a bit hacky but there's no other way AFAIK to tell whether a function is registered in Honey
-              ;; SQL 2.
-              (contains? @@#'sql/special-syntax f)))))
+(defn- throw-double-compilation-error
+  "[[->honeysql]] shouldn't be getting called on something that is already Honey SQL. Prior to 46/Honey SQL 2, this
+  would not usually cause problems because we could easily distinguish between MBQL clauses and Honey SQL record
+  types; with Honey SQL 2, clauses are basically indistinguishable from MBQL, and some things exist in both, like `:/`
+  and `:ceil`; it's more important that we be careful about avoiding double-compilation to prevent bugs or redundant
+  expressions.
+
+  The exception to this rule is [[h2x/identifier]] -- for historical reasons, drivers were encouraged to do this in
+  the past and some rely on this behavior (see ;;; [[metabase.driver.bigquery-cloud-sdk.query-processor]]
+  and [[metabase.driver.snowflake]] for example). Maybe we come up with some better way to handle this -- e.g. maybe
+  [[h2x/identifier]] should be replaced with a `sql.qp` multimethod so driver-specific behavior can happen as we
+  generate Honey SQL, not afterwards.
+
+  If you see this warning, it usually means you are passing a Honey SQL form to a method that expects an MBQL form,
+  such as [[->honeysql]]; e.g. recursively calling [[->honeysql]] when you should not be."
+  [driver x]
+  ;; not i18n'ed because this is meant to be developer-facing.
+  (throw
+   (ex-info
+    (str (format "Warning: %s called on something already compiled to Honey SQL: %s." `->honeysql (pr-str x))
+         \space
+         (format "This usually means you're passing a Honey SQL form to a method that expects MBQL, e.g. recursively calling %s when you should not be."
+                 `->honeysql)
+         \space
+         (format "If this is intentional, wrap the form in %s, or implement %s for this clause, to work around this situation."
+                 `compiled
+                 `->honeysql))
+    {:driver            driver
+     :expr              x
+     :type              qp.error-type/driver
+     :honey-sql-version hx/*honey-sql-version*})))
 
 (defmethod ->honeysql :default
   [driver x]
-  (if (and (= hx/*honey-sql-version* 2)
-           (registered-honey-sql-2-clause? x))
-    x
-    ;; user-facing only so it doesn't need to be i18n'ed
-    (throw (ex-info (format "Don't know how to compile %s to Honey SQL: implement %s for %s, wrap it in %s, or register it with Honey SQL"
-                            (pr-str x)
-                            `->honeysql
-                            (pr-str [driver (mbql.u/dispatch-by-clause-name-or-class x)])
-                            `compiled)
-                    {:driver driver, :x x, :honey-sql-version hx/*honey-sql-version*}))))
+  (when (and (= hx/*honey-sql-version* 2)
+             (vector? x)
+             (keyword? (first x)))
+    (throw-double-compilation-error driver x))
+  ;; user-facing only so it doesn't need to be i18n'ed
+  (throw (ex-info (format "Don't know how to compile %s to Honey SQL: implement %s for %s"
+                          (pr-str x)
+                          `->honeysql
+                          (pr-str [driver (mbql.u/dispatch-by-clause-name-or-class x)]))
+                  {:driver            driver
+                   :expr              x
+                   :type              qp.error-type/driver
+                   :honey-sql-version hx/*honey-sql-version*})))
 
 (defmethod ->honeysql [:sql nil]
   [_driver _this]
@@ -510,7 +536,12 @@
   [driver typed-form]
   (->honeysql driver (hx/unwrap-typed-honeysql-form typed-form)))
 
-;; default implmentation is a no-op; other drivers can override it as needed
+;;; it's a little weird that we're calling [[->honeysql]] on an identifier, which is a Honey SQL form and not an MBQL
+;;; form. See [[throw-double-compilation-error]] for more info.
+(defmethod ->honeysql [:sql ::h2x/identifier]
+  [_ identifier]
+  identifier)
+
 (defmethod ->honeysql [:sql Identifier]
   [_ identifier]
   identifier)
