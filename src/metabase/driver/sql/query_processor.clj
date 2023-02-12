@@ -184,7 +184,7 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
-  (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+  (->honeysql driver [:ceil (compiled (hx// (date driver :day-of-year (date driver :week expr)) 7.0))]))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
@@ -437,23 +437,21 @@
   generate Honey SQL, not afterwards.
 
   If you see this warning, it usually means you are passing a Honey SQL form to a method that expects an MBQL form,
-  such as [[->honeysql]]; e.g. recursively calling [[->honeysql]] when you should not be."
+  usually [[->honeysql]]; this probably means you're recursively calling [[->honeysql]] when you should not be.
+
+  You can use [[compiled]] to prevent this error, to work around situations where you need to compile something to
+  Honey SQL and then pass it to a method that expects MBQL. This should be considered an icky HACK and you should only
+  do this if you cannot actually fix your code."
   [driver x]
   ;; not i18n'ed because this is meant to be developer-facing.
   (throw
-   (ex-info
-    (str (format "Warning: %s called on something already compiled to Honey SQL: %s." `->honeysql (pr-str x))
-         \space
-         (format "This usually means you're passing a Honey SQL form to a method that expects MBQL, e.g. recursively calling %s when you should not be."
-                 `->honeysql)
-         \space
-         (format "If this is intentional, wrap the form in %s, or implement %s for this clause, to work around this situation."
-                 `compiled
-                 `->honeysql))
-    {:driver            driver
-     :expr              x
-     :type              qp.error-type/driver
-     :honey-sql-version hx/*honey-sql-version*})))
+   (ex-info (format "%s called on something already compiled to Honey SQL. See %s for more info."
+                    `->honeysql
+                    `throw-double-compilation-error)
+            {:driver            driver
+             :expr              x
+             :type              qp.error-type/driver
+             :honey-sql-version hx/*honey-sql-version*})))
 
 (defmethod ->honeysql :default
   [driver x]
@@ -660,16 +658,20 @@
       1 (hx/call :distinct-count field)
       2 [::h2x/distinct-count field])))
 
-(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hx/call :floor (->honeysql driver field)))
-(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hx/call :ceil  (->honeysql driver field)))
-(defmethod ->honeysql [:sql :round] [driver [_ field]] (hx/call :round (->honeysql driver field)))
-(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hx/call :abs (->honeysql driver field)))
+(defmethod ->honeysql [:sql :floor] [driver [_ mbql-expr]] (hx/call :floor (->honeysql driver mbql-expr)))
+(defmethod ->honeysql [:sql :ceil]  [driver [_ mbql-expr]] (hx/call :ceil  (->honeysql driver mbql-expr)))
+(defmethod ->honeysql [:sql :round] [driver [_ mbql-expr]] (hx/call :round (->honeysql driver mbql-expr)))
+(defmethod ->honeysql [:sql :abs]   [driver [_ mbql-expr]] (hx/call :abs (->honeysql driver mbql-expr)))
 
-(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hx/call :log (inline-num 10) (->honeysql driver field)))
-(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hx/call :exp (->honeysql driver field)))
-(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hx/call :sqrt (->honeysql driver field)))
-(defmethod ->honeysql [:sql :power] [driver [_ field power]]
-  (hx/call :power (->honeysql driver field) (->honeysql driver power)))
+(defmethod ->honeysql [:sql :log]   [driver [_ mbql-expr]] (hx/call :log (inline-num 10) (->honeysql driver mbql-expr)))
+(defmethod ->honeysql [:sql :exp]   [driver [_ mbql-expr]] (hx/call :exp (->honeysql driver mbql-expr)))
+(defmethod ->honeysql [:sql :sqrt]  [driver [_ mbql-expr]] (hx/call :sqrt (->honeysql driver mbql-expr)))
+
+(defmethod ->honeysql [:sql :power]
+  [driver [_power mbql-expr power]]
+  (hx/call :power
+           (->honeysql driver mbql-expr)
+           (->honeysql driver power)))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))
@@ -716,11 +718,11 @@
              :else                                   denominator)))
 
 (defmethod ->honeysql [:sql :/]
-  [driver [_ & args]]
-  (let [[numerator & denominators] (for [arg args]
-                                     (->honeysql driver (if (integer? arg)
-                                                          (double arg)
-                                                          arg)))]
+  [driver [_ & mbql-exprs]]
+  (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
+                                     (->honeysql driver (if (integer? mbql-expr)
+                                                          (double mbql-expr)
+                                                          mbql-expr)))]
     (apply hx/call :/
            (->float driver numerator)
            (map safe-denominator denominators))))

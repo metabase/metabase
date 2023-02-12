@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -194,16 +195,18 @@
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
     (mt/with-database-timezone-id nil
-      (try
-        ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
-        (doseq [sql+args statements]
-          (log/tracef "[insert] %s" (pr-str sql+args))
-          (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
-                                                          (sql-jdbc.execute/set-parameters! driver stmt params))}))
-        (catch SQLException e
-          (log/error (u/format-color 'red "INSERT FAILED: \n%s\n" (pr-str statements)))
-          (jdbc/print-sql-exception-chain e)
-          (throw e))))))
+      (doseq [sql-args statements]
+        (log/tracef "[insert] %s" (pr-str sql-args))
+        (try
+          ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
+          (jdbc/execute! spec sql-args {:set-parameters (fn [stmt params]
+                                                          (sql-jdbc.execute/set-parameters! driver stmt params))})
+          (catch Throwable e
+            (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
+                            {:driver   driver
+                             :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                                             (rest sql-args))}
+                            e))))))))
 
 (defonce ^:private reference-load-durations
   (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
@@ -227,11 +230,17 @@
     ;; Now load the data for each Table
     (doseq [tabledef table-definitions
             :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
-                                                 u/format-nanoseconds)
-                                         "NONE")]]
+                                                     u/format-nanoseconds)
+                                             "NONE")]]
       (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                          (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-        (load-data! driver dbdef tabledef)))))
+        (try
+          (load-data! driver dbdef tabledef)
+          (catch Throwable e
+            (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                            {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                (concat (take 10 rows) ['...])))}
+                            e))))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."

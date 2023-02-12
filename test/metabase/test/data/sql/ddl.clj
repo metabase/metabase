@@ -78,27 +78,23 @@
   [driver table-identifier row-or-rows]
   (let [rows    (u/one-or-many row-or-rows)
         columns (keys (first rows))
-        values  (for [row rows]
-                  (for [value (map row columns)]
-                    (sql.qp/->honeysql driver value)))
-        h-cols  (for [column columns]
-                  (sql.qp/->honeysql driver
-                    (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))]
-    ;; explanation for the hack that follows
-    ;; hh/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
-    ;; first non-accumulator (i.e. not the map it's building) argument is a collection, and throws if so
-    ;; unfortunately, (coll? (hx/identifier ...)) is true, so the varargs check fails if we have ONE column here
-    ;; also, we can't simply call (hh/columns (first h-cols)) here, because that returns only the (hx/identifier ...)
-    ;; itself, and NOT a map like {:columns [(hx/identifier ...)]} like the rest of the builder fns are expecting
-    ;; the change in behavior was introduced in honeysql 0.9.7 here:
-    ;; https://github.com/seancorfield/honeysql/commit/4ca74f2b0d0f87827ce34d9baf8dcc8d086ce18e
-    ;; so we seem to have no choice but to reimplement the n=1 case in a hacky manner ourselves :(
-    (-> (case (count h-cols)
-          ;; only 1 column, which is an Identifier; hh/columns can't help us (see above)
-          1 {:columns [(first h-cols)]}
-          ;; at least two columns, so we can use hh/columns, but the first param we pass to it must be a map, since
-          ;; we're using the threading macro backwards
-          (apply sql.helpers/columns (conj h-cols {})))
+        values  (mapv (fn [row]
+                        (try
+                          (mapv (fn [column]
+                                  (let [value (get row column)]
+                                    (sql.qp/->honeysql driver value)))
+                                columns)
+                          (catch Throwable e
+                            (throw (ex-info (format "Error compiling test data row: %s" (ex-message e))
+                                            {:driver driver, :row row}
+                                            e)))))
+                      rows)
+        h-cols  (mapv (fn [column]
+                        (sql.qp/->honeysql
+                         driver
+                         (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))
+                      columns)]
+    (-> (apply sql.helpers/columns {} h-cols)
         (assoc :insert-into (sql.qp/maybe-wrap-unaliased-expr table-identifier))
         (sql.helpers/values values))))
 
