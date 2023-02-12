@@ -28,6 +28,10 @@
 
 (set! *warn-on-reflection* true)
 
+;;; use the thread-safe scope manager rather than the singleton scope manager, so we can run tests against Liquibase in
+;;; parallel.
+(liquibase.Scope/setScopeManager (liquibase.ThreadLocalScopeManager.))
+
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
   before and after running `f` as needed."
