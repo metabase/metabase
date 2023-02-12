@@ -5,8 +5,9 @@
   columns in the parent level.
 
   This code is currently opt-in, and is currently only used by SQL drivers ([[metabase.driver.sql.query-processor]]
-  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]) but at some point
-  in the future this may become general QP middleware that can't be opted out of.
+  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]
+  and [[metabase.driver.mongo.query-processor/mbql->native]]) but at some point in the future this may
+  become general QP middleware that can't be opted out of.
 
   [[add-alias-info]] adds some or all of the following keys to every `:field` clause, `:expression` reference, and
   `:aggregation` reference:

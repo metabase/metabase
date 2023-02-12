@@ -397,7 +397,7 @@
                       :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
               :columns (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
@@ -444,8 +444,8 @@
                                           :limit        2})))]
         (is (= (mapv
                 mt/format-name
-                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
-                 "id_2"   "name"   "last_login"                                   ; users
+                ["id"   "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2" "name"   "last_login"                                   ; users
                  "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
@@ -646,12 +646,12 @@
                                       :filter       [:= &Products.products.category "Doohickey"]}
                        :joins        [{:source-query {:source-table $$reviews
                                                       :joins        [{:source-table $$products
-                                                                      :alias        "Products"
-                                                                      :condition    [:= $product_id &Products.products.id]
+                                                                      :alias        "Products1"
+                                                                      :condition    [:= $product_id &Products1.products.id]
                                                                       :fields       :all}]
-                                                      :breakout     [!month.&Products.products.created_at]
-                                                      :aggregation  [[:distinct &Products.products.id]]
-                                                      :filter       [:= &Products.products.category "Gizmo"]}
+                                                      :breakout     [!month.&Products1.products.created_at]
+                                                      :aggregation  [[:distinct &Products1.products.id]]
+                                                      :filter       [:= &Products1.products.category "Gizmo"]}
                                        :alias        "Q2"
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
@@ -767,12 +767,20 @@
                         "Products Renamed → Rating"
                         "Products Renamed → Created At"]
                        (map :display_name (get-in results [:data :results_metadata :columns])))))
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
-                       60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
-                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
-                       6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int int
-                                         int str str str str 2.0 2.0 str]
+              (is (= (if (= driver/*driver* :mongo)
+                       [[6 60 29.8 1.64 31.44 1 3 nil "2019-11-06T16:38:50.134Z" 2
+                         60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
+                        [10 6 97.44 5.36 102.8 1 2 nil "2020-01-17T01:44:37.233Z" 2
+                         6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
+                       [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
+                         60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
+                        [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
+                         6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]])
+                     (mt/formatted-rows (if (= driver/*driver* :mongo)
+                                          [int int 2.0 2.0 2.0 int int 2.0 str int
+                                           int str str str str 2.0 2.0 str]
+                                          [int int int 2.0 2.0 2.0 2.0 str int int
+                                           int str str str str 2.0 2.0 str])
                        results))))))))))
 
 (deftest double-quotes-in-join-alias-test
@@ -848,7 +856,7 @@
 
 (deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations :foreign-keys)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders

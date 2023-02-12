@@ -102,11 +102,14 @@
   to the corresponding MBQL join alias."
   {})
 
-(defn- find-mapped-field-name [field-id]
-  (some (fn [[e n]]
-          (when (and (vector? e) (= (subvec e 0 2) [:field field-id]))
-            n))
-        *field-mappings*))
+(defn- find-mapped-field-name [[_ field-id params :as field]]
+  (or (get *field-mappings* field)
+      (some (fn [[e n]]
+              (when (and (vector? e)
+                         (= (subvec e 0 2) [:field field-id])
+                         (= (:join-alias (e 2)) (:join-alias params)))
+                n))
+            *field-mappings*)))
 
 (defn- find-join-alias [join-alias]
   (get *join-aliases* join-alias))
@@ -210,13 +213,13 @@
     (str field "~~~" (name unit))))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [temporal-unit] ::add/keys [desired-alias]}]]
-  (cond-> (if (integer? id-or-name)
-            (or desired-alias
-                (find-mapped-field-name id-or-name)
-                (->lvalue (qp.store/field id-or-name)))
-            (name id-or-name))
-    temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
+  [[_ id-or-name {:keys [temporal-unit] ::add/keys [desired-alias] :as params} :as field]]
+  (or desired-alias
+      (cond-> (if (integer? id-or-name)
+                (or (find-mapped-field-name field)
+                    (->lvalue (qp.store/field id-or-name)))
+                (name id-or-name))
+        temporal-unit (with-lvalue-temporal-bucketing temporal-unit))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -333,17 +336,19 @@
           (extract $year column))))))
 
 (defmethod ->rvalue :field
-  [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias]}]]
+  [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias] :as params} :as field]]
   (let [join-field (find-join-alias join-alias)]
     (cond-> (if (integer? id-or-name)
-              (if-let [mapped (find-mapped-field-name id-or-name)]
+              (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (cond->> (or source-alias (subs (->rvalue (qp.store/field id-or-name)) 1))
                   join-field (str join-field ".")
                   :always (str \$)))
-              (cond->> (or source-alias (name id-or-name))
-                join-field (str join-field ".")
-                :always (str \$)))
+              (if-let [mapped (find-mapped-field-name field)]
+                (str \$ mapped)
+                (cond->> (or source-alias (name id-or-name))
+                  join-field (str join-field ".")
+                  :always (str \$))))
       temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 ;; Values clauses below; they only need to implement `->rvalue`
@@ -823,52 +828,82 @@
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
+(defn- find-source-table-id [join-or-query]
+  (or (some-> join-or-query :source-table)
+      (some-> join-or-query :source-query find-source-table-id)))
+
+(defn- find-source-collection [join]
+  (or (-> join :source-query :collection)
+      (-> join find-source-table-id qp.store/table :name)))
+
+(declare ^:private add-aggregation-pipeline)
+
 (defn- handle-join [{:keys [join-aliases] :as pipeline-ctx}
-                    {:keys [alias condition source-table strategy]}]
-  (let [own-fields (->> (mbql.u/match condition
-                          [:field _ (_ :guard #(not (contains? % :join-alias)))])
-                          ;; WARN: assuming no clashes with fields from nested queries
+                    {:keys [alias condition source-query strategy] :as join}]
+  (let [{:keys [projections] pipeline :query join-aliases' :join-aliases
+         :or {projections [] pipeline []}}
+        (when source-query
+          (binding [*query* (assoc (select-keys *query* [:database :type])
+                                   :query source-query)]
+            ;; TODO should see the existing join-aliases?
+            (add-aggregation-pipeline source-query)))
+        field-mappings (when source-query
+                         (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
+                                 projections))
+        own-fields (->> (mbql.u/match condition
+                          [:field _ (_ :guard #(not= (:join-alias %) alias))])
+                        ;; WARN: assuming no clashes with fields from nested queries
                         (remove *field-mappings*))
-        mapping (map (fn [f] (let [n (->lvalue f)]
-                               {:field f, :rvalue (->rvalue f), :alias (name (gensym (format "let_%s_" n)))}))
+        mapping (map (fn [f] (let [n (str/replace (->lvalue f) "~" "")]
+                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) #_gensym name)}))
                      own-fields)
         let-map (into {} (map (juxt :alias :rvalue)) mapping)
         context-map (into {} (map (juxt :field #(str \$ (:alias %)))) mapping)
         ;; TODO this could theoretically clash with DB field names
         lookup-as (name (gensym (str "join_alias_" alias "_")))]
-    (binding [*field-mappings* context-map
-              *join-aliases* join-aliases]
-      (let [stages [{$lookup {:from (:name (qp.store/table source-table))
-                               ;; TODO optimisation: could this have generic expressions as the RHS?
+    (binding [*field-mappings* (merge *field-mappings* field-mappings context-map)
+              *join-aliases* (merge join-aliases join-aliases')]
+      (let [pipeline (cond-> pipeline
+                       condition (conj {$match (compile-filter condition)}))
+            stages [{$lookup {:from (find-source-collection join)
+                              ;; TODO optimisation: could this have generic expressions as the RHS?
+                              ;; TODO optimisation: omit if let-map is empty
                               :let let-map
-                              :pipeline [{$match (compile-filter condition)}]
+                              :pipeline pipeline
                               :as lookup-as}}
                     {$unwind {:path (str \$ lookup-as)
-                              :preserveNullAndEmptyArrays (= strategy :left-join)}}]
-            join-aliases {alias lookup-as}]
+                              :preserveNullAndEmptyArrays (= strategy :left-join)}}]]
         (-> pipeline-ctx
+            (update :projections into projections)
             (update :query into stages)
-            (update :join-aliases into join-aliases))))))
+            (assoc :join-aliases (merge *join-aliases* {alias lookup-as})))))))
 
 (defn- handle-joins [{:keys [joins]} pipeline-ctx]
   (reduce handle-join pipeline-ctx joins))
 
 (comment
   (require '[metabase.test :as mt])
+  (require '[metabase.query-processor.test-util :as qp.test-util])
   (toucan.db/delete! metabase.models/Database)
   (mt/with-driver :mongo
-    (mt/dataset bird-flocks
-      (mt/with-everything-store
-        (let [query (mt/mbql-query bird
-                      {:fields   [$name &f.flock.name]
-                       :joins    [{:source-table $$flock
-                                   :condition    [:= $flock_id &f.flock.id]
-                                   :strategy     :left-join
-                                   :alias        "f"}]
-                       :order-by [[:asc $name]]})]
-          (binding [*query* (update query :query preprocess)]
-            [(handle-joins (:query *query*) {:query [] :join-aliases {}})
-             *query*])))))
+    (mt/with-everything-store
+      (let [query
+            (mt/mbql-query checkins
+              {:source-query {:source-table $$checkins
+                              :joins
+                              [{:fields       :all
+                                :alias        "u"
+                                :source-table $$users
+                                :condition    [:= $user_id &u.users.id]}]}
+               :joins        [{:fields       :all
+                               :alias        "v"
+                               :source-table $$venues
+                               :condition    [:= $user_id &v.venues.id]}]
+               :order-by     [[:asc $id]]
+               :limit        2})]
+        (binding [*query* (update query :query preprocess)]
+          [#_(handle-joins (:query *query*) {:query [] :join-aliases {}})
+           *query*]))))
   nil)
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -1227,25 +1262,27 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- add-aggregation-pipeline
-  [inner-query pipeline-ctx]
-  (reduce (fn [{:keys [join-aliases] :as pipeline-ctx} f]
-            (binding [*join-aliases* join-aliases]
-              (f inner-query pipeline-ctx)))
-          pipeline-ctx
-          [handle-joins
-           handle-filter
-           handle-breakout+aggregation
-           handle-order-by
-           handle-fields
-           handle-limit
-           handle-page]))
+  ([inner-query]
+   (add-aggregation-pipeline inner-query {:projections [], :query [], :join-aliases {}}))
+  ([inner-query pipeline-ctx]
+   (reduce (fn [{:keys [join-aliases] :as pipeline-ctx} f]
+             (binding [*join-aliases* join-aliases]
+               (f inner-query pipeline-ctx)))
+           pipeline-ctx
+           [handle-joins
+            handle-filter
+            handle-breakout+aggregation
+            handle-order-by
+            handle-fields
+            handle-limit
+            handle-page])))
 
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections
                                                     :query Pipeline
                                                     :join-aliases {s/Str s/Str}}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (add-aggregation-pipeline inner-query {:projections [], :query [], :join-aliases {}}))
+  (add-aggregation-pipeline inner-query))
 
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
@@ -1266,10 +1303,7 @@
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."
   [query]
-  (let [{proj :projections, generated-pipeline :query}
-        (generate-aggregation-pipeline (or (:query query) query))]
-    {:projections proj
-     :query       generated-pipeline}))
+  (generate-aggregation-pipeline (or (:query query) query)))
 
 (defn parse-query-string
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
@@ -1311,13 +1345,11 @@
   "Compile an MBQL query."
   [query]
   (let [query (update query :query preprocess)]
-    (tap> query)
     (binding [*query* query]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
                                 (:name (qp.store/table source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
-        (tap> compiled)
         (log-aggregation-pipeline (:query compiled))
         (assoc compiled
                :collection  source-table-name

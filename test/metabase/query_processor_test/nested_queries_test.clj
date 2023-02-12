@@ -1344,7 +1344,7 @@
                        (qp/process-query query)))))))))))
 
 (deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join :foreign-keys)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
