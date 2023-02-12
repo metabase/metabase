@@ -47,7 +47,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest rollback-test
+(deftest ^:parallel rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
     (impl/test-migrations [1] [_]
@@ -68,7 +68,7 @@
           (migrate! :up)
           (is (= latest-id (get-last-id))))))))
 
-(deftest database-position-test
+(deftest ^:parallel database-position-test
   (testing "Migration 165: add `database_position` to Field"
     (impl/test-migrations 165 [migrate!]
       ;; create a Database with a Table with 2 Fields
@@ -99,7 +99,7 @@
     :is_active    true
     :is_superuser false))
 
-(deftest email-lowercasing-test
+(deftest ^:parallel email-lowercasing-test
   (testing "Migration 268-272: basic lowercasing `email` in `core_user`"
     (impl/test-migrations [268 272] [migrate!]
       (let [e1 "Foo@email.com"
@@ -112,7 +112,7 @@
           (is (= true
                  (db/exists? User :email (u/lower-case-en e)))))))))
 
-(deftest semantic-type-migration-tests
+(deftest ^:parallel semantic-type-migration-tests
   (testing "updates each of the coercion types"
     (impl/test-migrations [283 296] [migrate!]
       ;; by name hoists results into a map by name so diffs are easier to read than sets.
@@ -225,7 +225,7 @@
                  (when (.next rset)
                    [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
 
-(deftest convert-text-to-longtext-migration-test
+(deftest ^:parallel convert-text-to-longtext-migration-test
   (testing "all columns that were TEXT type in MySQL were changed to"
     (impl/test-migrations ["v42.00-004" "v42.00-063"] [migrate!]
       (migrate!) ; just run migrations immediately, then check the new types
@@ -310,7 +310,7 @@
                               exp-type
                               (get tbl-cols col-nm))))))))))))
 
-(deftest convert-query-cache-result-to-blob-test
+(deftest ^:parallel convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
     (impl/test-migrations ["v42.00-064"] [migrate!]
       (t2/with-connection [^java.sql.Connection conn]
@@ -339,7 +339,7 @@
                         exp-type
                         (get tbl-cols col-nm)))))))))
 
-(deftest remove-bigquery-driver-test
+(deftest ^:parallel remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
     (impl/test-migrations ["v43.00-001"] [migrate!]
       (try
@@ -357,7 +357,7 @@
         (finally
           (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
 
-(deftest create-root-permissions-entry-for-admin-test
+(deftest ^:parallel create-root-permissions-entry-for-admin-test
   (testing "Migration v0.43.00-006: Add root permissions entry for 'Administrators' magic group"
     (doseq [existing-entry? [true false]]
       (testing (format "Existing root entry? %s" (pr-str existing-entry?))
@@ -376,7 +376,7 @@
                                      :from   [:permissions]
                                      :where  [:= :group_id admin-group-id]})))))))))
 
-(deftest create-database-entries-for-all-users-group-test
+(deftest ^:parallel create-database-entries-for-all-users-group-test
   (testing "Migration v43.00-007: create DB entries for the 'All Users' permissions group"
     (doseq [with-existing-data-migration? [true false]]
       (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
@@ -400,7 +400,7 @@
                                    :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
                                    :where     [:= :pg.name perms-group/all-users-group-name]}))))))))
 
-(deftest migrate-legacy-site-url-setting-test
+(deftest ^:parallel migrate-legacy-site-url-setting-test
   (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
       (db/execute! {:insert-into :setting
@@ -410,7 +410,7 @@
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
              (mdb.query/query {:select [:*], :from [:setting], :where [:= :key "site-url"]}))))))
 
-(deftest site-url-ensure-protocol-test
+(deftest ^:parallel site-url-ensure-protocol-test
   (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
       (db/execute! {:insert-into :setting
@@ -428,7 +428,7 @@
 (defn- add-migrated-collections-data-migration-entry! []
   (add-legacy-data-migration-entry! "add-migrated-collections"))
 
-(deftest add-migrated-collections-test
+(deftest ^:parallel add-migrated-collections-test
   (testing "Migrations v43.00-014 - v43.00-019"
     (letfn [(create-user! []
               (db/execute! {:insert-into :core_user
@@ -527,7 +527,7 @@
                     (is (= [{:collection_id 1}]
                            (mdb.query/query {:select [:collection_id], :from [table-name-keyword]})))))))))))))
 
-(deftest grant-all-users-root-collection-readwrite-perms-test
+(deftest ^:parallel grant-all-users-root-collection-readwrite-perms-test
   (testing "Migration v43.00-020: create a Root Collection entry for All Users"
     (letfn [(all-users-group-id []
               (let [[{id :id}] (mdb.query/query {:select [:id]
@@ -562,7 +562,7 @@
           (is (= [{:object "/collection/root/"}]
                  (all-user-perms))))))))
 
-(deftest clear-ldap-user-passwords-test
+(deftest ^:parallel clear-ldap-user-passwords-test
   (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
     (impl/test-migrations ["v43.00-029"] [migrate!]
       (db/execute! {:insert-into :core_user
@@ -587,7 +587,7 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-(deftest grant-download-perms-test
+(deftest ^:parallel grant-download-perms-test
   (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
     (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
       (db/execute! {:insert-into :metabase_database
@@ -603,7 +603,7 @@
                                :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
                                :where     [:= :pg.name perms-group/all-users-group-name]}))))))
 
-(deftest grant-subscription-permission-test
+(deftest ^:parallel grant-subscription-permission-test
   (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
     (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
       (migrate!)
@@ -613,7 +613,7 @@
                                                :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
                                                :where     [:= :p.object "/general/subscription/"]}))))))))
 
-(deftest rename-general-permissions-to-application-test
+(deftest ^:parallel rename-general-permissions-to-application-test
   (testing "Migration v43.00-057: Rename general permissions to application permissions"
     (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
       (letfn [(get-perms [object] (set (map :name (mdb.query/query {:select    [:pg.name]
@@ -624,7 +624,7 @@
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
 
-(deftest add-parameter-to-cards-test
+(deftest ^:parallel add-parameter-to-cards-test
   (testing "Migration v44.00-022: Add parameters to report_card"
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
       (let [user-id
@@ -647,7 +647,7 @@
        (is (= nil
               (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
 
-(deftest add-parameter-mappings-to-cards-test
+(deftest ^:parallel add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
     (impl/test-migrations ["v44.00-024" "v44.00-026"] [migrate!]
       (let [user-id
@@ -672,7 +672,7 @@
         (is (= nil
                (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
 
-(deftest grant-all-users-root-snippets-collection-readwrite-perms-test
+(deftest ^:parallel grant-all-users-root-snippets-collection-readwrite-perms-test
   (letfn [(perms-path [] "/collection/namespace/snippets/root/")
           (all-users-group-id []
             (-> (mdb.query/query {:select [:id]
@@ -719,7 +719,7 @@
           (migrate!)
           (is (= ["All Users"] (get-perms))))))))
 
-(deftest make-database-details-not-null-test
+(deftest ^:parallel make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
       (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
@@ -730,7 +730,7 @@
         (is (partial= {:details {}}
                       (db/select-one Database :id database-id)))))))
 
-(deftest populate-collection-created-at-test
+(deftest ^:parallel populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
       (let [database-id              (db/simple-insert! Database {:details   "{}"
@@ -784,7 +784,7 @@
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
                       empty-collection-created-at))))))))
 
-(deftest deduplicate-dimensions-test
+(deftest ^:parallel deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
       (let [database-id (db/simple-insert! Database {:details   "{}"
@@ -833,7 +833,7 @@
                    "F2 D1"}
                  (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
 
-(deftest clean-up-gtap-table-test
+(deftest ^:parallel clean-up-gtap-table-test
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
            and clean up orphaned rows"
     (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]

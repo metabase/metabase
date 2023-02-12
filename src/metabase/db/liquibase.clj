@@ -30,6 +30,10 @@
 ;; See https://logging.apache.org/log4j/2.x/log4j-jul/index.html for more information.
 (org.apache.logging.log4j.jul.Log4jBridgeHandler/install true nil true)
 
+;;; use the thread-safe scope manager rather than the singleton scope manager, so we can run tests against Liquibase in
+;;; parallel.
+(liquibase.Scope/setScopeManager (liquibase.ThreadLocalScopeManager.))
+
 ;; Liquibase logs a message for every ChangeSet directly to standard out -- see
 ;; https://github.com/liquibase/liquibase/issues/2396 -- but we can disable this by setting the ConsoleUIService's
 ;; output stream to the null output stream

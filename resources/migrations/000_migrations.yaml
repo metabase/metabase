@@ -2727,7 +2727,10 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+
+  # There was a typo in this: `addNotNullContstraint` rather than `addNotNullConstraint`. Fixed in 46
   - changeSet:
+      validCheckSum: ANY
       id: 35
       author: agilliland
       changes:
@@ -2735,9 +2738,11 @@ databaseChangeLog:
             tableName: setting
             columnName: value
             newDataType: TEXT
-        - addNotNullContstraint:
+        - addNotNullConstraint:
             tableName: setting
-            columnNames: value
+            columnName: value
+            columnDataType: text
+
   - changeSet:
       id: 36
       author: agilliland
