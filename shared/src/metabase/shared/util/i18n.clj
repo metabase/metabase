@@ -1,5 +1,6 @@
 (ns metabase.shared.util.i18n
   (:require
+   [metabase.util.i18n :as i18n]
    [net.cgrand.macrovich :as macros]))
 
 (defmacro tru
@@ -10,9 +11,7 @@
   [format-string & args]
   (macros/case
     :clj
-    (do
-      (require 'metabase.util.i18n)
-      `(metabase.util.i18n/tru ~format-string ~@args))
+    `(i18n/tru ~format-string ~@args)
 
     :cljs
     `(js-i18n ~format-string ~@args)))
@@ -30,7 +29,7 @@
     :clj
     (do
       (require 'metabase.util.i18n)
-      `(metabase.util.i18n/trs ~format-string ~@args))
+      `(i18n/trs ~format-string ~@args))
 
     :cljs
     `(js-i18n ~format-string ~@args)))
@@ -42,9 +41,7 @@
   [format-string format-string-pl n]
   (macros/case
     :clj
-    (do
-      (require 'metabase.util.i18n)
-      `(metabase.util.i18n/trsn ~format-string ~format-string-pl ~n))
+    `(i18n/trsn ~format-string ~format-string-pl ~n)
 
     :cljs
     `(js-i18n-n ~format-string ~format-string-pl ~n)))
