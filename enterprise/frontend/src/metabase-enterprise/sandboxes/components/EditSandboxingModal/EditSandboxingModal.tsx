@@ -202,7 +202,9 @@ const EditSandboxingModal = ({
           <div className="flex align-center my2 text-error">
             {typeof error === "string"
               ? error
-              : error.data.message ?? ERROR_MESSAGE}
+              : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                error.data.message ?? ERROR_MESSAGE}
           </div>
         )}
       </div>
