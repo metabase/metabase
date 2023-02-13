@@ -14,7 +14,6 @@
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
    [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
