@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 import Modal from "metabase/components/Modal";
-import Link from "metabase/core/components/Link";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import TableFooter from "../TableSimple/TableFooter";
 
 interface ObjectDetailContainerProps {
