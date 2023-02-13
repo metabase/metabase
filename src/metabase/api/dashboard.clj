@@ -683,11 +683,21 @@
 
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
-  (set (for [param parameter-mappings
-             :let  [field-clause (params/param-target->field-clause (:target param)
-                                                                    (-> param :dashcard :card))]
+  (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
+             :let  [field-clause (params/param-target->field-clause target card)
+                    {:keys [result_metadata]} card]
              :when field-clause
-             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :let  [field-id (or
+                              ;; Get the field id from the field-clause if it contains it. This is the common case for
+                              ;; mbql queries.
+                              (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)
+                              ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                              ;; This is the common case for native queries in which mappings from original columns
+                              ;; have been performed using model metadata.
+                              (some
+                               (fn [{:keys [id field_ref]}]
+                                 (when (= field-clause field_ref) id))
+                               result_metadata))]
              :when field-id]
          field-id)))
 
