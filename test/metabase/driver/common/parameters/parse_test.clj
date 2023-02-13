@@ -9,10 +9,7 @@
 (defn- normalize-tokens
   [tokens]
   (for [token tokens]
-    (cond
-      (string? token) token
-      (:token token)  (:token token)
-      :else           token)))
+    (or (:token token) token)))
 
 (deftest tokenize-test
   (doseq [[query expected]
