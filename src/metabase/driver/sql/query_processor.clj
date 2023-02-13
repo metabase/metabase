@@ -103,6 +103,25 @@
     2
     1))
 
+(defn inline-num
+  "Wrap number `n` in `:inline` when targeting Honey SQL 2."
+  {:added "0.46.0"}
+  [n]
+  {:pre [(number? n)]}
+  (case (long hx/*honey-sql-version*)
+    1 n
+    2 [:inline n]))
+
+(defn inline?
+  "Is `honeysql-expr` a Honey SQL 2 `:inline` format?"
+  {:added "0.46.0"}
+  [honeysql-expr]
+  (and (vector? honeysql-expr)
+       (= (first honeysql-expr) :inline)
+       (do (assert (= hx/*honey-sql-version* 2)
+                   "Found :inline form when targeting Honey SQL 1")
+           true)))
+
 ;; this is the primary way to override behavior for a specific clause or object class.
 
 (defmulti ->integer
@@ -116,14 +135,29 @@
   (hx/->integer value))
 
 (defmulti ->float
-  "Cast to float"
+  "Cast to float."
   {:arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod ->float :sql
-  [_ value]
-  (hx/cast :float value))
+  [driver value]
+  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
+  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
+  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
+  ;; maybe we can fix this.
+  (cond
+    (float? value)
+    (hx/with-database-type-info (inline-num value) "float")
+
+    (number? value)
+    (recur driver (double value))
+
+    (inline? value)
+    (recur driver (second value))
+
+    :else
+    (hx/cast :float value)))
 
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
@@ -287,25 +321,6 @@
                                   (truncate-fn (add-interval-honeysql-form driver expr offset :day))
                                   (- offset) :day)
       (truncate-fn expr))))
-
-(defn inline-num
-  "Wrap number `n` in `:inline` when targeting Honey SQL 2."
-  {:added "0.46.0"}
-  [n]
-  {:pre [(number? n)]}
-  (case (long hx/*honey-sql-version*)
-    1 n
-    2 [:inline n]))
-
-(defn inline?
-  "Is `honeysql-expr` a Honey SQL 2 `:inline` format?"
-  {:added "0.46.0"}
-  [honeysql-expr]
-  (and (vector? honeysql-expr)
-       (= (first honeysql-expr) :inline)
-       (do (assert (= hx/*honey-sql-version* 2)
-                   "Found :inline form when targeting Honey SQL 1")
-           true)))
 
 (s/defn adjust-day-of-week
   "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
