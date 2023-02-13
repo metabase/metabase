@@ -135,7 +135,7 @@
       (testing "A valid sandbox passes validation and returns no error"
         (mt/with-temp Card [{card-id :id}]
           (with-gtap-cleanup
-            (mt/user-http-request :crowberto :get 204 "mt/gtap/validate"
+            (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
                                   {:table_id             table-id
                                    :group_id             group-id
                                    :card_id              card-id
@@ -151,7 +151,7 @@
                           :expected (s/eq "type/Integer")
                           :actual   (s/eq "type/Text")
                           s/Keyword s/Any}
-                         (mt/user-http-request :crowberto :get 400 "mt/gtap/validate"
+                         (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
                                                {:table_id             table-id
                                                 :group_id             group-id
                                                 :card_id              card-id
