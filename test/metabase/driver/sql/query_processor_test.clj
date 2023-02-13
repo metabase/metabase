@@ -22,6 +22,11 @@
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
+(deftest ^:parallel compiled-test
+  (binding [hx/*honey-sql-version* 2]
+    (is (= [:raw "x"]
+           (sql.qp/->honeysql :sql (sql.qp/compiled [:raw "x"]))))))
+
 (deftest ^:parallel default-select-test
   (are [hsql-version expected] (= expected
                                   (binding [hx/*honey-sql-version* hsql-version]

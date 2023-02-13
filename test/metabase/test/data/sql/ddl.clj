@@ -82,7 +82,11 @@
                         (try
                           (mapv (fn [column]
                                   (let [value (get row column)]
-                                    (sql.qp/->honeysql driver value)))
+                                    ;; don't double-compile `:raw` forms
+                                    (if (and (vector? value)
+                                             (= (first value) :raw))
+                                      value
+                                      (sql.qp/->honeysql driver value))))
                                 columns)
                           (catch Throwable e
                             (throw (ex-info (format "Error compiling test data row: %s" (ex-message e))
