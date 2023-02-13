@@ -133,12 +133,11 @@
   nil)
 
 (defn- database-for-action [action-or-id]
-  (models/post-select
-   (t2/query-one nil Database {:select [:db.*]
-                               :from   :action
-                               :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                        [:metabase_database :db] [:= :db.id :card.database_id]]
-                               :where  [:= :action.id (u/the-id action-or-id)]})))
+  (t2/select-one Database {:select [:db.*]
+                           :from   :action
+                           :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                    [:metabase_database :db] [:= :db.id :card.database_id]]
+                           :where  [:= :action.id (u/the-id action-or-id)]}))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
