@@ -203,11 +203,13 @@ export function getSortedModelFields(
   const tableFields = table?.fields ?? [];
   const tableColumns = tableFields.map(field => field.column());
 
-  return orderedColumns.map(columnVizSetting =>
-    getFieldFromColumnVizSetting(
-      columnVizSetting,
-      tableColumns,
-      columnMetadata,
-    ),
-  );
+  return orderedColumns
+    .map(columnVizSetting =>
+      getFieldFromColumnVizSetting(
+        columnVizSetting,
+        tableColumns,
+        columnMetadata,
+      ),
+    )
+    .filter(Boolean);
 }
