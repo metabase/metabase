@@ -167,9 +167,6 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
   the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.
 
-- `->honeysql [<driver> :temporal-extract]` has been added. Implement this method if you want your driver support exprressions
-to extract datetime component from a datetime column.
-
 ## Metabase 0.43.0
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see
