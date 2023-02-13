@@ -225,13 +225,11 @@ async function setup({
       <Route path="actions" component={ModelDetailPage}>
         <ModalRoute
           path="new"
-          // @ts-expect-error — ModalRoute props can't be typed yet
           modal={ActionCreator}
           modalProps={{ enableTransition: false }}
         />
         <ModalRoute
           path=":actionId"
-          // @ts-expect-error — ModalRoute props can't be typed yet
           modal={ActionCreator}
           modalProps={{ enableTransition: false }}
         />
