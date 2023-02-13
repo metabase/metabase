@@ -941,7 +941,7 @@ saved later when it is ready."
                                               ;; queries
                                               (card/template-tag-parameters card)))
                           param-key)
-         source-type (:values_source_type param)]
+         _source-type (:values_source_type param)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))

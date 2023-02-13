@@ -53,11 +53,11 @@
     (ns-unmap *ns* 'qux))
 
   (testing "no return schemas given should work"
-    (mu/defn qux [x :- :int])
+    (mu/defn qux [x :- :int] x)
     (is (= "Inputs: [x :- :int]\n  Return: :any"
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux)
-    (mu/defn qux "Original docstring." [x :- :int])
+    (mu/defn qux "Original docstring." [x :- :int] x)
     (is (= (str/join "\n"
                      [  "Inputs: [x :- :int]"
                       "  Return: :any"
@@ -74,7 +74,7 @@
     (ns-unmap *ns* 'qux)
     (mu/defn qux :- :int
       "Original docstring."
-      [x :- :int])
+      [x :- :int] x)
     (is (= (str/join "\n"
                      [  "Inputs: [x :- :int]"
                       "  Return: :int"
