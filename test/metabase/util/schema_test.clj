@@ -136,7 +136,7 @@
   (boolean (u/ignore-exceptions
              (mc/validate schema x))))
 
-(deftest malli-and-plumatic-compatibility
+(deftest ^:parallel malli-and-plumatic-compatibility
   (doseq [{:keys [plumatic malli failed-cases success-cases]}
           [{:plumatic      su/NonBlankString
             :malli         ms/NonBlankString

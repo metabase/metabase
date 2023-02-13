@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
-   [metabase.shared.util.i18n :refer [tru] :as shared.i18n]
+   [metabase.shared.util.i18n :refer [tru] :as i18n]
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
@@ -18,7 +18,6 @@
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
-              [metabase.util.i18n :as i18n]
               [potemkin :as p]
               [ring.util.codec :as codec]]))
   #?(:clj (:import
