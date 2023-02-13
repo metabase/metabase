@@ -17,6 +17,8 @@
    [toucan.db :as db])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
+(set! *warn-on-reflection* true)
+
 (p/defprotocol+ GetSchedule
   (schedule-string [_]))
 

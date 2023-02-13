@@ -23,6 +23,8 @@
    [potemkin :as p]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (comment verify/keep-me)
 
 (p/import-vars

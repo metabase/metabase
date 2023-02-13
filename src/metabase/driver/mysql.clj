@@ -36,6 +36,8 @@
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
    (metabase.util.honey_sql_1 Identifier)))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; method impls live in these namespaces.
   mysql.actions/keep-me

@@ -14,6 +14,8 @@
    (java.util Locale)
    (org.apache.commons.lang3 LocaleUtils)))
 
+(set! *warn-on-reflection* true)
+
 (p.types/defprotocol+ CoerceToLocale
   "Protocol for anything that can be coerced to a `java.util.Locale`."
   (locale ^java.util.Locale [this]

@@ -8,6 +8,8 @@
    [metabase.util.files :as u.files]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
     (mt/with-temp* [Collection    [{collection-id   :id

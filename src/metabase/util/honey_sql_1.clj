@@ -17,6 +17,8 @@
    (honeysql.format ToSql)
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (comment honeysql.types/keep-me)
 
 (defn- english-upper-case
@@ -115,6 +117,11 @@
                      [component])
          :when     (some? component)]
      (u/qualified-name component))))
+
+(defn identifier?
+  "Whether `x` is an instance of `Identifier`."
+  [x]
+  (instance? Identifier x))
 
 ;; Single-quoted string literal
 (p.types/defrecord+ Literal [literal]

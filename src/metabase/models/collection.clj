@@ -33,6 +33,8 @@
   (:import
    (metabase.models.collection.root RootCollection)))
 
+(set! *warn-on-reflection* true)
+
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 

@@ -20,6 +20,8 @@
    [schema.macros :as s.macros]
    [schema.utils :as s.utils]))
 
+(set! *warn-on-reflection* true)
+
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)
 

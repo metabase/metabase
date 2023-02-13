@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -20,6 +19,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
+
+(set! *warn-on-reflection* true)
 
 (defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
 
@@ -61,11 +62,12 @@
   [driver schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (let [honeysql {:select [:*]
-                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
-                  :where  [:not= 1 1]}
-        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
-    (sql.qp/format-honeysql driver honeysql)))
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    (let [honeysql {:select [:*]
+                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table schema table)))]
+                    :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
+          honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+      (sql.qp/format-honeysql driver honeysql))))
 
 (defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
@@ -387,7 +389,8 @@
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
 (defn describe-nested-field-columns
-  "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
+  "Default implementation of [[metabase.driver.sql-jdbc.sync.interface/describe-nested-field-columns]] for SQL JDBC
+  drivers. Goes and queries the table if there are JSON columns for the nested contents."
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
@@ -398,18 +401,17 @@
         #{}
         (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
               table-identifier (apply hx/identifier :table table-identifier-info)
-              quote-type       (case driver :postgres :ansi :mysql :mysql)
-              sql-args         (hsql/format {:select json-field-names
-                                             :from   [table-identifier]
-                                             :limit  metadata-queries/nested-field-sample-limit} :quoting quote-type)
+              sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                               :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                               :limit  metadata-queries/nested-field-sample-limit})
               query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
           (if (> (count fields) max-nested-field-columns)
             (do
               (log/warn
-                (format
-                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                  max-nested-field-columns))
+               (format
+                "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                max-nested-field-columns))
               (set (take max-nested-field-columns fields)))
             fields))))))

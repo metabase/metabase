@@ -15,6 +15,8 @@
    [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
     (tt/with-temp* [Card      [{card-id :id}]
@@ -22,12 +24,12 @@
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
                 (db/insert! DashboardCard
-                            {:card_id      card-id
-                             :dashboard_id (u/the-id dash)
-                             :row          0
-                             :col          0
-                             :size_x       4
-                             :size_y       4}))
+                  {:card_id      card-id
+                   :dashboard_id (u/the-id dash)
+                   :row          0
+                   :col          0
+                   :size_x       4
+                   :size_y       4}))
               (get-dashboard-count []
                 (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0

@@ -44,6 +44,8 @@
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset
@@ -139,7 +141,8 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-inner-query <>))))
+     (mbql-query-impl/wrap-inner-query <>)
+     (vary-meta <> assoc :type :mbql))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,

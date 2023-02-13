@@ -24,6 +24,8 @@
   (:import
    (java.sql Connection)))
 
+(set! *warn-on-reflection* true)
+
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
   of maps with a :column and :message key indicating what went wrong."
@@ -78,7 +80,8 @@
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
-                         (hx/cast sql-type value)
+                         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                           (hx/cast sql-type value))
                          (try
                            (sql.qp/->honeysql driver [:value value field])
                            (catch Exception e

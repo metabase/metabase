@@ -11,6 +11,8 @@
    (java.io DataInputStream File)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is
   considered a UTF-8 encoded String and compared on that basis. Otherwise, `expected` is compared to `actual` after each

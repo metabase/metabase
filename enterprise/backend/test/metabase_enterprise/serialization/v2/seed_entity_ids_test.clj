@@ -10,6 +10,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (deftest seed-entity-ids-test
   (testing "Sanity check: should succeed before we go around testing specific situations"
     (is (true? (v2.seed-entity-ids/seed-entity-ids! nil))))

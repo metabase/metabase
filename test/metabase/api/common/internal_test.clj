@@ -14,7 +14,11 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [ring.adapter.jetty9 :as jetty]))
+
+(set! *warn-on-reflection* true)
 
 (def TestAddress
   [:map
@@ -33,6 +37,12 @@
      [:city string?]
      [:zip int?]
      [:lonlat [:tuple double? double?]]]]])
+
+(def NonBlankString
+  "Schema for a string that cannot be blank."
+  (mu/with-api-error-message
+    [:string {:min 1}]
+    (deferred-tru "value must be a non-blank string.")))
 
 (def ClosedTestAddress
   (mut/closed-schema TestAddress))
@@ -53,6 +63,11 @@
 (api/defendpoint POST "/post/closed-test-address"
   [:as {address :body :as _request}]
   {address ClosedTestAddress}
+  {:status 200 :body address})
+
+(api/defendpoint POST "/test-localized-error"
+  [:as {address :body :as _request}]
+  {address NonBlankString}
   {:status 200 :body address})
 
 (api/define-routes)
@@ -129,9 +144,18 @@
             {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
             :specific-errors {:address
                               {:address ["missing required key"],
-                               :a       ["disallowed key"],
-                               :b       ["disallowed key"]}}}
-           (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))))
+                               :a ["disallowed key"],
+                               :b ["disallowed key"]}}}
+           (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
+
+    (testing "malli schema message are localized"
+      (mt/with-mock-i18n-bundles  {"es" {:messages
+                                         {"value must be a non-blank string."
+                                          "el valor debe ser una cadena que no esté en blanco."}}}
+        (metabase.test/with-temporary-setting-values [site-locale "es"]
+          (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
+                  :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco."]}}
+                 (:body (post! "/test-localized-error" {:address ""})))))))))
 
 (deftest route-fn-name-test
   (are [method route expected] (= expected

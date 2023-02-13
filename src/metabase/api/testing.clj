@@ -12,6 +12,8 @@
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
+(set! *warn-on-reflection* true)
+
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 
 (defn- assert-h2 [app-db]
