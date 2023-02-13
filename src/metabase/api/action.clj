@@ -6,7 +6,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card Database]]
+   [metabase.models :refer [Action Card]]
    [metabase.models.action :as action]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
