@@ -684,10 +684,10 @@
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
   (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
-             :let  [field-clause (params/param-target->field-clause target card)
-                    {:keys [result_metadata]} card]
+             :let  [field-clause (params/param-target->field-clause target card)]
              :when field-clause
-             :let  [field-id (or
+             :let  [{:keys [result_metadata]} card
+                    field-id (or
                               ;; Get the field id from the field-clause if it contains it. This is the common case for
                               ;; mbql queries.
                               (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)
