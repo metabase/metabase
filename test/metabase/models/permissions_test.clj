@@ -971,7 +971,6 @@
 (deftest quickcheck-->v2-path-test
   (is (:pass? (check-fn! #'perms/->v2-path))))
 
-
 (deftest generate-graph-test
   (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
          (#'perms/generate-graph #{2} {1 ["/db/2/"]})))

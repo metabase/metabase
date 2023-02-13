@@ -149,7 +149,7 @@
 
   ### Known Permissions Paths
 
-  See [[path-regex]] for an always-up-to-date list of permissions paths.
+  See [[path-regex-v1]] for an always-up-to-date list of permissions paths.
 
     /collection/:id/                                ; read-write perms for a Coll and its non-Coll children
     /collection/:id/read/                           ; read-only  perms for a Coll and its non-Coll children
@@ -350,9 +350,7 @@
   "Regex for a valid permissions path. built with [[metabase.util.regex/rx]] to make the big-and-hairy regex somewhat readable.
   Will not match:
   - a v1 data path like \"/db/1\" or \"/db/1/\"
-  - a block path like \"block/db/2/\"
-    see: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7?pvs=4#76f57eab3299418a92650f9ea8a58523
-  "
+  - a block path like \"block/db/2/\""
   (u.regex/rx
    "^/" [:or
          v2-data-permissions-rx
@@ -862,7 +860,18 @@
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
-  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
+
+  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
+
+         v1 permissions
+  |--------------------------------|
+  |                                |
+  v1-data, block | all-other-paths | v2-data, v2-query
+                 |                                   |
+                 |-----------------------------------|
+                           v2 permissions
+  "
   []
   (let [db-ids             (delay (db/select-ids 'Database))
         group-id->v1-paths (->> (permissions-by-group-ids [:or
@@ -878,7 +887,18 @@
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
-  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code. This version of data-perms-graph
+  removes v1 paths, implicitly keeping Only v2 style paths.
+
+  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
+
+         v1 permissions
+  |--------------------------------|
+  |                                |
+  v1-data, block | all-other-paths | v2-data, v2-query
+                 |                                   |
+                 |-----------------------------------|
+                           v2 permissions"
   []
   (let [db-ids             (delay (db/select-ids 'Database))
         group-id->v2-paths (->> (permissions-by-group-ids [:or
@@ -984,8 +1004,8 @@
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
 (mu/defn ^:private ->v2-path :- [:vector [:re path-regex-v2]]
+  "Takes either a v1 or v2 path, and translates it into one or more v2 paths."
   [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
-  ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
   (let [kind (classify-path path)]
     (case kind
       :data (let [data-permission-kind (classify-data-path path)
