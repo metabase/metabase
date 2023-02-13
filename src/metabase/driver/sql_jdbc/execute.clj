@@ -507,7 +507,8 @@
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                 {:sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                 {:driver driver
+                                                  :sql    (str/split-lines (mdb.query/format-sql sql driver))
                                                   :params params
                                                   :type   qp.error-type/invalid-query}
                                                  e))))]

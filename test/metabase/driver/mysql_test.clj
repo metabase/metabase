@@ -24,6 +24,7 @@
     :as string-extracts-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -39,7 +40,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
                         (thunk))))
 
 (deftest all-zero-dates-test
@@ -569,12 +576,22 @@
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
                  (db->fields (mt/db)))))
         (testing "Nested field columns are correct"
-          (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
-                   {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
+          (is (= #{{:name              "jsoncol → mybool"
+                    :database-type     "boolean"
+                    :base-type         :type/Boolean
+                    :database-position 0
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "mybool"]}
+                   {:name              "jsoncol → myint"
+                    :database-type     "double precision"
+                    :base-type         :type/Number
+                    :database-position 0
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   :mysql
                   (mt/db)

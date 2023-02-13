@@ -394,7 +394,6 @@
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
-
           table-fields          (describe-table-fields driver conn table nil)
           json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
       (if (nil? (seq json-fields))

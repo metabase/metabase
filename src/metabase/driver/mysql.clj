@@ -91,7 +91,9 @@
 
 (defn- unsupported-version? [^DatabaseMetaData metadata]
   (< (db-version metadata)
-     (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
+     (if (mariadb? metadata)
+       min-supported-mariadb-version
+       min-supported-mysql-version)))
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
@@ -286,7 +288,7 @@
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
           json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
-      (case field-type
+      (case (u/lower-case-en field-type)
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
         "timestamp" [:convert
@@ -294,6 +296,10 @@
                      [:raw "DATETIME"]]
 
         "boolean" json-extract+jsonpath
+
+        ;; in older versions of MySQL you can't do `convert(<string>, double)` or `cast(<string> AS double)` which is
+        ;; equivalent; instead you can do `<string> + 0.0` =(
+        ("float" "double") [:+ json-extract+jsonpath [:inline 0.0]]
 
         [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
 
