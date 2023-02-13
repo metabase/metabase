@@ -294,4 +294,24 @@ describe("scenarios > question > native subquery", () => {
       },
     );
   });
+
+  it.skip("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+    const questionDetails = {
+      name: "28218",
+      native: { query: "select 1;" }, // semicolon is important here
+    };
+
+    cy.createNativeQuestion(questionDetails).then(
+      ({ body: { id: baseQuestionId } }) => {
+        const tagID = `#${baseQuestionId}`;
+
+        startNewNativeQuestion();
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+
+        runNativeQuery();
+
+        cy.get(".cellData").should("contain", "1");
+      },
+    );
+  });
 });
