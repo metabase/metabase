@@ -646,12 +646,12 @@
                                       :filter       [:= &Products.products.category "Doohickey"]}
                        :joins        [{:source-query {:source-table $$reviews
                                                       :joins        [{:source-table $$products
-                                                                      :alias        "Products1"
-                                                                      :condition    [:= $product_id &Products1.products.id]
+                                                                      :alias        "Products"
+                                                                      :condition    [:= $product_id &Products.products.id]
                                                                       :fields       :all}]
-                                                      :breakout     [!month.&Products1.products.created_at]
-                                                      :aggregation  [[:distinct &Products1.products.id]]
-                                                      :filter       [:= &Products1.products.category "Gizmo"]}
+                                                      :breakout     [!month.&Products.products.created_at]
+                                                      :aggregation  [[:distinct &Products.products.id]]
+                                                      :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]

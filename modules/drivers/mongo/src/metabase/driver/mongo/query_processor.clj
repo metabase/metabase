@@ -29,9 +29,7 @@
                              $group $gt $gte $hour $limit $lookup $lt $lte $match $max $min $minute $mod $month
                              $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                              $sum $toLower $unwind $year]]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [metabase.models :as models])
+   [schema.core :as s])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -136,8 +134,13 @@
 
 (defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  [field separator]
-  (str/join separator (field-name-components field)))
+  ([field] (field->name field \.))
+  ([field separator]
+   (str/join separator (field-name-components field))))
+
+(defmethod add/field-reference :mongo
+  [_driver field-inst]
+  (field->name field-inst))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -148,7 +151,7 @@
 
 (defmethod ->lvalue Field
   [field]
-  (field->name field \.))
+  (field->name field))
 
 (defmethod ->lvalue :expression
   [[_ expression-name {::add/keys [desired-alias]}]]
@@ -213,7 +216,7 @@
     (str field "~~~" (name unit))))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [temporal-unit] ::add/keys [desired-alias] :as params} :as field]]
+  [[_ id-or-name {:keys [temporal-unit] ::add/keys [desired-alias]} :as field]]
   (or desired-alias
       (cond-> (if (integer? id-or-name)
                 (or (find-mapped-field-name field)
@@ -336,7 +339,7 @@
           (extract $year column))))))
 
 (defmethod ->rvalue :field
-  [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias] :as params} :as field]]
+  [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias]} :as field]]
   (let [join-field (find-join-alias join-alias)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
@@ -840,22 +843,24 @@
 
 (defn- handle-join [{:keys [join-aliases] :as pipeline-ctx}
                     {:keys [alias condition source-query strategy] :as join}]
-  (let [{:keys [projections] pipeline :query join-aliases' :join-aliases
+  (let [result-fields (mapcat #(% source-query) [:fields :breakout :aggregation])
+        {:keys [projections] pipeline :query join-aliases' :join-aliases
          :or {projections [] pipeline []}}
         (when source-query
-          (binding [*query* (assoc (select-keys *query* [:database :type])
+          (binding [*field-mappings* (apply dissoc *field-mappings* result-fields)
+                    *query* (assoc (select-keys *query* [:database :type])
                                    :query source-query)]
             ;; TODO should see the existing join-aliases?
             (add-aggregation-pipeline source-query)))
         field-mappings (when source-query
-                         (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
+                         (zipmap result-fields
                                  projections))
         own-fields (->> (mbql.u/match condition
                           [:field _ (_ :guard #(not= (:join-alias %) alias))])
                         ;; WARN: assuming no clashes with fields from nested queries
                         (remove *field-mappings*))
         mapping (map (fn [f] (let [n (str/replace (->lvalue f) "~" "")]
-                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) #_gensym name)}))
+                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
                      own-fields)
         let-map (into {} (map (juxt :alias :rvalue)) mapping)
         context-map (into {} (map (juxt :field #(str \$ (:alias %)))) mapping)
@@ -866,7 +871,6 @@
       (let [pipeline (cond-> pipeline
                        condition (conj {$match (compile-filter condition)}))
             stages [{$lookup {:from (find-source-collection join)
-                              ;; TODO optimisation: could this have generic expressions as the RHS?
                               ;; TODO optimisation: omit if let-map is empty
                               :let let-map
                               :pipeline pipeline
@@ -881,30 +885,6 @@
 (defn- handle-joins [{:keys [joins]} pipeline-ctx]
   (reduce handle-join pipeline-ctx joins))
 
-(comment
-  (require '[metabase.test :as mt])
-  (require '[metabase.query-processor.test-util :as qp.test-util])
-  (toucan.db/delete! metabase.models/Database)
-  (mt/with-driver :mongo
-    (mt/with-everything-store
-      (let [query
-            (mt/mbql-query checkins
-              {:source-query {:source-table $$checkins
-                              :joins
-                              [{:fields       :all
-                                :alias        "u"
-                                :source-table $$users
-                                :condition    [:= $user_id &u.users.id]}]}
-               :joins        [{:fields       :all
-                               :alias        "v"
-                               :source-table $$venues
-                               :condition    [:= $user_id &v.venues.id]}]
-               :order-by     [[:asc $id]]
-               :limit        2})]
-        (binding [*query* (update query :query preprocess)]
-          [#_(handle-joins (:query *query*) {:query [] :join-aliases {}})
-           *query*]))))
-  nil)
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (def ^:private aggregation-op
@@ -1351,6 +1331,7 @@
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
-        (assoc compiled
-               :collection  source-table-name
-               :mbql?       true)))))
+        (-> compiled
+            (dissoc :join-aliases)
+            (assoc :collection source-table-name
+                   :mbql?      true))))))
