@@ -191,7 +191,10 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
-  const fields = useMemo(() => getSortedModelFields(dataset), [dataset]);
+  const fields = useMemo(
+    () => getSortedModelFields(dataset, resultsMetadata?.columns),
+    [dataset, resultsMetadata],
+  );
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
