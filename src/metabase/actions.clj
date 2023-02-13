@@ -7,13 +7,14 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
    [toucan.db :as db]
+   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -132,11 +133,12 @@
   nil)
 
 (defn- database-for-action [action-or-id]
-  (t2/query-one nil 'Database {:select [:db.*]
+  (models/post-select
+   (t2/query-one nil Database {:select [:db.*]
                                :from   :action
                                :join   [[:report_card :card] [:= :card.id :action.model_id]
                                         [:metabase_database :db] [:= :db.id :card.database_id]]
-                               :where  [:= :action.id (u/the-id action-or-id)]}))
+                               :where  [:= :action.id (u/the-id action-or-id)]})))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
