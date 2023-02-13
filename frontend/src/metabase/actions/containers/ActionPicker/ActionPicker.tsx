@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
