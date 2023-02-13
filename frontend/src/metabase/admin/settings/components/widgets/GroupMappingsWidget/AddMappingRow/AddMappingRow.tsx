@@ -42,6 +42,7 @@ function AddMappingRow({
           onSubmit={isMappingNameUnique ? handleSubmit : undefined}
         >
           <input
+            aria-label="new-group-mapping-name-input"
             className="input--borderless h3 ml1 flex-full"
             type="text"
             value={value}

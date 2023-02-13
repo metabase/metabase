@@ -104,7 +104,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
         props.onChangeSetting(mappingSetting, mappingsMinusDeletedMapping);
         setMappings(mappingsMinusDeletedMapping);
 
-        onSuccess();
+        onSuccess && onSuccess();
 
         setSaveError(null);
       },
@@ -149,7 +149,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                   placeholder={props.groupPlaceholder}
                   onCancel={handleHideAddRow}
                   onAdd={handleAddMapping}
-                  onDeleteMapping={handleDeleteMapping}
                 />
               )}
               {Object.keys(mappings).length === 0 && !showAddRow && (
