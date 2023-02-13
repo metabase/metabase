@@ -332,9 +332,9 @@
      (zero? offset) day-of-week
      (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
      :else          (hx/call :case
-                             [:=
-                              (mod-fn (hx/+ day-of-week offset) (inline-num 7))
-                              (inline-num 0)]
+                             (hx/call :=
+                                      (mod-fn (hx/+ day-of-week offset) (inline-num 7))
+                                      (inline-num 0))
                              (inline-num 7)
                              :else
                              (mod-fn
@@ -895,7 +895,7 @@
 ;;; TODO -- we should probably mark this as deprecated since in 0.49.0 we can presumably drop [[hx/*honey-sql-version*]]
 ;;; completely
 (defn maybe-wrap-unaliased-expr
-  "Wrap an expression for a `:select` clause or similar in as `[expr]` for Honey SQL 2. For Honey SQL 1, return it as-is.
+  "Wrap an expression for a `:select` clause or similar as `[expr]` for Honey SQL 2. For Honey SQL 1, return it as-is.
 
   Honey SQL 2 generally needs things to be wrapped even if you don't specify an alias, so vector expressions like
   `[::f :x]` are not interpreted as `[expr alias]`. Honey SQL 1 explicitly disallows this, however.
