@@ -1,10 +1,24 @@
 (ns dev.db-tracking
-  "A set of utility function so track the database changes after a certiain actions."
+  "A set of utility function to track database changes.
+  Use this when you want to observe changes of database models when doing stuffs on UI.
+
+  How to use this?
+
+  > (track! models/Dashboard models/Card models/DashboardCard)
+
+  -- Go on UI and do stuffs like update viz-settings of a dashcard.
+
+  > (changes)
+  ;; => {:update {:report_dashboardcard ...}}
+
+  You can use [[reset-tracking]] to clear our all the current trackings.
+  And untrack! to stop tracking for a list of models."
   (:require
-   [metabase.models :as models]
    [toucan2.core :as t2]))
 
 (def ^:private tracking (atom {}))
+
+(def ^:private tracked-models (atom []))
 
 (defn new-tracking
   "Add a tracking to the [[tracking]] atom.
@@ -49,6 +63,7 @@
   "Start tracking a list of models."
   [& models]
   (doseq [model models]
+    (swap! tracked-models conj model)
     (derive model ::tracking)))
 
 (defn untrack!
@@ -57,12 +72,19 @@
   (doseq [model models]
     (underive model ::tracking)))
 
+(defn untrack-all!
+  "Quickly untrack all the tracked models."
+  []
+  (apply untrack! @tracked-models)
+  (reset! tracked-models []))
+
 (defn changes
   "Return all changes that were recorded."
   []
   @tracking)
 
 (comment
+  (require '[metabase.models :as models])
   (track! models/Dashboard models/Card models/DashboardCard)
 
   (reset-tracking!)
