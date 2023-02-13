@@ -15,6 +15,11 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
+
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
@@ -155,7 +160,7 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, COUNT(*) AS count "
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
