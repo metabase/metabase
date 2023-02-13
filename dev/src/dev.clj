@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [dev.debug-qp :as debug-qp]
+   [dev.db-tracking :refer :all]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
