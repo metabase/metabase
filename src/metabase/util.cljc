@@ -320,8 +320,8 @@
                ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
                ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
                ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
-               #"\p{Block=CombiningDiacriticalMarks}+"
-               "")
+              #"\p{Block=CombiningDiacriticalMarks}+"
+              "")
        :cljs (-> s
                  (.normalize "NFKD")  ;; Renders accented characters as base + accent.
                  (.replace (js/RegExp. "[\u0300-\u036f]" "gu") ""))))) ;; Drops all the accents.

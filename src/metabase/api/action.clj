@@ -9,7 +9,7 @@
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.malli :as mu]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]])
@@ -23,12 +23,12 @@
    string?
    (mu/with-api-error-message
      [:fn #(http-action/apply-json-query {} %)]
-     "must be a valid json-query, something like '.item.title'")])
+     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
     [:enum "http" "query" "implicit"]
-    "Unsupported action type"))
+    (deferred-tru "Unsupported action type")))
 
 (def ^:private implicit-action-kind
   (mu/with-api-error-message
@@ -36,7 +36,7 @@
           (for [ns ["row" "bulk"]
                 action ["create" "update" "delete"]]
             (str ns "/" action)))
-    "Unsupported implicit action kind"))
+    (deferred-tru "Unsupported implicit action kind")))
 
 (def ^:private http-action-template
   [:map {:closed true}
@@ -55,13 +55,12 @@
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
     (hydrate
-     (action/actions-with-implicit-params [model] :model_id model-id)
+     (action/select-actions [model] :model_id model-id)
      :creator)))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (-> (action/actions-with-implicit-params nil :id action-id)
-      first
+  (-> (action/select-action :id action-id)
       (hydrate :creator)
       api/read-check))
 
@@ -102,10 +101,10 @@
     (actions/check-actions-enabled! (db/select-one Database :id database_id)))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
-      (first (action/actions-with-implicit-params nil :id action-id))
+      (action/select-action :id action-id)
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/actions-with-implicit-params nil :type type)))))
+      (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
   [id :as
@@ -127,7 +126,7 @@
    visualization_settings [:maybe map?]}
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
-  (first (action/actions-with-implicit-params nil :id id)))
+  (action/select-action :id id))
 
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this

@@ -25,8 +25,8 @@
   (let [{:keys [min max]} (-> schema mc/properties)]
     (cond
       (and min max) (str " with length between " min " and " max " inclusive")
-      min (str " with length <= " min)
-      max (str " with length >= " max)
+      min (str " with length >= " min)
+      max (str " with length <= " max)
       :else "")))
 
 (defn- pluralize-times [n]
@@ -268,4 +268,4 @@
                         {::mc/walk-entry-vals true,
                          ::definitions definitions,
                          ::describe -describe})]
-     (str/trim (-describe ?schema options)))))
+     (str/trim (str (-describe ?schema options))))))
