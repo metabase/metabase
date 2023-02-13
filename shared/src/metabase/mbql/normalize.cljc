@@ -615,8 +615,8 @@
          (canonicalize-mbql-clause arg)
          ;; 0 indexes were allowed in the past but we are now enforcing this rule in MBQL.
          ;; This allows stored queries with literal 0 in the index to work.
-         (if (= 0 start) 1 (canonicalize-mbql-clause start))
-         (map canonicalize-mbql-clause more)]))
+         (if (= 0 start) 1 (canonicalize-mbql-clause start))]
+        (map canonicalize-mbql-clause more)))
 
 ;;; top-level key canonicalization
 

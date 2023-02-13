@@ -618,7 +618,10 @@
   (canonicalize-tests
    "substring index 0 -> 1"
    {[:substring "foo" 0 1]
-    [:substring "foo" 1 1]}))
+    [:substring "foo" 1 1]
+
+    [:substring "foo" 0 1 3]
+    [:substring "foo" 1 1 3]}))
 
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
