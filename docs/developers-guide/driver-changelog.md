@@ -164,6 +164,9 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
 
+- `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
+  the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.
+
 ## Metabase 0.43.0
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see
