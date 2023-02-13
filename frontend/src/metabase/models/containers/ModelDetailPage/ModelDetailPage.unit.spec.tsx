@@ -22,8 +22,12 @@ import {
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
+
 import Models from "metabase/entities/questions";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import ActionCreator from "metabase/actions/containers/ActionCreatorRoute";
 
 import type {
   Card,
@@ -218,7 +222,18 @@ async function setup({
       <IndexRedirect to="usage" />
       <Route path="usage" component={ModelDetailPage} />
       <Route path="schema" component={ModelDetailPage} />
-      <Route path="actions" component={ModelDetailPage} />
+      <Route path="actions" component={ModelDetailPage}>
+        <ModalRoute
+          path="new"
+          modal={ActionCreator}
+          modalProps={{ enableTransition: false }}
+        />
+        <ModalRoute
+          path=":actionId"
+          modal={ActionCreator}
+          modalProps={{ enableTransition: false }}
+        />
+      </Route>
       <Redirect from="*" to="usage" />
     </Route>,
     { withRouter: true, initialRoute },
@@ -449,7 +464,7 @@ describe("ModelDetailPage", () => {
 
         it("allows to create a new query action from the empty state", async () => {
           await setupActions({ model: getModel(), actions: [] });
-          userEvent.click(screen.getByRole("button", { name: "New action" }));
+          userEvent.click(screen.getByRole("link", { name: "New action" }));
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
 
@@ -500,7 +515,7 @@ describe("ModelDetailPage", () => {
             actions: [createMockQueryAction({ model_id: model.id() })],
           });
 
-          userEvent.click(screen.getByRole("button", { name: "New action" }));
+          userEvent.click(screen.getByRole("link", { name: "New action" }));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
