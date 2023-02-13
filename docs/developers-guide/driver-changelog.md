@@ -17,8 +17,6 @@ title: Driver interface changelog
   `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
    implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
 
-- `a`
-
 ### Honey SQL 2
 
 The following only applies to SQL drivers; you can ignore it for non-SQL drivers.
@@ -168,6 +166,9 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
   the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.
+
+- `->honeysql [<driver> :temporal-extract]` has been added. Implement this method if you want your driver support exprressions
+to extract datetime component from a datetime column.
 
 ## Metabase 0.43.0
 
