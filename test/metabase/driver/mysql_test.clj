@@ -569,8 +569,8 @@
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
                  (db->fields (mt/db)))))
         (testing "Nested field columns are correct"
           (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}

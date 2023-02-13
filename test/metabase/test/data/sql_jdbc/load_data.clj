@@ -17,9 +17,7 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.log :as log])
-  (:import
-   (java.sql SQLException)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

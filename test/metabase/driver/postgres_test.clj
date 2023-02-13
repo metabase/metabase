@@ -675,8 +675,8 @@
 (mt/defdataset ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
-    [[[:raw "'192.168.1.1'::inet"]]
-     [[:raw "'10.4.4.15'::inet"]]]]])
+    [[(sql.qp/compiled [:raw "'192.168.1.1'::inet"])]
+     [(sql.qp/compiled [:raw "'10.4.4.15'::inet"])]]]])
 
 (deftest inet-columns-test
   (mt/test-driver :postgres
