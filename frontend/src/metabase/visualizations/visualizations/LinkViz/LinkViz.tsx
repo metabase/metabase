@@ -3,7 +3,11 @@ import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { FieldLabelWithContainer } from "metabase/core/components/FormField/FormField.styled";
+import Icon from "metabase/components/Icon";
+
+import type { DashboardOrderedCard } from "metabase-types/api";
+import { isEmpty } from "metabase/lib/validate";
+
 import {
   settings,
   getSettingsStyle,
@@ -17,6 +21,7 @@ import {
 } from "./LinkViz.styled";
 
 interface LinkVizProps {
+  dashcard: DashboardOrderedCard;
   isEditing: boolean;
   isPreviewing: boolean;
   isSettings: boolean;
@@ -27,6 +32,7 @@ interface LinkVizProps {
 }
 
 function LinkViz({
+  dashcard,
   isEditing,
   isPreviewing,
   isSettings,
@@ -37,6 +43,8 @@ function LinkViz({
     link: { url },
   } = settings;
 
+  const isNew = !!dashcard?.justAdded;
+
   const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     onUpdateVisualizationSettings({ link: { url: e.currentTarget.value } });
 
@@ -45,8 +53,9 @@ function LinkViz({
   if (showEditBox) {
     return (
       <EditLinkCardWrapper>
-        <FieldLabelWithContainer>{t`Link url`}</FieldLabelWithContainer>
         <Input
+          autoFocus={isNew}
+          placeholder={t`https://metabase.com`}
           value={url ?? ""}
           onChange={handleLinkChange}
           fullWidth
@@ -57,13 +66,16 @@ function LinkViz({
     );
   }
 
+  const displayIcon = isEmpty(url) ? "question" : "link";
+
   return (
     <DisplayLinkCardWrapper alignmentSettings={getSettingsStyle(settings)}>
-      <Ellipsified>
-        <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
-          {url ?? t`Choose a link`}
-        </CardLink>
-      </Ellipsified>
+      <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
+        <Icon name={displayIcon} />
+        <Ellipsified style={{ minWidth: 0 }}>
+          {isEmpty(url) ? t`Choose a link` : url}
+        </Ellipsified>
+      </CardLink>
     </DisplayLinkCardWrapper>
   );
 }

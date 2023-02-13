@@ -97,8 +97,8 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
 };
 
 export const addLinkDashCardToDashboard = function ({ dashId }) {
-  const DEFAULT_HEIGHT = 2;
-  const DEFAULT_WIDTH = 4;
+  const DEFAULT_HEIGHT = 1;
+  const DEFAULT_WIDTH = 3;
 
   const virtualLinkCard = {
     ...createCard(),

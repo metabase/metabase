@@ -12,7 +12,7 @@ export const DisplayLinkCardWrapper = styled.div<{ alignmentSettings: string }>`
 `;
 
 export const EditLinkCardWrapper = styled.div`
-  padding: 1.5rem;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -23,6 +23,12 @@ export const EditLinkCardWrapper = styled.div`
 
 export const CardLink = styled(Link)`
   padding: 0.5rem;
-  font-weight: bold;
-  color: ${color("brand")};
+  display: flex;
+  min-width: 0;
+  gap: 0.5rem;
+  align-items: center;
+  &:hover {
+    color: ${color("brand")};
+    text-decoration: underline;
+  }
 `;

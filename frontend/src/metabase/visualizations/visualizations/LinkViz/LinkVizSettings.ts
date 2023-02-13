@@ -48,7 +48,7 @@ export const settings = {
         },
       },
       default: {
-        url: "https://metabase.com",
+        url: "",
       },
     },
     "link.align_vertical": {
@@ -75,7 +75,7 @@ export const settings = {
           { name: t`Right`, value: "right" },
         ],
       },
-      default: "center",
+      default: "left",
     },
   },
   preventDragging: (e: React.SyntheticEvent) => e.stopPropagation(),
