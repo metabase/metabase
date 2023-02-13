@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import visualizations from "metabase/visualizations";
+import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import { Visualization } from "metabase/visualizations/shared/types/visualization";
 
 import Question from "metabase-lib/Question";
@@ -76,7 +77,7 @@ const ChartTypeSidebar = ({
           result &&
           result.data &&
           visualization.isSensible &&
-          visualization.isSensible(result.data, query)
+          visualization.isSensible(sanatizeResultData(result.data), query)
         );
       },
     );
