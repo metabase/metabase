@@ -3,7 +3,7 @@ import type { SearchEntity } from "metabase-types/api/search";
 
 export interface LinkCardSettings {
   link: {
-    url: string;
+    url?: string;
     entity?: SearchEntity;
   };
 }

@@ -1,12 +1,4 @@
-import type {
-  Card,
-  Dashboard,
-  Collection,
-  Table,
-  Database,
-  ModelType,
-} from "./index";
-
+import { CardDisplayType } from "./card";
 export type SearchModelType =
   | "dashboard"
   | "card"
@@ -15,10 +7,10 @@ export type SearchModelType =
   | "table"
   | "database";
 
-type Entity = Card | ModelType | Dashboard | Collection | Table | Database;
-
-export type SearchEntity = Entity & {
-  name: string;
+export type SearchEntity = {
   id: number;
+  name: string;
   model: SearchModelType;
+  description?: string;
+  display?: CardDisplayType;
 };

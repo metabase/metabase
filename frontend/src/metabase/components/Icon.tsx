@@ -62,6 +62,8 @@ export const iconPropTypes = {
   className: PropTypes.string,
   onClick: PropTypes.func,
   style: PropTypes.object,
+  ml: PropTypes.number,
+  mr: PropTypes.number,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {

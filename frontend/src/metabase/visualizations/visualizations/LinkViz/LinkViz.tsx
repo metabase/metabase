@@ -6,17 +6,19 @@ import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { FieldLabelWithContainer } from "metabase/core/components/FormField/FormField.styled";
-import SearchResult from "metabase/search/components/SearchResult";
+import Icon from "metabase/components/Icon";
 
-import { isEmpty } from "metabase/lib/validate";
-import type { SearchEntity } from "metabase-types/api";
+import type { SearchEntity, DashboardOrderedCard } from "metabase-types/api";
+
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
 import Icon from "metabase/components/Icon";
 
 import type { DashboardOrderedCard } from "metabase-types/api";
 import { isEmpty } from "metabase/lib/validate";
+import { color } from "metabase/lib/colors";
+
+import { EntityDisplay } from "./EntityDisplay";
 
 import { settings, LinkCardSettings } from "./LinkVizSettings";
 
@@ -53,7 +55,8 @@ function LinkViz({
     link: { url, entity },
   } = settings;
 
-  const [autoFocus, setAutoFocus] = useState(false);
+  const isNew = !!dashcard?.justAdded;
+  const [autoFocus, setAutoFocus] = useState(isNew);
 
   const handleLinkChange = (newLink: string) =>
     onUpdateVisualizationSettings({ link: { url: newLink } });
@@ -61,25 +64,29 @@ function LinkViz({
   const handleEntitySelect = (entity: SearchEntity) => {
     onUpdateVisualizationSettings({
       link: {
-        entity, // what happens when this data is stale?
-        url: entity.name,
+        entity: {
+          id: entity.id,
+          name: entity.name,
+          model: entity.model,
+          description: entity.description,
+          display: entity.display,
+        },
       },
     });
   };
 
   const [inputIsFocused, { turnOn: onFocusInput, turnOff: onBlurInput }] =
     useToggle();
-  const isNew = !!dashcard?.justAdded;
 
-  const showEditBox = isEditing && !isPreviewing && !isSettings;
+  const showEditor = isEditing && !isPreviewing && !isSettings;
   const wrappedEntity = Search.wrapEntity(entity);
 
-  if (showEditBox) {
+  if (showEditor) {
     return (
       <EditLinkCardWrapper>
         {!!entity && (
           <EntityEditContainer>
-            <SearchResult result={wrappedEntity} compact />
+            <EntityDisplay entity={wrappedEntity} showDescription={false} />
             <Button
               onClick={() => {
                 handleLinkChange(entity.name);
@@ -92,13 +99,12 @@ function LinkViz({
         )}
         {!entity && (
           <>
-            <FieldLabelWithContainer>{t`Link`}</FieldLabelWithContainer>
             <TippyPopover
-              visible={!!url.length && inputIsFocused && !isUrlString(url)}
+              visible={!!url?.length && inputIsFocused && !isUrlString(url)}
               content={
                 <SearchResultsContainer>
                   <SearchResults
-                    searchText={url.trim()}
+                    searchText={url?.trim()}
                     onEntitySelect={handleEntitySelect}
                   />
                 </SearchResultsContainer>
@@ -106,11 +112,12 @@ function LinkViz({
               placement="bottom"
             >
               <Input
+                fullWidth
                 type="search"
                 value={url ?? ""}
                 autoFocus={autoFocus}
+                placeholder={t`https://example.com`}
                 onChange={e => handleLinkChange(e.target.value)}
-                fullWidth
                 onFocus={onFocusInput}
                 onBlur={onBlurInput}
                 // the dashcard really wants to turn all mouse events into drag events
@@ -125,22 +132,22 @@ function LinkViz({
 
   if (entity) {
     return (
-      <DisplayLinkCardWrapper alignmentSettings={getSettingsStyle(settings)}>
-        <SearchResult result={wrappedEntity} compact />
+      <DisplayLinkCardWrapper>
+        <CardLink to={wrappedEntity.getUrl()} target="_blank" rel="noreferrer">
+          <EntityDisplay entity={wrappedEntity} showDescription />
+        </CardLink>
       </DisplayLinkCardWrapper>
     );
   }
-  
-  const displayIcon = isEmpty(url) ? "question" : "link";
-  
+
+  const urlIcon = isEmpty(url) ? "question" : "link";
+
   return (
     <DisplayLinkCardWrapper>
-      <Ellipsified>
-        <CardLink to={url ? url : ""} target="_blank" rel="noreferrer">
-          <Icon name={displayIcon} />
-          {!isEmpty(url) ? url : t`Select a link`}
-        </CardLink>
-      </Ellipsified>
+      <CardLink to={url ? url : ""} target="_blank" rel="noreferrer">
+        <Icon name={urlIcon} ml={1} mr={1} color={color("brand")} />
+        <Ellipsified>{!isEmpty(url) ? url : t`Select a link`}</Ellipsified>
+      </CardLink>
     </DisplayLinkCardWrapper>
   );
 }
