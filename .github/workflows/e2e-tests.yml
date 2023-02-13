@@ -104,21 +104,21 @@ jobs:
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:
-          - "5432:5432"
+          - "5404:5432"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       mongo-sample:
         image: metabase/qa-databases:mongo-sample-4.0
         ports:
-          - 27017:27017
+          - 27004:27017
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       mysql-sample:
         image: metabase/qa-databases:mysql-sample-8
         ports:
-          - 3306:3306
+          - 3304:3306
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

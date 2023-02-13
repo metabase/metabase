@@ -22,6 +22,21 @@ describe("scenarios > x-rays", () => {
 
   const XRAY_DATASETS = 11; // enough to load most questions
 
+  it.skip("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
+    cy.request("PUT", "api/setting/enable-xrays", { value: false });
+
+    cy.visit("/");
+    cy.findByText("Metabase tips");
+
+    cy.findByText(
+      "Try out these sample x-rays to see what Metabase can do.",
+    ).should("not.exist");
+    cy.findByText(/^A summary of/).should("not.exist");
+    cy.findByText(/^A glance at/).should("not.exist");
+    cy.findByText(/^A look at/).should("not.exist");
+    cy.findByText(/^Some insights about/).should("not.exist");
+  });
+
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
