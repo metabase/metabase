@@ -2,6 +2,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [dev.db-tracking :as db-tracking]
    [dev.debug-qp :as debug-qp]
    [dev.db-tracking :refer :all]
    [honeysql.core :as hsql]
@@ -30,13 +31,22 @@
    [toucan2.connection :as t2.connection]
    [toucan2.pipeline :as t2.pipeline]))
 
-(comment debug-qp/keep-me)
+(set! *warn-on-reflection* true)
+
+(comment
+  debug-qp/keep-me
+  db-tracking/keep-me)
 
 (defn tap>-spy [x]
   (doto x tap>))
 
 (p/import-vars
- [debug-qp process-query-debug])
+ [debug-qp process-query-debug]
+ [db-tracking
+  track!
+  untrack-all!
+  reset-tracking!
+  changes])
 
 (def initialized?
   (atom nil))
