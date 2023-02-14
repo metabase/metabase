@@ -45,17 +45,22 @@ export const createMockDashboardOrderedCard = (
   ...opts,
 });
 
-export const createMockActionDashboardCard = (
-  opts?: Partial<ActionDashboardCard>,
-): ActionDashboardCard => ({
+export const createMockDashboardCardWithVirtualCard = (
+  opts?: Partial<DashboardOrderedCard>,
+): DashboardOrderedCard => ({
   ...createMockDashboardOrderedCard(),
-  action: undefined,
-  card: createMockCard(),
+  card: {
+    query_average_duration: null,
+  } as Card,
+  card_id: null,
   visualization_settings: {
-    "button.label": "Please click me",
-    "button.variant": "primary",
-    actionDisplayType: "button",
-    virtual_card: createMockCard({ display: "action" }),
+    virtual_card: {
+      archived: false,
+      dataset_query: {},
+      display: "text",
+      name: null,
+      visualization_settings: {},
+    } as unknown as Card,
   },
   ...opts,
 });
