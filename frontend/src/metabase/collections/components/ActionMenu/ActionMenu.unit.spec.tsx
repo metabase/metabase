@@ -1,78 +1,98 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderWithProviders } from "__support__/ui";
+import { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
-import ActionMenu, { ActionMenuProps } from "./ActionMenu";
+import ActionMenu from "./ActionMenu";
+
+interface SetupOpts {
+  item: CollectionItem;
+  collection?: Collection;
+}
+
+const setup = ({
+  item,
+  collection = createMockCollection({ can_write: true }),
+}: SetupOpts) => {
+  const onCopy = jest.fn();
+  const onMove = jest.fn();
+
+  renderWithProviders(
+    <ActionMenu
+      item={item}
+      collection={collection}
+      onCopy={onCopy}
+      onMove={onMove}
+    />,
+  );
+
+  return { onCopy, onMove };
+};
 
 describe("ActionMenu", () => {
   it("should show an option to hide preview for a pinned question", () => {
-    const props = getProps({
-      item: createMockCollectionItem({
-        model: "card",
-        collection_position: 1,
-        collection_preview: true,
-        setCollectionPreview: jest.fn(),
-      }),
-      collection: createMockCollection({
-        can_write: true,
-      }),
+    const item = createMockCollectionItem({
+      model: "card",
+      collection_position: 1,
+      collection_preview: true,
+      setCollectionPreview: jest.fn(),
     });
 
-    render(<ActionMenu {...props} />);
+    setup({ item });
+
     userEvent.click(screen.getByLabelText("ellipsis icon"));
     userEvent.click(screen.getByText("Don’t show visualization"));
 
-    expect(props.item.setCollectionPreview).toHaveBeenCalledWith(false);
+    expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
   });
 
   it("should show an option to show preview for a pinned question", () => {
-    const props = getProps({
-      item: createMockCollectionItem({
-        model: "card",
-        collection_position: 1,
-        collection_preview: false,
-        setCollectionPreview: jest.fn(),
-      }),
-      collection: createMockCollection({
-        can_write: true,
-      }),
+    const item = createMockCollectionItem({
+      model: "card",
+      collection_position: 1,
+      collection_preview: false,
+      setCollectionPreview: jest.fn(),
     });
 
-    render(<ActionMenu {...props} />);
+    setup({ item });
+
     userEvent.click(screen.getByLabelText("ellipsis icon"));
     userEvent.click(screen.getByText("Show visualization"));
 
-    expect(props.item.setCollectionPreview).toHaveBeenCalledWith(true);
+    expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
   });
 
   it("should not show an option to hide preview for a pinned model", () => {
-    const props = getProps({
+    setup({
       item: createMockCollectionItem({
         model: "dataset",
         collection_position: 1,
         setCollectionPreview: jest.fn(),
       }),
-      collection: createMockCollection({
-        can_write: true,
-      }),
     });
 
-    render(<ActionMenu {...props} />);
     userEvent.click(screen.getByLabelText("ellipsis icon"));
 
     expect(
       screen.queryByText("Don’t show visualization"),
     ).not.toBeInTheDocument();
   });
-});
 
-const getProps = (opts?: Partial<ActionMenuProps>): ActionMenuProps => ({
-  item: createMockCollectionItem(),
-  collection: createMockCollection(),
-  onCopy: jest.fn(),
-  onMove: jest.fn(),
-  ...opts,
+  it("should allow to move and archive regular collections", () => {
+    const item = createMockCollectionItem({
+      name: "My personal collection",
+      model: "collection",
+      setArchived: jest.fn(),
+      personal_owner_id: 1,
+    });
+
+    setup({ item });
+
+    expect(screen.queryByLabelText("Move")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Archive")).not.toBeInTheDocument();
+  });
 });
