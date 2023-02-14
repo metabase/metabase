@@ -163,7 +163,12 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    [:dateadd (h2x/literal unit) (h2x/cast :long amount) (h2x/cast :datetime hsql-form)]))
+    [:dateadd
+     (h2x/literal unit)
+     (h2x/cast :long (if (number? amount)
+                       (sql.qp/inline-num amount)
+                       amount))
+     (h2x/cast :datetime hsql-form)]))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
