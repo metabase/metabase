@@ -74,13 +74,18 @@ function ModelActionDetails({
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
+      const editorUrl = Urls.action(model.card() as Card, action.id);
       return (
         <li key={action.id} aria-label={action.name}>
-          <ModelActionListItem action={action} canWrite={canWrite} />
+          <ModelActionListItem
+            action={action}
+            editorUrl={editorUrl}
+            canWrite={canWrite}
+          />
         </li>
       );
     },
-    [canWrite],
+    [model, canWrite],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
