@@ -131,6 +131,7 @@
                             (catch Throwable _ nil))]
       (let [command-type (.getCommandType command)]
         (cond
+          ;; if the command is a CommandList, then it is a multi-statement query
           (= (type command) org.h2.command.CommandList)
           ;; TODO: support multiple statements while checking all the command types
           (throw (IllegalArgumentException. "Only a single statement is allowed."))
