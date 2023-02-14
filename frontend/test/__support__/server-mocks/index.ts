@@ -6,3 +6,4 @@ export * from "./database";
 export * from "./dataset";
 export * from "./field";
 export * from "./table";
+export * from "./search";
