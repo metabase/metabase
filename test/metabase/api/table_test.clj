@@ -47,6 +47,7 @@
     :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
+    :settings                    nil
     :cache_ttl                   nil}))
 
 (defn- table-defaults []
