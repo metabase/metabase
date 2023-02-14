@@ -22,9 +22,13 @@ interface ModelLoaderProps {
   model: Card;
 }
 
-type Props = OwnProps & ModelLoaderProps;
+type ActionCreatorRouteProps = OwnProps & ModelLoaderProps;
 
-function ActionCreatorRoute({ model, params, onClose }: Props) {
+function ActionCreatorRoute({
+  model,
+  params,
+  onClose,
+}: ActionCreatorRouteProps) {
   const { slug, actionId } = params;
   const modelId = Urls.extractEntityId(slug);
   const databaseId = model.database_id || model.dataset_query.database;
