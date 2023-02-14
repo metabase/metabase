@@ -22,7 +22,6 @@ import type { State } from "metabase-types/store";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
@@ -49,7 +48,6 @@ interface ActionLoaderProps {
 }
 
 interface StateProps {
-  question?: Question;
   metadata: Metadata;
 }
 
