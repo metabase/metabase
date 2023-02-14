@@ -370,8 +370,7 @@
   (db-type->base-type database-type))
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
+;; options users might try to put in their connection string, like INIT=... (Metaboat #165)
 
 (defn- file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
