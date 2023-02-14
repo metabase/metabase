@@ -19,7 +19,7 @@ export const getParentPath = (route: IRoute, location: Location) => {
   return fullPathSegments.join("/");
 };
 
-type ComposedModalProps = unknown & {
+type ComposedModalProps = {
   onClose: () => void;
 };
 
