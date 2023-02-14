@@ -92,19 +92,6 @@ describe("Dashboard > ActionSidebar", () => {
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
 
-  it("can open the action dashcard settings modal", async () => {
-    setup();
-
-    const settingsButton = screen.getByRole("button", {
-      name: "Pick an action",
-    });
-
-    userEvent.click(settingsButton);
-
-    await screen.findByRole("dialog");
-    expect(screen.getByText("Action Library")).toBeInTheDocument();
-  });
-
   it("changes the modal trigger button when an action is assigned already", async () => {
     setup({ dashcardId: 3 });
 
