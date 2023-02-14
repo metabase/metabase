@@ -905,7 +905,7 @@
   (testing "ok, does a second-level Collection have its parent and its children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -915,8 +915,8 @@
   (testing "what about a third-level Collection?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}
-                                      {:name "C", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}
+                                      {:name "C", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -927,7 +927,7 @@
                 "and say we are a child of A")
     (with-collection-hierarchy [a b d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -937,7 +937,7 @@
   (testing "for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection."
     (with-collection-hierarchy [b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -947,7 +947,7 @@
     (testing "for C: if we remove D we should get E and F as effective children"
       (with-collection-hierarchy [a b c e f g]
         (testing "ancestors"
-          (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+          (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                   :effective_location  "/A/"}
                  (api-get-collection-ancestors c))))
         (testing "children"
@@ -975,6 +975,22 @@
         (is (= [(collection-item "B")]
                (api-get-collection-children a :archived true)))))))
 
+(deftest personal-collection-ancestors-test
+  (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
+    (let [root-owner-id   (u/the-id (test.users/fetch-user :rasta))
+          root-collection (db/select-one Collection :personal_owner_id root-owner-id)]
+      (mt/with-temp* [Collection [collection {:name     "Som Test Child Collection"
+                                              :location (collection/location-path root-collection)}]]
+        (is (= [{:metabase.models.collection.root/is-root? true,
+                 :authority_level                          nil,
+                 :name                                     "Our analytics",
+                 :id                                       false,
+                 :can_write                                true}
+                {:name              "Rasta Toucan's Personal Collection",
+                 :id                true,
+                 :personal_owner_id root-owner-id,
+                 :can_write         true}]
+               (:effective_ancestors (api-get-collection-ancestors collection))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/root                                              |
