@@ -93,7 +93,7 @@ describe("scenarios > models > actions", () => {
       cy.findByText("Delete").should("be.visible");
     });
 
-    cy.findByRole("button", { name: "New action" }).click();
+    cy.findByRole("link", { name: "New action" }).click();
     fillQuery("DELETE FROM orders WHERE id = {{ id }}");
     fieldSettings().findByText("number").click();
     cy.findByRole("button", { name: "Save" }).click();

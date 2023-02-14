@@ -1,17 +1,16 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 
 import Actions from "metabase/entities/actions";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { parseTimestamp } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
@@ -55,15 +54,6 @@ function ModelActionDetails({
   actions,
   handleEnableImplicitActions,
 }: Props) {
-  const [editingActionId, setEditingActionId] = useState<
-    WritebackActionId | undefined
-  >(undefined);
-
-  const [
-    isActionCreatorOpen,
-    { turnOn: showActionCreator, turnOff: hideActionCreator },
-  ] = useToggle();
-
   const canWrite = model.canWrite();
   const hasImplicitActions = actions.some(action => action.type === "implicit");
 
@@ -82,36 +72,29 @@ function ModelActionDetails({
     ];
   }, [handleEnableImplicitActions]);
 
-  const handleEditAction = useCallback(
-    (action: WritebackAction) => {
-      setEditingActionId(action.id);
-      showActionCreator();
-    },
-    [showActionCreator],
-  );
-
-  const handleCloseActionCreator = useCallback(() => {
-    hideActionCreator();
-    setEditingActionId(undefined);
-  }, [hideActionCreator]);
-
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const onEdit = canWrite ? () => handleEditAction(action) : undefined;
+      const editorUrl = Urls.action(model.card() as Card, action.id);
       return (
         <li key={action.id} aria-label={action.name}>
-          <ModelActionListItem action={action} onEdit={onEdit} />
+          <ModelActionListItem
+            action={action}
+            editorUrl={editorUrl}
+            canWrite={canWrite}
+          />
         </li>
       );
     },
-    [canWrite, handleEditAction],
+    [model, canWrite],
   );
+
+  const newActionUrl = Urls.newAction(model.card() as Card);
 
   return (
     <Root>
       {canWrite && (
         <ActionsHeader>
-          <Button onClick={showActionCreator}>{t`New action`}</Button>
+          <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {!hasImplicitActions && (
             <ActionMenu
               triggerIcon="ellipsis"
@@ -129,14 +112,6 @@ function ModelActionDetails({
         <NoActionsState
           hasCreateButton={canWrite}
           onCreateClick={handleEnableImplicitActions}
-        />
-      )}
-      {isActionCreatorOpen && (
-        <ActionCreator
-          modelId={model.id()}
-          databaseId={model.databaseId()}
-          actionId={editingActionId}
-          onClose={handleCloseActionCreator}
         />
       )}
     </Root>

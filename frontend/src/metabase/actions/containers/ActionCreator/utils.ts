@@ -9,8 +9,11 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterType,
+  VisualizationSettings,
   WritebackParameter,
+  WritebackQueryAction,
 } from "metabase-types/api";
+import type { Card as LegacyCard } from "metabase-types/types/Card";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -172,4 +175,26 @@ export const convertQuestionToAction = (
     parameters: parameters as WritebackParameter[],
     visualization_settings,
   };
+};
+
+const convertActionToQuestionCard = (
+  action: WritebackQueryAction,
+): LegacyCard<NativeDatasetQuery> => {
+  return {
+    id: action.id,
+    name: action.name,
+    description: action.description,
+    dataset_query: action.dataset_query as NativeDatasetQuery,
+    display: "action",
+    visualization_settings:
+      action.visualization_settings as VisualizationSettings,
+  };
+};
+
+export const convertActionToQuestion = (
+  action: WritebackQueryAction,
+  metadata: Metadata,
+) => {
+  const question = new Question(convertActionToQuestionCard(action), metadata);
+  return question.setParameters(action.parameters);
 };
