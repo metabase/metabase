@@ -664,6 +664,27 @@
                                      count))))]
         (is (axes-split? rows))))))
 
+(deftest multi-series-reasonable-split-axes
+  (let [rows     [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        2          1.9]
+                  ["C"        -3          600]]
+        renderfn (fn [viz]
+                   (-> rows
+                       (render.tu/make-card-and-data :bar)
+                       (render.tu/merge-viz-settings viz)
+                       render.tu/render-as-hiccup))]
+    (testing "Static viz handles axes splitting/grouping for multi-series. #20559"
+      (let [viz-a             {:graph.y_axis.max 14
+                               :graph.y_axis.min -14}
+            to-find           ["14" "2" "-2" "-14"]
+            render-a (renderfn {})
+            render-b (renderfn viz-a)
+            _ (intern 'user 'test-render render-a)
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text render-a %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text render-b %))) to-find)]
+        (is (= true false))))))
+
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
         y-col {:display_name "Y col"}]

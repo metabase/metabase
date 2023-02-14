@@ -565,6 +565,26 @@
         (/ overlap-width max-width))
       0)))
 
+(defn- overlap2
+  "Same as `overlap` above, but determines min/max based on values, not metadata."
+  [vals-a vals-b]
+  (let [[min-a max-a]    (-> vals-a sort ((juxt first last)))
+        [min-b max-b]    (-> vals-b sort ((juxt first last)))
+        valid-ranges?    (and min-a min-b max-a max-b
+                              ;; ranges with same min and max won't be considered ranges.
+                              (not= min-a max-a)
+                              (not= min-b max-b))
+        overlapping-and-valid? (and valid-ranges?
+                                    (or (<= min-a min-b max-a)
+                                        (<= min-a max-b max-a)))]
+    (if
+     overlapping-and-valid?
+      (let [[a b c d]     (sort [min-a min-b max-a max-b])
+            max-width     (- d a)
+            overlap-width (- c b)]
+        (/ overlap-width max-width))
+      0)))
+
 (defn- group-axes
   [cols-meta group-threshold]
   (when-let [groupable-cols (->> cols-meta
@@ -640,6 +660,46 @@
 
 (def ^:private axis-group-threshold 0.33)
 
+(defn- group-axes-at-once
+  [group-keys joined-rows viz-settings threshold]
+  (let [starting-positions (into {} (for [k group-keys]
+                                      [k (series-setting viz-settings k :axis)]))
+        positions          (-> (group-by second starting-positions)
+                               (update-vals #(mapv first %)))]
+    ;; this commented out form is a simple impl that will replace any 'nil' positions with left
+    ;; if things get too weird/complicated/unnecessary with axes grouping, I can just default to this
+    ;; in such a case, I can delete the fns overlap and overlap2
+    #_(if (some nil? (vals starting-positions))
+      ;; we do some logic to group the unknowns into L or R
+      (update-vals starting-positions #(or % "left"))
+      ;; all starting positions are set
+      starting-positions)
+    (if (contains? positions nil)
+      (let [grouping-fn #(if (= (count (first %)) 1)
+                           (fn [row] (first (first row)))
+                           (fn [row] (second (first row))))
+            joined-rows-map    (-> (group-by grouping-fn joined-rows)
+                                   (update-vals #(mapcat last %)))
+            overlaps           (-> joined-rows-map
+                                   (update-vals (fn [vals]
+                                                  (into {} (map (fn [k]
+                                                                  [k (overlap2 (get joined-rows-map k) vals)])
+                                                                (keys joined-rows-map))))))
+            lefts              (or (:left positions) [(first (get positions nil))])
+            rights             (or (:right positions) [])
+            to-group           (remove (set (concat lefts rights)) (get positions nil))
+            relevant-distances (get overlaps (first lefts))
+            all-positions      (apply (partial merge-with concat)
+                                      (conj
+                                       (for [k to-group]
+                                         (if (> (get relevant-distances k) threshold)
+                                           {:left [k]}
+                                           {:right [k]}))
+                                       (-> positions (dissoc nil) (assoc :left lefts))))]
+        (into {} (apply concat (for [[pos ks] all-positions]
+                                 (map (fn [k] [k pos]) ks)))))
+      starting-positions)))
+
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
@@ -651,7 +711,9 @@
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos data axis-group-threshold) idx))]
+                            (nth (default-y-pos data axis-group-threshold) idx))
+          #_#_y-axis-pos (get (group-axes-at-once [y-col-key] joined-rows viz-settings axis-group-threshold) y-col-key)
+          _ (println y-axis-pos)]
       {:cardName      card-name
        :type          card-type
        :data          selected-rows
@@ -666,15 +728,18 @@
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
   [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
-        groups       (keys grouped-rows)]
+        groups       (keys grouped-rows)
+        positions    (group-axes-at-once groups joined-rows viz-settings axis-group-threshold)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
-            y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos data axis-group-threshold) idx))]
+            #_#_y-axis-pos         (or (series-setting viz-settings group-key :axis)
+                                       (nth (default-y-pos data axis-group-threshold) idx))
+            y-axis-pos (get positions group-key)
+            _ (println y-axis-pos)]
         {:cardName      card-name
          :type          card-type
          :data          selected-row-group
@@ -741,6 +806,7 @@
                           chart-type)
         card-name       (:name card)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
+        _ (intern 'user 'joined-rows joined-rows)
         series-seqs     [(if (= (count x-cols) 1)
                            (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
