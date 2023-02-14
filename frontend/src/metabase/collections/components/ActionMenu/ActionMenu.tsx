@@ -58,10 +58,10 @@ function ActionMenu({
   const canMove =
     collection.can_write &&
     item.setCollection != null &&
-    (!isItemCollection(item) || !isPersonalCollection(item));
+    !(isItemCollection(item) && isPersonalCollection(item));
   const canArchive =
     collection.can_write &&
-    (!isItemCollection(item) || !isPersonalCollection(item));
+    !(isItemCollection(item) && isPersonalCollection(item));
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -98,7 +98,7 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isPreviewShown={isPreviewShown(item)}
         isPreviewAvailable={isFullyParametrized(item)}
-        onPin={canPin && item.setPinned ? handlePin : null}
+        onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
         onArchive={canArchive ? handleArchive : null}

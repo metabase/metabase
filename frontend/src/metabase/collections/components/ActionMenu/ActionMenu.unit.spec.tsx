@@ -84,15 +84,37 @@ describe("ActionMenu", () => {
 
   it("should allow to move and archive regular collections", () => {
     const item = createMockCollectionItem({
+      name: "Collection",
+      model: "collection",
+      setCollection: jest.fn(),
+      setArchived: jest.fn(),
+    });
+
+    const { onMove } = setup({ item });
+
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(screen.getByText("Move"));
+    expect(onMove).toHaveBeenCalledWith([item]);
+
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(screen.getByText("Archive"));
+    expect(item.setArchived).toHaveBeenCalledWith(true);
+  });
+
+  it("should not allow to move and archive personal collections", () => {
+    const item = createMockCollectionItem({
       name: "My personal collection",
       model: "collection",
-      setArchived: jest.fn(),
       personal_owner_id: 1,
+      setCollection: jest.fn(),
+      setArchived: jest.fn(),
     });
 
     setup({ item });
 
-    expect(screen.queryByLabelText("Move")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Archive")).not.toBeInTheDocument();
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    expect(screen.queryByText("Move")).not.toBeInTheDocument();
+    expect(screen.queryByText("Archive")).not.toBeInTheDocument();
   });
 });
