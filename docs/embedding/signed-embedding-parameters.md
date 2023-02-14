@@ -15,7 +15,7 @@ Parameters can be signed or unsigned. Signed parameters, such as filters, must b
 Signed parameters
 
 - [Editable parameters](#adding-a-filter-widget-to-a-signed-embed)
-- [Locked parameters](#restricting-data-in-a-signed-embed-with-locked-parameters)
+- [Locked parameters](#restricting-data-in-a-signed-embed)
 
 Unsigned parameters
 
@@ -98,7 +98,7 @@ You can also simultaneously assign a parameter a default value _and_ hide its fi
 your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 ```
 
-## Restricting data with a locked parameter
+## Restricting data in a signed embed
 
 If you want to restrict the data that's displayed in an embedded dashboard or SQL question, you can set up a **locked parameter**. A locked parameter filters the data in a dashboard or SQL question _before_ the results are displayed to the end user in a signed embed.
 
