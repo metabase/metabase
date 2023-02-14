@@ -10,6 +10,7 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  getFullName,
 } from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -374,6 +375,18 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
+    it("should not be able to move or archive a personal collection", () => {
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor(getPersonalCollectionName(USERS.admin));
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Move").should("not.exist");
+        cy.findByText("Archive").should("not.exist");
+      });
+    });
+
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
@@ -392,6 +405,19 @@ describe("scenarios > collection defaults", () => {
 
           cy.findByText("Our analytics").click();
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        });
+
+        it("should not be possible to archive or move a personal collection via bulk actions", () => {
+          cy.visit("/collection/root");
+
+          selectItemUsingCheckbox(
+            getPersonalCollectionName(USERS.admin),
+            "person",
+          );
+
+          cy.findByText("1 item selected").should("be.visible");
+          cy.button("Move").should("be.disabled");
+          cy.button("Archive").should("be.disabled");
         });
 
         function bulkSelectDeselectWorkflow() {
@@ -477,6 +503,10 @@ describe("scenarios > collection defaults", () => {
     });
   });
 });
+
+function getPersonalCollectionName(user) {
+  return `${getFullName(USERS.admin)}'s Personal Collection`;
+}
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
