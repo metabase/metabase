@@ -158,7 +158,7 @@
   [driver query]
   (check-native-query-not-using-default-user query)
   (check-disallow-ddl-commands query)
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver query))
+  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
