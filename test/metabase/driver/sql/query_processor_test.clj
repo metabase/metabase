@@ -22,6 +22,11 @@
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
+(deftest ^:parallel compiled-test
+  (binding [hx/*honey-sql-version* 2]
+    (is (= [:raw "x"]
+           (sql.qp/->honeysql :sql (sql.qp/compiled [:raw "x"]))))))
+
 (deftest ^:parallel default-select-test
   (are [hsql-version expected] (= expected
                                   (binding [hx/*honey-sql-version* hsql-version]
@@ -835,7 +840,40 @@
                   :limit       3
                   :order-by    [[:asc $id]]})
                mbql->native
-               sql.qp-test-util/sql->sql-map)))))
+               sql.qp-test-util/sql->sql-map))))
+  (testing "Don't generate unneeded casts to FLOAT for the numerator if it is a number literal"
+    (doseq [honey-sql-version [1 2]]
+      (binding [hx/*honey-sql-version* honey-sql-version]
+        (testing (format "hx/*honey-sql-version* = %d" hx/*honey-sql-version*)
+          (is (= (case hx/*honey-sql-version*
+                   1 '{:select [source.my_cool_new_field AS my_cool_new_field]
+                       :from   [{:select [VENUES.ID AS ID
+                                          VENUES.NAME AS NAME
+                                          VENUES.CATEGORY_ID AS CATEGORY_ID
+                                          VENUES.LATITUDE AS LATITUDE
+                                          VENUES.LONGITUDE AS LONGITUDE
+                                          VENUES.PRICE AS PRICE
+                                          (2.0 / 4.0) AS my_cool_new_field]
+                                 :from   [VENUES]}
+                                source]
+                       :limit  [1]}
+                   2 '{:select [source.my_cool_new_field AS my_cool_new_field]
+                       :from   [{:select [VENUES.ID AS ID
+                                          VENUES.NAME AS NAME
+                                          VENUES.CATEGORY_ID AS CATEGORY_ID
+                                          VENUES.LATITUDE AS LATITUDE
+                                          VENUES.LONGITUDE AS LONGITUDE
+                                          VENUES.PRICE AS PRICE
+                                          2.0 / 4.0 AS my_cool_new_field]
+                                 :from   [VENUES]}
+                                AS source]
+                       :limit  [1]})
+                 (-> (mt/mbql-query venues
+                       {:expressions {:my_cool_new_field [:/ 2 4]}
+                        :fields      [[:expression "my_cool_new_field"]]
+                        :limit       1})
+                     mbql->native
+                     sql.qp-test-util/sql->sql-map))))))))
 
 (deftest ^:parallel duplicate-aggregations-test
   (testing "Make sure multiple aggregations of the same type get unique aliases"
