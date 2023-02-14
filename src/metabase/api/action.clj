@@ -6,7 +6,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card Database]]
+   [metabase.models :refer [Action Card]]
    [metabase.models.action :as action]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -90,15 +90,13 @@
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
-
-  (api/write-check Card model_id)
   (when (and (nil? database_id)
              (= "query" type))
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        type
                      :status-code 400})))
-  (when database_id
-    (actions/check-actions-enabled! (db/select-one Database :id database_id)))
+  (let [model (api/write-check Card model_id)]
+    (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (action/select-action :id action-id)
@@ -124,6 +122,7 @@
    template               [:maybe http-action-template]
    type                   [:maybe supported-action-type]
    visualization_settings [:maybe map?]}
+  (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
   (action/select-action :id id))
@@ -137,6 +136,7 @@
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (api/read-check Action id)
+  (actions/check-actions-enabled! id)
   {:uuid (or (db/select-one-field :public_uuid Action :id id)
              (u/prog1 (str (UUID/randomUUID))
                       (db/update! Action id
@@ -151,6 +151,7 @@
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Action :id id, :public_uuid [:not= nil])
+  (actions/check-actions-enabled! id)
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})
 

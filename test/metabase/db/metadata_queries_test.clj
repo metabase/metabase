@@ -15,7 +15,7 @@
 (defn- metadata-queries-test-drivers []
   (mt/normal-drivers-except #{:redshift}))
 
-(deftest field-distinct-count-test
+(deftest ^:parallel field-distinct-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 100
            (metadata-queries/field-distinct-count (db/select-one Field :id (mt/id :checkins :venue_id)))))

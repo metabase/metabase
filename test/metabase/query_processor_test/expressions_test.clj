@@ -193,7 +193,7 @@
      (mt/$ids ~'bird-count
               (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
                          ;; therefore a different macro is tested in bigquery driver tests

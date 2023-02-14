@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -322,9 +323,9 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (-> (action/select-action :public_uuid uuid)
-      api/check-404
-      (select-keys action-public-keys)))
+  (let [action (api/check-404 (action/select-action :public_uuid uuid))]
+    (actions/check-actions-enabled! action)
+    (select-keys action action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

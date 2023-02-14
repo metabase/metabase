@@ -8,6 +8,14 @@ summary: |
 
 Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
 
+## `GET /api/public/action/:uuid`
+
+Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled.
+
+### PARAMS:
+
+*  **`uuid`** regex pattern matching #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+
 ## `GET /api/public/card/:uuid`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
@@ -245,6 +253,21 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+## `POST /api/public/action/:uuid/execute`
+
+Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values.
+
+### PARAMS:
+
+*  **`uuid`** regex pattern matching #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+
+*  **`parameters`** nullable map from <keyword> to <anything>
+
+*  **`_body`**
 
 ## `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute`
 
