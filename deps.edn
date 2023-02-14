@@ -48,6 +48,7 @@
                                             {:mvn/version "0.64.0"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
+  commons-net/commons-net                   {:mvn/version "3.9.0"}              ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
   commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
@@ -283,9 +284,10 @@
   :cljs
   {:extra-paths ["test" "shared/test"]
    :extra-deps
-   {com.lambdaisland/glogi  {:mvn/version "1.2.164"}
+   {cljs-bean/cljs-bean     {:mvn/version "1.9.0"}
+    com.lambdaisland/glogi  {:mvn/version "1.2.164"}
     io.github.metabase/hawk {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
-    thheller/shadow-cljs    {:mvn/version "2.19.6"}}}
+    thheller/shadow-cljs    {:mvn/version "2.20.20"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers

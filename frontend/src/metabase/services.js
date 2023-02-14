@@ -505,4 +505,5 @@ export const ActionsApi = {
   execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
   createPublicLink: POST("/api/action/:id/public_link"),
   deletePublicLink: DELETE("/api/action/:id/public_link"),
+  listPublic: GET("/api/action/public"),
 };

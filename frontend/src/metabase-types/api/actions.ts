@@ -7,6 +7,7 @@ import type {
   DashboardParameterMapping,
 } from "./dashboard";
 import type { Card, CardId } from "./card";
+import type { DatabaseId } from "./database";
 import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {
@@ -19,7 +20,7 @@ export type WritebackActionId = number;
 
 export interface WritebackActionBase {
   id: WritebackActionId;
-  model_id: number;
+  model_id: CardId;
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
@@ -29,6 +30,7 @@ export interface WritebackActionBase {
   updated_at: string;
   created_at: string;
   public_uuid: string | null;
+  database_id?: DatabaseId;
 }
 
 export type PublicWritebackAction = Pick<
