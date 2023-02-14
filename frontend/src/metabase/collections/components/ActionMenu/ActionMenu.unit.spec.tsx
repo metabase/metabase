@@ -113,7 +113,6 @@ describe("ActionMenu", () => {
     setup({ item });
 
     userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
     expect(screen.queryByText("Move")).not.toBeInTheDocument();
     expect(screen.queryByText("Archive")).not.toBeInTheDocument();
   });
