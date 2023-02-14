@@ -123,32 +123,33 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- contains-ddl?
-  [database query]
+(defn- check-disallow-ddl-commands
+  [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
-    (try
-      (let [command      (.prepareCommand h2-parser query)
-            command-type (.getCommandType command)]
-        ;; TODO: do we need to handle CommandList?
-        ;; Command types are organized with all DDL commands listed first
-        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< command-type CommandInterface/ALTER_SEQUENCE))
-      ;; if the query is invalid, then it isn't DDL
-      (catch Throwable _ false))))
+    (when-let [command (try (.prepareCommand h2-parser query)
+                            ;; if the query is invalid, errors will get caught later
+                            (catch Throwable _ nil))]
+      (let [command-type (.getCommandType command)]
+        (cond
+          (= (type command) org.h2.command.CommandList)
+          ;; TODO: support multiple statements while checking all the command types
+          (throw (IllegalArgumentException. "Only a single statement is allowed."))
+          ;; Command types are organized with all DDL commands listed first
+          ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+          (< command-type CommandInterface/ALTER_SEQUENCE)
+          (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2.")))))))
 
 (defn- check-single-select-statement
   [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
     (when-let [command (try (.prepareCommand h2-parser query)
-                            ;; if the query is invalid, it will get caught later
+                            ;; if the query is invalid, errors will get caught later
                             (catch Throwable _ nil))]
-      (when (or (= (type command) org.h2.command.CommandList)
+      (when (or ;; if the command is a CommandList, then it is a multi-statement query
+                (= (type command) org.h2.command.CommandList)
+                ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
                 (not (= (.getCommandType command) CommandInterface/SELECT)))
         (throw (IllegalArgumentException. "Only a single SELECT statement is allowed."))))))
-
-(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when (and query (contains-ddl? database query))
-    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]

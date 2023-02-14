@@ -185,31 +185,31 @@
                :engine :h2
                :native {:query query}})))))))
 
-(deftest classify-ddl-test
+(deftest check-ddl-test
   (mt/test-driver :h2
-    (are [query] (= false (#'h2/contains-ddl? (u/the-id (mt/db)) query))
-      "select 1"
-      "update venues set name = 'bill'"
-      "delete venues"
-      "select 1;
-       update venues set name = 'bill';
-       delete venues;")
-
-    (is (= nil (#'h2/check-disallow-ddl-commands
-                {:database (u/the-id (mt/db))
-                 :engine :h2
-                 :native {:query (str/join "; "
-                                           ["select 1"
-                                            "update venues set name = 'bill'"
-                                            "delete venues"])}})))
-    (let [trigger-creation-attempt
-          (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
-                          "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
-                          "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
-      (is (thrown?
-           IllegalArgumentException
-           #"DDL commands are not allowed to be used with h2."
-           (#'h2/check-disallow-ddl-commands
-            {:database (u/the-id (mt/db))
-             :engine :h2
-             :native {:query trigger-creation-attempt}}))))))
+    (let [check (fn [query]
+                  (#'h2/check-disallow-ddl-commands
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))]
+      (testing "not ddl statements should pass"
+        (doseq [query ["select 1"
+                       "update venues set name = 'bill'"
+                       "delete venues"]]
+          (is (= nil (check query)))))
+      (testing "multiple statements shouldn't pass"
+        (doseq [query ["select 1; select 2;"
+                       "select 1; update venues set name = 'bill'; delete venues;"]]
+          (is (thrown?
+               IllegalArgumentException
+               #"Only a single statement is allowed."
+               (check query)))))
+      (testing "ddl statements shouldn't pass"
+        (doseq [query ["create table foo (id int)"
+                       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                                       "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                                       "SELECT * FROM INFORMATION_SCHEMA.Users;"])]]
+          (is (thrown?
+               IllegalArgumentException
+               #"DDL commands are not allowed to be used with h2."
+               (check query))))))))
