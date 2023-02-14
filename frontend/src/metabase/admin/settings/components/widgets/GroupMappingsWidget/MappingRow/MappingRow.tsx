@@ -18,7 +18,11 @@ import type {
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
-type OnDeleteMappingType = (name: string, onSuccess?: () => void) => void;
+type OnDeleteMappingType = (arg: {
+  name: string;
+  groupIdsToDelete?: GroupIds;
+  onSuccess?: () => void;
+}) => void;
 
 type MappingRowProps = {
   name: string;
@@ -54,7 +58,10 @@ const MappingRow = ({
       groups,
     );
 
-    onDeleteMapping(name, onSuccess);
+    const groupIdsToDelete =
+      whatToDoAboutGroups === "delete" ? selectedGroupIds : [];
+
+    onDeleteMapping({ name, onSuccess, groupIdsToDelete });
   };
 
   const getCallbackForGroupsAfterDeletingMapping = (
@@ -82,7 +89,7 @@ const MappingRow = ({
 
   const onDelete = shouldUseDeleteMappingModal
     ? () => handleShowDeleteMappingModal()
-    : () => onDeleteMapping(name);
+    : () => onDeleteMapping({ name });
 
   return (
     <>

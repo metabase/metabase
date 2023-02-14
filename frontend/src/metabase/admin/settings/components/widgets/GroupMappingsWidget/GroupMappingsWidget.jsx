@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isDefaultGroup } from "metabase/lib/groups";
+import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -93,7 +93,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     );
   };
 
-  const handleDeleteMapping = (name, onSuccess) => {
+  const handleDeleteMapping = ({ name, onSuccess, groupIdsToDelete = [] }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
     SettingsApi.put({
@@ -106,10 +106,20 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
         onSuccess && onSuccess();
 
+        updateGroupsAfterDeletingMapping(groupIdsToDelete);
+
         setSaveError(null);
       },
       e => setSaveError(e),
     );
+  };
+
+  const updateGroupsAfterDeletingMapping = groupIdsToDelete => {
+    const groupsToKeep = groups.filter(
+      group => isAdminGroup(group) || !groupIdsToDelete.includes(group.id),
+    );
+
+    setGroups(groupsToKeep);
   };
 
   return (
