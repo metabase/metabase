@@ -14233,8 +14233,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             onDelete: CASCADE
-      rollback:
-      # Not required because a rollback would drop the `permission_id` column anyway
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
