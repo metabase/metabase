@@ -162,7 +162,7 @@ describe("ActionCreator", () => {
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Update" }),
+        await screen.findByRole("button", { name: "Update" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Create" }),
@@ -281,17 +281,15 @@ describe("ActionCreator", () => {
         userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
-        expect(
-          screen.getByRole("textbox", { name: "Success message" }),
-        ).toHaveValue("Thanks for your submission.");
 
-        userEvent.type(
-          screen.getByRole("textbox", { name: "Success message" }),
-          `${specialChars.selectAll}Thanks!`,
-        );
-        expect(
-          screen.getByRole("textbox", { name: "Success message" }),
-        ).toHaveValue("Thanks!");
+        const messageBox = screen.getByRole("textbox", {
+          name: "Success message",
+        });
+        expect(messageBox).toHaveValue("Thanks for your submission.");
+
+        await waitFor(() => expect(messageBox).toBeEnabled());
+        userEvent.type(messageBox, `${specialChars.selectAll}Thanks!`);
+        expect(messageBox).toHaveValue("Thanks!");
       });
     });
 
