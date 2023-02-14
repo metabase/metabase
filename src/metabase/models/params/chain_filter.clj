@@ -505,12 +505,6 @@
    options           :- (s/maybe Options)]
   (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
 
-(defn- format-parens [_fn [x]]
-  (let [[sql & args] (sql/format-expr x)]
-    (into [(str "(" sql ")")] args)))
-
-(sql/register-fn! ::parens format-parens)
-
 (defn- format-union
   "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
   fail on Postgres."

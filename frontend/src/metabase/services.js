@@ -263,6 +263,7 @@ export const MetabaseApi = {
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
+  db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
   table_update: PUT("/api/table/:id"),
@@ -504,4 +505,5 @@ export const ActionsApi = {
   execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
   createPublicLink: POST("/api/action/:id/public_link"),
   deletePublicLink: DELETE("/api/action/:id/public_link"),
+  listPublic: GET("/api/action/public"),
 };

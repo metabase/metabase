@@ -5,9 +5,9 @@ import cx from "classnames";
 import _ from "underscore";
 import type { Location } from "history";
 
+import { useMount } from "react-use";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { getSetting } from "metabase/selectors/settings";
 import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -87,7 +87,7 @@ function EmbedFrame({
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
-  useOnMount(() => {
+  useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { connect } from "react-redux";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useMount } from "react-use";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { setErrorPage } from "metabase/redux/app";
 import { PublicApi } from "metabase/services";
@@ -34,7 +34,7 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
   const [action, setAction] = useState<WritebackAction | null>(null);
   const fetchAction = useSafeAsyncFunction(PublicApi.action);
 
-  useOnMount(() => {
+  useMount(() => {
     async function loadAction() {
       try {
         const action = await fetchAction({ uuid: params.uuid });

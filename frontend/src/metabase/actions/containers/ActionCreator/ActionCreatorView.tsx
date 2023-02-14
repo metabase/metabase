@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
-import { ActionFormSettings, WritebackActionId } from "metabase-types/api";
+import { ActionFormSettings, WritebackAction } from "metabase-types/api";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
 import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
@@ -30,11 +30,11 @@ import InlineActionSettings, {
 
 interface ActionCreatorProps {
   isNew: boolean;
-  hasSharingPermission: boolean;
   canSave: boolean;
 
-  actionId?: WritebackActionId;
+  action?: WritebackAction;
   question: Question;
+  formSettings: ActionFormSettings;
 
   onChangeQuestionQuery: (query: NativeQuery) => void;
   onChangeName: (name: string) => void;
@@ -48,10 +48,10 @@ const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
 export default function ActionCreatorView({
   isNew,
-  hasSharingPermission,
   canSave,
-  actionId,
+  action,
   question,
+  formSettings,
   onChangeQuestionQuery,
   onChangeName,
   onCloseModal,
@@ -85,6 +85,7 @@ export default function ActionCreatorView({
   const closeSideView = useCallback(() => {
     setActiveSideView(DEFAULT_SIDE_VIEW);
   }, []);
+
   return (
     <Modal wide onClose={onCloseModal}>
       <ModalRoot>
@@ -99,12 +100,10 @@ export default function ActionCreatorView({
                   key="dataReference"
                   onClick={toggleDataRef}
                 />,
-                !isNew && hasSharingPermission ? (
-                  <ActionSettingsTriggerButton
-                    key="actionSettings"
-                    onClick={toggleActionSettings}
-                  />
-                ) : null,
+                <ActionSettingsTriggerButton
+                  key="actionSettings"
+                  onClick={toggleActionSettings}
+                />,
               ].filter(isNotNull)}
             />
             <EditorContainer>
@@ -122,31 +121,23 @@ export default function ActionCreatorView({
               </Button>
             </ModalActions>
           </ModalLeft>
-
-          {
-            (
-              {
-                actionForm: (
-                  <FormCreator
-                    params={question?.parameters() ?? []}
-                    formSettings={
-                      question?.card()
-                        ?.visualization_settings as ActionFormSettings
-                    }
-                    onChange={onChangeFormSettings}
-                    onExampleClick={onClickExample}
-                  />
-                ),
-                dataReference: <DataReferenceInline onClose={closeSideView} />,
-                actionSettings: actionId ? (
-                  <InlineActionSettings
-                    onClose={closeSideView}
-                    actionId={actionId}
-                  />
-                ) : null,
-              } as Record<SideView, React.ReactElement>
-            )[activeSideView]
-          }
+          {activeSideView === "actionForm" ? (
+            <FormCreator
+              params={question.parameters() ?? []}
+              formSettings={formSettings}
+              onChange={onChangeFormSettings}
+              onExampleClick={onClickExample}
+            />
+          ) : activeSideView === "dataReference" ? (
+            <DataReferenceInline onClose={closeSideView} />
+          ) : activeSideView === "actionSettings" ? (
+            <InlineActionSettings
+              action={action}
+              formSettings={formSettings}
+              onChangeFormSettings={onChangeFormSettings}
+              onClose={closeSideView}
+            />
+          ) : null}
         </ActionCreatorBodyContainer>
       </ModalRoot>
     </Modal>

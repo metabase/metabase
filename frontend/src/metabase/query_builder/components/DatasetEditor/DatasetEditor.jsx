@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
+import { usePrevious } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -25,12 +26,14 @@ import {
 } from "metabase/query_builder/selectors";
 
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
-import { checkCanBeModel } from "metabase-lib/metadata/utils/models";
+import {
+  checkCanBeModel,
+  getSortedModelFields,
+} from "metabase-lib/metadata/utils/models";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -187,37 +190,11 @@ function DatasetEditor(props) {
     handleResize,
     onOpenModal,
   } = props;
-  const orderedColumns = useMemo(
-    () => dataset.setting("table.columns"),
-    [dataset],
+
+  const fields = useMemo(
+    () => getSortedModelFields(dataset, resultsMetadata?.columns),
+    [dataset, resultsMetadata],
   );
-
-  const fields = useMemo(() => {
-    const virtualCardTable = dataset.table();
-    const virtualCardColumns = (virtualCardTable?.fields ?? []).map(field =>
-      field.column(),
-    );
-    // Columns in resultsMetadata contain all the necessary metadata
-    // orderedColumns contain properly sorted columns, but they only contain field names and refs.
-    // Normally, columns in resultsMetadata are ordered too,
-    // but they only get updated after running a query (which is not triggered after reordering columns).
-    // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
-    const columns = resultsMetadata?.columns;
-
-    if (!Array.isArray(columns)) {
-      return [];
-    }
-    if (!Array.isArray(orderedColumns)) {
-      return columns;
-    }
-    return orderedColumns
-      .map(
-        col =>
-          columns.find(c => isSameField(c.field_ref, col.fieldRef)) ||
-          virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
-      )
-      .filter(Boolean);
-  }, [dataset, orderedColumns, resultsMetadata]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";

@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import { usePrevious, useMount } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
@@ -22,9 +23,7 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import {
@@ -86,7 +85,7 @@ function CollectionContent({
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
-  useOnMount(() => {
+  useMount(() => {
     if (!isSmallScreen()) {
       openNavbar();
     }

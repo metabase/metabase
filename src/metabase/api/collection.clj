@@ -476,17 +476,21 @@
 
 (defmethod post-process-collection-children :collection
   [_ rows]
-  (for [row rows]
-    ;; Go through this rigamarole instead of hydration because we
-    ;; don't get models back from ulterior over-query
-    ;; Previous examination with logging to DB says that there's no N+1 query for this.
-    ;; However, this was only tested on H2 and Postgres
-    (cond-> row
-      ;; when fetching root collection, we might have personal collection
-      (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
-      true                     (assoc :can_write (mi/can-write? Collection (:id row)))
-      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
-                                       :collection_preview :dataset_query))))
+  (letfn [(update-personal-collection [{:keys [personal_owner_id] :as row}]
+            (if personal_owner_id
+              ;; when fetching root collection, we might have personal collection
+              (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
+              (dissoc row :personal_owner_id)))]
+    (for [row rows]
+      ;; Go through this rigamarole instead of hydration because we
+      ;; don't get models back from ulterior over-query
+      ;; Previous examination with logging to DB says that there's no N+1 query for this.
+      ;; However, this was only tested on H2 and Postgres
+      (-> row
+          (assoc :can_write (mi/can-write? Collection (:id row)))
+          (dissoc :collection_position :display :moderated_status :icon
+                  :collection_preview :dataset_query)
+          update-personal-collection))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present

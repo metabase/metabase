@@ -29,7 +29,7 @@
   You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
   and [[set-value-of-type!]].
 
-  [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
+  [[writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
   ### User-local and Database-local Settings
@@ -50,7 +50,7 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[admin-writable-settings]] or
+  User- and Database-local-only Settings are never returned by [[writable-settings]] or
   [[user-readable-values-map]] regardless of their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
@@ -951,7 +951,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[admin-writable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writable-settings]] below. (In other words, code in the backend can continute to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`
@@ -1085,7 +1085,27 @@
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
-(defn admin-writable-settings
+(defn current-user-readable-visibilities
+  "Returns a set of setting visibilities that the current user has read access to."
+  []
+  (set (concat [:public]
+               (when @api/*current-user*
+                 [:authenticated])
+               (when (has-advanced-setting-access?)
+                 [:settings-manager])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
+(defn current-user-writable-visibilities
+  "Returns a set of setting visibilities that the current user has write access to."
+  []
+  (set (concat []
+               (when (has-advanced-setting-access?)
+                 [:settings-manager :authenticated :public])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
+(defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
 
@@ -1099,19 +1119,18 @@
   are returned."
   [& {:as options}]
   ;; ignore Database-local values, but not User-local values
-  (binding [*database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (or api/*is-superuser?*
-                              (not= (:visibility setting) :admin))
-                          (not= (:database-local setting) :only))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+  (let [writable-visibilities (current-user-writable-visibilities)]
+    (binding [*database-local-values* nil]
+      (into
+       []
+       (comp (filter (fn [setting]
+                       (and (contains? writable-visibilities (:visibility setting))
+                            (not= (:database-local setting) :only))))
+             (map #(m/mapply user-facing-info % options)))
+       (sort-by :name (vals @registered-settings))))))
 
 (defn admin-writable-site-wide-settings
-  "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
+  "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
   excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
   be included with their site-wide value, if a site-wide value is set.
 
@@ -1130,24 +1149,32 @@
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
 
+(defn can-read-setting?
+  "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
+   `allowed-visibilities` is a set of visibilities that the user can read."
+  [setting allowed-visibilities]
+  (let [setting (resolve-setting setting)]
+    (boolean (and (not (:sensitive? setting))
+                  (contains? allowed-visibilities (:visibility setting))))))
+
 (defn user-readable-values-map
-  "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
+  "Returns Settings as a map of setting name -> site-wide value for a given set of [[Visibility]] keywords
+  e.g. `#{:public :authenticated}`.
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  The is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
-  [visibility]
+  [visibilities]
   ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
-                     (and (not (:sensitive? setting))
-                          (allows-site-wide-values? setting)
-                          (= (:visibility setting) visibility))))
+                     (and (allows-site-wide-values? setting)
+                          (can-read-setting? setting visibilities))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))
