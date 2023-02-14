@@ -156,7 +156,11 @@
                   (mt/with-actions-disabled
                     (is (= "Actions are not enabled."
                            (:cause
-                            (mt/user-http-request :crowberto :post 400 "action" initial-action)))))))
+                            (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
+                (testing "a plain card instead of a model"
+                  (mt/with-temp Card [{plain-card-id :id}]
+                    (is (= "Actions must be made with models, not cards."
+                           (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                     action-path    (str "action/" (:id created-action))]
                 (testing "Create"
