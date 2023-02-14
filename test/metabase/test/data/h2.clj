@@ -69,7 +69,6 @@
   (str
    ;; Create a non-admin account 'GUEST' which will be used from here on out
    "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
-   "GRANT ALL ON SCHEMA \"PUBLIC\" TO GUEST;\n"
 
    ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
    ;; Set it to to -1 (no automatic closing)
