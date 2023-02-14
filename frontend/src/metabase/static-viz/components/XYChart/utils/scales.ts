@@ -90,8 +90,8 @@ export const createXScale = (
 
 const calculateYDomain = (
   series: HydratedSeries[],
-  setMinValue?: number,
-  setMaxValue?: number,
+  minValueSetting?: number,
+  maxValueSetting?: number,
   goalValue?: number,
 ): ContinuousDomain => {
   const values = series
@@ -103,15 +103,15 @@ const calculateYDomain = (
   const maxValue = max(values);
 
   return [
-    Math.min(0, minValue, setMinValue ?? 0, goalValue ?? 0),
-    Math.max(0, maxValue, setMaxValue ?? 0, goalValue ?? 0),
+    Math.min(0, minValue, minValueSetting ?? 0, goalValue ?? 0),
+    Math.max(0, maxValue, maxValueSetting ?? 0, goalValue ?? 0),
   ];
 };
 
 export const calculateYDomains = (
   series: HydratedSeries[],
-  setMinValue?: number,
-  setMaxValue?: number,
+  minValueSetting?: number,
+  maxValueSetting?: number,
   goalValue?: number,
 ) => {
   const leftScaleSeries = series.filter(
@@ -125,8 +125,8 @@ export const calculateYDomains = (
     return {
       left: calculateYDomain(
         leftScaleSeries,
-        setMinValue,
-        setMaxValue,
+        minValueSetting,
+        maxValueSetting,
         goalValue,
       ),
     };
@@ -135,8 +135,8 @@ export const calculateYDomains = (
     return {
       right: calculateYDomain(
         rightScaleSeries,
-        setMinValue,
-        setMaxValue,
+        minValueSetting,
+        maxValueSetting,
         goalValue,
       ),
     };
@@ -145,11 +145,11 @@ export const calculateYDomains = (
   return {
     left: calculateYDomain(
       leftScaleSeries,
-      setMinValue,
-      setMaxValue,
+      minValueSetting,
+      maxValueSetting,
       goalValue,
     ),
-    right: calculateYDomain(rightScaleSeries, setMinValue, setMaxValue),
+    right: calculateYDomain(rightScaleSeries, minValueSetting, maxValueSetting),
   };
 };
 
