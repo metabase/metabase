@@ -3000,13 +3000,14 @@
     debug "^3.1.0"
     lodash.once "^4.1.1"
 
-"@deploysentinel/cypress-debugger@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.7.0.tgz#18c0e6fd316168d9c7f35b04dbe8b749f41890a7"
-  integrity sha512-nrn9bdZ2C9mic/xQtKjJRnO156pb6FerbclcJ3LTDvp+m/HWziEvlNNqBamGzeJuQazwGFoCrVhbyvtTvRNCxA==
+"@deploysentinel/cypress-debugger@^0.7.8":
+  version "0.7.8"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.7.8.tgz#1b12e31038d971b0500958afb9a1f23d1dbfb85d"
+  integrity sha512-9slYbphUKZy4LBSTlMfIsTPzdyrLbnpasFi1OevSdT6FpXt/AjbNp09/6SX04inx9U/gLW0HPWr5CV/3laKy3g==
   dependencies:
     "@cypress/commit-info" "^2.2.0"
-    "@deploysentinel/cypress-runner" "~2.3.1"
+    "@deploysentinel/cypress-runner" "^3.2.0"
+    "@deploysentinel/debugger-core" "^0.3.4"
     ansi-styles "^6.1.0"
     axios "^0.27.2"
     axios-retry "^3.3.1"
@@ -3016,23 +3017,48 @@
     fflate "^0.7.4"
     lodash "^4.17.21"
     minimatch "^5.1.1"
+    semver "^7.3.8"
     strip-ansi "^6.0.1"
   optionalDependencies:
     bufferutil "^4.0.7"
     utf-8-validate "^5.0.10"
 
-"@deploysentinel/cypress-runner@~2.3.1":
-  version "2.3.1"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-runner/-/cypress-runner-2.3.1.tgz#c8c365252828d29b5a91688e7ed7e0384d2f69fd"
-  integrity sha512-0Y4SdoOBqwbe9Nr5TdlZs9e0zAyZIybC13cXXBY0Vwco5zhUKsjmXbQJghI62ywKtooxyBHKhcWNuJlMJwy6Eg==
+"@deploysentinel/cypress-runner@^3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-runner/-/cypress-runner-3.2.0.tgz#23030fe40e33f214d83d9047f0df12cce2a4bb79"
+  integrity sha512-t0MYEmbPKq40x/Z4aNPQaM5Ic4JXrl5J8su1KGK7MUIwnt8aeOi5xJJge6Qan6cr8VCCXgqiSMW6JHJhMTjxAw==
   dependencies:
     acorn "^8.8.0"
     debug "^4.3.2"
     escodegen "^2.0.0"
     estraverse "^5.3.0"
+    http-proxy "^1.18.1"
     js-yaml "^4.1.0"
+    lodash "^4.17.21"
     npm-which "^3.0.1"
+    semver "^7.3.8"
     slash "3.0.0"
+    source-map-support "^0.5.21"
+    tmp "^0.2.1"
+
+"@deploysentinel/debugger-core@^0.3.4":
+  version "0.3.4"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/debugger-core/-/debugger-core-0.3.4.tgz#cda7fb06e5bbe3bff7f1623d27ba1f6eb1569295"
+  integrity sha512-+nNceMbTWn05oCg+RCPUBdMlK3rFKqPmZrVU3Y5Q9M/Xk/9GcQh/ii2sQJvDHoc9OEDiRqpUFTQ7CA7bsp/iWA==
+  dependencies:
+    axios "^0.27.2"
+    axios-retry "^3.3.1"
+    bluebird "^3.7.2"
+    check-more-types "2.24.0"
+    compare-versions "^5.0.1"
+    date-fns "^2.29.3"
+    debug "^4.3.4"
+    execa "1.0.0"
+    fast-safe-stringify "^2.1.1"
+    fflate "^0.7.4"
+    lazy-ass "1.6.0"
+    lodash "^4.17.21"
+    ramda "0.26.1"
 
 "@discoveryjs/json-ext@^0.5.0":
   version "0.5.3"
@@ -8784,6 +8810,11 @@ commoner@^0.10.8:
     q "^1.1.2"
     recast "^0.11.17"
 
+compare-versions@^5.0.1:
+  version "5.0.3"
+  resolved "https://registry.yarnpkg.com/compare-versions/-/compare-versions-5.0.3.tgz#a9b34fea217472650ef4a2651d905f42c28ebfd7"
+  integrity sha512-4UZlZP8Z99MGEY+Ovg/uJxJuvoXuN4M6B3hKaiackiHrgzQFEe3diJi1mf1PNHbFujM7FvLrK2bpgIaImbtZ1A==
+
 component-emitter@^1.2.1:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/component-emitter/-/component-emitter-1.3.0.tgz#16e4070fba8ae29b679f2215853ee181ab2eabc0"
@@ -9612,7 +9643,7 @@ data-urls@^3.0.2:
     whatwg-mimetype "^3.0.0"
     whatwg-url "^11.0.0"
 
-date-fns@^2.29.1:
+date-fns@^2.29.1, date-fns@^2.29.3:
   version "2.29.3"
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.29.3.tgz#27402d2fc67eb442b511b70bbdf98e6411cd68a8"
   integrity sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==
@@ -19644,6 +19675,14 @@ source-map-support@^0.5.16, source-map-support@~0.5.12:
     buffer-from "^1.0.0"
     source-map "^0.6.0"
 
+source-map-support@^0.5.21:
+  version "0.5.21"
+  resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.21.tgz#04fe7c7f9e1ed2d662233c28cb2b35b9f63f6e4f"
+  integrity sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==
+  dependencies:
+    buffer-from "^1.0.0"
+    source-map "^0.6.0"
+
 source-map-support@~0.5.20:
   version "0.5.20"
   resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.20.tgz#12166089f8f5e5e8c56926b377633392dd2cb6c9"
@@ -20524,7 +20563,7 @@ tippy.js@^6.3.1, tippy.js@^6.3.5:
   dependencies:
     "@popperjs/core" "^2.9.0"
 
-tmp@~0.2.1:
+tmp@^0.2.1, tmp@~0.2.1:
   version "0.2.1"
   resolved "https://registry.yarnpkg.com/tmp/-/tmp-0.2.1.tgz#8457fc3037dcf4719c251367a1af6500ee1ccf14"
   integrity sha512-76SUhtfqR2Ijn+xllcI5P1oyannHNHByD80W1q447gU3mp9G9PSpGdWmjUOHRDPiHYacIk66W7ubDTuPF3BEtQ==
