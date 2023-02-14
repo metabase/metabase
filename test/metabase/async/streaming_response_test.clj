@@ -71,7 +71,7 @@
                 (try
                   (when-let [chan @start-execution-chan]
                     (a/>!! chan ::started))
-                  (Thread/sleep sleep)
+                  (Thread/sleep (long sleep))
                   (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
                     (reset! canceled? true)
@@ -142,7 +142,7 @@
                    (loop [[wait & more] (repeat 10 50)]
                      (or @canceled?
                          (when wait
-                           (Thread/sleep wait)
+                           (Thread/sleep (long wait))
                            (recur more))))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)

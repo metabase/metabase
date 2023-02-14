@@ -180,14 +180,15 @@ function getFieldFromColumnVizSetting(
   );
 }
 
-export function getSortedModelFields(model: Question) {
-  // Columns in resultsMetadata contain all the necessary metadata
-  // orderedColumns contain properly sorted columns, but they only contain field names and refs.
-  // Normally, columns in resultsMetadata are ordered too,
-  // but they only get updated after running a query (which is not triggered after reordering columns).
-  // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
-  const columnMetadata = model.getResultMetadata();
-
+// Columns in resultsMetadata contain all the necessary metadata
+// orderedColumns contain properly sorted columns, but they only contain field names and refs.
+// Normally, columns in resultsMetadata are ordered too,
+// but they only get updated after running a query (which is not triggered after reordering columns).
+// This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
+export function getSortedModelFields(
+  model: Question,
+  columnMetadata?: QueryField[],
+) {
   if (!Array.isArray(columnMetadata)) {
     return [];
   }
@@ -202,11 +203,13 @@ export function getSortedModelFields(model: Question) {
   const tableFields = table?.fields ?? [];
   const tableColumns = tableFields.map(field => field.column());
 
-  return orderedColumns.map(columnVizSetting =>
-    getFieldFromColumnVizSetting(
-      columnVizSetting,
-      tableColumns,
-      columnMetadata,
-    ),
-  );
+  return orderedColumns
+    .map(columnVizSetting =>
+      getFieldFromColumnVizSetting(
+        columnVizSetting,
+        tableColumns,
+        columnMetadata,
+      ),
+    )
+    .filter(Boolean);
 }

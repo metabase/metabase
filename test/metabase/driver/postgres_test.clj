@@ -49,6 +49,20 @@
                                 hx/*honey-sql-version*                   2]
                         (thunk))))
 
+(deftest ^:parallel interval-test
+  (is (= ["INTERVAL '2 day'"]
+         (sql/format-expr [::postgres/interval 2 :day])))
+  (are [amount unit msg] (thrown-with-msg?
+                          AssertionError
+                          msg
+                          (sql/format-expr [::postgres/interval amount unit]))
+    2.0  :day  #"\QAssert failed: (int? amount)\E"
+    "2"  :day  #"\QAssert failed: (int? amount)\E"
+    :day 2     #"\QAssert failed: (int? amount)\E"
+    2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
+    2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
+    2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
+
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
          (sql.qp/format-honeysql :postgres (#'postgres/extract :month :%now)))))
@@ -344,19 +358,19 @@
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh}"]
+        (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh,foobar,1234}"]
+        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "meh" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["(boop.bleh#>> ?::text[])::boolean" "{boop,foobar,1234}"]
+        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::boolean" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
     (testing "Give us a bigint cast when the field is bigint (#22732)"
       (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{boop,foobar,1234}"]
+        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest json-field-test
@@ -380,8 +394,8 @@
                                                               :min-value 0.75
                                                               :max-value 54.0
                                                               :bin-width 0.75}}]]
-              (is (= ["((FLOOR((((complicated_identifiers.jsons#>> ?::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
-                      "{values,qty}"]
+              (is (= ["((FLOOR((((complicated_identifiers.jsons#>> array[?, ?]::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
+                      "values" "qty"]
                      (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))))
 
 (deftest json-alias-test
@@ -426,7 +440,7 @@
                     "  DATE_TRUNC("
                     "    'month',"
                     "    CAST("
-                    "      (\"json_alias_test\".\"bob\" # >> ? :: text [ ]) :: VARCHAR AS timestamp"
+                    "      (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
                     "    )"
                     "  ) AS \"json_alias_test\","
                     "  COUNT(*) AS \"count\""
@@ -437,10 +451,11 @@
                     "ORDER BY"
                     "  \"json_alias_test\" ASC"]
                    (str/split-lines (mdb.query/format-sql (:query compile-res) :postgres))))
-            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}")
+            (is (= ["injection' OR 1=1--' AND released = 1"
+                    "injection' OR 1=1--' AND released = 1"]
                    (:params compile-res)))
             (is (= ["SELECT"
-                    "  (\"json_alias_test\".\"bob\" # >> ? :: text [ ]) :: VARCHAR AS \"json_alias_test\""
+                    "  (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                     "FROM"
                     "  \"json_alias_test\""
                     "ORDER BY"
@@ -670,7 +685,6 @@
                          :target ["dimension" ["template-tag" "user"]]
                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
-
 
 (mt/defdataset ip-addresses
   [["addresses"
@@ -1089,21 +1103,22 @@
 
 (deftest pkcs-12-extension-test
   (testing "Uploaded PKCS-12 SSL keys are stored in a file with the .p12 extension (#20319)"
-    (is (true?
-         (-> (#'postgres/ssl-params
-              {:ssl true
-               :ssl-key-options "uploaded"
-               :ssl-key-value "data:application/x-pkcs12;base64,SGVsbG8="
-               :ssl-mode "require"
-               :ssl-use-client-auth true
-               :tunnel-enabled false
-               :advanced-options false
-               :dbname "metabase"
-               :engine :postgres
-               :host "localhost"
-               :user "bcm"
-               :password "abcdef123"
-               :port 5432})
-             :sslkey
-             .getAbsolutePath
-             (str/ends-with? ".p12"))))))
+    (letfn [(absolute-path [^java.io.File file]
+              (some-> file .getAbsolutePath))]
+      (is (-> (#'postgres/ssl-params
+               {:ssl                 true
+                :ssl-key-options     "uploaded"
+                :ssl-key-value       "data:application/x-pkcs12;base64,SGVsbG8="
+                :ssl-mode            "require"
+                :ssl-use-client-auth true
+                :tunnel-enabled      false
+                :advanced-options    false
+                :dbname              "metabase"
+                :engine              :postgres
+                :host                "localhost"
+                :user                "bcm"
+                :password            "abcdef123"
+                :port                5432})
+              :sslkey
+              absolute-path
+              (str/ends-with? ".p12"))))))
