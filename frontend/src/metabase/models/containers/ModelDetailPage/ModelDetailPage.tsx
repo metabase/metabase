@@ -32,6 +32,7 @@ type OwnProps = {
     slug: string;
     tab?: string;
   };
+  children: React.ReactNode;
 };
 
 type ModelEntityLoaderProps = {
@@ -85,6 +86,7 @@ const FALLBACK_TAB = "usage";
 function ModelDetailPage({
   model,
   location,
+  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
@@ -103,7 +105,13 @@ function ModelDetailPage({
   );
 
   const tab = useMemo(() => {
-    const [tab] = location.pathname.split("/").reverse();
+    const pathname = location.pathname;
+
+    if (pathname.endsWith("/actions/new")) {
+      return "actions";
+    }
+
+    const [tab] = pathname.split("/").reverse();
     return tab ?? FALLBACK_TAB;
   }, [location.pathname]);
 
@@ -158,15 +166,19 @@ function ModelDetailPage({
   );
 
   return (
-    <ModelDetailPageView
-      model={model}
-      mainTable={mainTable}
-      tab={tab}
-      hasActionsTab={hasActionsEnabled}
-      onChangeName={handleNameChange}
-      onChangeDescription={handleDescriptionChange}
-      onChangeCollection={handleCollectionChange}
-    />
+    <>
+      <ModelDetailPageView
+        model={model}
+        mainTable={mainTable}
+        tab={tab}
+        hasActionsTab={hasActionsEnabled}
+        onChangeName={handleNameChange}
+        onChangeDescription={handleDescriptionChange}
+        onChangeCollection={handleCollectionChange}
+      />
+      {/* Required for rendering child `ModalRoute` elements */}
+      {children}
+    </>
   );
 }
 
