@@ -136,8 +136,8 @@
   {id pos-int?}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
-  (actions/check-actions-enabled! id)
   (let [action (api/read-check Action id :archived false)]
+    (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (UUID/randomUUID))
                  (db/update! Action id
