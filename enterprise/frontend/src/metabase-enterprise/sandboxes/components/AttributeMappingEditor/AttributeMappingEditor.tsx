@@ -51,7 +51,6 @@ const AttributeMappingEditor = ({
         attributesOptions={(value ? [value] : []).concat(attributesOptions)}
       />
     )}
-    render
     valuePlaceholder={
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
