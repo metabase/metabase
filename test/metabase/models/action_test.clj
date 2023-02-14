@@ -58,13 +58,11 @@
 
 (deftest dashcard-deletion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
-    (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{card-id :id} {:dataset true :dataset_query {}}
-                        {action-id :action-id} {:type     :query
-                                                :model_id card-id}]
+    (mt/with-actions-enabled
+      (mt/with-actions [{:keys [action-id]} {}]
         (mt/with-temp* [Dashboard [{dashboard-id :id}]
                         DashboardCard [{dashcard-id :id} {:action_id action-id
                                                           :dashboard_id dashboard-id}]]
-          (is (= 1 (t2/count DashboardCard :id dashcard-id )))
+          (is (= 1 (t2/count DashboardCard :id dashcard-id)))
           (action/update! {:id action-id, :archived true} {:id action-id})
-          (is (zero? (t2/count DashboardCard :id dashcard-id ))))))))
+          (is (zero? (t2/count DashboardCard :id dashcard-id))))))))
