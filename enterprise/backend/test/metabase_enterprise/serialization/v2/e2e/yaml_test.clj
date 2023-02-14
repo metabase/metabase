@@ -147,7 +147,8 @@
                                                                            :query {:source-table 3
                                                                                    :aggregation [[:count]]
                                                                                    :breakout [[:field 16 nil]]}
-                                                                           :type :query}}}
+                                                                           :type :query}
+                                                           :dataset       true}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))

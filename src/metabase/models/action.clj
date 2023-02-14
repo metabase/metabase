@@ -10,6 +10,7 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
@@ -46,6 +47,13 @@
   :out (comp (fn [template]
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
+
+(t2/define-before-insert Action
+  [{model-id :model_id, :as action}]
+  (u/prog1 action
+    (when-not (db/select-one-field :dataset Card :id model-id)
+      (throw (ex-info (tru "Actions must be made with models, not cards.")
+                      {:status-code 400})))))
 
 (t2/define-before-update Action
   [{archived? :archived, id :id, :as changes}]
