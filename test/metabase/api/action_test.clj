@@ -145,12 +145,11 @@
                 (testing "no permission"
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 "action" initial-action))))
-                (when (= "query" (:type initial-action))
-                  (testing "actions disabled"
-                    (mt/with-actions-disabled
-                      (is (= "Actions are not enabled."
-                             (:cause
-                              (mt/user-http-request :crowberto :post 400 "action" initial-action))))))))
+                (testing "actions disabled"
+                  (mt/with-actions-disabled
+                    (is (= "Actions are not enabled."
+                           (:cause
+                            (mt/user-http-request :crowberto :post 400 "action" initial-action)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                     action-path    (str "action/" (:id created-action))]
                 (testing "Create"
@@ -159,22 +158,37 @@
                 (testing "Update"
                   (is (partial= (expected-fn updated-action)
                                 (mt/user-http-request :crowberto :put 200 action-path (update-fn {}))))
-                  (testing "Should not be possible without permission"
-                    (is (= "You don't have permissions to do that."
-                           (mt/user-http-request :rasta :put 403 action-path (update-fn {})))))
+                  (testing "Update fails with"
+                    (testing "no permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :put 403 action-path (update-fn {})))))
+                    (testing "actions disabled"
+                      (mt/with-actions-disabled
+                        (is (= "Actions are not enabled."
+                               (:cause
+                                (mt/user-http-request :crowberto :put 400 action-path (update-fn {}))))))))
                   (testing "Get"
                     (is (partial= (expected-fn updated-action)
                                   (mt/user-http-request :crowberto :get 200 action-path)))
                     (testing "Should not be possible without permission"
                       (is (= "You don't have permissions to do that."
-                             (mt/user-http-request :rasta :get 403 action-path)))))
+                             (mt/user-http-request :rasta :get 403 action-path))))
+                    (testing "Should still work if actions are disabled"
+                      (mt/with-actions-disabled
+                        (is (partial= (expected-fn updated-action)
+                                      (mt/user-http-request :crowberto :get 200 action-path))))))
                   (testing "Get All"
                     (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
                                    (expected-fn updated-action)]
                                   (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
                     (testing "Should not be possible without permission"
                       (is (= "You don't have permissions to do that."
-                             (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))))
+                             (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))
+                    (testing "Should still work if actions are disabled"
+                      (mt/with-actions-disabled
+                        (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                       (expected-fn updated-action)]
+                                      (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))))
                 (testing "Delete"
                   (testing "Should not be possible without permission"
                     (is (= "You don't have permissions to do that."
@@ -260,6 +274,12 @@
                 (is (= "Public sharing is not enabled."
                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
 
+            (testing "We *cannot* share an action if actions are disabled"
+              (mt/with-actions-disabled
+                (is (= "Actions are not enabled."
+                       (:cause
+                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
+
             (testing "We get a 404 if the Action doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
@@ -273,9 +293,14 @@
   (testing "DELETE /api/action/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-actions-enabled
-        (testing "Test that we can unshare an action"
-          (let [action-opts (shared-action-opts)]
-            (mt/with-actions [{:keys [action-id]} action-opts]
+        (let [action-opts (shared-action-opts)]
+          (mt/with-actions [{:keys [action-id]} action-opts]
+            (testing "We *cannot* unshare an action if actions are disabled"
+              (mt/with-actions-disabled
+                (is (= "Actions are not enabled."
+                       (:cause
+                        (mt/user-http-request :crowberto :delete 400 (format "action/%d/public_link" action-id)))))))
+            (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
                      (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
