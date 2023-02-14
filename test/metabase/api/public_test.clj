@@ -783,6 +783,10 @@
                  (client/client :get 400 (str "public/action/" (UUID/randomUUID))))))
         (let [action-opts (shared-obj)
               uuid        (:public_uuid action-opts)]
+          (testing "should return 400 if Action is archived"
+            (mt/with-actions [{} (assoc action-opts :archived true)]
+              (is (= "An error occurred."
+                     (client/client :get 400 (str "public/action/" uuid))))))
           (mt/with-actions [{} action-opts]
             (testing "Happy path -- should be able to fetch the Action"
               (is (= #{:name
@@ -1364,6 +1368,13 @@
                 (is (contains? (:headers throttled-response) "Retry-After"))))))
         ;; Lift the throttle attempts threshold so we don't have to wait between requests
         (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
+          (mt/with-actions [{} (assoc action-opts :archived true)]
+            (testing "Check that we get a 400 if the action is archived"
+              (is (= "An error occurred."
+                     (client/client
+                      :post 400
+                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      {:parameters {:id 1 :name "European"}})))))
           (mt/with-actions [{} action-opts]
             (testing "Check that we get a 400 if the action doesn't exist"
               (is (= "An error occurred."
@@ -1379,9 +1390,9 @@
                         (format "public/action/%s/execute" public_uuid)
                         {:parameters {:id 1 :name "European"}})))))
             (testing "Check that we get a 400 if actions are disabled for the database."
-                (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
-                  (is (= "An error occurred."
-                         (client/client
-                          :post 400
-                          (format "public/action/%s/execute" public_uuid)
-                          {:parameters {:id 1 :name "European"}})))))))))))
+              (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+                (is (= "An error occurred."
+                       (client/client
+                        :post 400
+                        (format "public/action/%s/execute" public_uuid)
+                        {:parameters {:id 1 :name "European"}})))))))))))

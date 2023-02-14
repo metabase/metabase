@@ -40,49 +40,56 @@
 (deftest list-actions-test
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Card [{card-id :id} {:dataset true}]
-        (mt/with-model-cleanup [Action]
-          (let [posted-actions [{:name "Get example"
-                                 :type "http"
-                                 :model_id card-id
-                                 :template {:method "GET"
-                                            :url "https://example.com/{{x}}"}
-                                 :parameters [{:id "x" :type "text"}]
-                                 :public_uuid (str (UUID/randomUUID))
-                                 :made_public_by_id (mt/user->id :crowberto)
-                                 :response_handle ".body"
-                                 :error_handle ".status >= 400"}
-                                {:name "Query example"
-                                 :type "query"
-                                 :model_id card-id
-                                 :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                        :type name)
-                                 :database_id (mt/id)
-                                 :parameters [{:id "x" :type "number"}]
-                                 :visualization_settings {:position "top"}}
-                                {:name "Implicit example"
-                                 :type "implicit"
-                                 :model_id card-id
-                                 :kind "row/create"
-                                 :parameters [{:id "x" :type "number"}]}]]
-            (doseq [initial-action posted-actions]
-              (mt/user-http-request :crowberto :post 200 "action" initial-action))
-            (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
-              (is (partial= posted-actions
-                            response))
-              (doseq [action response
-                      :when (= (:type action) "query")]
-                (testing "Should return a query action deserialized (#23201)"
-                  (is (schema= ExpectedGetQueryActionAPIResponse
-                               action)))))
-            (testing "Should not be allowed to list actions without permission on the model"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                  "Should not be able to list actions without read permission on the model"))
-            (testing "Should not be possible to demote a model with actions"
-              (is (partial= {:message "Cannot make a question from a model with actions"}
-                            (mt/user-http-request :crowberto :put 500 (str "card/" card-id)
-                                                  {:dataset false}))))))))))
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                          action-1 {:name              "Get example"
+                                    :type              :http
+                                    :model_id          card-id
+                                    :template          {:method "GET"
+                                                        :url "https://example.com/{{x}}"}
+                                    :parameters        [{:id "x" :type "text"}]
+                                    :public_uuid       (str (UUID/randomUUID))
+                                    :made_public_by_id (mt/user->id :crowberto)
+                                    :response_handle   ".body"
+                                    :error_handle      ".status >= 400"}
+                          action-2 {:name                   "Query example"
+                                    :type                   :query
+                                    :model_id               card-id
+                                    :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                    :type name)
+                                    :database_id            (mt/id)
+                                    :parameters             [{:id "x" :type "number"}]
+                                    :visualization_settings {:position "top"}}
+                          action-3 {:name       "Implicit example"
+                                    :type       :implicit
+                                    :model_id   card-id
+                                    :kind       "row/create"
+                                    :parameters [{:id "x" :type "number"}]}
+                          _archived {:name                   "Archived example"
+                                     :type                   :query
+                                     :model_id               card-id
+                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                     :type name)
+                                     :database_id            (mt/id)
+                                     :parameters             [{:id "x" :type "number"}]
+                                     :visualization_settings {:position "top"}
+                                     :archived               true}]
+          (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
+            (is (= (map :action-id [action-1 action-2 action-3])
+                   (map :id response)))
+            (doseq [action response
+                    :when (= (:type action) "query")]
+              (testing "Should return a query action deserialized (#23201)"
+                (is (schema= ExpectedGetQueryActionAPIResponse
+                             action)))))
+          (testing "Should not be allowed to list actions without permission on the model"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
+                "Should not be able to list actions without read permission on the model"))
+          (testing "Should not be possible to demote a model with actions"
+            (is (partial= {:message "Cannot make a question from a model with actions"}
+                          (mt/user-http-request :crowberto :put 500 (str "card/" card-id)
+                                                {:dataset false})))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
@@ -209,7 +216,13 @@
                               :response_handle ".body"
                               :error_handle ".status >= 400"}
               created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-              action-path (str "action/" (u/the-id created-action))]
+              action-id      (u/the-id created-action)
+              action-path    (str "action/" action-id)]
+          (testing "Archiving"
+            (mt/user-http-request :crowberto :put 200 action-path {:archived true})
+            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (mt/user-http-request :crowberto :put 200 action-path {:archived false})
+            (is (false? (db/select-one-field :archived Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},
@@ -268,6 +281,11 @@
                          (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))))))))
 
+          (testing "We cannot share an archived action"
+            (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404
+                                           (format "action/%d/public_link" action-id))))))
           (mt/with-actions [{:keys [action-id]} {}]
             (testing "We *cannot* share a Action if the setting is disabled"
               (mt/with-temporary-setting-values [enable-public-sharing false]
@@ -304,6 +322,13 @@
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
                      (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+
+        (testing "Test that we cannot unshare an action if it's archived"
+          (let [action-opts (merge {:archived true} (shared-action-opts))]
+            (mt/with-actions [{:keys [action-id]} action-opts]
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
+
 
         (testing "Test that we *cannot* unshare a action if we are not admins"
           (let [action-opts (shared-action-opts)]
