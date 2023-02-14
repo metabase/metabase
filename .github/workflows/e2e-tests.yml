@@ -54,7 +54,7 @@ jobs:
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
+      needs.build.result == 'success'
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
