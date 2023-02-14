@@ -6,6 +6,7 @@ import {
   openNewCollectionItemFlowFor,
   getCollectionActions,
   openCollectionMenu,
+  getFullName,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -70,6 +71,18 @@ describe("personal collections", () => {
       Object.values(USERS).forEach(user => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
+      });
+    });
+
+    it("should not be able to move or archive a personal collection", () => {
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor(`${getFullName(USERS.admin)}'s Personal Collection`);
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Move").should("not.exist");
+        cy.findByText("Archive").should("not.exist");
       });
     });
 
@@ -178,4 +191,10 @@ function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
   cy.findByLabelText("Name").type(name, { delay: 0 });
   cy.button("Create").click();
+}
+
+function openEllipsisMenuFor(item) {
+  cy.findByText(item)
+    .closest("tr")
+    .within(() => cy.icon("ellipsis").click());
 }
