@@ -1,6 +1,7 @@
-import { DatabaseId } from "./database";
-import { FieldId } from "./field";
-import { TableId } from "./table";
+import type { TemplateTags } from "../types/Query";
+import type { DatabaseId } from "./database";
+import type { FieldId } from "./field";
+import type { TableId } from "./table";
 
 export interface StructuredQuery {
   "source-table"?: TableId;
@@ -8,6 +9,7 @@ export interface StructuredQuery {
 
 export interface NativeQuery {
   query: string;
+  "template-tags"?: TemplateTags;
 }
 
 export interface StructuredDatasetQuery {
