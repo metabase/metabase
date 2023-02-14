@@ -1,4 +1,5 @@
 import {
+  Card,
   Dashboard,
   DashboardOrderedCard,
   ActionDashboardCard,
@@ -28,27 +29,37 @@ export const createMockDashboardOrderedCard = (
 ): DashboardOrderedCard => ({
   id: 1,
   dashboard_id: 1,
+  col: 0,
+  row: 0,
+  card_id: 1,
   size_x: 1,
   size_y: 1,
+  entity_id: "abc_123",
   visualization_settings: {},
-  justAdded: false,
-  card_id: 1,
   card: createMockCard(),
+  created_at: "2020-01-01T12:30:30.000000",
+  updated_at: "2020-01-01T12:30:30.000000",
+  justAdded: false,
   parameter_mappings: [],
   ...opts,
 });
 
-export const createMockActionDashboardCard = (
-  opts?: Partial<ActionDashboardCard>,
-): ActionDashboardCard => ({
+export const createMockDashboardCardWithVirtualCard = (
+  opts?: Partial<DashboardOrderedCard>,
+): DashboardOrderedCard => ({
   ...createMockDashboardOrderedCard(),
-  action: undefined,
-  card: createMockCard(),
+  card: {
+    query_average_duration: null,
+  } as Card,
+  card_id: null,
   visualization_settings: {
-    "button.label": "Please click me",
-    "button.variant": "primary",
-    actionDisplayType: "button",
-    virtual_card: createMockCard({ display: "action" }),
+    virtual_card: {
+      archived: false,
+      dataset_query: {},
+      display: "text",
+      name: null,
+      visualization_settings: {},
+    } as unknown as Card,
   },
   ...opts,
 });

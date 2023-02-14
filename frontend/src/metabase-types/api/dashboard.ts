@@ -37,15 +37,20 @@ export type BaseDashboardOrderedCard = {
   dashboard_id: DashboardId;
   size_x: number;
   size_y: number;
+  col: number;
+  row: number;
+  entity_id: string;
   visualization_settings?: {
     [key: string]: unknown;
     virtual_card?: Card;
   };
   justAdded?: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type DashboardOrderedCard = BaseDashboardOrderedCard & {
-  card_id: CardId;
+  card_id: CardId | null;
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
