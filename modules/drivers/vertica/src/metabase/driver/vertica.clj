@@ -101,9 +101,9 @@
     (h2x/cast :timestamp expr)
     expr))
 
-(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) (cast-timestamp expr)])
-(defn- extract    [unit expr] [:extract    unit               (cast-timestamp expr)])
-(defn- datediff   [unit a b]  [:datediff   (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
+(defn- date-trunc [unit expr] [:date_trunc   (h2x/literal unit) (cast-timestamp expr)])
+(defn- extract    [unit expr] [::h2x/extract unit               (cast-timestamp expr)])
+(defn- datediff   [unit a b]  [:datediff     (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
 
 (def ^:private extract-integer (comp h2x/->integer extract))
 
@@ -242,7 +242,7 @@
                            (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
                            (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
         hsql-form        (h2x/cast-unless-type-in "timestamp" acceptable-types hsql-form)]
-    [:timestampadd unit amount hsql-form]))
+    [:timestampadd unit (sql.qp/inline-num amount) hsql-form]))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
