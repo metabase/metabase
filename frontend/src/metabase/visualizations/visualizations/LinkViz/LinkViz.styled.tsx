@@ -2,13 +2,13 @@ import styled from "@emotion/styled";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 
-export const DisplayLinkCardWrapper = styled.div<{ alignmentSettings: string }>`
+export const DisplayLinkCardWrapper = styled.div`
   padding: 0.5rem;
   display: flex;
   width: 100%;
   height: 100%;
   pointer-events: all;
-  ${props => props.alignmentSettings ?? ""}
+  align-items: center;
 `;
 
 export const EditLinkCardWrapper = styled.div`

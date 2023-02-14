@@ -8,11 +8,7 @@ import Icon from "metabase/components/Icon";
 import type { DashboardOrderedCard } from "metabase-types/api";
 import { isEmpty } from "metabase/lib/validate";
 
-import {
-  settings,
-  getSettingsStyle,
-  LinkCardSettings,
-} from "./LinkVizSettings";
+import { settings, LinkCardSettings } from "./LinkVizSettings";
 
 import {
   EditLinkCardWrapper,
@@ -20,7 +16,7 @@ import {
   CardLink,
 } from "./LinkViz.styled";
 
-interface LinkVizProps {
+export interface LinkVizProps {
   dashcard: DashboardOrderedCard;
   isEditing: boolean;
   isPreviewing: boolean;
@@ -55,7 +51,7 @@ function LinkViz({
       <EditLinkCardWrapper>
         <Input
           autoFocus={isNew}
-          placeholder={t`https://metabase.com`}
+          placeholder={"https://example.com"}
           value={url ?? ""}
           onChange={handleLinkChange}
           fullWidth
@@ -69,7 +65,7 @@ function LinkViz({
   const displayIcon = isEmpty(url) ? "question" : "link";
 
   return (
-    <DisplayLinkCardWrapper alignmentSettings={getSettingsStyle(settings)}>
+    <DisplayLinkCardWrapper>
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
         <Icon name={displayIcon} />
         <Ellipsified style={{ minWidth: 0 }}>
