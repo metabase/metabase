@@ -17,11 +17,7 @@ import {
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
 
 import { isNotNull } from "metabase/core/utils/types";
-import type {
-  ActionFormSettings,
-  WritebackAction,
-  WritebackQueryAction,
-} from "metabase-types/api";
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import type { SideView } from "./types";
 import InlineActionSettings, {
@@ -29,7 +25,7 @@ import InlineActionSettings, {
 } from "./InlineActionSettings";
 
 interface ActionCreatorProps {
-  action: Partial<WritebackQueryAction>;
+  action: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
   canSave: boolean;
   isNew: boolean;

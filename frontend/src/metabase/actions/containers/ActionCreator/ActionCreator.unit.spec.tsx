@@ -15,7 +15,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { WritebackQueryAction } from "metabase-types/api";
+import { WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
@@ -31,7 +31,7 @@ import {
 import ActionCreator from "./ActionCreator";
 
 type SetupOpts = {
-  action?: WritebackQueryAction;
+  action?: WritebackAction;
   canWrite?: boolean;
   hasActionsEnabled?: boolean;
   isAdmin?: boolean;

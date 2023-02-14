@@ -7,8 +7,8 @@ import { getSetting } from "metabase/selectors/settings";
 
 import type {
   ActionFormSettings,
+  WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -35,7 +35,7 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
-  action?: Partial<WritebackQueryAction>;
+  action?: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;

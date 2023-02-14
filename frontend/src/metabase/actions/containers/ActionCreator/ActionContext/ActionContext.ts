@@ -1,17 +1,14 @@
 import { createContext, useContext } from "react";
 import _ from "underscore";
 
-import type {
-  ActionFormSettings,
-  WritebackQueryAction,
-} from "metabase-types/api";
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import { getDefaultFormSettings } from "../../../utils";
 import type { EditableActionParams, EditorBodyProps } from "./types";
 import { createEmptyWritebackAction } from "./utils";
 
 export type ActionContextType = {
-  action: Partial<WritebackQueryAction>;
+  action: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
   canSave: boolean;
   isNew: boolean;

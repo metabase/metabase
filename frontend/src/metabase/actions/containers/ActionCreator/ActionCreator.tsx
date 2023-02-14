@@ -16,10 +16,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Card,
   WritebackActionId,
+  WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
@@ -37,7 +39,7 @@ interface OwnProps {
 }
 
 interface ActionLoaderProps {
-  initialAction?: WritebackQueryAction;
+  initialAction?: WritebackAction;
 }
 
 interface ModelLoaderProps {
@@ -95,6 +97,10 @@ function ActionCreator({
   const isEditable = model.canWriteActions();
 
   const handleCreate = async (values: CreateActionFormValues) => {
+    if (action.type !== "query") {
+      return; // only query action creation is supported now
+    }
+
     await onCreateAction({
       ...action,
       ...values,
@@ -109,7 +115,8 @@ function ActionCreator({
   };
 
   const handleUpdate = () => {
-    if (isSavedAction(action)) {
+    // Only query action update is supported now
+    if (isSavedAction(action) && action.type === "query") {
       onUpdateAction({ ...action, model_id: model.id() });
     }
   };
