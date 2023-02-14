@@ -150,10 +150,11 @@
   (transduce
    (map #(sql.qp/->honeysql driver %))
    (completing (fn [x y]
-                 [:concat x y]))
-   ;; concat is guaranteed to always have at least 2 args.
-   (first args)
-   (rest args)))
+                 (if (some? x)
+                   [:concat x y]
+                   y)))
+   nil
+   args))
 
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [driver _unit x y]
