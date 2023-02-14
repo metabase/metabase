@@ -1,12 +1,4 @@
 import { t } from "ttag";
-import type { SearchEntity } from "metabase-types/api/search";
-
-export interface LinkCardSettings {
-  link: {
-    url?: string;
-    entity?: SearchEntity;
-  };
-}
 
 export const settings = {
   uiName: "Link",

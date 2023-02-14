@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import CoreButton from "metabase/core/components/Button";
 
 export const DisplayLinkCardWrapper = styled.div`
   padding: 0.5rem;
@@ -60,4 +61,10 @@ export const EntityEditContainer = styled.div`
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+`;
+
+export const Button = styled(CoreButton)`
+  &:hover {
+    color: ${alpha("brand", 0.8)};
+  }
 `;

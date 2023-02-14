@@ -4,7 +4,7 @@ import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
-import type { LinkCardSettings } from "./LinkVizSettings";
+import type { LinkCardSettings } from "./types";
 
 const linkDashcard = createMockDashboardCardWithVirtualCard({
   visualization_settings: {
@@ -35,8 +35,6 @@ const setup = (options?: Partial<LinkVizProps>) => {
     <LinkViz
       dashcard={linkDashcard}
       isEditing={true}
-      isPreviewing={false}
-      isSettings={false}
       onUpdateVisualizationSettings={changeSpy}
       settings={
         linkDashcard.visualization_settings as unknown as LinkCardSettings
