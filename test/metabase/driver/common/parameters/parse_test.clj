@@ -108,3 +108,12 @@
       (is (thrown? clojure.lang.ExceptionInfo
                    (params.parse/parse invalid))
           (format "Parsing %s should throw an exception" (pr-str invalid))))))
+
+(deftest disable-comment-handling-test
+  (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
+    (doseq [[query result] [["{{{foo}}: -- {{bar}}}"
+                             ["{" (param "foo") ": -- " (param "bar") "}"]]
+
+                            ["{{{foo}}: \"/* {{bar}} */\"}"
+                             ["{" (param "foo") ": \"/* " (param "bar") " */\"}"]]]]
+      (is (= result (normalize-tokens (params.parse/parse query false)))))))

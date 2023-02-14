@@ -45,8 +45,24 @@
                (subs s (+ index (count text))))
         (conj acc s)))))
 
+(def ^:private param-token-patterns
+  [["[[" :optional-begin]
+   ["]]" :optional-end]
+    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
+    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
+   [#"(?s)\{\{(?!\{)" :param-begin]
+   ["}}" :param-end]])
+
+(def ^:private sql-token-patterns
+  (concat
+   [["/*" :block-comment-begin]
+    ["*/" :block-comment-end]
+    ["--" :line-comment-begin]
+    ["\n" :newline]]
+   param-token-patterns))
+
 (s/defn ^:private tokenize :- [StringOrToken]
-  [s :- s/Str]
+  [s :- s/Str, handle-sql-comments :- s/Bool]
   (reduce
    (fn [strs [token-str token]]
      (filter
@@ -58,16 +74,9 @@
            (tokenize-one s token-str token)))
        strs)))
    [s]
-   [["/*" :block-comment-begin]
-    ["*/" :block-comment-end]
-    ["--" :line-comment-begin]
-    ["\n" :newline]
-    ["[[" :optional-begin]
-    ["]]" :optional-end]
-    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
-    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-    [#"(?s)\{\{(?!\{)" :param-begin]
-    ["}}" :param-end]]))
+   (if handle-sql-comments
+     sql-token-patterns
+     param-token-patterns)))
 
 (defn- param [& [k & more]]
   (when (or (seq more)
@@ -145,12 +154,16 @@
 
 (s/defn parse :- [(s/cond-pre s/Str Param Optional)]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
-   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances."
-  [s :- s/Str]
-  (let [tokenized (tokenize s)]
-    (if (= [s] tokenized)
-      [s]
-      (do
-        (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
-        (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
-                 (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>)))))))
+   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
+
+   If handle-sql-comments is true (default) then we make a best effort to ignore params in SQL comments."
+  ([s :- s/Str]
+   (parse s true))
+  ([s :- s/Str, handle-sql-comments :- s/Bool]
+   (let [tokenized (tokenize s handle-sql-comments)]
+     (if (= [s] tokenized)
+       [s]
+       (do
+         (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
+         (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
+                  (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))
