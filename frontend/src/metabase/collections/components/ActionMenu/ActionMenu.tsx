@@ -3,11 +3,12 @@ import React, { useCallback } from "react";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
+  canArchiveItem,
+  canMoveItem,
+  canPinItem,
+  canPreviewItem,
   isFullyParametrized,
-  isItemCollection,
   isItemPinned,
-  isItemQuestion,
-  isPersonalCollection,
   isPreviewEnabled,
   isPreviewShown,
 } from "metabase/collections/utils";
@@ -52,16 +53,10 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const canPin = collection.can_write && item.setPinned != null;
-  const canPreview =
-    isItemPinned(item) && isItemQuestion(item) && collection.can_write;
-  const canMove =
-    collection.can_write &&
-    item.setCollection != null &&
-    !(isItemCollection(item) && isPersonalCollection(item));
-  const canArchive =
-    collection.can_write &&
-    !(isItemCollection(item) && isPersonalCollection(item));
+  const canPin = canPinItem(item, collection);
+  const canPreview = canPreviewItem(item, collection);
+  const canMove = canMoveItem(item, collection);
+  const canArchive = canArchiveItem(item, collection);
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
