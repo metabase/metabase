@@ -138,8 +138,15 @@
             (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
                                   {:table_id             table-id
                                    :group_id             group-id
-                                   :card_id              card-id
-                                   :attribute_remappings {"foo" 1}}))))
+                                   :card_id              card-id}))))
+
+      (testing "A sandbox without a card-id passes validation, because the validation is not applicable in this case"
+        (with-gtap-cleanup
+          (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
+                                {:table_id             table-id
+                                 :group_id             group-id
+                                 :card_id              nil
+                                 :attribute_remappings {"foo" 1}})))
 
       (testing "An invalid sandbox results in a 400 error being returned"
         (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
