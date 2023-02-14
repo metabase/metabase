@@ -24,6 +24,7 @@
     :as string-extracts-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -39,7 +40,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
                         (thunk))))
 
 (deftest all-zero-dates-test
@@ -280,25 +287,26 @@
 (deftest read-timediffs-test
   (mt/test-driver :mysql
     (testing "Make sure negative result of *diff() functions don't cause Exceptions (#10983)"
-      (doseq [{:keys [interval expected message]}
-              [{:interval "-1 HOUR"
-                :expected "-01:00:00"
-                :message  "Negative durations should come back as Strings"}
-               {:interval "25 HOUR"
-                :expected "25:00:00"
-                :message  "Durations outside the valid range of `LocalTime` should come back as Strings"}
-               {:interval "1 HOUR"
-                :expected #t "01:00:00"
-                :message  "A `timediff()` result within the valid range should still come back as a `LocalTime`"}]]
-        (testing (str "\n" interval "\n" message)
-          (is (= [expected]
-                 (mt/first-row
-                   (qp/process-query
-                    (assoc (mt/native-query
-                             {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
-                           ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
-                           ;; our driver is actually doing the right thing
-                           :middleware {:format-rows? false}))))))))))
+      (binding [sync-util/*log-exceptions-and-continue?* true]
+        (doseq [{:keys [interval expected message]}
+                [{:interval "-1 HOUR"
+                  :expected "-01:00:00"
+                  :message  "Negative durations should come back as Strings"}
+                 {:interval "25 HOUR"
+                  :expected "25:00:00"
+                  :message  "Durations outside the valid range of `LocalTime` should come back as Strings"}
+                 {:interval "1 HOUR"
+                  :expected #t "01:00:00"
+                  :message  "A `timediff()` result within the valid range should still come back as a `LocalTime`"}]]
+          (testing (str "\n" interval "\n" message)
+            (is (= [expected]
+                   (mt/first-row
+                    (qp/process-query
+                     (assoc (mt/native-query
+                              {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
+                            ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
+                            ;; our driver is actually doing the right thing
+                            :middleware {:format-rows? false})))))))))))
 
 (defn- table-fingerprint
   [{:keys [fields name]}]
@@ -573,8 +581,18 @@
                    {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
                  (db->fields (mt/db)))))
         (testing "Nested field columns are correct"
-          (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
-                   {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
+          (is (= #{{:name              "jsoncol → mybool"
+                    :database-type     "boolean"
+                    :base-type         :type/Boolean
+                    :database-position 0
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "mybool"]}
+                   {:name              "jsoncol → myint"
+                    :database-type     "double precision"
+                    :base-type         :type/Number
+                    :database-position 0
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   :mysql
                   (mt/db)

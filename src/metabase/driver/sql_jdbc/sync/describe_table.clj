@@ -394,24 +394,24 @@
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
-
           table-fields          (describe-table-fields driver conn table nil)
           json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-              table-identifier (apply hx/identifier :table table-identifier-info)
-              sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                               :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                               :limit  metadata-queries/nested-field-sample-limit})
-              query            (jdbc/reducible-query spec sql-args {:identifiers identity})
-              field-types      (transduce describe-json-xform describe-json-rf query)
-              fields           (field-types->fields field-types)]
-          (if (> (count fields) max-nested-field-columns)
-            (do
-              (log/warn
-               (format
-                "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                max-nested-field-columns))
-              (set (take max-nested-field-columns fields)))
-            fields))))))
+        (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+          (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+                table-identifier (apply hx/identifier :table table-identifier-info)
+                sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                                 :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                                 :limit  metadata-queries/nested-field-sample-limit})
+                query            (jdbc/reducible-query spec sql-args {:identifiers identity})
+                field-types      (transduce describe-json-xform describe-json-rf query)
+                fields           (field-types->fields field-types)]
+            (if (> (count fields) max-nested-field-columns)
+              (do
+                (log/warn
+                 (format
+                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                  max-nested-field-columns))
+                (set (take max-nested-field-columns fields)))
+              fields)))))))

@@ -25,7 +25,9 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.execute :as t2.execute]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private default-search-row
   {:id                         true
@@ -609,3 +611,35 @@
         (is (= ["Another SQL query" "Dataset"]
                (->> (search-request-data :rasta :q "aggregation")
                     (map :name))))))))
+
+(deftest search-db-call-count-test
+  (t2.with-temp/with-temp
+    [Card      _              {:name "card db count test 1"}
+     Card      _              {:name "card db count test 2"}
+     Card      _              {:name "card db count test 3"}
+     Dashboard _              {:name "dash count test 1"}
+     Dashboard _              {:name "dash count test 2"}
+     Dashboard _              {:name "dash count test 3"}
+     Database  {db-id :id}    {:name "database count test 1"}
+     Database  _              {:name "database count test 2"}
+     Database  _              {:name "database count test 3"}
+     Table     {table-id :id} {:db_id  db-id
+                               :schema nil}
+     Metric    _              {:table_id table-id
+                                :name     "metric count test 1"}
+     Metric    _              {:table_id table-id
+                               :name     "metric count test 1"}
+     Metric    _              {:table_id table-id
+                               :name     "metric count test 2"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 1"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 2"}
+     Segment   _              {:table_id table-id
+                               :name     "segment count test 3"}]
+    (toucan2.execute/with-call-count [call-count]
+      (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+      ;; the call count number here are expected to change if we change the search api
+      ;; we have this test here just to keep tracks this number to remind us to put effort
+      ;; into keep this number as low as we can
+      (is (= 7 (call-count))))))
