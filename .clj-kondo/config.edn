@@ -696,7 +696,6 @@
   ;;           #"(?:sql(?:-jdbc)?)"
   ;;           "athena"
   ;;           "bigquery-cloud-sdk"
-  ;;           "h2"
   ;;           "hive-like"
   ;;           "oracle"
   ;;           [:and "presto" [:? [:or "-common" "-jdbc"]]]
