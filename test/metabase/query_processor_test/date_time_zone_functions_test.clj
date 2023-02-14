@@ -307,7 +307,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datetime-math
-  [op x amount unit col-type]
+  [op x amount unit]
   (let [amount (if (= op :datetime-add)
                  amount
                  (- amount))
@@ -354,13 +354,13 @@
                   unit                [:year :quarter :month :day :hour :minute :second]
 
                   {:keys [expected query]}
-                  [{:expected [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                               (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                  [{:expected [(datetime-math op #t "2004-03-19 09:19:09" 2 unit) (datetime-math op #t "2008-06-20 10:20:10" 2 unit)
+                               (datetime-math op #t "2012-11-21 11:21:11" 2 unit) (datetime-math op #t "2012-11-21 11:21:11" 2 unit)]
                     :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                :fields      [[:expression "expr"]]}}
                    {:expected (into [] (frequencies
-                                        [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                         (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                                        [(datetime-math op #t "2004-03-19 09:19:09" 2 unit) (datetime-math op #t "2008-06-20 10:20:10" 2 unit)
+                                         (datetime-math op #t "2012-11-21 11:21:11" 2 unit) (datetime-math op #t "2012-11-21 11:21:11" 2 unit)]))
                     :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                :aggregation [[:count]]
                                :breakout    [[:expression "expr"]]}}]]
@@ -376,13 +376,13 @@
                   unit                [:year :quarter :month :day]
 
                   {:keys [expected query]}
-                  [{:expected [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                               (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                  [{:expected [(datetime-math op #t "2004-03-19 00:00:00" 2 unit) (datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                               (datetime-math op #t "2012-11-21 00:00:00" 2 unit) (datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
                     :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                :fields      [[:expression "expr"]]}}
                    {:expected (into [] (frequencies
-                                        [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                         (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                        [(datetime-math op #t "2004-03-19 00:00:00" 2 unit) (datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                         (datetime-math op #t "2012-11-21 00:00:00" 2 unit) (datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
                     :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                :aggregation [[:count]]
                                :breakout    [[:expression "expr"]]}}]]
