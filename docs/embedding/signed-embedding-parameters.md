@@ -14,13 +14,13 @@ Parameters can be signed or unsigned. Signed parameters, such as filters, must b
 
 Signed parameters
 
-- [Editable filter](#adding-a-filter-widget-to-a-signed-embed)
-- [Locked filter](#restricting-data-in-a-signed-embed-with-locked-parameters)
+- [Editable parameters](#adding-a-filter-widget-to-a-signed-embed)
+- [Locked parameters](#restricting-data-in-a-signed-embed-with-locked-parameters)
 
 Unsigned parameters
 
-- [Default values for editable filters](#populating-an-embedded-filter-widget-with-a-default-value)
-- [Visibility settings for editable filters](#hiding-filter-widgets-from-a-signed-embed)
+- [Default values for editable parameters](#populating-an-embedded-filter-widget-with-a-default-value)
+- [Visibility settings for editable parameters](#hiding-filter-widgets-from-a-signed-embed)
 - [Appearance settings](#customizing-the-appearance-of-a-signed-embed)
 
 ## Adding a filter widget to a signed embed
@@ -38,9 +38,9 @@ Editable parameters are responsible for passing filter values from the embedded 
 
 Note that [locked parameters](#restricting-data-in-a-signed-embed) may limit the values that show up in an embedded filter widget.
 
-## Populating an editable filter widget with a default value
+## Populating an embedded filter widget with a default value
 
-If you want to set a default value for your [embedded filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that default value to the corresponding parameter name in your iframe's `src` attribute.
+If you want to set a default value for your [editable filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that default value to the corresponding parameter name in your iframe's `src` attribute:
 
 ```
 your_embedding_url?parameter_name=value
@@ -52,7 +52,9 @@ When passing a parameter directly to the `src` attribute, note that:
 - Parameter _values_ are case-sensitive (they must match your data).
 - Spaces should be replaced by underscores.
 
-For example, if your embedded dashboard has a filter called "Breakfast", and you want to set the default value to "Scrambled eggs":
+Let's say your embedded dashboard has a filter connected to an editable parameter called "Breakfast".
+
+If you want to set the default value for the "Breakfast" filter to "Scrambled eggs":
 
 ```
 your_embedding_url?breakfast=Scrambled_eggs
@@ -70,19 +72,13 @@ You can set multiple default values for a filter by separating the `key=value` p
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 ```
 
-## Hiding an editable filter widget from a signed embed
+## Hiding filter widgets from a signed embed
 
-If you have a lot of **Editable** parameters (resulting in a lot of filter widgets), you can hide them from your signed embed by adding `hide_parameters` to the end of the embedding URL in your iframe's `src` attribute:
+If you have a lot of editable parameters (resulting in a lot of filter widgets), you can hide them from your signed embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
 
 ```
 your_embedding_url#hide_parameters=parameter_name
 ```
-
-When passing a parameter directly to the `src` attribute, note that:
-
-- Parameter _names_ are lowercase.
-- Parameter _values_ are case-sensitive (they must match your data).
-- Spaces should be replaced by underscores.
 
 For example, if you want to hide a filter called "Breakfast" from your embedded dashboard:
 
@@ -102,7 +98,7 @@ You can also simultaneously assign a parameter a default value _and_ hide its fi
 your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 ```
 
-## Restricting data in a signed embed with locked parameters
+## Restricting data with a locked parameter
 
 If you want to restrict the data that's displayed in an embedded dashboard or SQL question, you can set up a **locked parameter**. A locked parameter filters the data in a dashboard or SQL question _before_ the results are displayed to the end user in a signed embed.
 
@@ -118,7 +114,7 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-signed-embed).
 
-## Updating locked parameters
+## Updating a locked parameter
 
 Things to keep in mind if you need to make changes to your locked parameters.
 
@@ -166,7 +162,7 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 ## Maximum request size
 
-The maximum length of a signed embedding URL (including all parameters) is value of your `MB_JETTY_REQUEST_HEADER_SIZE`(../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
+The maximum length of a signed embedding URL (including all parameters) is the value of your `MB_JETTY_REQUEST_HEADER_SIZE`(../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
 
 ## Further reading
 
