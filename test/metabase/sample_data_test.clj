@@ -103,7 +103,7 @@
                                :preview_display :display_name :fingerprint :base_type])))))))
 
 (deftest write-rows-sample-database-test
-  (testing "should be able to execute INSERT, UPDATE, and DELETE statements in the Sample Database"
+  (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
     (with-temp-sample-database-db [db]
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -111,12 +111,18 @@
             (let [quantity (fn []
                              (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
                                   (map :quantity)))]
-              (is (= [2]
-                     (quantity)))
+              (testing "before"
+                (is (= [2]
+                       (quantity))))
               (is (= [1]
                      (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 1 WHERE ID = 1;")))
-              (is (= [1]
-                     (quantity)))))
+              (testing "after"
+                (is (= [1]
+                       (quantity))))
+              ;; TODO: this shouldn't be necessary, since we're modifying a temp sample database.
+              (testing "restore"
+                (is (= [1]
+                       (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 2 WHERE ID = 1;"))))))
           (let [rating (fn []
                          (->> (jdbc/query conn-spec "SELECT RATING FROM PRODUCTS WHERE PRICE = 12.345;")
                               (map :rating)))]
@@ -126,9 +132,11 @@
               (is (= [6.789]
                      (rating))))
             (testing "delete row"
-              (is (= [6.789]
-                     (rating)))
+              (testing "before"
+               (is (= [6.789]
+                      (rating))))
               (is (= [1]
                      (jdbc/execute! conn-spec "DELETE FROM PRODUCTS WHERE PRICE = 12.345;")))
-              (is (= []
-                     (rating))))))))))
+              (testing "after"
+               (is (= []
+                      (rating)))))))))))
