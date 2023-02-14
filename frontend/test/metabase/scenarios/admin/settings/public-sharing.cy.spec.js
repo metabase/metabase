@@ -170,7 +170,17 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.findByText(expectedActionName).should("not.have.attr", "href");
+    cy.then(function () {
+      cy.findByText(expectedActionName).click();
+      cy.url().should(
+        "eq",
+        `${location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
+      );
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(expectedActionName).should("be.visible");
+      });
+      cy.visit("/admin/settings/public-sharing");
+    });
 
     cy.button("Revoke link").click();
     modal().within(() => {
