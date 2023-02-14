@@ -7,8 +7,8 @@ import { getSetting } from "metabase/selectors/settings";
 
 import type {
   ActionFormSettings,
-  WritebackAction,
   WritebackActionId,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -27,6 +27,7 @@ import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 
+import { isSavedAction } from "../../utils";
 import {
   ActionSettingsContainer,
   ActionSettingsContent,
@@ -34,7 +35,7 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
-  action?: WritebackAction;
+  action?: Partial<WritebackQueryAction>;
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
@@ -99,14 +100,18 @@ const InlineActionSettings = ({
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      action && onCreatePublicLink({ id: action.id });
+      if (isSavedAction(action)) {
+        onCreatePublicLink({ id: action.id });
+      }
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    action && onDeletePublicLink({ id: action.id });
+    if (isSavedAction(action)) {
+      onDeletePublicLink({ id: action.id });
+    }
   };
 
   const handleSuccessMessageChange = (

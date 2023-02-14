@@ -4,6 +4,7 @@ import type {
   Database,
   Parameter,
   WritebackAction,
+  WritebackActionBase,
   ActionDashboardCard,
   BaseDashboardOrderedCard,
   Card,
@@ -198,6 +199,12 @@ export const getInputType = (param: Parameter, field?: Field) => {
   }
   return "string";
 };
+
+export function isSavedAction(
+  action?: Partial<WritebackActionBase>,
+): action is WritebackAction {
+  return action != null && action.id != null;
+}
 
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,

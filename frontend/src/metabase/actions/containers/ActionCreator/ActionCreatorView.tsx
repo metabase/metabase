@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
 import {
   DataReferenceTriggerButton,
@@ -18,9 +17,11 @@ import {
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
 
 import { isNotNull } from "metabase/core/utils/types";
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Question from "metabase-lib/Question";
+import type {
+  ActionFormSettings,
+  WritebackAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import type { SideView } from "./types";
 import InlineActionSettings, {
@@ -28,37 +29,34 @@ import InlineActionSettings, {
 } from "./InlineActionSettings";
 
 interface ActionCreatorProps {
-  isNew: boolean;
-  canSave: boolean;
-  isEditable: boolean;
-
-  action?: WritebackAction;
-  question: Question;
+  action: Partial<WritebackQueryAction>;
   formSettings: ActionFormSettings;
+  canSave: boolean;
+  isNew: boolean;
+  isEditable: boolean;
+  children: React.ReactNode;
 
-  onChangeQuestionQuery: (query: NativeQuery) => void;
-  onChangeName: (name: string) => void;
-  onCloseModal?: () => void;
+  onChangeAction: (action: Partial<WritebackAction>) => void;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClickSave: () => void;
   onClickExample: () => void;
+  onCloseModal?: () => void;
 }
 
 const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
 export default function ActionCreatorView({
-  isNew,
-  canSave,
-  isEditable,
   action,
-  question,
   formSettings,
-  onChangeQuestionQuery,
-  onChangeName,
-  onCloseModal,
+  canSave,
+  isNew,
+  isEditable,
+  children,
+  onChangeAction,
   onChangeFormSettings,
   onClickSave,
   onClickExample,
+  onCloseModal,
 }: ActionCreatorProps) {
   const [activeSideView, setActiveSideView] =
     useState<SideView>(DEFAULT_SIDE_VIEW);
@@ -93,9 +91,9 @@ export default function ActionCreatorView({
         <ModalLeft>
           <ActionCreatorHeader
             type="query"
-            name={question.displayName() ?? t`New Action`}
+            name={action.name ?? t`New Action`}
             isEditable={isEditable}
-            onChangeName={onChangeName}
+            onChangeName={name => onChangeAction({ name })}
             actionButtons={[
               <DataReferenceTriggerButton
                 key="dataReference"
@@ -107,19 +105,13 @@ export default function ActionCreatorView({
               />,
             ].filter(isNotNull)}
           />
-          <EditorContainer>
-            <QueryActionEditor
-              query={question.query() as NativeQuery}
-              isEditable={isEditable}
-              onChangeQuestionQuery={onChangeQuestionQuery}
-            />
-          </EditorContainer>
+          <EditorContainer>{children}</EditorContainer>
           <ModalActions>
             <Button onClick={onCloseModal} borderless>
               {t`Cancel`}
             </Button>
             {isEditable && (
-              <Button primary disabled={canSave} onClick={onClickSave}>
+              <Button primary disabled={!canSave} onClick={onClickSave}>
                 {isNew ? t`Save` : t`Update`}
               </Button>
             )}
@@ -127,7 +119,7 @@ export default function ActionCreatorView({
         </ModalLeft>
         {activeSideView === "actionForm" ? (
           <FormCreator
-            params={question.parameters() ?? []}
+            params={action.parameters ?? []}
             formSettings={formSettings}
             isEditable={isEditable}
             onChange={onChangeFormSettings}
