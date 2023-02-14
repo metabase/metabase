@@ -139,6 +139,7 @@ export default function ActionCreatorView({
           <InlineActionSettings
             action={action}
             formSettings={formSettings}
+            isEditable={isEditable}
             onChangeFormSettings={onChangeFormSettings}
             onClose={closeSideView}
           />

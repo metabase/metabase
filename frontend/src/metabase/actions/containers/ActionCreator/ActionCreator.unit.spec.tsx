@@ -193,6 +193,10 @@ describe("ActionCreator", () => {
       expect(
         screen.queryByRole("button", { name: "Update" }),
       ).not.toBeInTheDocument();
+
+      screen.getByLabelText("Action settings").click();
+
+      expect(screen.getByLabelText("Success message")).toBeDisabled();
     });
 
     describe("admin users and has public sharing enabled", () => {
