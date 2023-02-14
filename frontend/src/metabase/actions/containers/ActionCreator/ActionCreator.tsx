@@ -10,7 +10,7 @@ import Actions, {
   UpdateQueryActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
-import Models from "metabase/entities/questions";
+import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
@@ -206,12 +206,8 @@ function ActionCreator({
 
 function maybeGetModelId(
   state: State,
-  { action, actionId }: OwnProps & ActionLoaderProps,
+  { action }: OwnProps & ActionLoaderProps,
 ) {
-  const isNewAction = !actionId;
-  if (isNewAction) {
-    return null;
-  }
   return action?.model_id;
 }
 
@@ -220,7 +216,7 @@ export default _.compose(
     id: (state: State, props: OwnProps) => props.actionId,
     loadingAndErrorWrapper: false,
   }),
-  Models.load({
+  Questions.load({
     id: maybeGetModelId,
     loadingAndErrorWrapper: false,
     entityAlias: "model",
