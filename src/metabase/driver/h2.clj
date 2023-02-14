@@ -139,7 +139,9 @@
 (defn- check-single-select-statement
   [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
-    (let [command (.prepareCommand h2-parser query)]
+    (when-let [command (try (.prepareCommand h2-parser query)
+                            ;; if the query is invalid, it will get caught later
+                            (catch Throwable _ nil))]
       (when (or (= (type command) org.h2.command.CommandList)
                 (not (= (.getCommandType command) CommandInterface/SELECT)))
         (throw (IllegalArgumentException. "Only a single SELECT statement is allowed."))))))
