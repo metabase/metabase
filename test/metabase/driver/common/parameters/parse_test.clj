@@ -27,9 +27,24 @@
 
            "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
            ["SELECT * FROM toucanneries WHERE TRUE " :optional-begin "AND num_toucans > " :param-begin "num_toucans" :param-end :optional-end
-            " " :optional-begin "AND total_birds > " :param-begin "total_birds" :param-end :optional-end]}]
+            " " :optional-begin "AND total_birds > " :param-begin "total_birds" :param-end :optional-end]
+
+           "SELECT * FROM -- {{foo}}\n" ["SELECT * FROM " :line-comment-begin " " :param-begin "foo" :param-end :newline]
+
+           "/*SELECT {{foo}}*/" [:block-comment-begin "SELECT " :param-begin "foo" :param-end :block-comment-end]}]
     (is (= expected
-           (normalize-tokens (#'params.parse/tokenize query)))
+           (normalize-tokens (#'params.parse/tokenize query true)))
+        (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
+
+(deftest tokenize-no-sql-comments-test
+  (doseq [[query expected]
+          {"-- {{num_toucans}}"
+           ["-- " :param-begin "num_toucans" :param-end]
+
+           "/* [[AND num_toucans > {{num_toucans}} --]] */"
+           ["/* " :optional-begin "AND num_toucans > " :param-begin "num_toucans" :param-end " --" :optional-end " */"]}]
+    (is (= expected
+           (normalize-tokens (#'params.parse/tokenize query false)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
 (deftest parse-test
