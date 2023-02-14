@@ -258,6 +258,7 @@
   dataset-definition
   db-qualified-table-name
   db-test-env-var
+  db-test-env-var!
   db-test-env-var-or-throw
   dbdef->connection-details
   defdataset

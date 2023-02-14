@@ -12,6 +12,7 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -265,18 +266,27 @@
       driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json Database
-  "When encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!"
+  an API response!
+
+  Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
-   (if (not (mi/can-write? db))
-     (dissoc db :details :settings)
-     (update db :details (fn [details]
-                           (reduce
-                            #(m/update-existing %1 %2 (constantly protected-password))
-                            details
-                            (sensitive-fields-for-db db)))))
+   (let [db (if (not (mi/can-write? db))
+              (dissoc db :details)
+              (update db :details (fn [details]
+                                    (reduce
+                                     #(m/update-existing %1 %2 (constantly protected-password))
+                                     details
+                                     (sensitive-fields-for-db db)))))]
+     (update db :settings (fn [settings]
+                            (when settings
+                              (into {}
+                                    (filter (fn [[setting-name _v]]
+                                              (setting/can-read-setting? setting-name
+                                                                         (setting/current-user-readable-visibilities))))
+                                    settings)))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

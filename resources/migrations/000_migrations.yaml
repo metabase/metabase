@@ -14116,6 +14116,26 @@ databaseChangeLog:
             nullable: false
 
   - changeSet:
+      id: v46.00-062
+      author: tsmacdonald
+      comment: Added 0.46.0 -- add actions.archived
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Whether or not the action has been archived'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: archived
+
+  - changeSet:
       id: v46.00-064
       author: noahmoss
       comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
@@ -14207,7 +14227,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

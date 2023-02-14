@@ -3,6 +3,7 @@ import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_DB_CREDENTIALS,
+  QA_DB_CONFIG,
 } from "__support__/e2e/cypress_data";
 
 /*****************************************
@@ -92,4 +93,20 @@ function recursiveCheck(id, i = 0) {
       recursiveCheck(id, ++i);
     }
   });
+}
+
+export function queryQADB(query, type = "postgres") {
+  return cy.task("connectAndQueryDB", {
+    connectionConfig: QA_DB_CONFIG[type],
+    query,
+  });
+}
+
+// will this work for multiple schemas?
+export function getTableId({ databaseId = 2, name }) {
+  return cy
+    .request("GET", `/api/database/${databaseId}/metadata`)
+    .then(({ body }) => {
+      return body.tables.find(table => table.name === name).id;
+    });
 }

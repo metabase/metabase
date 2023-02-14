@@ -1,3 +1,5 @@
+import * as dbTasks from "./db_tasks";
+
 /**
  * This env var provides the token to the backend.
  * If it is not present, we skip some tests that depend on a valid token.
@@ -59,6 +61,13 @@ const defaultConfig = {
       }
 
       return launchOptions;
+    });
+
+    /********************************************************************
+     **                           TASKS                                **
+     ********************************************************************/
+    on("task", {
+      ...dbTasks,
     });
 
     /********************************************************************

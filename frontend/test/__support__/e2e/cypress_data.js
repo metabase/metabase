@@ -148,9 +148,27 @@ export const QA_MONGO_PORT = 27004;
 export const QA_POSTGRES_PORT = 5404;
 
 export const QA_DB_CREDENTIALS = {
+  host: "localhost",
   user: "metabase",
   password: "metasample123",
-  host: "localhost",
   database: "sample",
   ssl: false,
+};
+
+export const QA_DB_CONFIG = {
+  mysql: {
+    client: "mysql2",
+    connection: {
+      ...QA_DB_CREDENTIALS,
+      port: QA_MYSQL_PORT,
+      multipleStatements: true,
+    },
+  },
+  postgres: {
+    client: "pg",
+    connection: {
+      ...QA_DB_CREDENTIALS,
+      port: QA_POSTGRES_PORT,
+    },
+  },
 };

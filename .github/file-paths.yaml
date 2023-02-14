@@ -86,3 +86,7 @@ snowplow:
 documentation:
   - "docs/**"
   - "**.md"
+
+yaml:
+  - "**.yml"
+  - "**.yaml"

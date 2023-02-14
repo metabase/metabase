@@ -8,7 +8,6 @@
      :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require
    [clojure.string :as str]
-   [honeysql.core :as hsql]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
@@ -24,6 +23,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s])
@@ -58,7 +58,7 @@
 (s/defn ^:private honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.qp/format-honeysql driver x)]
     (make-stmt-subs snippet args)))
 
 (s/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -223,7 +223,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
-  (let [[snippet & args] (hsql/format hsql-form, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -251,10 +251,11 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type]
-  (->> (field->clause driver field param-type)
-       (sql.qp/->honeysql driver)
-       (honeysql->replacement-snippet-info driver)
-       :replacement-snippet))
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    (->> (field->clause driver field param-type)
+         (sql.qp/->honeysql driver)
+         (honeysql->replacement-snippet-info driver)
+         :replacement-snippet)))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
@@ -266,12 +267,13 @@
     (cond
       (params.ops/operator? param-type)
       (let [[snippet & args]
-            (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
-              (params.ops/to-clause form)
-              (mbql.u/desugar-filter-clause form)
-              (qp.wrap-value-literals/wrap-value-literals-in-mbql form)
-              (sql.qp/->honeysql driver form)
-              (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
+            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+              (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
+                (params.ops/to-clause form)
+                (mbql.u/desugar-filter-clause form)
+                (qp.wrap-value-literals/wrap-value-literals-in-mbql form)
+                (sql.qp/->honeysql driver form)
+                (sql.qp/format-honeysql driver form)))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (params.dates/date-range-type? param-type) (prepend-field
