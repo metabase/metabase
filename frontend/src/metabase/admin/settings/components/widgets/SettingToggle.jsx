@@ -12,7 +12,6 @@ const SettingToggle = ({
   tooltip,
   onChange,
 }) => {
-  // >>>>>>> 094b03bb1f (Move widget out of modal)
   const value = setting.value == null ? setting.default : setting.value;
   const on = value === true || value === "true";
   return (
