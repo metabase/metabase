@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { t } from "ttag";
 import { createAction } from "metabase/lib/redux";
 import { measureText } from "metabase/lib/measure-text";
 
@@ -137,10 +137,10 @@ export const addActionToDashboard =
       archived: false,
     };
 
-    const buttonLabel = action.name ?? action.id;
+    const buttonLabel = action.name ?? action.id ?? t`Click Me`;
 
     const dashcardOverrides = {
-      action,
+      action: action.id ? action : null,
       action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,
