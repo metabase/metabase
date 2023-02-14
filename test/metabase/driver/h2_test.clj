@@ -161,6 +161,30 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
+(deftest check-single-select-statement-test
+  (mt/test-driver :h2
+    (testing "a single select statement should pass")
+    (is (nil?
+         (#'h2/check-single-select-statement
+          {:database (u/the-id (mt/db))
+           :engine :h2
+           :native {:query "select 1"}})))
+    (testing "not a single select statement"
+      (doseq [query ["update venues set name = 'bill'"
+                     "insert into venues (name) values ('bill')"
+                     "delete venues"
+                     "select 1; update venues set name = 'bill'; delete venues;"
+                     (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                                     "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                                     "SELECT * FROM INFORMATION_SCHEMA.Users;"])]]
+        (is (thrown?
+             IllegalArgumentException
+             #"Only a single SELECT statement is allowed."
+             (#'h2/check-single-select-statement
+              {:database (u/the-id (mt/db))
+               :engine :h2
+               :native {:query query}})))))))
+
 (deftest classify-ddl-test
   (mt/test-driver :h2
     (are [query] (= false (#'h2/contains-ddl? (u/the-id (mt/db)) query))

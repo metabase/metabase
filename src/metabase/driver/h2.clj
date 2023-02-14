@@ -136,6 +136,14 @@
       ;; if the query is invalid, then it isn't DDL
       (catch Throwable _ false))))
 
+(defn- check-single-select-statement
+  [{:keys [database] {:keys [query]} :native}]
+  (when-let [h2-parser (make-h2-parser database)]
+    (let [command (.prepareCommand h2-parser query)]
+      (when (or (= (type command) org.h2.command.CommandList)
+                (not (= (.getCommandType command) CommandInterface/SELECT)))
+        (throw (IllegalArgumentException. "Only a single SELECT statement is allowed."))))))
+
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
   (when (and query (contains-ddl? database query))
     (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
@@ -143,7 +151,7 @@
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-single-select-statement query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod driver/execute-write-query! :h2
@@ -403,6 +411,8 @@
     (try
       (doto conn
         (.setReadOnly true))
+      (prn "asdf" (.isReadOnly conn))
+      conn
       (catch Throwable e
         (.close conn)
         (throw e)))))
