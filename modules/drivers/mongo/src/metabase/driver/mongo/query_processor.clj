@@ -166,8 +166,9 @@
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
 (defmethod ->rvalue Field
-  [{coercion :coercion_strategy, :as field}]
-  (let [field-name (str \$ (field->name field "."))]
+  [{coercion :coercion_strategy, ::keys [source-alias join-field] :as field}]
+  (let [field-name (str \$ (cond->> (or source-alias (field->name field))
+                             join-field (str join-field \.)))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
@@ -344,14 +345,13 @@
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (cond->> (or source-alias (subs (->rvalue (qp.store/field id-or-name)) 1))
-                  join-field (str join-field ".")
-                  :always (str \$)))
+                (->rvalue (assoc (qp.store/field id-or-name)
+                                 ::source-alias source-alias
+                                 ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (cond->> (or source-alias (name id-or-name))
-                  join-field (str join-field ".")
-                  :always (str \$))))
+                (str \$ (cond->> (or source-alias (name id-or-name))
+                          join-field (str join-field \.)))))
       temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 ;; Values clauses below; they only need to implement `->rvalue`

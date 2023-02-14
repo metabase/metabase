@@ -262,7 +262,7 @@
                      (mt/rows results))))))))))
 
 (deftest remapped-columns-in-joined-source-queries-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
