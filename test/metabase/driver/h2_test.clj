@@ -11,6 +11,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (set! *warn-on-reflection* true)
