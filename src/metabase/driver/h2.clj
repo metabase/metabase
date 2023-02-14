@@ -411,8 +411,6 @@
     (try
       (doto conn
         (.setReadOnly true))
-      (prn "asdf" (.isReadOnly conn))
-      conn
       (catch Throwable e
         (.close conn)
         (throw e)))))
