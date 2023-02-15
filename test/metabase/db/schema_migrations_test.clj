@@ -28,6 +28,7 @@
             Dimension
             Field
             Permissions
+            PermissionsGroup
             Pulse
             Setting
             Table
@@ -39,7 +40,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.execute :as t2.execute])
   (:import
    (java.sql Connection)
    (java.util UUID)))
@@ -906,3 +908,58 @@
                      (db/delete! Database :id db-id)))
         (migrate!)
         (is (db/delete! Database :id db-id))))))
+
+(deftest split-data-permission-test
+  (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
+    (impl/test-migrations ["v46.00-080"] [migrate!]
+      (let [[group-1-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 1"})
+            [group-2-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 2"})
+            v1-paths-and-groups [["/db/1/"                                       group-1-id]
+                                 ["/db/2/schema/"                                group-1-id]
+                                 ["/db/3/native/"                                group-1-id]
+                                 ["/db/4/schema/PUBLIC/"                         group-1-id]
+                                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
+                                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
+                                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                                 ["/db/1/"                                       group-2-id]
+                                 ["invalid-path"                                 group-2-id]]
+            _                   (t2.execute/query-one {:insert-into :permissions
+                                                       :columns     [:object :group_id]
+                                                       :values      v1-paths-and-groups})
+            _                   (migrate!)
+            new-paths-set       (t2/select-fn-set (juxt :object :group_id)
+                                                  :models/permissions
+                                                  {:where [:in :group_id [group-1-id group-2-id]]})]
+        ;; Check that the full permission set for group-1 and group-2 is what we expect post-migration.
+        ;; Each v1-path from above is listed here, immediately followed by the two resulting v2 paths.
+        (is (= #{["/db/1/"                                       group-1-id]
+                 ["/data/db/1/"                                  group-1-id]
+                 ["/query/db/1/"                                 group-1-id]
+                 ["/db/2/schema/"                                group-1-id]
+                 ["/data/db/2/"                                  group-1-id]
+                 ["/query/db/2/schema/"                          group-1-id]
+                 ["/db/3/native/"                                group-1-id]
+                 ["/data/db/3/"                                  group-1-id]
+                 ["/query/db/3/"                                 group-1-id]
+                 ["/db/4/schema/PUBLIC/"                         group-1-id]
+                 ["/data/db/4/schema/PUBLIC/"                    group-1-id]
+                 ["/query/db/4/schema/PUBLIC/"                   group-1-id]
+                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
+                 ["/data/db/5/schema/my\\\\schema/"              group-1-id]
+                 ["/query/db/5/schema/my\\\\schema/"             group-1-id]
+                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
+                 ["/data/db/6/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/6/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                 ["/data/db/7/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/7/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                 ["/data/db/8/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/8/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/1/"                                       group-2-id]
+                 ["/data/db/1/"                                  group-2-id]
+                 ["/query/db/1/"                                 group-2-id]
+                 ;; Invalid path is not touched but also doesn't fail the migration
+                 ["invalid-path"                                 group-2-id]}
+               new-paths-set))))))
