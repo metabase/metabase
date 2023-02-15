@@ -119,18 +119,6 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti read-column-thunk
-  "Return a zero-arg function that, when called, will fetch the value of the column from the current row. This also
-  supports defaults for the entire driver:
-
-    ;; default method for Postgres not covered by any [driver jdbc-type] methods
-    (defmethod read-column-thunk :postgres
-      ...)"
-  {:added "0.35.0", :arglists '([driver rs rsmeta i])}
-  (fn [driver _ ^ResultSetMetaData rsmeta ^long col-idx]
-    [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
-  :hierarchy #'driver/hierarchy)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Default Impl                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -433,28 +421,12 @@
                 (or (:name (meta f))
                     f)))))))
 
-(defn- old-read-column-thunk
-  "Implementation of deprecated method `old/read-column` if a non-default one is available."
-  [driver rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)
-        method   (get-method sql-jdbc.execute.old/read-column [driver col-type])
-        default? (some (fn [dispatch-val]
-                         (= method (get-method sql-jdbc.execute.old/read-column dispatch-val)))
-                       [:default
-                        [::driver/driver col-type]
-                        [:sql-jdbc col-type]])]
-    (when-not default?
-      ^{:name (format "old-impl/read-column %s %d" driver i)}
-      (fn []
-        (method driver nil rs rsmeta i)))))
-
 (defn row-thunk
   "Returns a thunk that can be called repeatedly to get the next row in the result set, using appropriate methods to
   fetch each value in the row. Returns `nil` when the result set has no more rows."
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta]
   (let [fns (for [i (column-range rsmeta)]
-              (or (old-read-column-thunk driver rs rsmeta i)
-                  (read-column-thunk driver rs rsmeta (long i))))]
+              (read-column-thunk driver rs rsmeta (long i)))]
     (log-readers driver rsmeta fns)
     (let [thunk (if (seq fns)
                   (apply juxt fns)
@@ -545,5 +517,4 @@
 (p/import-vars
  [sql-jdbc.execute.old
   ;; interface (set-parameter is imported as well at the top of the namespace)
-  set-timezone-sql
-  read-column])
+  set-timezone-sql])

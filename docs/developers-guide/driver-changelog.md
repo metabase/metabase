@@ -17,6 +17,16 @@ title: Driver interface changelog
   `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
    implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
 
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/syncable-schemas`, which was deprecated in 0.43.0, has been
+  removed. Implement `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` instead. See 0.43.0 notes
+  below for more details.
+
+- The multimethod `metabase.driver/format-custom-field-name`, which was deprecated in 0.42.0, has been removed.
+  Implement `metabase.driver/escape-alias` instead. See 0.42.0 notes below for more information.
+
+- The multimethod `metabase.driver.sql-jdbc.execute/read-column`, which was deprecated in 0.35.0, has been removed.
+  Implement `metabase.driver.sql-jdbc.execute/read-column-thunk` instead. See 0.35.0 notes below for more information.
+
 ### Honey SQL 2
 
 The following only applies to SQL drivers; you can ignore it for non-SQL drivers.

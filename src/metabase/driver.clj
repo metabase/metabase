@@ -546,12 +546,6 @@
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
   existing columns; aggregate functions and other expressions; joined tables; and joined subqueries; be sure to return
