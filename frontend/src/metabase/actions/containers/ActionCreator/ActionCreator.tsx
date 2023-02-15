@@ -76,7 +76,6 @@ const mapDispatchToProps = {
 
 function ActionCreator({
   model,
-  metadata,
   onCreateAction,
   onUpdateAction,
   onClose,
@@ -131,10 +130,6 @@ function ActionCreator({
   };
 
   const handleCloseNewActionModal = () => setShowSaveModal(false);
-
-  if (!metadata) {
-    return null;
-  }
 
   return (
     <>
