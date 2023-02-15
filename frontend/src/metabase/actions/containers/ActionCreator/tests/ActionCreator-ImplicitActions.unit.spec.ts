@@ -1,5 +1,5 @@
 import nock from "nock";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, queryIcon } from "__support__/ui";
 
@@ -73,17 +73,6 @@ describe("ActionCreator > Implicit Actions", () => {
   describe("admin users and has public sharing enabled", () => {
     const mockUuid = "mock-uuid";
 
-    it("should show action settings button", async () => {
-      await setup({
-        isAdmin: true,
-        isPublicSharingEnabled: true,
-      });
-
-      expect(
-        screen.getByRole("button", { name: "Action settings" }),
-      ).toBeInTheDocument();
-    });
-
     it("should be able to enable action public sharing", async () => {
       await setup({
         isAdmin: true,
@@ -144,21 +133,6 @@ describe("ActionCreator > Implicit Actions", () => {
       expect(
         screen.queryByRole("textbox", { name: "Public action link URL" }),
       ).not.toBeInTheDocument();
-    });
-
-    it("should be able to set success message", async () => {
-      await setup();
-
-      userEvent.click(screen.getByRole("button", { name: "Action settings" }));
-
-      const messageBox = screen.getByRole("textbox", {
-        name: "Success message",
-      });
-      expect(messageBox).toHaveValue("Thanks for your submission.");
-
-      await waitFor(() => expect(messageBox).toBeEnabled());
-      userEvent.type(messageBox, `${specialChars.selectAll}Thanks!`);
-      expect(messageBox).toHaveValue("Thanks!");
     });
   });
 

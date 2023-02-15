@@ -47,7 +47,7 @@ describe("ActionCreator > Query Actions", () => {
     });
 
     it("should show action settings button", async () => {
-      await setup({ isAdmin: true, isPublicSharingEnabled: true });
+      await setup();
       expect(
         screen.getByRole("button", { name: "Action settings" }),
       ).toBeInTheDocument();
@@ -124,18 +124,6 @@ describe("ActionCreator > Query Actions", () => {
     describe("admin users and has public sharing enabled", () => {
       const mockUuid = "mock-uuid";
       const action = createMockQueryAction();
-
-      it("should show action settings button", async () => {
-        await setup({
-          action,
-          isAdmin: true,
-          isPublicSharingEnabled: true,
-        });
-
-        expect(
-          screen.getByRole("button", { name: "Action settings" }),
-        ).toBeInTheDocument();
-      });
 
       it("should be able to enable action public sharing", async () => {
         await setup({
