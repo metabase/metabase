@@ -88,14 +88,14 @@
   (testing "Should convert fractional seconds to milliseconds"
     (is (= (hx/call :dateadd
                     (hx/literal "millisecond")
-                    (hx/with-database-type-info (hx/call :cast 100500.0 (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100500.0] (hx/raw "long")) "long")
                     (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
     (is (= (hx/call :dateadd
                     (hx/literal "second")
-                    (hx/with-database-type-info (hx/call :cast 100.0 (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100.0] (hx/raw "long")) "long")
                     (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
