@@ -46,17 +46,33 @@
 (declare root-collection)
 
 (defn- remove-other-users-personal-collections
-  "Remove from the provided collections any that are personal and belong to another user."
+  "Remove from the provided collections any that are personal and belong to another user.
+   Will work in a single pass if collections are already ordered such that root (location = /)
+   collections appear before children, but will catch any mis-ordered entries and
+   do a final pass on those if needed."
   ([user-id collections]
-   (let [path    (format "/%s/" user-id)]
-     (filter (fn [{:keys [personal_owner_id location]}]
-               (or
-                (= personal_owner_id user-id)
-                (str/starts-with? location path)
-                (and
-                 (nil? personal_owner_id)
-                 (= location "/"))))
-             collections)))
+   (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
+          keep-roots     #{user-id}
+          skip-roots     #{}
+          res            []
+          indeterminates []]
+     (if c
+       (if (= "/" location)
+         (if (or (nil? personal_owner_id) (= user-id personal_owner_id))
+           (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
+           (recur r keep-roots (conj skip-roots id) res indeterminates))
+         (let [[_ root] (str/split location #"/")
+               root (parse-long root)]
+           (cond
+             (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
+             (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
+             :else (recur r keep-roots skip-roots res (conj indeterminates c)))))
+       (->> indeterminates
+            (filter
+             (fn [{:keys [location]}]
+               (let [[_ root] (str/split location #"/")]
+                 (keep-roots (parse-long root)))))
+            (into res)))))
   ([collections]
    (remove-other-users-personal-collections (:id @api/*current-user*) collections)))
 
