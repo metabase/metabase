@@ -24,6 +24,8 @@ export const EditLinkCardWrapper = styled.div`
 export const CardLink = styled(Link)`
   padding: 0.5rem;
   display: flex;
+  width: 100%;
+  height: 100%;
   min-width: 0;
   gap: 0.5rem;
   align-items: center;
