@@ -55,8 +55,8 @@
                 (str/starts-with? location path)
                 (and
                  (nil? personal_owner_id)
-                 (= location "/"))
-                collections)))))
+                 (= location "/"))))
+             collections)))
   ([collections]
    (remove-other-users-personal-collections (:id @api/*current-user*) collections)))
 
