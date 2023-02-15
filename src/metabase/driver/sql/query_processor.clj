@@ -1174,7 +1174,8 @@
         2 [table-alias]))]
    (->honeysql driver condition)])
 
-(def ^:private join-strategy->merge-fn
+(def ^:private ^{:deprecated "0.46.0"} join-strategy->merge-fn
+  "Deprecated. Only for Honey SQL 1."
   {:left-join  sql.helpers/left-join
    :right-join sql.helpers/right-join
    ;; don't use [[sql.helpers/inner-join]] because Honey SQL 1 doesn't understand `:inner-join`. But `;join` does the
@@ -1182,13 +1183,34 @@
    :inner-join sql.helpers/join
    :full-join  sql.helpers/full-join})
 
-(defmethod apply-top-level-clause [:sql :joins]
-  [driver _ honeysql-form {:keys [joins]}]
+(defn- apply-joins-honey-sql-1
+  {:deprecated "0.46.0"}
+  [driver honeysql-form joins]
   (reduce
    (fn [honeysql-form {:keys [strategy], :as join}]
+     #_{:clj-kondo/ignore [:deprecated-var]}
      (apply (join-strategy->merge-fn strategy) honeysql-form (join->honeysql driver join)))
    honeysql-form
    joins))
+
+(defn- apply-joins-honey-sql-2
+  "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).
+  See [[metabase.query-processor-test.explicit-joins-test/join-order-test]]."
+  [driver honeysql-form joins]
+  (letfn [(append-joins [join-by]
+            (into (vec join-by)
+                  (mapcat (fn [{:keys [strategy], :as join}]
+                            [strategy (join->honeysql driver join)]))
+                  joins))]
+    (update honeysql-form :join-by append-joins)))
+
+(defmethod apply-top-level-clause [:sql :joins]
+  [driver _ honeysql-form {:keys [joins]}]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [f (case (long hx/*honey-sql-version*)
+            1 apply-joins-honey-sql-1
+            2 apply-joins-honey-sql-2)]
+    (f driver honeysql-form joins)))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
