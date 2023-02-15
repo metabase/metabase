@@ -162,7 +162,7 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 ## Maximum request size
 
-The maximum length of a signed embedding URL (including all parameters) is the value of your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mbjettyrequestheadersize) environment variable. The default is 8192 bytes.
+The maximum length of a signed embedding URL (including all parameters) is the value of your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
 
 ## Further reading
 
