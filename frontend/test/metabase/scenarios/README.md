@@ -2,7 +2,7 @@
 
 ## Running
 
-- If you are running tests that include `alert > email_alert`, run `docker run -p 80:80 -p 25:25 maildev/maildev:1.1.0` in terminal first for setting up email through your localhost
+- If you are running tests that include `alert > email_alert`, run `docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5` in terminal first for setting up email through your localhost
 
 ## Metabase QA DB Tests
 
