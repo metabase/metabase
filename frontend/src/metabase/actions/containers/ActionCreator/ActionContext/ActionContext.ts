@@ -27,8 +27,7 @@ export const ActionContext = createContext<ActionContextType>({
   isNew: true,
   ui: {
     canRename: true,
-    canChangeFormSettings: true,
-    hasSaveButton: true,
+    canChangeFieldSettings: true,
   },
   handleActionChange: _.noop,
   handleFormSettingsChange: _.noop,

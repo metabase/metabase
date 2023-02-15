@@ -50,8 +50,7 @@ export default function ActionCreatorView({
   isNew,
   isEditable,
   canRename,
-  canChangeFormSettings,
-  hasSaveButton,
+  canChangeFieldSettings,
   children,
   onChangeAction,
   onChangeFormSettings,
@@ -112,7 +111,7 @@ export default function ActionCreatorView({
             <Button onClick={onCloseModal} borderless>
               {t`Cancel`}
             </Button>
-            {isEditable && hasSaveButton && (
+            {isEditable && (
               <Button primary disabled={!canSave} onClick={onClickSave}>
                 {isNew ? t`Save` : t`Update`}
               </Button>
@@ -123,7 +122,7 @@ export default function ActionCreatorView({
           <FormCreator
             params={action.parameters ?? []}
             formSettings={formSettings}
-            isEditable={isEditable && canChangeFormSettings}
+            isEditable={isEditable && canChangeFieldSettings}
             onChange={onChangeFormSettings}
             onExampleClick={onClickExample}
           />

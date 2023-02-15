@@ -118,8 +118,7 @@ function QueryActionContextProvider({
       canSave,
       ui: {
         canRename: true,
-        canChangeFormSettings: true,
-        hasSaveButton: true,
+        canChangeFieldSettings: true,
       },
       handleActionChange,
       handleFormSettingsChange: setFormSettings,

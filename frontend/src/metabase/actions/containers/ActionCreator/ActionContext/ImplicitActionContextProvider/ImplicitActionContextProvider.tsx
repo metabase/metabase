@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -34,25 +34,35 @@ function ImplicitActionContextProvider({
   initialAction,
   children,
 }: ImplicitActionContextProviderProps) {
+  const [formSettings, setFormSettings] = useState(
+    getDefaultFormSettings(initialAction?.visualization_settings),
+  );
+
+  const canSave = useMemo(
+    () =>
+      !_.isEqual(
+        formSettings,
+        getDefaultFormSettings(initialAction?.visualization_settings),
+      ),
+    [formSettings, initialAction?.visualization_settings],
+  );
+
   const value = useMemo(
     () => ({
       action: initialAction,
-      formSettings: getDefaultFormSettings(
-        initialAction?.visualization_settings,
-      ),
+      formSettings,
       isNew: false,
-      canSave: false,
+      canSave,
       ui: {
         canRename: false,
-        canChangeFormSettings: false,
-        hasSaveButton: false,
+        canChangeFieldSettings: false,
       },
+      handleFormSettingsChange: setFormSettings,
       handleActionChange: _.noop,
-      handleFormSettingsChange: _.noop,
       handleSetupExample: _.noop,
       renderEditorBody: EditorBody,
     }),
-    [initialAction],
+    [initialAction, formSettings, canSave],
   );
 
   return (
