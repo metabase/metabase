@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
-import type { Location, LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
