@@ -486,7 +486,7 @@
       (is (= 7
              (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure single quotes in parameters are escaped properly for the current driver"

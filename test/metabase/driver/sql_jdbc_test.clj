@@ -123,6 +123,9 @@
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
+;;; TODO -- these are not `:sql-jdbc` things at all, these belong in [[metabase.driver.sql-test]] or something like
+;;; that.
+
 (deftest ^:parallel splice-parameters-native-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing (str "test splicing a single param\n"
@@ -130,17 +133,19 @@
                   "We can cross that bridge when we get there.)")
       (is (=  {:query  "SELECT * FROM birds WHERE name = 'Reggae'"
                :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ?"
-                 :params ["Reggae"]}))))
+              (driver/splice-parameters-into-native-query
+               driver/*driver*
+               {:query  "SELECT * FROM birds WHERE name = ?"
+                :params ["Reggae"]}))))
 
     (testing "test splicing multiple params"
       (is (=  {:query
                "SELECT * FROM birds WHERE name = 'Reggae' AND type = 'toucan' AND favorite_food = 'blueberries';",
                :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
-                 :params ["Reggae" "toucan" "blueberries"]}))))
+              (driver/splice-parameters-into-native-query
+               driver/*driver*
+               {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
+                :params ["Reggae" "toucan" "blueberries"]}))))
 
     (testing (str "I think we're supposed to ignore multiple question narks, only single ones should get substituted "
                   "(`??` becomes `?` in JDBC, which is used for Postgres as a \")key exists?\" JSON operator amongst "
@@ -148,15 +153,17 @@
       (is (= {:query
               "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = 'Reggae'",
               :params nil}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
-                :params ["Reggae"]}))))
+             (driver/splice-parameters-into-native-query
+              driver/*driver*
+              {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
+               :params ["Reggae"]}))))
 
     (testing "splicing with no params should no-op"
       (is (= {:query "SELECT * FROM birds;", :params []}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds;"
-                :params []}))))))
+             (driver/splice-parameters-into-native-query
+              driver/*driver*
+              {:query  "SELECT * FROM birds;"
+               :params []}))))))
 
 (defn- spliced-count-of [table filter-clause]
   (let [query        {:database (mt/id)

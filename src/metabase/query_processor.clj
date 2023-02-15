@@ -323,10 +323,8 @@
   REPL; [[splice-params-in-response/splice-params-in-response]] middleware handles similar functionality for queries
   that are actually executed.)"
   [query]
-  ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
-  ;; ID is the virtual DB identifier
-  (let [driver (driver.u/database->driver (:database (preprocess query)))]
-    (driver/splice-parameters-into-native-query driver (compile query))))
+  (binding [mbql-to-native/*compile-with-inline-parameters* true]
+    (compile query)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

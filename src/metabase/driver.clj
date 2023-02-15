@@ -604,7 +604,7 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query]), :style/indent 1}
+  {:arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -629,14 +629,41 @@
   should be sure to handle this situation correctly.
 
   For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
-  default implementation is an identity function."
-  {:arglists '([driver query]), :style/indent 1}
+  default implementation is an identity function.
+
+  DEPRECATED in 0.46.0: implement [[mbql->native-spliced]] instead. This is scheduled for removal in Metabase 0.49.0."
+  {:arglists '([driver query]), :deprecated "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod splice-parameters-into-native-query ::driver
   [_ query]
   query)
+
+(defmulti mbql->native-spliced
+  "Like [[mbql->native]], but transpile an MBQL query into an appropriate native query *with parameters spliced into the
+  query itself*.
+
+  Used to power things like [[metabase.query-processor/compile-and-splice-parameters]], which powers `POST
+  /api/dataset/native`, which converts MBQL queries to native queries."
+  {:arglists '([driver query]), :added "0.46.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod mbql->native-spliced ::driver
+  [driver query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (if (not= (get-method splice-parameters-into-native-query driver)
+            (get-method splice-parameters-into-native-query ::driver))
+    (do
+      (log/warnf (trs "Warning: {0} is deprecated in Metabase 0.46.0; implement {1} instead."
+                      `splice-parameters-into-native-query
+                      `mbql->native-spliced))
+      (splice-parameters-into-native-query driver (mbql->native driver query)))
+    ;; if there is no special method here just return the query as-is, we can assume that the query isn't parameterized
+    ;; anyway
+    query))
 
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated

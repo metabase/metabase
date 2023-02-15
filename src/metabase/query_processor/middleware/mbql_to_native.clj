@@ -6,12 +6,20 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(def ^:dynamic ^{:added "0.46.0"} *compile-with-inline-parameters*
+  "Whether we should compile with inline parameters. When truthy, uses [[metabase.driver/mbql->native-spliced]] instead
+  of [[mbql->native]]."
+  false)
+
 (defn query->native-form
   "Return a `:native` query form for `query`, converting it from MBQL if needed."
   [{query-type :type, :as query}]
   (if-not (= :query query-type)
     (:native query)
-    (driver/mbql->native driver/*driver* query)))
+    (let [f (if *compile-with-inline-parameters*
+              driver/mbql->native-spliced
+              driver/mbql->native)]
+      (f driver/*driver* query))))
 
 (defn mbql->native
   "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries
