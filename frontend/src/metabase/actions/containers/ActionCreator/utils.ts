@@ -4,6 +4,7 @@ import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
+  DatabaseId,
   FieldType,
   InputSettingType,
   NativeDatasetQuery,
@@ -171,7 +172,7 @@ export const convertQuestionToAction = (
     name: question.displayName() as string,
     description: question.description(),
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
-    database_id: question.databaseId(),
+    database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     visualization_settings,
   };
