@@ -176,23 +176,43 @@ function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    if (isEmbed) {
-      return (
-        <QueryDownloadWidget
-          className="m1 text-brand-hover text-light"
-          classNameClose="hover-child"
-          card={dashcard.card}
-          params={parameterValuesBySlug}
-          dashcardId={dashcard.id}
-          token={dashcard.dashboard_id}
-          icon="download"
-          // Can be removed once QueryDownloadWidget is converted to Typescript
-          visualizationSettings={undefined}
-        />
-      );
+    const mainSeries = series[0];
+
+    // isEmbed
+    if (
+      isEditing ||
+      (!isEmbed &&
+        !QueryDownloadWidget.shouldRender({
+          result: mainSeries,
+          isResultDirty: false,
+        }))
+    ) {
+      return null;
     }
-    return null;
-  }, [dashcard, parameterValuesBySlug, isEmbed]);
+
+    return (
+      <QueryDownloadWidget
+        className="m1 text-brand-hover text-light"
+        classNameClose="hover-child hover-child--smooth"
+        card={dashcard.card}
+        result={mainSeries}
+        params={parameterValuesBySlug}
+        dashcardId={dashcard.id}
+        token={isEmbed ? dashcard.dashboard_id : undefined}
+        icon="download"
+        // Can be removed once QueryDownloadWidget is converted to Typescript
+        visualizationSettings={undefined}
+      />
+    );
+  }, [
+    series,
+    isEditing,
+    isEmbed,
+    dashcard.card,
+    dashcard.id,
+    dashcard.dashboard_id,
+    parameterValuesBySlug,
+  ]);
 
   return (
     <WrappedVisualization

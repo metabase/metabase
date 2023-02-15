@@ -28,3 +28,17 @@
 .hover-parent:hover.hover--inherit .hover-child {
   color: inherit !important;
 }
+
+.hover-child--smooth {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.hover-parent.hover--display .hover-child--smooth,
+.hover-parent.hover--visibility .hover-child--smooth {
+  opacity: 0;
+}
+
+.hover-parent:hover.hover--display .hover-child--smooth,
+.hover-parent:hover.hover--visibility .hover-child--smooth {
+  opacity: 1;
+}
