@@ -251,7 +251,9 @@ export default class Popover extends Component {
       return (
         <OnClickOutsideWrapper
           handleDismissal={this.handleDismissal}
-          ignoreElement={this.props.ignoreTrigger && this._getTargetElement()}
+          ignoreElement={
+            this.props.ignoreTrigger ? this._getTargetElement() : undefined
+          }
         >
           {content}
         </OnClickOutsideWrapper>

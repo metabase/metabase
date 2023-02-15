@@ -4,7 +4,7 @@ import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockActionParameter,
@@ -59,11 +59,13 @@ const defaultProps = {
 } as unknown as ActionProps;
 
 async function setup(options?: Partial<ActionProps>) {
-  return render(<ActionComponent {...defaultProps} {...options} />);
+  return renderWithProviders(
+    <ActionComponent {...defaultProps} {...options} />,
+  );
 }
 
 async function setupActionWrapper(options?: Partial<ActionProps>) {
-  return render(<Action {...defaultProps} {...options} />);
+  return renderWithProviders(<Action {...defaultProps} {...options} />);
 }
 
 function setupExecutionEndpoint(expectedBody: any) {
@@ -88,7 +90,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           action: undefined,
         },
       });
-      expect(screen.getByText("Assign an action")).toBeInTheDocument();
+      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
     });
 
     it("should render a button with default text", async () => {

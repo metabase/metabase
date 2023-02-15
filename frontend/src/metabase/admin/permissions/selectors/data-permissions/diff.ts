@@ -4,6 +4,7 @@ import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { Group } from "metabase-types/api";
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 const getDatabasesWithTables = createSelector(
@@ -33,8 +34,9 @@ const getDatabasesWithTables = createSelector(
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.dataPermissions,
   (state: State) => state.admin.permissions.originalDataPermissions,
-  (permissions, originalPermissions) =>
-    !_.isEqual(permissions, originalPermissions),
+  PLUGIN_DATA_PERMISSIONS.hasChanges,
+  (permissions, originalPermissions, hasExtraChanges) =>
+    !_.isEqual(permissions, originalPermissions) || hasExtraChanges,
 );
 
 export const getDiff = createSelector(
