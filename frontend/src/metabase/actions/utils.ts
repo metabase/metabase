@@ -78,8 +78,10 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
-    const aOrder = formSettings.fields[a.id]?.order ?? 0;
-    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+    const fields = formSettings.fields || {};
+
+    const aOrder = fields[a.id]?.order ?? 0;
+    const bOrder = fields[b.id]?.order ?? 0;
 
     return aOrder - bOrder;
   };
