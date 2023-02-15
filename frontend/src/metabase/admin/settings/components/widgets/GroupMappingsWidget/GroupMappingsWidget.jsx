@@ -37,9 +37,8 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
       setMappings(setting?.value || {});
 
-      PermissionsApi.groups().then(groups =>
-        setGroups(groups.filter(groupIsMappable)),
-      );
+      const groupsIncludingDefaultGroup = await PermissionsApi.groups();
+      setGroups(groupsIncludingDefaultGroup.filter(groupIsMappable));
     }
 
     fetchData();

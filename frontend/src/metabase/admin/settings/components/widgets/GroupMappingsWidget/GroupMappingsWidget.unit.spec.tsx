@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
@@ -41,9 +41,7 @@ describe("GroupMappingsWidget", () => {
       userEvent.click(screen.getByText("New mapping"));
       const input = screen.getByLabelText("new-group-mapping-name-input");
       userEvent.type(input, "cn=Group");
-      act(() => {
-        screen.getByRole("button", { name: "Add" }).click();
-      });
+      userEvent.click(screen.getByRole("button", { name: "Add" }));
 
       expect(await screen.findByText("cn=Group")).toBeInTheDocument();
       expect(
