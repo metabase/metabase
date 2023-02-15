@@ -123,6 +123,22 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
+(defn- check-disallow-ddl-commands
+  [{:keys [database] {:keys [query]} :native}]
+  (when-let [h2-parser (make-h2-parser database)]
+    (when-let [command (try (.prepareCommand h2-parser query)
+                            ;; if the query is invalid, errors will get caught later
+                            (catch Throwable _ nil))]
+      (cond
+        ;; if the command is a CommandList, then it is a multi-statement query
+        (= (type command) org.h2.command.CommandList)
+          ;; TODO: support multiple statements while checking all the command types
+        (throw (IllegalArgumentException. "Only a single statement is allowed."))
+          ;; Command types are organized with all DDL commands listed first
+          ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+        (< (.getCommandType command) CommandInterface/ALTER_SEQUENCE)
+        (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))))
+
 (defn- check-single-select-statement
   [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
@@ -145,6 +161,7 @@
 (defmethod driver/execute-write-query! :h2
   [driver query]
   (check-native-query-not-using-default-user query)
+  (check-disallow-ddl-commands query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
