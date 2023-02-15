@@ -119,6 +119,18 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti read-column-thunk
+  "Return a zero-arg function that, when called, will fetch the value of the column from the current row. This also
+  supports defaults for the entire driver:
+
+    ;; default method for Postgres not covered by any [driver jdbc-type] methods
+    (defmethod read-column-thunk :postgres
+      ...)"
+  {:added "0.35.0", :arglists '([driver rs rsmeta i])}
+  (fn [driver _ ^ResultSetMetaData rsmeta ^long col-idx]
+    [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
+  :hierarchy #'driver/hierarchy)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Default Impl                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
