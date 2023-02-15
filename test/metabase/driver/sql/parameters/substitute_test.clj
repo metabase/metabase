@@ -124,15 +124,15 @@
                  2
                  [:string/contains         {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?"
                                                        ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NOT (\"PUBLIC\".\"VENUES\".\"NAME\" like ?) OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                            :expected ["select * from venues where NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?) OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                        ["%foo%"]]}
                   :string/starts-with      {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" like ?"
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?"
                                                        ["foo%"]]}
                   :string/=                {:field    :name
                                             :value    ["foo"]

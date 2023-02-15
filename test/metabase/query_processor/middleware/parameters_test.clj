@@ -10,6 +10,7 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s])

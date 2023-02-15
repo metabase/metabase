@@ -233,7 +233,7 @@
 
 ;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
-(defn- extract    [unit expr] [:extract    unit               expr])
+(defn- extract [unit expr] [::h2x/extract unit expr])
 
 (def ^:private extract-integer (comp h2x/->integer extract))
 
