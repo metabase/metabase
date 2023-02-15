@@ -1,15 +1,14 @@
 import React from "react";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
-  ActionDashboardCard,
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
 } from "metabase-types/api";
 
+import type { UiParameter } from "metabase-lib/parameters/types";
+
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
-import ActionOptions from "../ActionOptions";
 import CrossfilterOptions from "../CrossfilterOptions";
 import LinkOptions from "../LinkOptions";
 import { SidebarItem } from "../SidebarItem";
@@ -53,12 +52,7 @@ function ClickBehaviorOptions({
       />
     );
   }
-  return (
-    <ActionOptions
-      dashcard={dashcard as unknown as ActionDashboardCard}
-      parameters={parameters}
-    />
-  );
+  return null;
 }
 
 interface ClickBehaviorSidebarMainViewProps {

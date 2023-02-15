@@ -13,12 +13,6 @@ const FORM_FIELDS = [
     type: "text",
     placeholder: t`It's optional but oh, so helpful`,
   },
-  {
-    name: "is_write",
-    title: t`Is Write`,
-    description: t`Write questions can be used for experimental actions.`,
-    type: "boolean",
-  },
 ];
 
 export default {

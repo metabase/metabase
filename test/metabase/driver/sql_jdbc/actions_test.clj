@@ -4,13 +4,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
-   [metabase.actions.test-util :as actions.test-util]
+   [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.models :refer [Field]]
    [metabase.test :as mt]
-   [metabase.util.honeysql-extensions :as hx]
-   [schema.core :as s]))
+   [metabase.util.honeysql-extensions :as hx]))
 
 (deftest cast-values-test
   (testing "Should work with underscored Field names (#24166)"
@@ -40,15 +39,13 @@
 (deftest parse-sql-error-catch-exceptions-test
   (testing "If parse-sql-error throws an Exception, log it and return the unparsed exception instead of failing entirely (#24021)"
     (driver/with-driver ::parse-sql-error-exception
-      (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
-        (actions.test-util/with-actions-test-data-and-actions-enabled
+      (mt/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-and-actions-enabled
           (reset! parse-sql-error-called? false)
           ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
           ;; this `category_id` -- it's an FK constraint violation.
-          (is (schema= {:message #"Referential integrity constraint violation:.*"
-                        s/Keyword s/Any}
-                       (mt/user-http-request :crowberto :post 400
-                                             "action/row/delete"
-                                             (mt/mbql-query categories {:filter [:= $id 58]}))))
+          (binding [*current-user-permissions-set* (delay #{"/"})]
+            (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
+                                            (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))

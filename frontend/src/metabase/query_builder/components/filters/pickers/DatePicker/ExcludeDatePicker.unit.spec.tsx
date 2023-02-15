@@ -1,7 +1,7 @@
 import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { ORDERS } from "__support__/sample_database_fixture";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 
 const query = ORDERS.query();

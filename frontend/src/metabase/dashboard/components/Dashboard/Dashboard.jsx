@@ -7,7 +7,9 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
@@ -86,8 +88,6 @@ class Dashboard extends Component {
       props: PropTypes.object,
     }).isRequired,
     closeSidebar: PropTypes.func.isRequired,
-    openAddQuestionSidebar: PropTypes.func.isRequired,
-    showAddQuestionSidebar: PropTypes.bool.isRequired,
     embedOptions: PropTypes.object,
   };
 
@@ -102,9 +102,10 @@ class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
-  static getDerivedStateFromProps(props, state) {
-    return props.parameters.length !== state.parametersListLength
-      ? { parametersListLength: props.parameters.length }
+  static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
+    const visibleParameters = getVisibleParameters(parameters);
+    return visibleParameters.length !== parametersListLength
+      ? { parametersListLength: visibleParameters.length }
       : null;
   }
 
@@ -114,8 +115,8 @@ class Dashboard extends Component {
   );
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
-  componentDidMount() {
-    this.loadDashboard(this.props.dashboardId);
+  async componentDidMount() {
+    await this.loadDashboard(this.props.dashboardId);
 
     const main = getMainElement();
     main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
@@ -126,9 +127,10 @@ class Dashboard extends Component {
     });
   }
 
-  componentDidUpdate(prevProps) {
+  async componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
-      this.loadDashboard(this.props.dashboardId);
+      await this.loadDashboard(this.props.dashboardId);
+      this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
@@ -190,14 +192,6 @@ class Dashboard extends Component {
     });
   };
 
-  onToggleAddQuestionSidebar = () => {
-    if (this.props.showAddQuestionSidebar) {
-      this.props.closeSidebar();
-    } else {
-      this.props.openAddQuestionSidebar();
-    }
-  };
-
   onCancel = () => {
     this.props.setSharing(false);
   };
@@ -218,7 +212,6 @@ class Dashboard extends Component {
       parameters,
       parameterValues,
       isNavbarOpen,
-      showAddQuestionSidebar,
       editingParameter,
       setParameterValue,
       setParameterIndex,
@@ -231,6 +224,7 @@ class Dashboard extends Component {
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
+    const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
       <SyncedParametersList
@@ -247,10 +241,10 @@ class Dashboard extends Component {
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && parameters.length > 0;
+      !isEditing && !isFullscreen && visibleParameters.length > 0;
 
     const shouldRenderParametersWidgetInEditMode =
-      isEditing && parameters.length > 0;
+      isEditing && visibleParameters.length > 0;
 
     const cardsContainerShouldHaveMarginTop =
       !shouldRenderParametersWidgetInViewMode &&
@@ -278,8 +272,6 @@ class Dashboard extends Component {
                   addParameter={addParameter}
                   parametersWidget={parametersWidget}
                   onSharingClick={this.onSharingClick}
-                  onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
-                  showAddQuestionSidebar={showAddQuestionSidebar}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
@@ -321,7 +313,6 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={dashboard.is_app_page}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
@@ -331,7 +322,6 @@ class Dashboard extends Component {
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}
-                showAddQuestionSidebar={showAddQuestionSidebar}
                 setDashboardAttribute={this.setDashboardAttribute}
               />
             </DashboardBody>

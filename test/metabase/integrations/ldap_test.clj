@@ -1,13 +1,17 @@
 (ns metabase.integrations.ldap-test
-  (:require [clojure.test :refer :all]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.integrations.ldap.default-implementation :as default-impl]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.ldap.sdk LDAPConnectionPool)))
+
+(set! *warn-on-reflection* true)
 
 ;; See test_resources/ldap.ldif for fixtures
 
@@ -65,8 +69,8 @@
              (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
 (deftest find-test
-  ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -120,8 +124,8 @@
                (ldap/find-user "sbrown20")))))))
 
 (deftest fetch-or-create-user-test
-  ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

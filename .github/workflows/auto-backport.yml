@@ -43,13 +43,13 @@ jobs:
           CONFLICTS=$(git ls-files -u | wc -l)
           if [ "$CONFLICTS" -gt 0 ]; then
             echo "Could not cherry pick because of a conflict"
-            echo "::set-output name=has-conflicts::true"
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
             git cherry-pick --abort
             git checkout master
             exit 0
           fi
 
-          echo "::set-output name=has-conflicts::false"
+          echo "has-conflicts=false" >> $GITHUB_OUTPUT
 
           git checkout master
           git push -u origin ${BACKPORT_BRANCH}
@@ -60,7 +60,7 @@ jobs:
 
           BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
-          echo "::set-output name=backport_pr_number::$BACKPORT_PR_NUMBER"
+          echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
         env:
           TARGET_BRANCH: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}

@@ -7,8 +7,8 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
-import type Field from "metabase-lib/lib/metadata/Field";
-import type Question from "metabase-lib/lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/Question";
 
 import {
   SchemaHeader,
@@ -23,8 +23,11 @@ interface Props {
 }
 
 function ModelSchemaDetails({ model }: Props) {
-  const baseModelUrl = Urls.question(model.card());
-  const metadataEditorUrl = `${baseModelUrl}/metadata`;
+  const canWrite = model.canWrite();
+
+  const metadataEditorUrl = Urls.modelEditor(model.card(), {
+    type: "metadata",
+  });
 
   const fields = useMemo(() => model.table()?.fields || [], [model]);
 
@@ -48,7 +51,9 @@ function ModelSchemaDetails({ model }: Props) {
     <>
       <SchemaHeader>
         <span>{fieldsCount}</span>
-        <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        {canWrite && (
+          <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        )}
       </SchemaHeader>
       <FieldList>{fields.map(renderField)}</FieldList>
     </>

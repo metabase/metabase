@@ -9,7 +9,7 @@ import {
 } from "metabase/query_builder/actions";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {

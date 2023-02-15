@@ -1,26 +1,29 @@
 (ns metabase.models.dashboard-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+                            Database Field Pulse PulseCard Table]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 ;; ## Dashboard Revisions
 
@@ -35,24 +38,26 @@
     (is (= {:name         "Test Dashboard"
             :description  nil
             :cache_ttl    nil
-            :cards        [{:size_x   2
-                            :size_y   2
+            :cards        [{:size_x  4
+                            :size_y  4
                             :row     0
                             :col     0
                             :id      true
                             :card_id true
                             :series  true}]}
-           (update (dashboard/serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
-                                                                      [(assoc card
-                                                                              :id      (= dashcard-id id)
-                                                                              :card_id (= card-id card_id)
-                                                                              :series  (= [series-id-1 series-id-2] series))]))))))
+           (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
+                   :cards
+                   (fn [[{:keys [id card_id series], :as card}]]
+                     [(assoc card
+                             :id      (= dashcard-id id)
+                             :card_id (= card-id card_id)
+                             :series  (= [series-id-1 series-id-2] series))]))))))
 
 
 (deftest diff-dashboards-str-test
   (is (= "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cards       []}
@@ -61,15 +66,15 @@
            :cards       []})))
 
   (is (= "added a card."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cards       []}
           {:name        "Diff Test"
            :description nil
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
@@ -77,20 +82,20 @@
                           :series  []}]})))
 
   (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [5 6]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      2
@@ -99,15 +104,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   1227
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [4 5]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     2
                           :col     0
                           :id      2
@@ -131,13 +136,13 @@
                                 :description "something"
                                 :cache_ttl   nil
                                 :cards       []}
-          serialized-dashboard (dashboard/serialize-dashboard dashboard)]
+          serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      true
@@ -150,25 +155,27 @@
           :name        "Revert Test"
           :description "something")
         (testing "capture updated Dashboard state"
-          (is (= empty-dashboard
-                 (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
+          (let [dashboard (db/select-one Dashboard :id dashboard-id)]
+            (is (= empty-dashboard
+                   (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
-        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
+        (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      false
                                :card_id true
                                :series  true}]}
-               (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
+               (update (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))
+                       :cards check-ids))))
       (testing "revert back to the empty state"
-        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
+        (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))))
+               (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -199,10 +206,53 @@
              (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (dashboard/add-dashcard! dashboard-id new-card-id)
+        (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
+                                                           :col    0
+                                                           :size_x 4
+                                                           :size_y 4})
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
+(deftest parameter-card-test
+  (let [default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}]
+    (testing "A new dashboard creates a new ParameterCard"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [(merge default-params
+                                                      {:values_source_type    "card"
+                                                       :values_source_config {:card_id card-id}})]}]]
+        (is (=? {:card_id                   card-id
+                 :parameterized_object_type :dashboard
+                 :parameterized_object_id   dashboard-id
+                 :parameter_id              "_CATEGORY_NAME_"}
+                (db/select-one 'ParameterCard :card_id card-id)))))
+
+    (testing "Adding a card_id creates a new ParameterCard"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [default-params]}]]
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
+        (db/update! Dashboard dashboard-id :parameters [(merge default-params
+                                                               {:values_source_type    "card"
+                                                                :values_source_config {:card_id card-id}})])
+        (is (=? {:card_id                   card-id
+                 :parameterized_object_type :dashboard
+                 :parameterized_object_id   dashboard-id
+                 :parameter_id              "_CATEGORY_NAME_"}
+                (db/select-one 'ParameterCard :card_id card-id)))))
+
+    (testing "Removing a card_id deletes old ParameterCards"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [(merge default-params
+                                                      {:values_source_type    "card"
+                                                       :values_source_config {:card_id card-id}})]}]]
+        ;; same setup as earlier test, we know the ParameterCard exists right now
+        (db/delete! Dashboard :id dashboard-id)
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -296,22 +346,100 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                   :slug   "category_name"
-                                                                   :id     "_CATEGORY_NAME_"
-                                                                   :type   "category"
-                                                                   :target target}]}]
+        (mt/with-temp* [Card      [{card-id :id}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                     :slug   "category_name"
+                                                                     :id     "_CATEGORY_NAME_"
+                                                                     :type   "category"
+                                                                     :values_query_type    "list"
+                                                                     :values_source_type   "card"
+                                                                     :values_source_config {:card_id card-id
+                                                                                            :value_field [:field 2 nil]}
+                                                                     :target target}]}]]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
                    :type   :category
-                   :target expected}]
+                   :target expected
+                   :values_query_type "list",
+                   :values_source_type "card",
+                   :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest should-add-default-values-source-test
+  (testing "shoudld add default if not exists"
+    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"}]}]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+
+  (testing "shoudld not override if existsed "
+    (mt/with-temp* [Card      [{card-id :id}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                  :slug   "category_name"
+                                                                  :id     "_CATEGORY_NAME_"
+                                                                  :type   "category"
+                                                                  :values_query_type    "list"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id card-id
+                                                                                         :value_field [:field 2 nil]}}]}]]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   "card",
+                :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
-    (mt/with-temp* [Collection [c1   {:name "top level" :location "/"}]
-                    Dashboard  [dash {:name "my dashboard" :collection_id (:id c1)}]]
-      (is (= "38c0adf9"
-             (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1)])
-             (serdes.hash/identity-hash dash))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection [c1   {:name "top level" :location "/" :created_at now}]
+                      Dashboard  [dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]]
+        (is (= "8cbf93b7"
+               (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
+               (serdes.hash/identity-hash dash)))))))
+
+(deftest serdes-descendants-test
+  (testing "dashboard which have parameter's source is another card"
+    (mt/with-temp* [Field     [field     {:name "A field"}]
+                    Card      [card      {:name "A card"}]
+                    Dashboard [dashboard {:name       "A dashboard"
+                                          :parameters [{:id "abc"
+                                                        :type "category"
+                                                        :values_source_type "card"
+                                                        :values_source_config {:card_id     (:id card)
+                                                                               :value_field [:field (:id field) nil]}}]}]]
+      (is (= #{["Card" (:id card)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard which has a dashcard with an action"
+    (mt/with-actions [{:keys [action-id]} {}]
+      (mt/with-temp* [Dashboard [dashboard {:name "A dashboard"}]
+                      DashboardCard [_ {:action_id          action-id
+                                        :dashboard_id       (:id dashboard)
+                                        :parameter_mappings []}]]
+        (is (= #{["Action" action-id]}
+               (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))
+
+  (testing "dashboard in which its dashcards has parameter_mappings to a card"
+    (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
+                    Card          [card2     {:name "Card attached to parameters"}]
+                    Dashboard     [dashboard {:parameters [{:name "Category Name"
+                                                            :slug "category_name"
+                                                            :id   "_CATEGORY_NAME_"
+                                                            :type "category"}]}]
+                    DashboardCard [_         {:card_id            (:id card1)
+                                              :dashboard_id       (:id dashboard)
+                                              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                    :card_id      (:id card2)
+                                                                    :target       [:dimension (mt/$ids $categories.name)]}]}]]
+      (is (= #{["Card" (:id card1)]
+               ["Card" (:id card2)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))

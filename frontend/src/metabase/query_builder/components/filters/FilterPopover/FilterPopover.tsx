@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
-import { isStartingFrom } from "metabase/lib/query_time";
 
 import Icon from "metabase/components/Icon";
 import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import { FieldDimension } from "metabase-lib/Dimension";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
@@ -46,12 +46,6 @@ type Props = {
   isNew?: boolean;
   isTopLevel?: boolean;
   checkedColor?: string;
-};
-
-type State = {
-  filter: Filter | null;
-  choosingField: boolean;
-  editingFilter: boolean;
 };
 
 export default function FilterPopover({

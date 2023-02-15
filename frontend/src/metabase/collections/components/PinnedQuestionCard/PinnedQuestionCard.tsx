@@ -6,7 +6,7 @@ import {
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Metadata from "metabase-lib/metadata/Metadata";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,

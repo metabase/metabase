@@ -93,7 +93,7 @@ describe("visualization_settings", () => {
         expect(settings["graph.y_axis.title_text"]).toBe("col2");
       });
 
-      it("should use the metric name if all series match", () => {
+      it("should be null if column names don't match", () => {
         const card = { visualization_settings: {}, display: "bar" };
         const data1 = {
           cols: [
@@ -116,6 +116,7 @@ describe("visualization_settings", () => {
         expect(settings["graph.y_axis.title_text"]).toBe(null);
       });
     });
+
     describe("graph.show_values", () => {
       it("should not show values on a bar chart by default", () => {
         const card = { visualization_settings: {}, display: "bar" };

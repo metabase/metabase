@@ -1,11 +1,15 @@
 (ns metabase.events.activity-feed-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.activity-feed :as events.activity-feed]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.activity-feed :as events.activity-feed]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- activity
   ([topic]
@@ -14,9 +18,9 @@
   ([topic model-id]
    (mt/derecordize
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    topic
-      :model_id model-id
-      {:order-by [[:id :desc]]}))))
+                   :topic    topic
+                   :model_id model-id
+                   {:order-by [[:id :desc]]}))))
 
 (deftest card-create-test
   (testing :card-create

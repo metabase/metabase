@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import Button from "./Button";
 
 export default {
@@ -25,4 +25,10 @@ Primary.args = {
 export const WithIcon = Template.bind({});
 WithIcon.args = {
   icon: "chevrondown",
+};
+
+export const OnlyText = Template.bind({});
+OnlyText.args = {
+  onlyText: true,
+  children: "Click Me",
 };

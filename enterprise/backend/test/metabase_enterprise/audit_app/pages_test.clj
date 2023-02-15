@@ -1,22 +1,23 @@
 (ns metabase-enterprise.audit-app.pages-test
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.tools.reader :as tools.reader]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
-            [metabase.models.permissions :as perms]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.reader :as tools.reader]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
+   [metabase.models.permissions :as perms]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 

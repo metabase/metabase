@@ -2,21 +2,28 @@
 
 (def exported-models
   "The list of models which are exported by serialization. Used for production code and by tests."
-  ["Card"
+  ["Action"
+   "Card"
    "Collection"
    "Dashboard"
-   "DashboardCard"
    "Database"
-   "Dimension"
    "Field"
    "FieldValues"
    "Metric"
    "NativeQuerySnippet"
-   "Pulse"
-   "PulseCard"
-   "PulseChannel"
    "Segment"
    "Setting"
    "Table"
-   "Timeline"
+   "Timeline"])
+
+(def inlined-models
+  "An additional list of models which are inlined into parent entities for serialization.
+  These are not extracted and serialized separately, but they may need some processing done.
+  For example, the models should also have their entity_id fields populated (if they have one)."
+  ["DashboardCard"
+   "Dimension"
+   "HTTPAction"
+   "ImplicitAction"
+   "ParameterCard"
+   "QueryAction"
    "TimelineEvent"])

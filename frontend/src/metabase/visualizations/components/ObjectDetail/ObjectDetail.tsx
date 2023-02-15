@@ -2,16 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { isPK } from "metabase/lib/schema_metadata";
-
+import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -32,9 +29,10 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
-import Table from "metabase-lib/lib/metadata/Table";
-import Question from "metabase-lib/lib/Question";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/types/utils/isa";
+import Table from "metabase-lib/metadata/Table";
+import Question from "metabase-lib/Question";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
 import {
@@ -56,21 +54,25 @@ import {
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
+  const table = getTableMetadata(state);
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
   if (!isZooming) {
-    zoomedRowID = getIdValue({ data });
+    zoomedRowID = getIdValue({ data, tableId: table?.id });
   }
 
   const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
   const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? getCanZoomNextRow(state) : false;
+  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
 
   return {
-    question: getQuestion(state),
-    table: getTableMetadata(state),
-    tableForeignKeys: getTableForeignKeys(state),
+    // FIXME: remove the non-null assertion operator
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    question: getQuestion(state)!,
+    table,
+    // FIXME: remove the type cast
+    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
@@ -86,8 +88,13 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (args: any) =>
     dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({ objectId, fk }: { objectId: number; fk: ForeignKey }) =>
-    dispatch(followForeignKey({ objectId, fk })),
+  followForeignKey: ({
+    objectId,
+    fk,
+  }: {
+    objectId: ObjectId;
+    fk: ForeignKey;
+  }) => dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -153,7 +160,7 @@ export function ObjectDetailFn({
     }
   }, [zoomedRowID, loadObjectDetailFKReferences]);
 
-  useOnMount(() => {
+  useMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
       setHasNotFoundError(true);
@@ -236,7 +243,12 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    tableId: table?.id,
+  });
+
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
@@ -282,12 +294,11 @@ export function ObjectDetailFn({
 
 function ObjectDetailWrapper({
   question,
-  isDataApp,
   data,
   closeObjectDetail,
   ...props
-}: ObjectDetailProps & { isDataApp?: boolean }) {
-  if (isDataApp || question.display() === "object") {
+}: ObjectDetailProps) {
+  if (question.display() === "object") {
     if (data.rows.length > 1) {
       return (
         <CenteredLayout>
@@ -383,7 +394,7 @@ export function ObjectDetailHeader({
             )}
             <CloseButton>
               <Button
-                data-testId="object-detail-close-button"
+                data-testid="object-detail-close-button"
                 onlyIcon
                 borderless
                 onClick={closeObjectDetail}

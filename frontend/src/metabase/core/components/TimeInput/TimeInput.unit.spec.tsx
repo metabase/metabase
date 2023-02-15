@@ -39,7 +39,9 @@ describe("TimeInput", () => {
     const value = moment({ hours: 0, minutes: 0 });
     const onChange = jest.fn();
 
-    render(<TestTimeInput value={value} is24HourMode onChange={onChange} />);
+    render(
+      <TestTimeInput value={value} timeFormat="HH:mm" onChange={onChange} />,
+    );
     userEvent.clear(screen.getByLabelText("Hours"));
     userEvent.type(screen.getByLabelText("Hours"), "15");
     userEvent.clear(screen.getByLabelText("Minutes"));

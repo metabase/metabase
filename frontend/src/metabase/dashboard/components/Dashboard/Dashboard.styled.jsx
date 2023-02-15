@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { IFRAMED } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
@@ -63,10 +63,11 @@ export const DashboardBody = styled.div`
 `;
 
 export const HeaderContainer = styled.header`
-  background-color: white;
-  border-bottom: 1px solid ${color("border")};
   position: relative;
   z-index: 2;
+
+  background-color: ${color("bg-white")};
+  border-bottom: 1px solid ${color("border")};
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -108,7 +109,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     isSticky &&
     css`
       position: fixed;
-      top: ${IFRAMED && !topNav ? "0" : APP_BAR_HEIGHT};
+      top: ${isWithinIframe() && !topNav ? "0" : APP_BAR_HEIGHT};
       left: 0;
       border-bottom: 1px solid ${color("border")};
     `}
@@ -125,7 +126,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, isNavbarOpen }) =>
     isSticky &&
     isNavbarOpen &&
-    !IFRAMED &&
     css`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});

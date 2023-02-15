@@ -1,20 +1,21 @@
 (ns metabase.transforms.core-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.domain-entities.core :as de]
-            [metabase.domain-entities.specs :as de.specs]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
-            [metabase.test.transforms :refer [test-transform-spec with-test-transform-specs]]
-            [metabase.transforms.core :as tf]
-            [metabase.transforms.specs :as tf.specs]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.domain-entities.core :as de]
+   [metabase.domain-entities.specs :as de.specs]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
+   [metabase.test.transforms :refer [test-transform-spec with-test-transform-specs]]
+   [metabase.transforms.core :as tf]
+   [metabase.transforms.specs :as tf.specs]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-model-cleanup [Card Collection]
@@ -29,8 +30,8 @@
 
 (deftest add-bindings-test
   (testing "Can we accure bindings?"
-    (let [new-bindings {"D2" [:sum [:field-id 4]]
-                        "D3" [:field-id 5]}]
+    (let [new-bindings {"D2" [:sum [:field 4 nil]]
+                        "D3" [:field 5 nil]}]
       (is (= (update-in @test-bindings ["Venues" :dimensions] merge new-bindings)
              (#'tf/add-bindings @test-bindings "Venues" new-bindings)))))
 
@@ -79,7 +80,7 @@
     (with-test-transform-specs
       (is (= [(mt/id :venues)]
              (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
-                                                                       :dimensions {"D1" [:field-id 1]}}}
+                                                                       :dimensions {"D1" [:field 1 nil]}}}
                                                     (first @tf.specs/transform-specs))))))))
 
 (deftest tables-matching-requirements-test
@@ -105,28 +106,28 @@
                                                                    {:result_metadata [{:name "AvgPrice"}
                                                                                       {:name "MaxPrice"}
                                                                                       {:name "MinPrice"}]})
-                                                      :dimensions {"D1" [:field-id 1]}}}
+                                                      :dimensions {"D1" [:field 1 nil]}}}
                                    (first @tf.specs/transform-specs))))
 
       (testing "... and do we throw if we didn't get what we expected?"
         (is (thrown?
              java.lang.AssertionError
              (#'tf/validate-results {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
-                                                       :dimensions {"D1" [:field-id 1]}}}
+                                                       :dimensions {"D1" [:field 1 nil]}}}
                                     (first @tf.specs/transform-specs))))))))
 
 (deftest transform-test
   (testing "Run the transform and make sure it produces the correct result"
     (mt/with-test-user :rasta
       (with-test-domain-entity-specs
-        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
-                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
-                [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
-               (-> (tf/apply-transform! (mt/id) "PUBLIC" test-transform-spec)
-                   first
-                   :dataset_query
-                   qp/process-query
-                   mt/rows)))))))
+        (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+                [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+                [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
+               (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+                (-> (tf/apply-transform! (mt/id) "PUBLIC" test-transform-spec)
+                    first
+                    :dataset_query
+                    qp/process-query))))))))
 
 (deftest correct-transforms-for-table-test
   (testing "Can we find the right transform(s) for a given table"

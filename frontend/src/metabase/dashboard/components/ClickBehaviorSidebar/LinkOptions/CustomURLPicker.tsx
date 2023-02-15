@@ -1,21 +1,18 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import {
-  isTableDisplay,
-  clickBehaviorIsValid,
-} from "metabase/lib/click-behavior";
-
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   DashboardOrderedCard,
 } from "metabase-types/api";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
 import CustomLinkText from "./CustomLinkText";
@@ -41,18 +38,23 @@ function CustomURLPicker({
   dashcard,
   parameters,
 }: Props) {
-  const hasLinkTemplate = clickBehavior.linkTemplate != null;
-  const canSelect = clickBehaviorIsValid(clickBehavior);
+  const [url, setUrl] = useState(clickBehavior?.linkTemplate ?? "");
+  const hasLinkTemplate = !!clickBehavior.linkTemplate;
+  const canSelect = clickBehaviorIsValid({
+    ...clickBehavior,
+    linkTemplate: url,
+  });
 
-  const handleLinkTemplateChange = useCallback(
-    e => {
-      updateSettings({
-        ...clickBehavior,
-        linkTemplate: e.target.value,
-      });
-    },
-    [clickBehavior, updateSettings],
-  );
+  const handleLinkTemplateChange = useCallback(e => {
+    setUrl(e.currentTarget.value);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    updateSettings({
+      ...clickBehavior,
+      linkTemplate: url,
+    });
+  }, [clickBehavior, updateSettings, url]);
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -89,10 +91,10 @@ function CustomURLPicker({
           </FormDescription>
           <InputBlurChange
             autoFocus
-            value={clickBehavior.linkTemplate}
+            value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
-            className="input block full"
+            className="block full"
           />
           {isTableDisplay(dashcard) && (
             <CustomLinkText
@@ -103,7 +105,11 @@ function CustomURLPicker({
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
           <DoneButton
             primary
-            onClick={onClose}
+            type="button"
+            onClick={() => {
+              handleSubmit();
+              onClose();
+            }}
             disabled={!canSelect}
           >{t`Done`}</DoneButton>
         </ModalContent>

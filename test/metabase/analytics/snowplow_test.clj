@@ -1,16 +1,20 @@
 (ns metabase.analytics.snowplow-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.public-settings :as public-settings]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db])
-  (:import java.util.LinkedHashMap))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.public-settings :as public-settings]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db])
+  (:import
+   (java.util LinkedHashMap)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -89,10 +93,12 @@
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
-              :data {:id             (snowplow/analytics-uuid)
-                     :version        {:tag (:tag (public-settings/version))},
-                     :token_features (public-settings/token-features)
-                     :created_at     (snowplow/instance-creation)}}
+              :data {:id                           (snowplow/analytics-uuid)
+                     :version                      {:tag (:tag (public-settings/version))},
+                     :token_features               (public-settings/token-features)
+                     :created_at                   (snowplow/instance-creation)
+                     :application_database         (#'snowplow/app-db-type)
+                     :application_database_version (#'snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
 
       (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"

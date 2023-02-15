@@ -1,26 +1,29 @@
-(ns metabase.api.setup-test
+(ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.api.setup :as api.setup]
-            [metabase.email :as email]
-            [metabase.events :as events]
-            [metabase.http-client :as client]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Activity Database Table User]]
-            [metabase.models.setting :as setting]
-            [metabase.models.setting.cache-test :as setting.cache-test]
-            [metabase.public-settings :as public-settings]
-            [metabase.setup :as setup]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.setup :as api.setup]
+   [metabase.email :as email]
+   [metabase.events :as events]
+   [metabase.http-client :as client]
+   [metabase.integrations.slack :as slack]
+   [metabase.models :refer [Activity Database Table User]]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting.cache-test :as setting.cache-test]
+   [metabase.public-settings :as public-settings]
+   [metabase.setup :as setup]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user

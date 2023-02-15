@@ -1,13 +1,13 @@
 import { createSelector } from "reselect";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import { State } from "metabase-types/store";
 import { ITreeNodeItem } from "metabase/components/tree/types";
-import Database from "metabase-lib/lib/metadata/Database";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { isNotNull } from "metabase/core/utils/types";
+import Database from "metabase-lib/metadata/Database";
+import Metadata from "metabase-lib/metadata/Metadata";
 import { EntityId, RawDataRouteParams } from "../../types";
 import {
   getTableEntityId,
@@ -67,10 +67,10 @@ const getTablesSidebar = (
     selectedId = getSchemaId(schemaName);
   }
 
-  let entities: DataTreeNodeItem[] = database
+  let entities = database
     .getSchemas()
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map(schema => {
+    .map<DataTreeNodeItem>(schema => {
       return {
         id: getSchemaId(schema.name),
         name: schema.name,
@@ -97,7 +97,7 @@ const getTablesSidebar = (
     selectedId,
     title: database.name,
     description: t`Select a table to set more specific permissions`,
-    entityGroups: [entities].filter(Boolean),
+    entityGroups: [entities].filter(isNotNull),
     filterPlaceholder: t`Search for a table`,
   };
 };

@@ -135,6 +135,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -217,6 +221,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -384,13 +392,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    clickLineDot({ index: 0 });
+    hoverLineDot({ index: 0 });
     popover().within(() => {
       cy.findByText("January 1, 2020");
       cy.findByText("10");
     });
 
-    clickLineDot({ index: 1 });
+    hoverLineDot({ index: 1 });
     popover().within(() => {
       cy.findByText("January 2, 2020");
       cy.findByText("5");
@@ -403,7 +411,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         type: "native",
         native: {
           query:
-            "select 1 as axis, 5 as value, 9 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout",
+            'select 1 as axis, 5 as "VALUE", 9 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout',
         },
         database: SAMPLE_DB_ID,
       },
@@ -558,6 +566,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 16,
+          size_y: 10,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Add click through to the custom destination on a card
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -627,6 +639,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 });
 
-function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot").eq(index).click({ force: true });
+function hoverLineDot({ index } = {}) {
+  cy.get(".Visualization .dot").eq(index).realHover();
 }

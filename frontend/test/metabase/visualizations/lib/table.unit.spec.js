@@ -3,7 +3,7 @@ import {
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
-import { TYPE } from "metabase/lib/types";
+import { TYPE } from "metabase-lib/types/constants";
 
 const RAW_COLUMN = {
   source: "fields",
@@ -194,7 +194,7 @@ describe("metabase/visualization/lib/table", () => {
         }),
       ).toBe(true);
     });
-    it("should return true for numeric columns with semantic type latitude or longitude ", () => {
+    it("should return true for numeric columns with semantic type latitude or longitude", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,

@@ -7,7 +7,7 @@ import {
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
-    it("", () => {
+    it("should nest correctly", () => {
       const q = ORDERS.query();
       expect(q.query()).toEqual({ "source-table": ORDERS.id });
       expect(q.nest().query()).toEqual({

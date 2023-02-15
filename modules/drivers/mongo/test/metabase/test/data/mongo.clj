@@ -1,16 +1,24 @@
 (ns metabase.test.data.mongo
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as tx]
-            [monger.collection :as mc]
-            [monger.core :as mg])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.test.data.interface :as tx]
+   [monger.collection :as mcoll]
+   [monger.core :as mg])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (tx/add-test-extensions! :mongo)
+
+(defmethod tx/supports-time-type? :mongo [_driver] false)
+(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -33,15 +41,23 @@
     (ssl-required?) (merge (ssl-params))))
 
 (defmethod tx/dbdef->connection-details :mongo
-  [_ _ dbdef]
-  (conn-details {:dbname (tx/escaped-database-name dbdef)
-                 :user   "metabase"
-                 :pass   "metasample123"
-                 :host   "localhost"}))
+  [_driver _connection-type dbdef]
+  (conn-details (merge
+                 {:dbname (tx/escaped-database-name dbdef)
+                  :host   (tx/db-test-env-var :mongo :host "localhost")
+                  :port   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :port "27017"))}
+                 (when-let [user (tx/db-test-env-var :mongo :user)]
+                   {:user user})
+                 (when-let [password (tx/db-test-env-var :mongo :password)]
+                   {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
   (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
     (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
+
+(def ^:dynamic *remove-nil?*
+  "When creating a dataset, omit any nil-valued fields from the documents."
+  false)
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
@@ -55,8 +71,9 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
-                                                        (zipmap field-names row)))
+            (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
+                                                           (cond->> (zipmap field-names row)
+                                                             *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

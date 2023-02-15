@@ -1,5 +1,5 @@
 import React from "react";
-import DatabaseHelpCard from "metabase/containers/DatabaseHelpCard";
+import DatabaseHelpCard from "metabase/databases/containers/DatabaseHelpCard";
 import { SetupCardContainer } from "../SetupCardContainer";
 
 export interface DatabaseHelpProps {

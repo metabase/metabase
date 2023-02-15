@@ -1,11 +1,12 @@
 (ns metabase.events.persisted-info
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [metabase.events :as events]
-            [metabase.models :refer [Database PersistedInfo]]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.public-settings :as public-settings]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.events :as events]
+   [metabase.models :refer [Database PersistedInfo]]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.public-settings :as public-settings]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
 (def ^:private persisted-info-topics
   "The `Set` of event topics which are subscribed to add persisted-info to new models."

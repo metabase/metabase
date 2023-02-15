@@ -1,43 +1,51 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor } from "__support__/ui";
 import { AuthProvider } from "metabase/auth/types";
-import PasswordPanel from "./PasswordPanel";
+import PasswordPanel, { PasswordPanelProps } from "./PasswordPanel";
+
+const NO_REDIRECT_URL_PARAM = undefined;
 
 describe("PasswordPanel", () => {
-  it("should login successfully", () => {
-    const onLogin = jest.fn().mockResolvedValue({});
+  it("should login successfully", async () => {
+    const props = getProps();
+    const data = { username: "user@example.test", password: "password" };
 
-    render(<PasswordPanel onLogin={onLogin} />);
-    userEvent.click(screen.getByText("Sign in"));
+    render(<PasswordPanel {...props} />);
+    userEvent.type(screen.getByLabelText("Email address"), data.username);
+    userEvent.type(screen.getByLabelText("Password"), data.password);
 
-    expect(onLogin).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    });
+
+    userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(props.onLogin).toHaveBeenCalledWith(
+        { ...data, remember: true },
+        NO_REDIRECT_URL_PARAM,
+      );
+    });
   });
 
   it("should render a link to reset the password and a list of auth providers", () => {
-    const providers = [getAuthProvider()];
-    const onLogin = jest.fn();
+    const props = getProps({ providers: [getAuthProvider()] });
 
-    render(<PasswordPanel providers={providers} onLogin={onLogin} />);
+    render(<PasswordPanel {...props} />);
 
     expect(screen.getByText(/forgotten my password/)).toBeInTheDocument();
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
   });
 });
 
-interface FormMockProps {
-  submitTitle: string;
-  onSubmit: () => void;
-}
-
-const FormMock = ({ submitTitle, onSubmit }: FormMockProps) => {
-  return <button onClick={onSubmit}>{submitTitle}</button>;
-};
-
-jest.mock("metabase/entities/users", () => ({
-  forms: { login: jest.fn() },
-  Form: FormMock,
-}));
+const getProps = (opts?: Partial<PasswordPanelProps>): PasswordPanelProps => ({
+  providers: [],
+  isLdapEnabled: false,
+  hasSessionCookies: false,
+  onLogin: jest.fn(),
+  ...opts,
+});
 
 const getAuthProvider = (opts?: Partial<AuthProvider>): AuthProvider => ({
   name: "google",

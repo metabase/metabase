@@ -8,28 +8,57 @@ import {
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+const FIRST_ORDER_ID = 9676;
+const SECOND_ORDER_ID = 10874;
+const THIRD_ORDER_ID = 11246;
+
+const TEST_QUESTION = {
+  query: {
+    "source-table": ORDERS_ID,
+    filter: [
+      "and",
+      [">", ["field", ORDERS.TOTAL, null], 149],
+      [">", ["field", ORDERS.TAX, null], 10],
+      ["not-null", ["field", ORDERS.DISCOUNT, null]],
+    ],
+  },
+};
 
 describe("scenarios > question > object details", () => {
-  const FIRST_ORDER_ID = 9676;
-  const SECOND_ORDER_ID = 10874;
-  const THIRD_ORDER_ID = 11246;
-
-  const TEST_QUESTION = {
-    query: {
-      "source-table": ORDERS_ID,
-      filter: [
-        "and",
-        [">", ["field", ORDERS.TOTAL, null], 149],
-        [">", ["field", ORDERS.TAX, null], 10],
-        ["not-null", ["field", ORDERS.DISCOUNT, null]],
-      ],
-    },
-  };
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("shows correct object detail card for questions with joins (metabase #27094)", () => {
+    const questionDetails = {
+      name: "14775",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    drillPK({ id: 1 });
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 1);
+    });
   });
 
   it("handles browsing records by PKs", () => {

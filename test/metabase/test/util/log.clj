@@ -1,63 +1,21 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [clojure.tools.logging.impl :as log.impl]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [potemkin :as p]
-            [schema.core :as s])
-  (:import java.io.PrintStream
-           [org.apache.commons.io.output NullOutputStream NullWriter]
-           [org.apache.logging.log4j Level LogManager]
-           [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
-           [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
+  (:require
+   [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.tools.logging :as log]
+   [clojure.tools.logging.impl :as log.impl]
+   [hawk.parallel]
+   [metabase.plugins.classloader :as classloader]
+   [net.cgrand.macrovich :as macros]
+   [potemkin :as p]
+   [schema.core :as s])
+  (:import
+   (org.apache.logging.log4j Level LogManager)
+   (org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext)
+   (org.apache.logging.log4j.core.config Configuration LoggerConfig)))
 
-(def ^:private ^:deprecated logger->original-level
-  (delay
-    (let [loggers (.getLoggers ^LoggerContext (LogManager/getContext false))]
-      (into {} (for [^Logger logger loggers]
-                 [logger (.getLevel logger)])))))
-
-(def ^:private ^:dynamic *suppressed* false)
-
-(defn ^:deprecated do-with-suppressed-output
-  "Impl for [[suppress-output]] macro; don't use this directly."
-  [f]
-  (if *suppressed*
-    (f)
-    (binding [*suppressed* true]
-      ;; yes, swapping out *out*/*err*, swapping out System.out/System.err, and setting all the log levels to OFF is
-      ;; really necessary to suppress everyting (!)
-      (let [orig-out (System/out)
-            orig-err (System/err)]
-        (with-open [null-stream (PrintStream. (NullOutputStream.))
-                    null-writer (NullWriter.)]
-          (try
-            (System/setOut null-stream)
-            (System/setErr null-stream)
-            (doseq [[^Logger logger] @logger->original-level]
-              (.setLevel logger Level/OFF))
-            (binding [*out* null-writer
-                      *err* null-writer]
-              (f))
-            (finally
-              (System/setOut orig-out)
-              (System/setErr orig-err)
-              (doseq [[^Logger logger, ^Level old-level] @logger->original-level]
-                (.setLevel logger old-level)))))))))
-
-(defmacro ^:deprecated suppress-output
-  "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output
-  for tests with stacktraces and error messages from tests that are supposed to fail.
-
-  DEPRECATED -- you don't need to do this anymore. Tests now have a default log level of `FATAL` which means error
-  logging will be suppressed by default. This macro predates the current test logging levels. You can remove usages of
-  this macro.
-
-  If you want to suppress log messages for REPL usage you can use [[with-log-level]] instead."
-  {:style/indent 0}
-  [& body]
-  `(do-with-suppressed-output (fn [] ~@body)))
+(set! *warn-on-reflection* true)
 
 (def ^:private keyword->Level
   {:off   Level/OFF
@@ -93,7 +51,7 @@
     (name a-namespace)))
 
 (defn- logger-context ^LoggerContext []
-  (LogManager/getContext false))
+  (LogManager/getContext (classloader/the-classloader) false))
 
 (defn- configuration ^Configuration []
   (.getConfiguration (logger-context)))
@@ -138,8 +96,12 @@
                          (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-logger))
                          (configuration)
                          (.getFilter parent-logger))]
+      ;; copy the appenders from the parent logger, e.g. the [[metabase.logger/metabase-appender]]
+      (doseq [[_name ^Appender appender] (.getAppenders parent-logger)]
+        (.addAppender new-logger appender (.getLevel new-logger) (.getFilter new-logger)))
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
@@ -157,15 +119,33 @@
    (let [logger    (exact-ns-logger a-namespace)
          new-level (->Level new-level)]
      (.setLevel logger new-level)
+     ;; it seems like changing the level doesn't update the level for the appenders
+     ;; e.g. [[metabase.logger/metabase-appender]], so if we want the new level to be reflected there the only way I can
+     ;; figure out to make it work is to remove the appender and then add it back with the updated level. See JavaDoc
+     ;; https://logging.apache.org/log4j/2.x/log4j-core/apidocs/org/apache/logging/log4j/core/config/LoggerConfig.html
+     ;; for more info. There's probably a better way to do this, but I don't know what it is. -- Cam
+     (doseq [[^String appender-name ^Appender appender] (.getAppenders logger)]
+       (.removeAppender logger appender-name)
+       (.addAppender logger appender new-level (.getFilter logger)))
      (.updateLoggers (logger-context)))))
 
 (defn do-with-log-level [a-namespace level thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
-  (let [original-log-level (ns-log-level a-namespace)]
+  (hawk.parallel/assert-test-is-not-parallel "with-log-level")
+  (ensure-unique-logger! a-namespace)
+  (let [original-log-level (ns-log-level a-namespace)
+        logger             (exact-ns-logger a-namespace)
+        is-additive        (.isAdditive logger)
+        parent-is-root?    (= "" (-> logger .getParent .getName))]
     (try
+      ;; prevent events to be passed to the root logger's appenders which will log to the Console
+      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
+      (when parent-is-root?
+        (.setAdditive logger false))
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
+        (when parent-is-root?
+          (.setAdditive logger is-additive))
         (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level
@@ -236,7 +216,7 @@
     (:logs @state)))
 
 (defn do-with-log-messages-for-level [a-namespace level f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
+  (hawk.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
   (ensure-unique-logger! a-namespace)
   (let [state         (atom nil)
         appender-name (format "%s-%s-%s" `InMemoryAppender (logger-name a-namespace) (name level))
@@ -248,8 +228,7 @@
       (finally
         (.removeAppender logger appender-name)))))
 
-;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
-(defmacro with-log-messages-for-level
+(defmacro with-log-messages-for-level-clj
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
   higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
   to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
@@ -276,6 +255,14 @@
            ~@body
            (logs#)))))))
 
+;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
+(defmacro with-log-messages-for-level [ns+level & body]
+  (macros/case
+    :clj  `(with-log-messages-for-level-clj ~ns+level ~@body)
+    :cljs (let [[log-ns level] (if (sequential? ns+level)
+                                 ns+level
+                                 [(str (ns-name *ns*)) ns+level])]
+            `(do-with-glogi-logs ~log-ns ~level (fn [] ~@body)))))
 
 ;;;; tests
 

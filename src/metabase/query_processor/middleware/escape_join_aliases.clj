@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]))
+  (:require
+   [clojure.set :as set]
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- rename-join-aliases
   "Rename joins in `query` by replacing aliases whose keys appear in `original->new` with their corresponding values."
@@ -37,7 +38,8 @@
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
-  with [[metabase.driver/escape-alias]]."
+  with [[metabase.driver/escape-alias]]. If aliases are 'uniquified', will include a map
+  at [:info :alias/escaped->original] of the escaped name back to the original, to be restored in post processing."
   [query]
   (let [all-join-aliases (all-join-aliases query)]
     (log/tracef "Join aliases in query: %s" (pr-str all-join-aliases))
@@ -48,11 +50,24 @@
             uniquify          (mbql.u/unique-name-generator
                                ;; some databases treat aliases as case-insensitive so make sure the generated aliases
                                ;; are unique regardless of case
-                               :name-key-fn     str/lower-case
+                               :name-key-fn     u/lower-case-en
                                ;; uniqified aliases needs to be escaped again just in case
                                :unique-alias-fn (fn [original suffix]
                                                   (escape (str original \_ suffix))))
             original->escaped (into {}
                                     (map (juxt identity (comp uniquify escape)))
-                                    all-join-aliases)]
-        (rename-join-aliases query original->escaped)))))
+                                    all-join-aliases)
+            aliases-changed?  (some (fn [[original escaped]] (not= original escaped))
+                                    original->escaped)]
+        (if aliases-changed?
+          (-> query
+              (rename-join-aliases original->escaped)
+              (assoc-in [:info :alias/escaped->original] (set/map-invert original->escaped)))
+          query)))))
+
+(defn restore-aliases
+  "Restore aliases in query.
+  If aliases were changed in [[escape-join-aliases]], there is a key in `:info` of `:alias/escaped->original` which we
+  can restore the aliases in the query."
+  [query escaped->original]
+  (rename-join-aliases query escaped->original))

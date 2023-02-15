@@ -5,9 +5,9 @@ import { render, screen } from "@testing-library/react";
 
 import { metadata } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/lib/Question";
-import Field from "metabase-lib/lib/metadata/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Question from "metabase-lib/Question";
+import Field from "metabase-lib/metadata/Field";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import BooleanPicker, { BooleanPickerCheckbox } from "./index";
 
@@ -65,8 +65,8 @@ describe("BooleanPicker", () => {
     it("should hide empty options when empty options are not selected", () => {
       setup(filters.True);
 
-      expect(screen.queryByLabelText("Empty")).toBeNull();
-      expect(screen.queryByLabelText("Not empty")).toBeNull();
+      expect(screen.queryByLabelText("Empty")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Not empty")).not.toBeInTheDocument();
 
       screen.getByText("More options").click();
 
@@ -113,8 +113,8 @@ describe("BooleanPicker", () => {
           onFilterChange={mockOnFilterChange}
         />,
       );
-      expect(screen.getByLabelText("True").checked).toBe(true);
-      expect(screen.getByLabelText("False").checked).toBe(false);
+      expect(screen.getByLabelText("True")).toBeChecked();
+      expect(screen.getByLabelText("False")).not.toBeChecked();
     });
     it("should render a false checkbox", () => {
       render(
@@ -123,8 +123,8 @@ describe("BooleanPicker", () => {
           onFilterChange={mockOnFilterChange}
         />,
       );
-      expect(screen.getByLabelText("True").checked).toBe(false);
-      expect(screen.getByLabelText("False").checked).toBe(true);
+      expect(screen.getByLabelText("True")).not.toBeChecked();
+      expect(screen.getByLabelText("False")).toBeChecked();
     });
 
     it("should render indeterminate checkboxes", () => {

@@ -1,22 +1,24 @@
 (ns metabase.driver.sql-jdbc-test
-  (:require [clojure.test :refer :all]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
-(deftest describe-database-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
                          {:name table, :schema "PUBLIC", :description nil}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (is (= {:name   "VENUES"
           :schema "PUBLIC"
           :fields #{{:name              "ID"
@@ -26,7 +28,7 @@
                      :database-position 0
                      :database-required false}
                     {:name              "NAME"
-                     :database-type     "VARCHAR"
+                     :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
                      :database-position 1
                      :database-required false}
@@ -36,12 +38,12 @@
                      :database-position 2
                      :database-required false}
                     {:name              "LATITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 3
                      :database-required false}
                     {:name              "LONGITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 4
                      :database-required false}
@@ -52,14 +54,14 @@
                      :database-required false}}}
          (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
          (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
@@ -73,7 +75,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest table-rows-seq-test
+(deftest ^:parallel table-rows-seq-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
@@ -89,7 +91,7 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-(deftest invalid-ssh-credentials-test
+(deftest ^:parallel invalid-ssh-credentials-test
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
@@ -112,8 +114,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
@@ -122,7 +123,7 @@
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
-(deftest splice-parameters-native-test
+(deftest ^:parallel splice-parameters-native-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing (str "test splicing a single param\n"
                   "(This test won't work if a driver that doesn't use single quotes for string literals comes along. "
@@ -172,7 +173,7 @@
          :type     :native
          :native   spliced})))))
 
-(deftest splice-parameters-mbql-test
+(deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
     (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
       (mt/$ids venues
@@ -199,12 +200,10 @@
       (mt/$ids checkins
         (testing "splicing a date"
           (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
-
-    ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-    (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
-      (testing "splicing a time"
-        (is (= 2
-               (mt/dataset test-data-with-time
-                 (mt/$ids users
-                   (spliced-count-of :users [:= $last_login_time "09:30"])))))))))
+                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+      (when (mt/supports-time-type? driver/*driver*)
+        (testing "splicing a time"
+          (mt/dataset test-data-with-time
+            (is (= 2
+                   (mt/$ids users
+                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

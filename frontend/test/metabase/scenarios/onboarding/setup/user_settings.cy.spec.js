@@ -6,9 +6,6 @@ const { normal } = USERS;
 
 const { first_name, last_name, email, password } = normal;
 
-const requestsCount = alias =>
-  cy.state("requests").filter(a => a.alias === alias);
-
 describe("user > settings", () => {
   const fullName = getFullName(normal);
 
@@ -51,9 +48,7 @@ describe("user > settings", () => {
 
     // It is hard and unreliable to assert that something didn't happen in Cypress
     // This solution was the only one that worked out of all others proposed in this SO topic: https://stackoverflow.com/a/59302542/8815185
-    cy.get("@membership").then(() => {
-      expect(requestsCount("membership")).to.have.length(0);
-    });
+    cy.get("@membership.all").should("have.length", 0);
   });
 
   it("should have a change password tab", () => {

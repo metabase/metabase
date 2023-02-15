@@ -3,18 +3,21 @@
   dashboard cards."
   #?@
    (:clj
-    [(:require [clojure.string :as str]
-               [metabase.mbql.normalize :as mbql.normalize]
-               [metabase.shared.util.i18n :refer [trs trsn]]
-               [metabase.util.date-2 :as u.date]
-               [metabase.util.date-2.parse.builder :as b]
-               [metabase.util.i18n.impl :as i18n.impl])
-     (:import java.time.format.DateTimeFormatter)]
+    [(:require
+      [clojure.string :as str]
+      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.shared.util.i18n :refer [trs trsn]]
+      [metabase.util.date-2 :as u.date]
+      [metabase.util.date-2.parse.builder :as b]
+      [metabase.util.i18n.impl :as i18n.impl])
+     (:import
+      (java.time.format DateTimeFormatter))]
     :cljs
-    [(:require ["moment" :as moment]
-               [clojure.string :as str]
-               [metabase.mbql.normalize :as mbql.normalize]
-               [metabase.shared.util.i18n :refer [trs trsn]])]))
+    [(:require
+      ["moment" :as moment]
+      [clojure.string :as str]
+      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.shared.util.i18n :refer [trs trsn]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
@@ -112,9 +115,13 @@
   "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
   on the values."
   [values]
-  (if (= (count values) 1)
-    (str (first values))
-    (trs "{0} and {1}" (str/join ", " (butlast values)) (last values))))
+  (condp = (count values)
+    1 (str (first values))
+    2 (trs "{0} and {1}" (first values) (second values))
+    (trs "{0}, {1}, and {2}"
+         (str/join ", " (drop-last 2 values))
+         (nth values (- (count values) 2))
+         (last values))))
 
 (defmethod formatted-value :default
   [_ value _]

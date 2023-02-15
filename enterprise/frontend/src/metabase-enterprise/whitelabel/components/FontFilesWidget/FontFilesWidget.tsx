@@ -95,7 +95,6 @@ const FontFileRow = ({
       <TableBodyCell>
         <Input
           defaultValue={url}
-          size="small"
           placeholder="https://some.trusted.location/font-file.woff2"
           fullWidth
           onBlur={handleBlur}

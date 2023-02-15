@@ -1,25 +1,26 @@
-(ns metabase.sync.analyze-test
-  (:require [clojure.test :refer :all]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.classifiers.category :as classifiers.category]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+(ns ^:mb/once metabase.sync.analyze-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.classifiers.category :as classifiers.category]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+   [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -163,14 +164,14 @@
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
   [table visibility-type]
-  ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                          :visibility_type visibility-type
-                                                                          :description     "What a nice table!"}))
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                             :visibility_type visibility-type
+                                                                             :description     "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  ((mt/user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive

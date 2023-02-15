@@ -2,13 +2,14 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
-import type { Database } from "metabase-types/api/database";
-import DataSelectorLoading from "../DataSelectorLoading";
 
-import { RawDataBackButton } from "../DataSelector.styled";
+import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
+
+import type { Database } from "metabase-types/api/database";
 
 import type { Schema } from "../types";
+import DataSelectorLoading from "../DataSelectorLoading";
+import { RawDataBackButton } from "../DataSelector.styled";
 
 type DataSelectorDatabasePickerProps = {
   databases: Database[];
@@ -53,7 +54,6 @@ const DataSelectorDatabasePicker = ({
     {
       items: databases.map((database: Database, index: number) => ({
         name: database.name,
-        writebackEnabled: isDatabaseWritebackEnabled(database as any),
         index,
         database: database,
       })),
@@ -83,7 +83,9 @@ const DataSelectorDatabasePicker = ({
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsClickable={
-        requireWriteback ? (item: Item) => item.writebackEnabled : undefined
+        requireWriteback
+          ? (item: Item) => checkDatabaseActionsEnabled(item.database)
+          : undefined
       }
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id

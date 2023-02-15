@@ -54,7 +54,13 @@ function createDashboardWithNestedCard() {
         cy
           .createDashboard("Q2 in a dashboard")
           .then(({ body: { id: dashId } }) => {
-            cy.request("POST", `/api/dashboard/${dashId}/cards`, { cardId });
+            cy.request("POST", `/api/dashboard/${dashId}/cards`, {
+              cardId,
+              row: 0,
+              col: 0,
+              size_x: 4,
+              size_y: 4,
+            });
             visitDashboard(dashId);
           }),
       ),

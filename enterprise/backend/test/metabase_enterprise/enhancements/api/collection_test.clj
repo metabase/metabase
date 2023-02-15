@@ -1,18 +1,19 @@
 (ns metabase-enterprise.enhancements.api.collection-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [NativeQuerySnippet]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [NativeQuerySnippet]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"
     (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
       (mt/with-temp NativeQuerySnippet [snippet]
         (letfn [(can-see-snippet? []
-                  (let [response (:data ((mt/user->client :rasta) :get "collection/root/items?namespace=snippets"))]
+                  (let [response (:data (mt/user-http-request :rasta :get "collection/root/items?namespace=snippets"))]
                     (boolean (some (fn [a-snippet]
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]

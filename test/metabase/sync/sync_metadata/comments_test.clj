@@ -1,15 +1,16 @@
-(ns metabase.sync.sync-metadata.comments-test
+(ns ^:mb/once metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.sync-metadata.tables :as sync-tables]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- db->fields [db]
   (let [table-ids (db/select-ids Table :db_id (u/the-id db))]

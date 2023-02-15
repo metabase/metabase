@@ -1,6 +1,3 @@
-:local .ChartAndDetail {
-}
-
 :local .Chart,
 :local .Detail {
   position: absolute;

@@ -1,15 +1,16 @@
 (ns metabase-enterprise.sso.api.interface
-  (:require [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- sso-backend
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [_]
   (cond
-    (sso-settings/saml-configured?) :saml
-    (sso-settings/jwt-enabled)      :jwt
-    :else                           nil))
+    (sso-settings/saml-enabled) :saml
+    (sso-settings/jwt-enabled)  :jwt
+    :else                       nil))
 
 (defmulti sso-get
   "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually

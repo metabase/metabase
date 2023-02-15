@@ -2,21 +2,27 @@ import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
+
+import ExternalLink from "metabase/core/components/ExternalLink";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import { getSettings } from "metabase/selectors/settings";
+
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
+
 import {
   TokenStatus,
   useLicense,
 } from "metabase/admin/settings/hooks/use-license";
 import {
-  ExporePaidPlansContainer,
+  ExplorePaidPlansContainer,
   LoaderContainer,
   SectionDescription,
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import MetabaseSettings from "metabase/lib/settings";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 
@@ -34,7 +40,7 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
         enter it below, otherwise please contact ${(
-          <ExternalLink href="mailto:support@metabase.com">
+          <ExternalLink key="email" href="mailto:support@metabase.com">
             support@metabase.com
           </ExternalLink>
         )}`}
@@ -124,7 +130,7 @@ const LicenseAndBillingSettings = ({
         {!isStoreManagedBilling && (
           <SectionDescription>
             {jt`To manage your billing preferences, please email ${(
-              <ExternalLink href="mailto:billing@metabase.com">
+              <ExternalLink key="email" href="mailto:billing@metabase.com">
                 billing@metabase.com
               </ExternalLink>
             )}`}
@@ -155,14 +161,14 @@ const LicenseAndBillingSettings = ({
           <SectionHeader>{t`Looking for more?`}</SectionHeader>
           <SectionDescription>
             {jt`You can get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers with ${(
-              <ExternalLink href={MetabaseSettings.upgradeUrl()}>
+              <ExternalLink key="plans" href={MetabaseSettings.upgradeUrl()}>
                 {t`our other paid plans.`}
               </ExternalLink>
             )}`}
           </SectionDescription>
-          <ExporePaidPlansContainer justifyContent="flex-end">
+          <ExplorePaidPlansContainer justifyContent="flex-end">
             <ExplorePlansIllustration />
-          </ExporePaidPlansContainer>
+          </ExplorePaidPlansContainer>
         </>
       )}
     </SettingsLicenseContainer>
@@ -172,7 +178,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: any) => ({
     settingValues: state.admin.settings.settings,
-    settings: state.settings.values,
+    settings: getSettings(state),
   }),
   {
     showLicenseAcceptedToast,

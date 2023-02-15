@@ -17,6 +17,7 @@ export default class WaterfallChart extends LineAreaBarChart {
   static noun = t`waterfall chart`;
 
   static maxMetricsSupported = 1;
+  static maxDimensionsSupported = 1;
 
   static settings = {
     ...GRAPH_AXIS_SETTINGS,
@@ -37,6 +38,7 @@ export default class WaterfallChart extends LineAreaBarChart {
       title: t`Show total`,
       widget: "toggle",
       default: true,
+      inline: true,
     },
     "waterfall.total_color": {
       section: t`Display`,

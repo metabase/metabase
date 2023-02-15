@@ -21,10 +21,8 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       ).as(`ORDERS_${name}_URL`);
     });
 
-    cy.server();
-    cy.route("PUT", "/api/field/*").as("fieldUpdate");
-    cy.route("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
-    cy.route("POST", "/api/field/*/values").as("fieldValuesUpdate");
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
   describe("Name and Description", () => {

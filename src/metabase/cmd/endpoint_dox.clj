@@ -1,13 +1,14 @@
 (ns metabase.cmd.endpoint-dox
   "Implementation for the `api-documentation` command, which generates doc pages
   for API endpoints."
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.namespace.find :as ns.find]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.namespace.find :as ns.find]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]))
 
 ;;;; API docs intro
 
@@ -34,7 +35,7 @@
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" initialisms) ")"))
         matches (re-seq re name)]
     (if matches
-      (reduce (fn [n m] (str/replace n m (str/upper-case m))) name matches)
+      (reduce (fn [n m] (str/replace n m (u/upper-case-en m))) name matches)
       name)))
 
 (defn- endpoint-ns-name
@@ -174,7 +175,7 @@
                  str/trim
                  (str/split #"\s+")
                  (#(str/join "-" %))
-                 str/lower-case)]
+                 u/lower-case-en)]
     (str dir file ext)))
 
 (defn build-endpoint-link

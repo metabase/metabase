@@ -2,7 +2,6 @@
 import React from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import {
@@ -12,8 +11,8 @@ import {
   setTimeComponent,
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+} from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 

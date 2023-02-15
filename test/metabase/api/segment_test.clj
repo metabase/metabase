@@ -1,18 +1,19 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
-  (:require [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :refer [Revision]]
-            [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :refer [Revision]]
+   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;; ## Helper Fns
 
@@ -93,7 +94,7 @@
                                                     :caveats                 nil
                                                     :points_of_interest      nil
                                                     :table_id                id
-                                                    :definition              {:filter [:= [:field-id 10] 20]}}))))))
+                                                    :definition              {:filter [:= [:field 10 nil] 20]}}))))))
 
 
 ;; ## PUT /api/segment
@@ -153,7 +154,7 @@
                 :points_of_interest      nil
                 :table_id                456
                 :revision_message        "I got me some revisions"
-                :definition              {:filter [:!= [:field-id 2] "cans"]}})))))))
+                :definition              {:filter [:!= [:field 2 nil] "cans"]}})))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
@@ -245,7 +246,7 @@
                     Table    [{table-id :id} {:db_id database-id}]
                     Segment  [{:keys [id]}   {:creator_id (mt/user->id :crowberto)
                                               :table_id   table-id
-                                              :definition {:filter [:= [:field-id 2] "cans"]}}]]
+                                              :definition {:filter [:= [:field 2 nil] "cans"]}}]]
       (is (= {:name                    "Toucans in the rainforest"
               :description             "Lookin' for a blueberry"
               :show_in_getting_started false
@@ -283,7 +284,7 @@
                     Segment  [{:keys [id]} {:creator_id (mt/user->id :crowberto)
                                             :table_id   table-id
                                             :definition {:database 123
-                                                         :query    {:filter [:= [:field-id 2] "cans"]}}}]
+                                                         :query    {:filter [:= [:field 2 nil] "cans"]}}}]
                     Revision [_ {:model       "Segment"
                                  :model_id    id
                                  :object      {:name       "b"
@@ -342,7 +343,7 @@
                                                  :show_in_getting_started false
                                                  :caveats                 nil
                                                  :points_of_interest      nil
-                                                 :definition              {:filter [:= [:field-id 2] "cans"]}}]
+                                                 :definition              {:filter [:= [:field 2 nil] "cans"]}}]
                     Revision [{revision-id :id} {:model       "Segment"
                                                  :model_id    id
                                                  :object      {:creator_id              (mt/user->id :crowberto)
@@ -352,7 +353,7 @@
                                                                :show_in_getting_started false
                                                                :caveats                 nil
                                                                :points_of_interest      nil
-                                                               :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                               :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :is_creation true}]
                     Revision [_                 {:model    "Segment"
                                                  :model_id id
@@ -364,7 +365,7 @@
                                                             :show_in_getting_started false
                                                             :caveats                 nil
                                                             :points_of_interest      nil
-                                                            :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                            :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :message  "updated"}]]
       (testing "the api response"
         (is (= {:is_reversion true

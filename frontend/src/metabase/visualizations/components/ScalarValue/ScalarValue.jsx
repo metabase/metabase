@@ -5,7 +5,7 @@
 import React, { useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import {
   ScalarRoot,
@@ -47,7 +47,11 @@ const ScalarValue = ({
   );
 
   return (
-    <ScalarValueWrapper className="ScalarValue" fontSize={fontSize}>
+    <ScalarValueWrapper
+      className="ScalarValue"
+      fontSize={fontSize}
+      data-testid="scalar-value"
+    >
       {value}
     </ScalarValueWrapper>
   );

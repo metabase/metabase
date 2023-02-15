@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import TokenField, {
@@ -10,6 +10,7 @@ import TokenField, {
   parseStringValue,
 } from "metabase/components/TokenField";
 import ListField from "metabase/components/ListField";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -19,9 +20,25 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
+import {
+  fetchParameterValues,
+  fetchCardParameterValues,
+  fetchDashboardParameterValues,
+} from "metabase/parameters/actions";
 
 import Fields from "metabase/entities/fields";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
+import {
+  canListFieldValues,
+  canListParameterValues,
+  canSearchFieldValues,
+  canSearchParameterValues,
+  getSourceType,
+} from "metabase-lib/parameters/utils/parameter-source";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -37,6 +54,8 @@ const optionsMessagePropTypes = {
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchParameterValues,
+  fetchCardParameterValues,
   fetchDashboardParameterValues,
 };
 
@@ -60,7 +79,7 @@ async function searchFieldValues(
           {
             value,
             fieldId: field.id,
-            searchFieldId: searchField(field, disablePKRemappingForSearch).id,
+            searchFieldId: field.searchField(disablePKRemappingForSearch).id,
             limit: maxResults,
           },
           { cancelled },
@@ -76,16 +95,18 @@ async function searchFieldValues(
 class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
-    const { fields, disableSearch, disablePKRemappingForSearch } = props;
+    const { parameter, fields, disableSearch, disablePKRemappingForSearch } =
+      props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
-      valuesMode: getValuesMode(
+      valuesMode: getValuesMode({
+        parameter,
         fields,
         disableSearch,
         disablePKRemappingForSearch,
-      ),
+      }),
     };
   }
 
@@ -102,7 +123,9 @@ class FieldValuesWidgetInner extends Component {
   };
 
   componentDidMount() {
-    if (shouldList(this.props.fields, this.props.disableSearch)) {
+    const { parameter, fields, disableSearch } = this.props;
+
+    if (shouldList({ parameter, fields, disableSearch })) {
       this.fetchValues();
     }
   }
@@ -116,20 +139,37 @@ class FieldValuesWidgetInner extends Component {
     let options = [];
     let valuesMode = this.state.valuesMode;
     try {
-      if (usesChainFilterEndpoints(this.props.dashboard)) {
-        const { results, has_more_values } =
-          await this.fetchDashboardParamValues(query);
-        options = results;
+      if (canUseDashboardEndpoints(this.props.dashboard)) {
+        const { values, has_more_values } =
+          await this.fetchDashboardParameterValues(query);
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseCardEndpoints(this.props.question)) {
+        const { values, has_more_values } = await this.fetchCardParameterValues(
+          query,
+        );
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { values, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
-        const { fields, disableSearch, disablePKRemappingForSearch } =
-          this.props;
-        valuesMode = getValuesMode(
+        const {
+          parameter,
           fields,
           disableSearch,
           disablePKRemappingForSearch,
-        );
+        } = this.props;
+        valuesMode = getValuesMode({
+          parameter,
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        });
       }
     } finally {
       this.updateRemappings(options);
@@ -170,15 +210,34 @@ class FieldValuesWidgetInner extends Component {
     }
   };
 
-  fetchDashboardParamValues = async query => {
+  fetchParameterValues = async query => {
+    const { parameter } = this.props;
+
+    return this.props.fetchParameterValues({
+      parameter,
+      query,
+    });
+  };
+
+  fetchCardParameterValues = async query => {
+    const { question, parameter } = this.props;
+
+    return this.props.fetchCardParameterValues({
+      cardId: question.id(),
+      parameter,
+      query,
+    });
+  };
+
+  fetchDashboardParameterValues = async query => {
     const { dashboard, parameter, parameters } = this.props;
-    const args = {
+
+    return this.props.fetchDashboardParameterValues({
       dashboardId: dashboard?.id,
       parameter,
       parameters,
       query,
-    };
-    return this.props.fetchDashboardParameterValues(args);
+    });
   };
 
   updateRemappings(options) {
@@ -187,7 +246,7 @@ class FieldValuesWidgetInner extends Component {
       const [field] = fields;
       if (
         field.remappedField() ===
-        searchField(field, this.props.disablePKRemappingForSearch)
+        field.searchField(this.props.disablePKRemappingForSearch)
       ) {
         this.props.addRemappings(field.id, options);
       }
@@ -290,6 +349,7 @@ class FieldValuesWidgetInner extends Component {
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
+      parameter,
       disableSearch,
       placeholder,
       disablePKRemappingForSearch,
@@ -300,11 +360,22 @@ class FieldValuesWidgetInner extends Component {
 
     const isListMode =
       !disableList &&
-      shouldList(fields, disableSearch) &&
+      shouldList({ parameter, fields, disableSearch }) &&
       valuesMode === "list" &&
       !forceTokenField;
     const isLoading = loadingState === "LOADING";
-    const hasListValues = hasList({ fields, disableSearch, options });
+    const hasListValues = hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    });
+
+    const parseFreeformValue = value => {
+      return isNumeric(fields[0], parameter)
+        ? parseNumberValue(value)
+        : parseStringValue(value);
+    };
 
     return (
       <div
@@ -316,8 +387,18 @@ class FieldValuesWidgetInner extends Component {
       >
         {isListMode && isLoading ? (
           <LoadingState />
-        ) : isListMode && hasListValues ? (
+        ) : isListMode && hasListValues && multi ? (
           <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : isListMode && hasListValues && !multi ? (
+          <SingleSelectListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}
@@ -357,11 +438,7 @@ class FieldValuesWidgetInner extends Component {
               );
             }}
             onInputChange={this.onInputChange}
-            parseFreeformValue={value => {
-              return fields[0].isNumeric()
-                ? parseNumberValue(value)
-                : parseStringValue(value);
-            }}
+            parseFreeformValue={parseFreeformValue}
           />
         )}
       </div>
@@ -413,9 +490,15 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
-// if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
-// Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
-function usesChainFilterEndpoints(dashboard) {
+function canUseParameterEndpoints(parameter) {
+  return parameter != null;
+}
+
+function canUseCardEndpoints(question) {
+  return question?.isSaved();
+}
+
+function canUseDashboardEndpoints(dashboard) {
   return dashboard?.id;
 }
 
@@ -423,25 +506,39 @@ function showRemapping(fields) {
   return fields.length === 1;
 }
 
-function shouldList(fields, disableSearch) {
-  // Virtual fields come from questions that are based on other questions.
-  // Currently, the back end does not return `has_field_values` in their metadata,
-  // so we ignore them for now.
-  const nonVirtualFields = fields.filter(field => typeof field.id === "number");
-
-  return (
-    !disableSearch &&
-    nonVirtualFields.every(field => field.has_field_values === "list")
-  );
+function shouldList({ parameter, fields, disableSearch }) {
+  if (disableSearch) {
+    return false;
+  } else {
+    return parameter
+      ? canListParameterValues(parameter)
+      : canListFieldValues(fields);
+  }
 }
 
-function getNonSearchableTokenFieldPlaceholder(firstField) {
-  if (firstField.isID()) {
-    return t`Enter an ID`;
-  } else if (firstField.isString()) {
+function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
+  if (parameter) {
+    if (isIdParameter(parameter)) {
+      return t`Enter an ID`;
+    } else if (isStringParameter(parameter)) {
+      return t`Enter some text`;
+    } else if (isNumberParameter(parameter)) {
+      return t`Enter a number`;
+    }
+
+    // fallback
     return t`Enter some text`;
-  } else if (firstField.isNumeric()) {
-    return t`Enter a number`;
+  } else if (firstField) {
+    if (firstField.isID()) {
+      return t`Enter an ID`;
+    } else if (firstField.isString()) {
+      return t`Enter some text`;
+    } else if (firstField.isNumeric()) {
+      return t`Enter a number`;
+    }
+
+    // fallback
+    return t`Enter some text`;
   }
 
   // fallback
@@ -449,18 +546,11 @@ function getNonSearchableTokenFieldPlaceholder(firstField) {
 }
 
 export function searchField(field, disablePKRemappingForSearch) {
-  if (disablePKRemappingForSearch && field.isPK()) {
-    return field.isSearchable() ? field : null;
-  }
-
-  const remappedField = field.remappedField();
-  if (remappedField && remappedField.isSearchable()) {
-    return remappedField;
-  }
-  return field.isSearchable() ? field : null;
+  return field.searchField(disablePKRemappingForSearch);
 }
 
 function getSearchableTokenFieldPlaceholder(
+  parameter,
   fields,
   firstField,
   disablePKRemappingForSearch,
@@ -469,19 +559,23 @@ function getSearchableTokenFieldPlaceholder(
 
   const names = new Set(
     fields.map(field =>
-      stripId(searchField(field, disablePKRemappingForSearch).display_name),
+      stripId(field.searchField(disablePKRemappingForSearch).display_name),
     ),
   );
 
-  if (names.size > 1) {
+  if (
+    names.size !== 1 ||
+    (parameter != null && getSourceType(parameter) != null)
+  ) {
     placeholder = t`Search`;
   } else {
     const [name] = names;
 
     placeholder = t`Search by ${name}`;
     if (
+      firstField &&
       firstField.isID() &&
-      firstField !== searchField(firstField, disablePKRemappingForSearch)
+      firstField !== firstField.searchField(disablePKRemappingForSearch)
     ) {
       placeholder += t` or enter an ID`;
     }
@@ -489,8 +583,10 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-function hasList({ fields, disableSearch, options }) {
-  return shouldList(fields, disableSearch) && !_.isEmpty(options);
+function hasList({ parameter, fields, disableSearch, options }) {
+  return (
+    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
+  );
 }
 
 // if this search is just an extension of the previous search, and the previous search
@@ -505,38 +601,29 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
 }
 
 export function isSearchable({
+  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
   valuesMode,
 }) {
-  function everyFieldIsSearchable() {
-    return fields.every(field =>
-      searchField(field, disablePKRemappingForSearch),
-    );
+  if (disableSearch) {
+    return false;
+  } else if (valuesMode === "search") {
+    return true;
+  } else if (parameter) {
+    return canSearchParameterValues(parameter, disablePKRemappingForSearch);
+  } else {
+    return canSearchFieldValues(fields, disablePKRemappingForSearch);
   }
-
-  function someFieldIsConfiguredForSearch() {
-    return fields.some(
-      f =>
-        f.has_field_values === "search" ||
-        (f.has_field_values === "list" && f.has_more_values === true),
-    );
-  }
-
-  return (
-    !disableSearch &&
-    (valuesMode === "search" ||
-      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
-  );
 }
 
 function getTokenFieldPlaceholder({
   fields,
+  parameter,
   disableSearch,
   placeholder,
   disablePKRemappingForSearch,
-  loadingState,
   options,
   valuesMode,
 }) {
@@ -548,6 +635,7 @@ function getTokenFieldPlaceholder({
 
   if (
     hasList({
+      parameter,
       fields,
       disableSearch,
       options,
@@ -556,6 +644,7 @@ function getTokenFieldPlaceholder({
     return t`Search the list`;
   } else if (
     isSearchable({
+      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -563,12 +652,13 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return getSearchableTokenFieldPlaceholder(
+      parameter,
       fields,
       firstField,
       disablePKRemappingForSearch,
     );
   } else {
-    return getNonSearchableTokenFieldPlaceholder(firstField);
+    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
   }
 }
 
@@ -579,6 +669,7 @@ function renderOptions(
 ) {
   const {
     alwaysShowOptions,
+    parameter,
     fields,
     disableSearch,
     disablePKRemappingForSearch,
@@ -590,6 +681,7 @@ function renderOptions(
       return optionsList;
     } else if (
       hasList({
+        parameter,
         fields,
         disableSearch,
         options,
@@ -601,6 +693,7 @@ function renderOptions(
       }
     } else if (
       isSearchable({
+        parameter,
         fields,
         disableSearch,
         disablePKRemappingForSearch,
@@ -613,7 +706,7 @@ function renderOptions(
         return (
           <NoMatchState
             fields={fields.map(field =>
-              searchField(field, disablePKRemappingForSearch),
+              field.searchField(disablePKRemappingForSearch),
             )}
           />
         );
@@ -635,17 +728,15 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-export function getValuesMode(
+export function getValuesMode({
+  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
-) {
-  if (fields.length === 0) {
-    return "none";
-  }
-
+}) {
   if (
     isSearchable({
+      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -655,9 +746,17 @@ export function getValuesMode(
     return "search";
   }
 
-  if (shouldList(fields, disableSearch)) {
+  if (shouldList({ parameter, fields, disableSearch })) {
     return "list";
   }
 
   return "none";
+}
+
+function isNumeric(field, parameter) {
+  if (parameter) {
+    return isNumberParameter(parameter);
+  }
+
+  return field.isNumeric();
 }

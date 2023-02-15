@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import styled from "@emotion/styled";
 import { color, space } from "styled-system";
+import type { SpaceProps } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import {
@@ -33,10 +34,11 @@ const BUTTON_VARIANTS = [
   "fullWidth",
 ] as const;
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
   to?: string;
+  tooltip?: string; // available when using as={Link}
   href?: string;
 
   icon?: string | ReactNode;
@@ -64,6 +66,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   borderless?: boolean;
   onlyIcon?: boolean;
   fullWidth?: boolean;
+  onlyText?: boolean;
 }
 
 const BaseButton = forwardRef(function BaseButton(
@@ -78,7 +81,7 @@ const BaseButton = forwardRef(function BaseButton(
     labelBreakpoint,
     children,
     ...props
-  }: Props,
+  }: ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
@@ -125,7 +128,7 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)`
+const Button = styled(BaseButton)<SpaceProps>`
   ${color};
   ${space};
 `;

@@ -6,7 +6,7 @@ import {
   computeFilterTimeRange,
   absolute,
   generateTimeFilterValuesDescriptions,
-} from "metabase/lib/query_time";
+} from "metabase-lib/queries/utils/query-time";
 
 describe("query_time", () => {
   describe("parseFieldBucketing()", () => {
@@ -262,11 +262,26 @@ describe("query_time", () => {
           moment().subtract(1, "day").format("YYYY-MM-DD 23:59:59"),
         );
       });
-      // it ('should handle "last week"', () => {
-      //     let [start, end] = computeFilterTimeRange(["time-interval", ["field", 1, null], "last", "week"]);
-      //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
-      //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
-      // });
+      it('should handle "last week"', () => {
+        const [start, end] = computeFilterTimeRange([
+          "time-interval",
+          ["field", 1, null],
+          "last",
+          "week",
+        ]);
+        expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
+          moment()
+            .subtract(1, "week")
+            .startOf("week")
+            .format("YYYY-MM-DD 00:00:00"),
+        );
+        expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(
+          moment()
+            .subtract(1, "week")
+            .endOf("week")
+            .format("YYYY-MM-DD 23:59:59"),
+        );
+      });
     });
   });
 });

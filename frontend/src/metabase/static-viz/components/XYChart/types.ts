@@ -1,29 +1,48 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
+import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
-
-export type Range = [number, number];
-export type ContinuousDomain = [number, number];
+import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 
 export type XValue = string | number;
 export type YValue = number;
 export type SeriesDatum = [XValue, YValue];
 export type SeriesData = SeriesDatum[];
 
-export type XAxisType = "timeseries" | "linear" | "ordinal" | "pow" | "log";
-export type YAxisType = "linear" | "pow" | "log";
+export type XAxisType = ContinuousScaleType | "timeseries" | "ordinal";
+export type YAxisType = ContinuousScaleType;
 
 export type YAxisPosition = "left" | "right";
 
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
-export type Series = {
-  name: string;
-  color: string;
+interface BaseSeries {
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
-};
+}
+
+export interface SeriesWithOneOrLessDimensions extends BaseSeries {
+  cardName: string;
+  // this could be null when rendering multiple scalars
+  column: DatasetColumn | null;
+}
+
+export interface SeriesWithTwoDimensions extends BaseSeries {
+  cardName: string;
+  column: DatasetColumn;
+  breakoutValue: string;
+}
+
+export type CardSeries = (
+  | SeriesWithOneOrLessDimensions
+  | SeriesWithTwoDimensions
+)[];
+
+export interface Series extends BaseSeries {
+  name: string;
+  color: string;
+}
 
 export type StackedDatum = [XValue, YValue, YValue];
 
@@ -49,24 +68,17 @@ export type ChartSettings = {
     value: number;
     label: string;
   };
-  show_values?: boolean;
   labels: {
     left?: string;
     bottom?: string;
     right?: string;
   };
+  visualization_settings: VisualizationSettings;
 };
 
 export interface Dimensions {
   width: number;
   height: number;
-}
-
-export interface Margin {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
 }
 
 export type ChartStyle = {
@@ -86,6 +98,7 @@ export type ChartStyle = {
   legend: {
     fontSize: number;
     lineHeight: number;
+    fontWeight: number;
   };
   value?: {
     color: string;

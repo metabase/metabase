@@ -5,7 +5,7 @@ import requestsReducer from "metabase/redux/requests";
 import { thunkWithDispatchAction } from "metabase/store";
 import * as entities from "metabase/redux/entities";
 
-export function getStore(reducers = {}, initialState = {}) {
+export function getStore(reducers = {}, initialState = {}, middleware = []) {
   const reducer = combineReducers({
     entities: entities.reducer,
     requests: (state, action) =>
@@ -16,6 +16,8 @@ export function getStore(reducers = {}, initialState = {}) {
   return createStore(
     reducer,
     initialState,
-    compose(applyMiddleware(thunkWithDispatchAction, promise)),
+    compose(
+      applyMiddleware(...[thunkWithDispatchAction, promise, ...middleware]),
+    ),
   );
 }

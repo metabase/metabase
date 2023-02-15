@@ -1,6 +1,7 @@
 (ns build.version-info
-  (:require [clojure.string :as str]
-            [metabuild-common.core :as u]))
+  (:require
+   [clojure.string :as str]
+   [metabuild-common.core :as u]))
 
 (def version-properties-filename
   (u/filename u/project-root-directory "resources" "version.properties"))

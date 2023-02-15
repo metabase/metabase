@@ -1,14 +1,16 @@
 (ns metabase.server.middleware.misc
   "Misc Ring middleware."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            metabase.async.streaming-response
-            [metabase.db :as mdb]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :refer [trs]])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           metabase.async.streaming_response.StreamingResponse))
+  (:require
+   [clojure.string :as str]
+   [metabase.async.streaming-response]
+   [metabase.db :as mdb]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.request.util :as request.u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (metabase.async.streaming_response StreamingResponse)))
 
 (comment metabase.async.streaming-response/keep-me)
 

@@ -1,6 +1,7 @@
 (ns metabase.models.params.chain-filter.dedupe-joins-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.params.chain-filter.dedupe-joins :as dedupe]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.params.chain-filter.dedupe-joins :as dedupe]))
 
 ;; source-table-id: 298
 ;; all-joins: ({:lhs {:table 298, :field 557}, :rhs {:table 301, :field 555}})

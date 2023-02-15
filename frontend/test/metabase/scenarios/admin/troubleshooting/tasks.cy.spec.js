@@ -14,8 +14,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     for (let i = 0; i < 13; i++) {
       cy.request("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`);
     }
-    cy.server();
-    cy.route("GET", "/api/task?limit=50&offset=0").as("tasks");
+    cy.intercept("GET", "/api/task?limit=50&offset=0").as("tasks");
 
     cy.visit("/admin/troubleshooting/tasks");
 

@@ -2,7 +2,6 @@ import {
   popover,
   restore,
   selectDashboardFilter,
-  expectedRouteCalls,
   editDashboard,
   showDashboardCardActions,
   filterWidget,
@@ -146,7 +145,7 @@ describe("scenarios > dashboard", () => {
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
-    cy.findByText("Dropdown").click();
+    cy.findByText("Is").click();
     cy.findByText("Select…").click();
 
     popover().within(() => {
@@ -262,6 +261,10 @@ describe("scenarios > dashboard", () => {
         // add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
           cardId: questionId,
+          row: 0,
+          col: 0,
+          size_x: 10,
+          size_y: 8,
         }).then(({ body: { id: dashCardId } }) => {
           // connect filter to that question
           cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -347,7 +350,9 @@ describe("scenarios > dashboard", () => {
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 
@@ -400,12 +405,15 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.server();
-    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as(
-      "fetchDashboardParams",
+    cy.intercept(
+      `/api/dashboard/1/params/${FILTER_ID}/values`,
+      cy.spy().as("fetchDashboardParams"),
     );
-    cy.route(`/api/field/${PRODUCTS.CATEGORY}`).as("fetchField");
-    cy.route(`/api/field/${PRODUCTS.CATEGORY}/values`).as("fetchFieldValues");
+    cy.intercept(`/api/field/${PRODUCTS.CATEGORY}`, cy.spy().as("fetchField"));
+    cy.intercept(
+      `/api/field/${PRODUCTS.CATEGORY}/values`,
+      cy.spy().as("fetchFieldValues"),
+    );
 
     visitDashboard(1);
 
@@ -415,9 +423,9 @@ describe("scenarios > dashboard", () => {
       cy.findByText(category);
     });
 
-    expectedRouteCalls({ route_alias: "fetchDashboardParams", calls: 1 });
-    expectedRouteCalls({ route_alias: "fetchField", calls: 0 });
-    expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
+    cy.get("@fetchDashboardParams").should("have.been.calledOnce");
+    cy.get("@fetchField").should("not.have.been.called");
+    cy.get("@fetchFieldValues").should("not.have.been.called");
   });
 
   it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
@@ -457,8 +465,7 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.server();
-          cy.route("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
             "loadDashboard",
           );
         });

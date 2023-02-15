@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 export const findCollectionByName = (collections, name) => {
   if (!collections || collections.length === 0) {
     return null;

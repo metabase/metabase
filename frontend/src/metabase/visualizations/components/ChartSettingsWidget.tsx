@@ -21,6 +21,7 @@ type Props = {
   props?: Record<string, unknown>;
   noPadding?: boolean;
   variant?: "default" | "form-field";
+  borderBottom?: boolean;
   dataTestId?: string;
 };
 
@@ -38,6 +39,7 @@ const ChartSettingsWidget = ({
   props,
   // disables X padding for certain widgets so divider line extends to edge
   noPadding,
+  borderBottom,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
@@ -53,6 +55,7 @@ const ChartSettingsWidget = ({
       inline={inline}
       marginBottom={marginBottom}
       data-testid={dataTestId}
+      borderBottom={borderBottom}
     >
       {title && (
         <Title variant={variant} className={cx({ "Form-label": isFormField })}>

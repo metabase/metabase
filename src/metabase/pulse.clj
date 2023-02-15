@@ -1,37 +1,37 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.api.common :as api]
-            [metabase.config :as config]
-            [metabase.email :as email]
-            [metabase.email.messages :as messages]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.markdown :as markdown]
-            [metabase.pulse.parameters :as params]
-            [metabase.pulse.render :as render]
-            [metabase.pulse.util :as pu]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.retry :as retry]
-            [metabase.util.ui-logic :as ui-logic]
-            [metabase.util.urls :as urls]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.card.CardInstance))
+  (:require
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.parameters :as params]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.util :as pu]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.retry :as retry]
+   [metabase.util.ui-logic :as ui-logic]
+   [metabase.util.urls :as urls]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -52,7 +52,6 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
-          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -102,7 +101,7 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- CardInstance]
+  [card :- (mi/InstanceOf Card)]
   (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
@@ -115,16 +114,16 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
-(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
-  3000)
+(def ^:private block-text-length-limit 3000)
+(def ^:private attachment-text-length-limit 2000)
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
-  [mrkdwn]
-  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+  [mrkdwn limit]
+  (if (> (count mrkdwn) limit)
     (-> mrkdwn
-        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (subs 0 (dec limit))
         (str "…"))
     mrkdwn))
 
@@ -146,7 +145,7 @@
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
-                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
+                                     :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))))
          (remove nil?))))
 
 (defn- subject
@@ -155,6 +154,12 @@
           (some :dashboard_id cards))
     name
     (trs "Pulse: {0}" name)))
+
+(defn- filter-text
+  [filter]
+  (truncate-mrkdwn
+   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   attachment-text-length-limit))
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -170,7 +175,7 @@
         filters         (params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
-                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
+                           :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]

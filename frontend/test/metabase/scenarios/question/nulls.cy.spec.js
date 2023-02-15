@@ -82,6 +82,10 @@ describe("scenarios > question > null", () => {
           // add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id: dashCardId } }) => {
             // connect filter to that question
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -138,19 +142,24 @@ describe("scenarios > question > null", () => {
           cy.log("Add both previously created questions to the dashboard");
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {
+            const cardSizeX = 6;
+            const col = index === 0 ? 0 : cardSizeX; // making sure the second card doesn't overlap the first one
+
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: questionId,
+              row: 0,
+              col: col,
+              size_x: cardSizeX,
+              size_y: 4,
             }).then(({ body: { id: DASHCARD_ID } }) => {
-              const CARD_SIZE_X = 6;
-
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cards: [
                   {
                     id: DASHCARD_ID,
                     card_id: questionId,
                     row: 0,
-                    col: index === 0 ? 0 : CARD_SIZE_X, // making sure the second card doesn't overlap the first one
-                    size_x: CARD_SIZE_X,
+                    col: col,
+                    size_x: cardSizeX,
                     size_y: 4,
                     parameter_mappings: [],
                   },

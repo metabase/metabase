@@ -1,6 +1,6 @@
 import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 const FILTER = ["=", ["field", ORDERS.TOTAL.id, null], 42];
 

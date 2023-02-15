@@ -1,15 +1,15 @@
 (ns release.elastic-beanstalk
   "Code related to building and publishing Elastic Beanstalk artifacts."
-  (:require [cheshire.core :as json]
-            [clojure.core.cache :as cache]
-            [clojure.java.io :as io]
-            [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common
-             [http :as common.http]
-             [upload :as upload]]
-            [stencil loader
-             [core :as stencil]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.cache :as cache]
+   [clojure.java.io :as io]
+   [metabuild-common.core :as u]
+   [release.common :as c]
+   [release.common.http :as common.http]
+   [release.common.upload :as upload]
+   [stencil.core :as stencil]
+   [stencil.loader]))
 
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))

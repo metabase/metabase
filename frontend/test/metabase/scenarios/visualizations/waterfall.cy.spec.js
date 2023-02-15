@@ -10,7 +10,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -138,9 +138,7 @@ describe("scenarios > visualizations > waterfall", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         database: SAMPLE_DB_ID,
       },
@@ -154,7 +152,37 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByTestId("remove-count").click();
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 
-    cy.findByText("Add another series...").should("not.exist");
+    cy.findByText(/Add another/).should("not.exist");
+  });
+
+  it("should not allow you to choose X-axis breakout", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    cy.findByText("Visualization").click();
+    cy.findByTestId("Waterfall-button").click();
+
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Created At").click();
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Count").click();
+
+    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+
+    cy.findByText(/Add another/).should("not.exist");
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {

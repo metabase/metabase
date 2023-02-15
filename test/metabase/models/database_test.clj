@@ -1,25 +1,28 @@
 (ns metabase.models.database-test
-  (:require [cheshire.core :refer [decode encode]]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Permissions]]
-            [metabase.models.database :as database]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.task :as task]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :refer [decode encode]]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Permissions]]
+   [metabase.models.database :as database]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -52,7 +55,6 @@
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
                       :misfire-instruction (s/eq "DO_NOTHING")
-                      :state               (s/eq "NORMAL")
                       :may-fire-again?     (s/eq true)
                       :schedule            (s/eq "0 50 * * * ? *")
                       :final-fire-time     (s/eq nil)
@@ -64,6 +66,33 @@
           (db/delete! Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
+
+(deftest can-read-database-setting-test
+  (let [encode-decode (fn [obj] (decode (encode obj)))
+        pg-db         (mi/instance
+                       Database
+                       {:description nil
+                        :name        "testpg"
+                        :details     {}
+                        :settings    {:database-enable-actions true ; visibility: :public
+                                      :max-results-bare-rows 2000}  ; visibility: :authenticated
+                        :id          3})]
+    (testing "authenticated users should see settings with authenticated visibility"
+      (mw.session/with-current-user
+        (mt/user->id :rasta)
+        (is (= {"description" nil
+                "name"        "testpg"
+                "settings"    {"database-enable-actions" true
+                               "max-results-bare-rows"  2000}
+                "id"          3}
+               (encode-decode pg-db)))))
+    (testing "non-authenticated users shouldn't see settings with authenticated visibility"
+      (mw.session/with-current-user nil
+        (is (= {"description" nil
+                "name"        "testpg"
+                "settings"    {"database-enable-actions" true}
+                "id"          3}
+               (encode-decode pg-db)))))))
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
@@ -87,6 +116,7 @@
                                       :user                          "metabase"
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
+                        :settings    {:database-enable-actions true}
                         :id          3})
         bq-db         (mi/instance
                        Database
@@ -97,6 +127,7 @@
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
                                       :project-id           project-id}
+                        :settings    {:database-enable-actions true}
                         :id          2
                         :engine      :bigquery-cloud-sdk})]
     (testing "sensitive fields are redacted when database details are encoded"
@@ -105,12 +136,14 @@
             (mt/user->id :rasta)
             (is (= {"description" nil
                     "name"        "testpg"
+                    "settings"    {"database-enable-actions" true}
                     "id"          3}
                    (encode-decode pg-db)))
             (is (= {"description" nil
                     "name"        "testbq"
                     "id"          2
-                    "engine"      "bigquery-cloud-sdk"}
+                    "engine"      "bigquery-cloud-sdk"
+                    "settings"    {"database-enable-actions" true}}
                    (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
@@ -132,6 +165,7 @@
                                    "port"                          5432
                                    "password"                      "**MetabasePass**"
                                    "tunnel-host"                   "localhost"}
+                    "settings"    {"database-enable-actions" true}
                     "id"          3}
                    (encode-decode pg-db)))
             (is (= {"description" nil
@@ -142,6 +176,7 @@
                                    "use-jvm-timezone"     false
                                    "project-id"           project-id}
                     "id"          2
+                    "settings"    {"database-enable-actions" true}
                     "engine"      "bigquery-cloud-sdk"}
                    (encode-decode bq-db))))))))
 
@@ -215,9 +250,9 @@
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
                   (check-db-fn (db/select-one Database :id id) {:kind    :password
-                                              :source  :file-path
-                                              :version 2
-                                              :value   "/path/to/my/password-file"}))))
+                                                                :source  :file-path
+                                                                :version 2
+                                                                :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
@@ -254,3 +289,10 @@
              (serdes.hash/identity-hash db)))
       (is (= "b6f1a9e8"
              (serdes.hash/identity-hash db))))))
+
+(deftest create-database-with-null-details-test
+  (testing "Details should get a default value of {} if unspecified"
+    (mt/with-model-cleanup [Database]
+      (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
+        (is (partial= {:details {}}
+                      db))))))

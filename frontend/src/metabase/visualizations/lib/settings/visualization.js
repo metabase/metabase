@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { normalizeFieldRef } from "metabase/lib/dataset";
+import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
   getComputedSettings,
   getSettingsWidgets,
@@ -67,13 +67,13 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
-export function getComputedSettingsForSeries(series) {
+export function getComputedSettingsForSeries(series, extra = {}) {
   if (!series) {
     return {};
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  return getComputedSettings(settingsDefs, series, storedSettings);
+  return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 
 export function getPersistableDefaultSettingsForSeries(series) {
@@ -88,16 +88,19 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
+  extra = {},
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  const computedSettings = getComputedSettingsForSeries(series);
+  const computedSettings = getComputedSettingsForSeries(series, extra);
+
   return getSettingsWidgets(
     settingsDefs,
     storedSettings,
     computedSettings,
     series,
     onChangeSettings,
+    { isDashboard, ...extra },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

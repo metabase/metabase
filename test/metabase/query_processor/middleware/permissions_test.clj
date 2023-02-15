@@ -1,17 +1,19 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Card Collection Database Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Card Collection Database Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- check-perms [query]
   (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
@@ -223,12 +225,11 @@
                                :type                 (s/eq qp.error-type/missing-required-permissions)
                                s/Keyword             s/Any}
                     s/Keyword s/Any}
-                   (mt/suppress-output
-                     (qp/process-userland-query
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (mt/id :venues)
-                                  :limit        1}})))))))
+                   (qp/process-userland-query
+                    {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id :venues)
+                                :limit        1}}))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"

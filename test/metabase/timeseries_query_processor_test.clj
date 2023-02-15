@@ -1,10 +1,11 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (deftest limit-test
   (tqpt/test-timeseries-drivers
@@ -784,6 +785,6 @@
              (mt/formatted-rows [str 1.0]
                (mt/run-mbql-query checkins
                  {:aggregation [[:avg $venue_price]]
-                  :breakout    [[:field-id $venue_category_name]]
+                  :breakout    [[:field $venue_category_name nil]]
                   :order-by    [[:desc [:aggregation 0]]]
                   :limit       4})))))))

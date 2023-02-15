@@ -1,4 +1,3 @@
-const { patch } = require("cy2");
 const cypress = require("cypress");
 const arg = require("arg");
 
@@ -41,18 +40,6 @@ const runCypress = async (baseUrl, exitFunction) => {
     command: "yarn run clean-cypress-artifacts",
     message: "Removing the existing Cypress artifacts\n",
   });
-
-  /**
-   * We need to patch CYPRESS_API_URL with cy2 in order to use currents.dev dashboard for recording.
-   * This is applicable only when you explicitly use the `--record` flag, with the provided `--key`.
-   */
-  try {
-    patch("https://cy.currents.dev");
-  } catch (e) {
-    console.error("Failed to patch Cypress!\n", e);
-
-    await exitFunction(1);
-  }
 
   const defaultConfig = {
     browser: "chrome",

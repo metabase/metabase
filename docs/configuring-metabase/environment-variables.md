@@ -77,7 +77,32 @@ Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"{}"`
 
-JSON object of primary colors used in charts and throughout Metabase.
+JSON object of primary colors used in charts and throughout Metabase. Examples:
+
+To change the user interface colors:
+
+```
+{
+   "brand":"#ff003b",
+   "filter":"#FF003B",
+   "summarize":"#FF003B"
+}
+```
+
+To change the chart colors:
+
+```
+{
+   "accent0":"#FF0005",
+   "accent1":"#E6C367",
+   "accent2":"#B9E68A",
+   "accent3":"#8AE69F",
+   "accent4":"#8AE6E4",
+   "accent5":"#8AA2E6",
+   "accent6":"#B68AE6",
+   "accent7":"#E68AD0"
+}
+```
 
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
@@ -188,6 +213,13 @@ Default: `true`
 
 Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#mb_emoji_in_logs).
 
+### `MB_CONFIG_FILE_PATH`
+
+Type: string<br>
+Default: `config.yml`
+
+This feature requires the `advanced-config` feature flag on your token.
+
 ### `MB_CUSTOM_FORMATTING`
 
 Type: string<br>
@@ -219,9 +251,9 @@ When set to `false`, Metabase will print migrations needed to be done in the app
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 Type: integer<br>
-Default: `5000`
+Default: `10000`
 
-Timeout in milliseconds for connecting to the application database.
+Timeout in milliseconds for connecting to databases, both Metabase application database and data connections. In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the connections via tunnels have more overhead than connections without.
 
 ### `MB_DB_CONNECTION_URI`
 

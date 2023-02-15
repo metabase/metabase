@@ -1,11 +1,12 @@
 (ns build-drivers.create-uberjar
-  (:require [build-drivers.common :as c]
-            [clojure.java.io :as io]
-            [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.util.dir :as deps.dir]
-            [colorize.core :as colorize]
-            [hf.depstar.api :as depstar]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [clojure.java.io :as io]
+   [clojure.tools.deps.alpha :as deps]
+   [clojure.tools.deps.alpha.util.dir :as deps.dir]
+   [colorize.core :as colorize]
+   [hf.depstar.api :as depstar]
+   [metabuild-common.core :as u]))
 
 (defn driver-basis [driver edition]
   (let [edn (c/driver-edn driver edition)]

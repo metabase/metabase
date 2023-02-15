@@ -1,19 +1,21 @@
 (ns metabase.models.query.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common
+    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -116,7 +118,7 @@
   (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
          (query-perms/perms-set
           {:query    {:source-table (mt/id :venues)
-                      :filter       [:> [:field-id (mt/id :venues :id)] 10]}
+                      :filter       [:> [:field (mt/id :venues :id) nil] 10]}
            :type     :query
            :database (mt/id)})))
 
@@ -187,7 +189,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :checkins)
-                                          :order-by     [[:asc [:fk-> (mt/id :checkins :user_id) (mt/id :users :id)]]]}}}]
+                                          :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card)))))))

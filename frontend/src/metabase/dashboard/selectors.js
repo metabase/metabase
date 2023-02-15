@@ -4,18 +4,14 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
-import {
-  getDashboardUiParameters,
-  getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
-} from "metabase/parameters/utils/dashboards";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
 
@@ -132,6 +128,10 @@ export const getIsDirty = createSelector(
     ),
 );
 
+export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
+  return sidebar?.props?.dashcardId;
+});
+
 export const getEditingParameterId = createSelector([getSidebar], sidebar => {
   return sidebar.name === SIDEBAR_NAME.editParameter
     ? sidebar.props?.parameterId
@@ -200,34 +200,6 @@ export const getDefaultParametersById = createSelector(
     }, {}),
 );
 
-export const getDashboardParameterValuesSearchCache = state =>
-  state.dashboard.parameterValuesSearchCache;
-
-export const getDashboardParameterValuesCache = state => {
-  return {
-    get: ({ dashboardId, parameter, parameters, query }) => {
-      if (!parameter) {
-        return undefined;
-      }
-
-      const { parameterValuesSearchCache } = state.dashboard;
-
-      const filteringParameterValues = getFilteringParameterValuesMap(
-        parameter,
-        parameters,
-      );
-
-      const cacheKey = getParameterValuesSearchKey({
-        dashboardId,
-        parameterId: parameter.id,
-        query,
-        filteringParameterValues,
-      });
-      return parameterValuesSearchCache[cacheKey];
-    },
-  };
-};
-
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
@@ -236,22 +208,4 @@ export const getIsHeaderVisible = createSelector(
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
-);
-
-const getMissingActionParametersModalState = state =>
-  state.dashboard.missingActionParameters;
-
-export const getActionParametersModalAction = createSelector(
-  [getDashboardComplete, getMissingActionParametersModalState],
-  (dashboard, missingActionParametersModalState) => {
-    const dashcardId = missingActionParametersModalState?.dashcardId;
-    const dashcard = dashboard?.ordered_cards.find(dc => dc.id === dashcardId);
-    return dashcard?.action;
-  },
-);
-
-export const getActionParametersModalFormProps = createSelector(
-  [getMissingActionParametersModalState],
-  missingActionParametersModalState =>
-    missingActionParametersModalState?.props || {},
 );

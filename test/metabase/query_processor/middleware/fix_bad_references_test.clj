@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.fix-bad-references-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
+   [metabase.test :as mt]))
 
 (defn- fix-bad-refs [query]
   (mt/with-everything-store

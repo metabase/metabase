@@ -1,18 +1,15 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
+import { loadMetadataForCard } from "metabase/questions/actions";
 
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
   getFirstQueryResult,
@@ -27,7 +24,6 @@ import { setIsShowingTemplateTagsEditor } from "../native";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
-import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 function hasNewColumns(question: Question, queryResult: Dataset) {
@@ -71,9 +67,7 @@ function checkShouldRerunPivotTableQuestion({
   );
 }
 
-type NextTemplateTagEditorState = "visible" | "hidden" | undefined;
-
-function getNextTemplateTagEditorState({
+function shouldTemplateTagEditorBeVisible({
   currentQuestion,
   newQuestion,
   isVisible,
@@ -83,26 +77,24 @@ function getNextTemplateTagEditorState({
   newQuestion: Question;
   isVisible: boolean;
   queryBuilderMode: QueryBuilderMode;
-}): NextTemplateTagEditorState {
-  const currentQuery = currentQuestion?.query() as NativeQuery;
-  const nextQuery = newQuestion.query() as NativeQuery;
-  const previousTags = currentQuery.templateTagsWithoutSnippets?.() || [];
-  const nextTags = nextQuery.templateTagsWithoutSnippets?.() || [];
-
+}): boolean {
+  // variable tags are not supported by models, so don't change the visibility
+  if (queryBuilderMode === "dataset") {
+    return isVisible;
+  }
+  const previousTags = currentQuestion?.isNative()
+    ? (currentQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
+  const nextTags = newQuestion.isNative()
+    ? (newQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
   if (nextTags.length > previousTags.length) {
-    if (queryBuilderMode !== "dataset") {
-      return "visible";
-    }
-    return nextTags.every(isSupportedTemplateTagForModel)
-      ? "visible"
-      : "hidden";
+    return true;
+  } else if (nextTags.length === 0) {
+    return false;
+  } else {
+    return isVisible;
   }
-
-  if (nextTags.length === 0 && isVisible) {
-    return "hidden";
-  }
-
-  return;
 }
 
 type UpdateQuestionOpts = {
@@ -206,8 +198,7 @@ export const updateQuestion = (
     const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
     if (newDatasetQuery.type === "native") {
-      const templateTags = getTemplateTagsForParameters(newQuestion.card());
-      const parameters = getTemplateTagParameters(templateTags);
+      const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
     }
 
@@ -222,14 +213,14 @@ export const updateQuestion = (
 
     if (currentQuestion?.isNative?.() || newQuestion.isNative()) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());
-      const nextState = getNextTemplateTagEditorState({
+      const shouldBeVisible = shouldTemplateTagEditorBeVisible({
         currentQuestion,
         newQuestion,
         queryBuilderMode,
         isVisible,
       });
-      if (nextState) {
-        dispatch(setIsShowingTemplateTagsEditor(nextState === "visible"));
+      if (isVisible !== shouldBeVisible) {
+        dispatch(setIsShowingTemplateTagsEditor(shouldBeVisible));
       }
     }
 

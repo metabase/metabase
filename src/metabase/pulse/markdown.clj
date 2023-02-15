@@ -1,20 +1,25 @@
 (ns metabase.pulse.markdown
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [metabase.public-settings :as public-settings])
-  (:import [com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock
-            HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
-            HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
-            Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
-           com.vladsch.flexmark.ext.autolink.AutolinkExtension
-           [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
-           [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
-           com.vladsch.flexmark.parser.Parser
-           [com.vladsch.flexmark.util.ast Document Node]
-           com.vladsch.flexmark.util.data.MutableDataSet
-           java.net.URI))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u])
+  (:import
+   (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
+                             Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
+                             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList
+                             OrderedListItem Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak)
+   (com.vladsch.flexmark.ext.autolink AutolinkExtension)
+   (com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory)
+   (com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus)
+   (com.vladsch.flexmark.parser Parser)
+   (com.vladsch.flexmark.util.ast Document Node)
+   (com.vladsch.flexmark.util.data MutableDataSet)
+   (java.net URI)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Markdown parsing                                                  |
@@ -111,7 +116,7 @@
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
-                              (get (str/lower-case (str (.getReference this))))
+                              (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
 
@@ -120,7 +125,7 @@
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
-                              (get (str/lower-case (str (.getReference this))))
+                              (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
 

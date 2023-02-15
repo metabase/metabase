@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -10,20 +10,18 @@ import Questions, {
   getIcon as getQuestionIcon,
 } from "metabase/entities/questions";
 
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
-
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
-import type Question from "metabase-lib/lib/Question";
+import type Question from "metabase-lib/Question";
 
-import { isQuestionUsingModel } from "./utils";
 import {
-  CardListItem,
-  CardTitle,
   EmptyStateContainer,
   EmptyStateTitle,
-} from "./ModelUsageDetails.styled";
+  EmptyStateActionContainer,
+} from "../EmptyState.styled";
+
+import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
 interface OwnProps {
   model: Question;
@@ -36,33 +34,29 @@ interface EntityLoaderProps {
 type Props = OwnProps & EntityLoaderProps;
 
 function ModelUsageDetails({ model, cards }: Props) {
-  const modelConsumers = useMemo(() => {
-    const modelCard = model.card() as Card;
-    const modelId = modelCard.id;
-    const modelTableId = getQuestionVirtualTableId(modelCard);
-    return cards.filter(card =>
-      isQuestionUsingModel(card, modelId, modelTableId),
-    );
-  }, [model, cards]);
-
-  if (modelConsumers.length === 0) {
+  if (cards.length === 0) {
     return (
       <EmptyStateContainer>
         <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
-        <Button
-          as={Link}
-          to={model.composeDataset().getUrl()}
-          icon="add"
-        >{t`Create a new question`}</Button>
+        <EmptyStateActionContainer>
+          <Button
+            as={Link}
+            to={model.composeDataset().getUrl()}
+            icon="add"
+          >{t`Create a new question`}</Button>
+        </EmptyStateActionContainer>
       </EmptyStateContainer>
     );
   }
 
   return (
     <ul>
-      {modelConsumers.map(card => (
+      {cards.map(card => (
         <li key={card.id}>
-          <CardListItem to={Urls.question(card as LegacyCardType)}>
+          <CardListItem
+            to={Urls.question(card as LegacyCardType)}
+            aria-label={card.name}
+          >
             <Icon name={getQuestionIcon(card).name} />
             <CardTitle>{card.name}</CardTitle>
           </CardListItem>
@@ -74,8 +68,8 @@ function ModelUsageDetails({ model, cards }: Props) {
 
 function getCardListingQuery(state: State, { model }: OwnProps) {
   return {
-    f: "database",
-    model_id: model.databaseId(),
+    f: "using_model",
+    model_id: model.id(),
   };
 }
 

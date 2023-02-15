@@ -1,16 +1,17 @@
 (ns metabase.models.humanization-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.table :refer [Table]]
-            [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.table :refer [Table]]
+   [metabase.test.util :as tu]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (deftest simple-humanization-test
   (doseq [[input expected] {nil                         nil
                             ""                          nil
-                            "_"                         ""
-                            "-"                         ""
+                            "_"                         "_"
+                            "-"                         "-"
                             "_id"                       "ID"
                             "uid"                       "UID"
                             "uuid"                      "UUID"

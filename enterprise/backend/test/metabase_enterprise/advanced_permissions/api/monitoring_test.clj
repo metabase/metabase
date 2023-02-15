@@ -1,10 +1,11 @@
-(ns metabase-enterprise.advanced-permissions.api.monitoring-test
+(ns ^:mb/once metabase-enterprise.advanced-permissions.api.monitoring-test
   "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [TaskHistory]]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [TaskHistory]]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]))
 
 (deftest task-test
   (testing "/api/task/*"
@@ -77,12 +78,12 @@
               (get-bug-report-detail user 403)
               (get-db-connection-info user 403))
 
-          (testing "allowed if user's group has `monitoring` permission"
-            (perms/grant-application-permissions! group :monitoring)
-            (get-logs user 200)
-            (get-stats user 200)
-            (get-bug-report-detail user 200)
-            (get-db-connection-info user 200))))))))
+           (testing "allowed if user's group has `monitoring` permission"
+             (perms/grant-application-permissions! group :monitoring)
+             (get-logs user 200)
+             (get-stats user 200)
+             (get-bug-report-detail user 200)
+             (get-db-connection-info user 200))))))))
 
 (deftest persistence-test
   (testing "/api/persist"

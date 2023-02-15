@@ -1,16 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-
-// import TimeseriesGroupingWidget
-//     from "metabase/modes/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
-
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
-import { getDefaultDrills } from "../drill";
-
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
+import DefaultMode from "./DefaultMode";
 
 const TimeseriesModeFooter = props => {
   const onChange = question => {
@@ -34,11 +29,7 @@ const TimeseriesModeFooter = props => {
 
 const TimeseriesMode = {
   name: "timeseries",
-  drills: () => [
-    PivotByCategoryDrill,
-    PivotByLocationDrill,
-    ...getDefaultDrills(),
-  ],
+  drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DefaultMode.drills],
   ModeFooter: TimeseriesModeFooter,
 };
 

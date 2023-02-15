@@ -1,6 +1,7 @@
 (ns metabuild-common.env
-  (:require [clojure.string :as str]
-            [environ.core :as env]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]))
 
 (defn env-or-throw
   "Fetch an env var value or throw an Exception if it is unset."

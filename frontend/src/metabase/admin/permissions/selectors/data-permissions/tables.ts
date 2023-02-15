@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { push } from "react-router-redux";
 
 import {

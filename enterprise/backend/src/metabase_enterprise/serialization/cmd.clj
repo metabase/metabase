@@ -1,31 +1,35 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase-enterprise.serialization.dump :as dump]
-            [metabase-enterprise.serialization.load :as load]
-            [metabase-enterprise.serialization.v2.extract :as v2.extract]
-            [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
-            [metabase-enterprise.serialization.v2.load :as v2.load]
-            [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
-            [metabase.db :as mdb]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.plugins :as plugins]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase-enterprise.serialization.dump :as dump]
+   [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
+   [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
+   [metabase.db :as mdb]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.plugins :as plugins]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private Mode
   (su/with-api-error-message (s/enum :skip :update)
@@ -202,3 +206,10 @@
   (if v2
     (v2-dump path opts)
     (v1-dump path state user opts)))
+
+(defn seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them.
+
+  Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
+  [options]
+  (v2.seed-entity-ids/seed-entity-ids! options))

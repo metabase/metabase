@@ -1,22 +1,26 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PulseCard :pulse_card)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseCard)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:entity_id true})})
+(mi/define-methods
+ PulseCard
+ {:properties (constantly {::mi/entity-id true})})
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])})
+(defmethod serdes.hash/identity-hash-fields PulseCard
+  [_pulse-card]
+  [(serdes.hash/hydrated-hash :pulse)
+   (serdes.hash/hydrated-hash :card)
+   :position])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"
@@ -31,7 +35,7 @@
   {:card_id                      su/IntGreaterThanZero
    :pulse_id                     su/IntGreaterThanZero
    :dashboard_card_id            su/IntGreaterThanZero
-   (s/optional-key :position)    (s/maybe su/NonNegativeInt)
+   (s/optional-key :position)    (s/maybe su/IntGreaterThanOrEqualToZero)
    (s/optional-key :include_csv) (s/maybe s/Bool)
    (s/optional-key :include_xls) (s/maybe s/Bool)})
 
@@ -66,12 +70,13 @@
   (cond-> (serdes.base/load-xform-basics card)
     true                      (update :card_id            serdes.util/import-fk 'Card)
     true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
+    true                      (dissoc :dashboard_id)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
 (defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
-    (if dashboard_card_id
-      (conj base [{:model "DashboardCard" :id dashboard_card_id}])
+    (if-let [[dash-id _] dashboard_card_id]
+      (conj base [{:model "Dashboard" :id dash-id}])
       base)))

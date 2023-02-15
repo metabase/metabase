@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";

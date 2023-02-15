@@ -12,15 +12,15 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
-import Question from "./lib/Question";
-import NativeQuery from "./lib/queries/NativeQuery";
-import StructuredQuery from "./lib/queries/StructuredQuery";
-import Query from "./lib/queries/Query";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Query from "metabase-lib/queries/Query";
 
-type NativeSavedCard = SavedCard<NativeDatasetQuery>;
-type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
-type StructuredSavedCard = SavedCard<StructuredDatasetQuery>;
-type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
+export type NativeSavedCard = SavedCard<NativeDatasetQuery>;
+export type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
+export type StructuredSavedCard = SavedCard<StructuredDatasetQuery>;
+export type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
 
 const BASE_GUI_QUESTION: StructuredUnsavedCard = {
   display: "table",
@@ -52,6 +52,8 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: "",
   collection_id: null,
+  can_write: true,
+  result_metadata: [],
 };
 
 export function getQuestion(card: Partial<Card>) {

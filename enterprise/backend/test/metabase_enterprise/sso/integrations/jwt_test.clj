@@ -1,20 +1,21 @@
 (ns metabase-enterprise.sso.integrations.jwt-test
-  (:require [buddy.sign.jwt :as jwt]
-            [buddy.sign.util :as buddy-util]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
-            [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
-            [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
+   [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -30,8 +31,10 @@
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (deftest sso-prereqs-test
-  (testing "SSO requests fail if JWT hasn't been enabled"
-    (mt/with-temporary-setting-values [jwt-enabled false]
+  (testing "SSO requests fail if JWT hasn't been configured or enabled"
+    (mt/with-temporary-setting-values [jwt-enabled               false
+                                       jwt-identity-provider-uri nil
+                                       jwt-shared-secret         nil]
       (saml-test/with-valid-premium-features-token
         (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))
@@ -43,9 +46,17 @@
 
   (testing "SSO requests fail if JWT is enabled but hasn't been configured"
     (saml-test/with-valid-premium-features-token
-      (mt/with-temporary-setting-values [jwt-enabled true
+      (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri nil]
-        (is (= "JWT SSO has not been enabled and/or configured"
+        (is (= "SSO has not been enabled and/or configured"
+               (saml-test/client :get 400 "/auth/sso"))))))
+
+  (testing "SSO requests fail if JWT is configured but hasn't been enabled"
+    (saml-test/with-valid-premium-features-token
+      (mt/with-temporary-setting-values [jwt-enabled               false
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         default-jwt-secret]
+        (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))))
 
   (testing "The JWT Shared Secret must also be included for SSO to be configured"
@@ -53,7 +64,7 @@
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         nil]
-        (is (= "JWT SSO has not been enabled and/or configured"
+        (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso")))))))
 
 (defn- call-with-default-jwt-config [f]

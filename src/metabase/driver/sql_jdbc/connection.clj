@@ -1,22 +1,26 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [metabase.util.ssh :as ssh]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.DataSources
-           javax.sql.DataSource))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.config :as config]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [metabase.util.ssh :as ssh]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (com.mchange.v2.c3p0 DataSources)
+   (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -52,6 +56,25 @@
   {:arglists '([driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti data-source-name
+  "Name, from connection details, to use to identify a database in the c3p0 `dataSourceName`. This is used for so the
+  DataSource has a useful identifier for debugging purposes.
+
+  The default method uses the first non-nil value of the keys `:db`, `:dbname`, `:sid`, or `:catalog`; implement a new
+  method if your driver does not have any of these keys in its details."
+  {:arglists '([driver details]), :added "0.45.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod data-source-name :default
+  [_driver details]
+  ((some-fn :db
+            :dbname
+            :sid
+            :service-name
+            :catalog)
+   details))
 
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
@@ -89,14 +112,11 @@
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
-   ;; and name; to find a "name" in the details, just look for the first key that is set and could make sense, rather
-   ;; than introducing a new driver level multimethod just for this
-   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (->> database
-                                                                                               :details
-                                                                                               ((some-fn :db
-                                                                                                         :dbname
-                                                                                                         :sid
-                                                                                                         :catalog))))})
+   ;; and name from the details
+   "dataSourceName"               (format "db-%d-%s-%s"
+                                          (u/the-id database)
+                                          (name driver)
+                                          (data-source-name driver (:details database)))})
 
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."

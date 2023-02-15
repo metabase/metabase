@@ -1,10 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
+import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-
 import {
   Content,
   Description,
@@ -17,7 +16,7 @@ ModelEducationalModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-const EDUCATION_URL = "https://metabase.com/learn/getting-started/models";
+const EDUCATION_URL = MetabaseSettings.learnUrl("getting-started/models");
 
 export function ModelEducationalModal({ isOpen, onClose }) {
   return (

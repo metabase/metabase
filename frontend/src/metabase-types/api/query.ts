@@ -1,5 +1,7 @@
-import { DatabaseId } from "./database";
-import { TableId } from "./table";
+import type { TemplateTags } from "../types/Query";
+import type { DatabaseId } from "./database";
+import type { FieldId } from "./field";
+import type { TableId } from "./table";
 
 export interface StructuredQuery {
   "source-table"?: TableId;
@@ -7,6 +9,7 @@ export interface StructuredQuery {
 
 export interface NativeQuery {
   query: string;
+  "template-tags"?: TemplateTags;
 }
 
 export interface StructuredDatasetQuery {
@@ -40,3 +43,69 @@ export type DatetimeUnit =
   | "quarter"
   | "quarter-of-year"
   | "year";
+
+export interface ReferenceOptions {
+  binning?: BinningOptions;
+  "temporal-unit"?: DatetimeUnit;
+  "join-alias"?: string;
+  "base-type"?: string;
+}
+
+type BinningOptions =
+  | DefaultBinningOptions
+  | NumBinsBinningOptions
+  | BinWidthBinningOptions;
+
+interface DefaultBinningOptions {
+  strategy: "default";
+}
+
+interface NumBinsBinningOptions {
+  strategy: "num-bins";
+  "num-bins": number;
+}
+
+interface BinWidthBinningOptions {
+  strategy: "bin-width";
+  "bin-width": number;
+}
+
+export type ReferenceOptionsKeys =
+  | "source-field"
+  | "base-type"
+  | "join-alias"
+  | "temporal-unit"
+  | "binning";
+
+export type ColumnName = string;
+export type FieldReference = [
+  "field",
+  FieldId | ColumnName,
+  ReferenceOptions | null,
+];
+
+export type ExpressionName = string;
+export type ExpressionReference = [
+  "expression",
+  ExpressionName,
+  ReferenceOptions | null,
+];
+
+export type AggregationIndex = number;
+export type AggregationReference = [
+  "aggregation",
+  AggregationIndex,
+  ReferenceOptions | null,
+];
+
+export type TagName = string;
+export type TemplateTagReference = ["template-tag", TagName];
+
+export type DimensionReferenceWithOptions =
+  | FieldReference
+  | ExpressionReference
+  | AggregationReference;
+
+export type DimensionReference =
+  | DimensionReferenceWithOptions
+  | TemplateTagReference;

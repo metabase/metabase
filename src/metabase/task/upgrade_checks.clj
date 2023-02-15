@@ -1,21 +1,27 @@
 (ns metabase.task.upgrade-checks
   "Contains a Metabase task which periodically checks for the availability of new Metabase versions."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.task :as task]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.task :as task]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- get-version-info []
   (let [version-info-url-key  (if config/ee-available? :mb-version-info-ee-url :mb-version-info-url)
         version-info-url      (config/config-str version-info-url-key)
-        {:keys [status body]} (http/get version-info-url {:content-type "application/json"})]
+        {:keys [status body]} (http/get version-info-url (merge
+                                                          {:content-type "application/json"}
+                                                          (when config/is-prod?
+                                                            {:query-params {"instance" (public-settings/site-uuid-for-version-info-fetching)}})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/parse-string body keyword)))

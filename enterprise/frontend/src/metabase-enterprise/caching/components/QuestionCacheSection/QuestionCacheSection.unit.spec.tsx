@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import QuestionCacheSection, {
   QuestionCacheSectionProps,
 } from "./QuestionCacheSection";

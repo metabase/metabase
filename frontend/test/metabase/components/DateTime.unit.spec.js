@@ -1,11 +1,11 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
+  default_date_style,
+  default_time_style,
+} from "cljs/metabase.shared.formatting.constants";
 import MetabaseSettings from "metabase/lib/settings";
 
 import DateTime from "metabase/components/DateTime";
@@ -14,19 +14,19 @@ describe("DateTime", () => {
   const TEST_DATE = "2021-06-08T14:40:10";
 
   function setup(props = {}) {
-    const utils = render(
+    const { rerender } = render(
       <DateTime {...props} value={TEST_DATE} data-testid="date-time" />,
     );
-    const node = utils.getByTestId("date-time");
+    const node = screen.getByTestId("date-time");
 
     function refresh() {
-      utils.rerender(
+      rerender(
         <DateTime {...props} value={TEST_DATE} data-testid="date-time" />,
       );
     }
 
     return {
-      ...utils,
+      ...screen,
       node,
       refresh,
     };
@@ -39,8 +39,8 @@ describe("DateTime", () => {
   }
 
   function getExpectedFormat({
-    date_style = DEFAULT_DATE_STYLE,
-    time_style = DEFAULT_TIME_STYLE,
+    date_style = default_date_style,
+    time_style = default_time_style,
   } = {}) {
     return moment(TEST_DATE).format(`${date_style}, ${time_style}`);
   }

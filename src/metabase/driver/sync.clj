@@ -1,7 +1,11 @@
 (ns metabase.driver.sync
   "General functions and utilities for sync operations across multiple drivers."
-  (:require [clojure.string :as str])
-  (:import java.util.regex.Pattern))
+  (:require
+   [clojure.string :as str])
+  (:import
+   (java.util.regex Pattern)))
+
+(set! *warn-on-reflection* true)
 
 (defn- schema-pattern->re-pattern
   "Converts a schema pattern, as entered in the UI, into regex pattern suitable to be passed into [[re-pattern]].  The

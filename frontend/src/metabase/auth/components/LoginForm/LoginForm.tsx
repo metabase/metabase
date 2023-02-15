@@ -1,0 +1,84 @@
+import React, { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormCheckBox from "metabase/core/components/FormCheckBox";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
+import { LoginData } from "../../types";
+
+const LOGIN_SCHEMA = Yup.object().shape({
+  username: Yup.string()
+    .required(Errors.required)
+    .when("$isLdapEnabled", {
+      is: false,
+      then: schema => schema.email(Errors.email),
+    }),
+  password: Yup.string().required(Errors.required),
+  remember: Yup.boolean(),
+});
+
+export interface LoginFormProps {
+  isLdapEnabled: boolean;
+  hasSessionCookies: boolean;
+  onSubmit: (data: LoginData) => void;
+}
+
+const LoginForm = ({
+  isLdapEnabled,
+  hasSessionCookies,
+  onSubmit,
+}: LoginFormProps): JSX.Element => {
+  const initialValues = useMemo(
+    () => ({
+      username: "",
+      password: "",
+      remember: !hasSessionCookies,
+    }),
+    [hasSessionCookies],
+  );
+
+  const validationContext = useMemo(
+    () => ({
+      isLdapEnabled,
+    }),
+    [isLdapEnabled],
+  );
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={LOGIN_SCHEMA}
+      validationContext={validationContext}
+      onSubmit={onSubmit}
+    >
+      <Form>
+        <FormInput
+          name="username"
+          title={
+            isLdapEnabled ? t`Username or email address` : t`Email address`
+          }
+          type={isLdapEnabled ? "input" : "email"}
+          placeholder="nicetoseeyou@email.com"
+          autoFocus
+        />
+        <FormInput
+          name="password"
+          title={t`Password`}
+          type="password"
+          placeholder={t`Shhh...`}
+        />
+        {!hasSessionCookies && (
+          <FormCheckBox name="remember" title={t`Remember me`} />
+        )}
+        <FormSubmitButton title={t`Sign in`} primary fullWidth />
+        <FormErrorMessage />
+      </Form>
+    </FormProvider>
+  );
+};
+
+export default LoginForm;

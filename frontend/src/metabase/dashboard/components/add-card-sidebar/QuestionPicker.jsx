@@ -49,19 +49,20 @@ function QuestionPicker({
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
 
-  const handleSearchTextChange = value => setSearchText(value);
+  const handleSearchTextChange = e => setSearchText(e.target.value);
 
   const collections = (collection && collection.children) || [];
 
   return (
     <QuestionPickerRoot>
       <SearchInput
+        fullWidth
         autoFocus
-        hasClearButton
         placeholder={t`Search…`}
         value={searchText}
-        onChange={handleSearchTextChange}
         icon={<Icon name="search" size={16} />}
+        onResetClick={() => setSearchText("")}
+        onChange={handleSearchTextChange}
       />
 
       {!debouncedSearchText && (

@@ -1,6 +1,7 @@
 (ns metabase.test.mock.moviedb
   "A simple relational schema based mocked for testing. 4 tables w/ some FKs."
-  (:require [metabase.driver :as driver]))
+  (:require
+   [metabase.driver :as driver]))
 
 ;; TODO - this whole fake driver is used in exactly one test. Can definitely remove a lot of the stuff here since it's
 ;; not used.

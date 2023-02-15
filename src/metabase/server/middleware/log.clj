@@ -1,22 +1,27 @@
 (ns metabase.server.middleware.log
   "Ring middleware for logging API requests/responses."
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.async.util :as async.u]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.server :as server]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           com.mchange.v2.c3p0.PoolBackedDataSource
-           metabase.async.streaming_response.StreamingResponse
-           org.eclipse.jetty.util.thread.QueuedThreadPool))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.async.util :as async.u]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver.sql-jdbc.execute.diagnostic
+    :as sql-jdbc.execute.diagnostic]
+   [metabase.server :as server]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.util.thread QueuedThreadPool)))
+
+(set! *warn-on-reflection* true)
 
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
 ;; looks like
@@ -36,7 +41,7 @@
     {:keys [request-method uri] :or {request-method :XXX}} :request
     {:keys [status]} :response}]
   (str
-   (format "%s %s %d" (str/upper-case (name request-method)) uri status)
+   (format "%s %s %d" (u/upper-case-en (name request-method)) uri status)
    (when async-status
      (format " [%s: %s]" (trs "ASYNC") async-status))))
 
@@ -101,7 +106,7 @@
 ;; `log-info` below takes an info map and actually writes the log message, using the format functions from the section
 ;; above to create the combined message.
 
-;; `log-options` determines som other formating options, such as the color of the message. The first logger out of the
+;; `log-options` determines some other formatting options, such as the color of the message. The first logger out of the
 ;; list below whose `:status-pred` is true will be used to log the API request/response.
 ;;
 ;; `include-stats?` here is to avoid incurring the cost of collecting the Jetty stats and concatenating the extra

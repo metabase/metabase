@@ -4,30 +4,36 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
-  (:require [clojure.core.async :as a]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin :as p])
-  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           javax.sql.DataSource))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute.diagnostic
+    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [potemkin :as p])
+  (:import
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
@@ -39,12 +45,12 @@
 
   1. Calls util fn `datasource` to get a c3p0 connection pool DataSource
   2. Calls `.getConnection()` the normal way
-  3. Executes `set-timezone-sql` if implemented by the driver.
+  3. Executes [[set-timezone-sql]] if implemented by the driver.
 
   `timezone-id` will be `nil` if a `report-timezone` Setting is not currently set; don't change the session time zone
   if this is the case.
 
-  For drivers that support session timezones, the default implementation and `set-timezone-sql` should be considered
+  For drivers that support session timezones, the default implementation and [[set-timezone-sql]] should be considered
   deprecated in favor of implementing `connection-with-timezone` directly. This way you can set the session timezone
   in the most efficient manner, e.g. only setting it if needed (if there's an easy way for you to check this), or by
   setting it as a parameter of the connection itself (the default connection pools are automatically flushed when
@@ -450,7 +456,9 @@
               (or (old-read-column-thunk driver rs rsmeta i)
                   (read-column-thunk driver rs rsmeta (long i))))]
     (log-readers driver rsmeta fns)
-    (let [thunk (apply juxt fns)]
+    (let [thunk (if (seq fns)
+                  (apply juxt fns)
+                  (constantly []))]
       (fn row-thunk* []
         (when (.next rs)
           (thunk))))))
@@ -499,7 +507,10 @@
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                 {:driver driver
+                                                  :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                  :params params
+                                                  :type   qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]

@@ -1,4 +1,4 @@
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 export const getDatabase = (
   metadata: Metadata,

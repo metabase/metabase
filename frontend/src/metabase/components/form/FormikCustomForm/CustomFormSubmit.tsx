@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 
@@ -13,6 +12,9 @@ export interface CustomFormSubmitProps {
   fullWidth?: boolean;
 }
 
+/**
+ * @deprecated
+ */
 function CustomFormSubmit(props: CustomFormSubmitProps) {
   const {
     submitting,

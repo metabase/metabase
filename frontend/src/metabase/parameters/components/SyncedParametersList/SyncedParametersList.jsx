@@ -2,12 +2,13 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
   editingParameter: PropTypes.object,
+  question: PropTypes.object,
   dashboard: PropTypes.object,
 
   className: PropTypes.string,
@@ -18,7 +19,7 @@ const propTypes = {
   isEditing: PropTypes.bool,
   commitImmediately: PropTypes.bool,
 
-  setParameterValue: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
   setEditingParameter: PropTypes.func,
 };
@@ -26,6 +27,7 @@ const propTypes = {
 export function SyncedParametersList({
   parameters,
   editingParameter,
+  question,
   dashboard,
 
   className,
@@ -54,6 +56,7 @@ export function SyncedParametersList({
     <ParametersList
       className={className}
       parameters={parameters}
+      question={question}
       dashboard={dashboard}
       editingParameter={editingParameter}
       isFullscreen={isFullscreen}

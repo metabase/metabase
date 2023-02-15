@@ -36,6 +36,7 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 - User accounts or settings
 - Alerts on saved questions
 - Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
+- Archived items
 
 ### Before creating or loading a dump
 

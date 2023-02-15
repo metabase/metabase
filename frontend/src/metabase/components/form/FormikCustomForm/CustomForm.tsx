@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { Form } from "formik";
 
 import {
@@ -8,11 +7,7 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import {
-  BaseFormProps,
-  OptionalFormViewProps,
-  FormLegacyContext,
-} from "./types";
+import { BaseFormProps, OptionalFormViewProps } from "./types";
 
 import CustomFormField, { CustomFormFieldProps } from "./CustomFormField";
 import CustomFormFooter, { CustomFormFooterProps } from "./CustomFormFooter";
@@ -40,6 +35,9 @@ export interface CustomFormProps<Values extends BaseFieldValues>
     | ((props: FormRenderProps<Values>) => JSX.Element);
 }
 
+/**
+ * @deprecated
+ */
 function CustomForm<Values extends BaseFieldValues>(
   props: CustomFormProps<Values>,
 ) {

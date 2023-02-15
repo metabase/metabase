@@ -27,12 +27,12 @@ export const calculateMargin = (
   xTickWidth: number,
   labels: ChartSettings["labels"],
   labelFontSize: number,
-  hasMargin?: boolean,
+  hasTopMargin?: boolean,
 ) => {
   const minHorizontalMargin = xTickWidth / 2;
 
   return {
-    top: hasMargin ? MARGIN + CHART_PADDING : CHART_PADDING,
+    top: hasTopMargin ? MARGIN + CHART_PADDING : CHART_PADDING,
     left: calculateSideMargin(
       leftYTickWidth,
       labelFontSize,

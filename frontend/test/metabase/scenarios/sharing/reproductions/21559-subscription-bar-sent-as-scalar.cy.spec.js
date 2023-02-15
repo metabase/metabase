@@ -31,7 +31,7 @@ const q2Details = {
   display: "scalar",
 };
 
-describe.skip("issue 21559", { tags: "@external" }, () => {
+describe("issue 21559", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/pulse/test").as("emailSent");
     restore();

@@ -347,10 +347,10 @@ export default class Activity extends Component {
         description.summary = t`removed the metric ` + item.details.name;
         break;
       case "pulse-create":
-        description.summary = t`created a pulse`;
+        description.summary = t`created a subscription`;
         break;
       case "pulse-delete":
-        description.summary = t`deleted a pulse`;
+        description.summary = t`deleted a subscription`;
         break;
       case "segment-create":
         if (item.model_exists) {

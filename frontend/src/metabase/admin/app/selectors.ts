@@ -1,13 +1,14 @@
 import { isDeprecatedEngine } from "metabase/lib/engine";
-import { Database } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import { getSetting } from "metabase/selectors/settings";
+import type { Database } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 interface Props {
   databases?: Database[];
 }
 
 export const hasSlackBot = (state: State): boolean => {
-  return state.settings.values["slack-token"] != null;
+  return getSetting(state, "slack-token") != null;
 };
 
 export const isNoticeEnabled = (state: State): boolean => {

@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 import { CategoryFingerprint } from "./CategoryFingerprint";
 
@@ -57,7 +57,7 @@ describe("CategoryFingerprint", () => {
 
     it("should not show a distinct count when the fingerprint value is unavailable", () => {
       const { container } = setup({ field: categoryField });
-      expect(container.firstChild).toBeNull();
+      expect(container).toBeEmptyDOMElement();
     });
 
     it("should show field values if for whatever reason some are present", () => {
@@ -118,7 +118,7 @@ describe("CategoryFingerprint", () => {
         field: categoryField,
         fieldValues: ["foo"],
       });
-      expect(container.textContent).toEqual("foo");
+      expect(container).toHaveTextContent("foo");
     });
   });
 });

@@ -1,15 +1,15 @@
 (ns release.draft-release
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.cache :as cache]
-            [clojure.java.io :as io]
-            [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common
-             [github :as github]
-             [hash :as hash]]
-            [stencil loader
-             [core :as stencil]]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.cache :as cache]
+   [clojure.java.io :as io]
+   [metabuild-common.core :as u]
+   [release.common :as c]
+   [release.common.github :as github]
+   [release.common.hash :as hash]
+   [stencil.core :as stencil]
+   [stencil.loader]))
 
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))

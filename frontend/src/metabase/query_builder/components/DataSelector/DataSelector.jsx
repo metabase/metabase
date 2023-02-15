@@ -5,12 +5,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  isVirtualCardId,
-  getQuestionVirtualTableId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase/lib/saved-questions";
-
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import Icon from "metabase/components/Icon";
@@ -18,7 +12,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getSchemaName } from "metabase/lib/schema";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -28,7 +21,13 @@ import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getHasDataAccess } from "metabase/new_query/selectors";
+import { getHasDataAccess } from "metabase/selectors/data";
+import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import {
+  isVirtualCardId,
+  getQuestionVirtualTableId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/metadata/utils/saved-questions";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -44,6 +43,7 @@ import {
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
+  TableSearchContainer,
 } from "./DataSelector.styled";
 
 import { DATA_BUCKET } from "./constants";
@@ -182,6 +182,10 @@ class DataSelectorInner extends Component {
 }
 
 const DataSelector = _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+    listName: "allDatabases",
+  }),
   Search.loadList({
     // If there is at least one dataset,
     // we want to display a slightly different data picker view
@@ -210,7 +214,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(state),
+      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
     }),
     {
       fetchDatabases: databaseQuery =>
@@ -248,7 +252,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   static propTypes = {
-    selectedDataBucketId: PropTypes.number,
+    selectedDataBucketId: PropTypes.string,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
@@ -284,6 +288,7 @@ export class UnconnectedDataSelector extends Component {
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
     search: PropTypes.arrayOf(PropTypes.object),
+    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -436,6 +441,10 @@ export class UnconnectedDataSelector extends Component {
       await this.hydrateActiveStep();
     }
 
+    if (this.props.selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      this.showSavedQuestionPicker();
+    }
+
     if (this.props.selectedTableId) {
       await this.props.fetchFields(this.props.selectedTableId);
       if (this.isSavedQuestionSelected()) {
@@ -534,7 +543,11 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.isSavedQuestionSelected()) {
+    if (
+      this.isSavedQuestionSelected() ||
+      this.state.selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
+    ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
@@ -954,7 +967,7 @@ export class UnconnectedDataSelector extends Component {
     });
 
   handleCollectionDatasetSelect = async dataset => {
-    const tableId = getQuestionVirtualTableId(dataset);
+    const tableId = getQuestionVirtualTableId(dataset.id);
     await this.props.fetchFields(tableId);
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(tableId);
@@ -1051,14 +1064,16 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <ListSearchField
-              hasClearButton
-              className="bg-white m1"
-              onChange={this.handleSearchTextChange}
-              value={searchText}
-              placeholder={this.getSearchInputPlaceholder()}
-              autoFocus
-            />
+            <TableSearchContainer>
+              <ListSearchField
+                fullWidth
+                autoFocus
+                value={searchText}
+                placeholder={this.getSearchInputPlaceholder()}
+                onChange={e => this.handleSearchTextChange(e.target.value)}
+                onResetClick={() => this.handleSearchTextChange("")}
+              />
+            </TableSearchContainer>
           )}
           {isSearchActive && (
             <SearchResults

@@ -71,7 +71,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   }
 
   ${RadioInput}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid ${color("focus")};
   }
 
   ${RadioInput}:focus:not(:focus-visible) + & {
@@ -134,6 +134,7 @@ export const RadioButton = styled.span<RadioButtonProps>`
 `;
 
 export const RadioLabelText = styled.span`
+  flex: 1 1 auto;
   display: block;
 `;
 

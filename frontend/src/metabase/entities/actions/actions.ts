@@ -1,71 +1,150 @@
+import { t } from "ttag";
+import { updateIn } from "icepick";
+import { createAction } from "redux-actions";
+
 import { createEntity } from "metabase/lib/entities";
+import { ActionsApi } from "metabase/services";
 
-import type { ActionFormSettings } from "metabase-types/api";
+import type {
+  WritebackAction,
+  WritebackActionId,
+  WritebackQueryAction,
+  WritebackImplicitQueryAction,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
-import { CardApi } from "metabase/services";
+type BaseCreateActionParams = Pick<
+  WritebackAction,
+  "name" | "description" | "model_id" | "parameters" | "visualization_settings"
+>;
 
-import {
-  removeOrphanSettings,
-  addMissingSettings,
-  setParameterTypesFromFieldSettings,
-  setTemplateTagTypesFromFieldSettings,
-} from "metabase/entities/actions/utils";
-import type Question from "metabase-lib/lib/Question";
-import { saveForm } from "./forms";
-
-type ActionParams = {
-  name: string;
-  description?: string;
-  collection_id?: number;
-  question: Question;
-  formSettings: ActionFormSettings;
+type BaseUpdateActionParams = {
+  id: WritebackAction["id"];
 };
 
-const getAPIFn =
-  (apifn: (args: any) => Promise<any>) =>
-  ({
-    name,
-    description,
-    question,
-    collection_id,
-    formSettings,
-  }: ActionParams) => {
-    question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+export type CreateQueryActionParams = BaseCreateActionParams &
+  Pick<WritebackQueryAction, "type" | "dataset_query">;
 
-    const parameters = setParameterTypesFromFieldSettings(
-      formSettings,
-      question.parameters(),
-    );
-    const settings = removeOrphanSettings(
-      addMissingSettings(formSettings, parameters),
-      parameters,
-    );
+export type UpdateQueryActionParams = Partial<CreateQueryActionParams> &
+  BaseUpdateActionParams;
 
-    return apifn({
-      ...question.card(),
-      name,
-      description,
-      parameters,
-      is_write: true,
-      display: "table",
-      visualization_settings: settings,
-      collection_id,
-    });
+export type CreateImplicitActionParams = BaseCreateActionParams &
+  Pick<WritebackImplicitQueryAction, "type" | "kind">;
+
+export type UpdateImplicitActionParams = Omit<
+  Partial<CreateImplicitActionParams>,
+  "type"
+> &
+  BaseUpdateActionParams;
+
+const defaultImplicitActionCreateOptions = {
+  insert: true,
+  update: true,
+  delete: true,
+};
+
+const enableImplicitActionsForModel =
+  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  async (dispatch: Dispatch) => {
+    const requests = [];
+
+    if (options.insert) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Create`,
+          type: "implicit",
+          kind: "row/create",
+          model_id: modelId,
+        }),
+      );
+    }
+
+    if (options.update) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Update`,
+          type: "implicit",
+          kind: "row/update",
+          model_id: modelId,
+        }),
+      );
+    }
+
+    if (options.delete) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Delete`,
+          type: "implicit",
+          kind: "row/delete",
+          model_id: modelId,
+        }),
+      );
+    }
+
+    await Promise.all(requests);
+
+    dispatch(Actions.actions.invalidateLists());
   };
 
-const createAction = getAPIFn(CardApi.create);
-const updateAction = getAPIFn(CardApi.update);
+const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
+const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   path: "/api/action",
   api: {
-    create: createAction,
-    update: updateAction,
+    create: (params: CreateQueryActionParams | CreateImplicitActionParams) =>
+      ActionsApi.create(params),
+    update: (params: UpdateQueryActionParams | UpdateImplicitActionParams) =>
+      ActionsApi.update(params),
   },
-  forms: {
-    saveForm,
+  actions: {
+    enableImplicitActionsForModel,
+  },
+  objectActions: {
+    createPublicLink: createAction(
+      CREATE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.createPublicLink({ id }).then(
+          ({ uuid }: { uuid: string }) => {
+            return {
+              id,
+              uuid,
+            };
+          },
+        );
+      },
+    ),
+    deletePublicLink: createAction(
+      DELETE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.deletePublicLink({ id }).then(() => {
+          return {
+            id,
+          };
+        });
+      },
+    ),
+  },
+  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+    switch (type) {
+      case CREATE_PUBLIC_LINK: {
+        const { id, uuid } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: uuid };
+        });
+      }
+      case DELETE_PUBLIC_LINK: {
+        const { id } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: null };
+        });
+      }
+      default: {
+        return state;
+      }
+    }
   },
 });
 

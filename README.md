@@ -25,8 +25,8 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 ## Supported databases
 
-- [Officially supported databases](../../databases/connecting.md#connecting-to-supported-databases)
-- [Community-supported drivers](../partner-and-community-drivers.md#community-drivers)
+- [Officially supported databases](./docs/databases/connecting.md#connecting-to-supported-databases)
+- [Partner and Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
 
 ## Installation
 
@@ -42,11 +42,11 @@ We want Metabase to be available in as many languages as possible. See which tra
 
 ## Extending Metabase
 
-Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
+Hit our Query API from Javascript to integrate analytics. Metabase enables your application to:
 
 - Build moderation interfaces.
 - Export subsets of your users to third party marketing automation software.
-- Provide a specialized customer lookup application for the people in your company.
+- Provide a custom customer lookup application for the people in your company.
 
 Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/administration/metabase-api).
 
@@ -60,7 +60,7 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2022 Metabase, Inc.
+Unless otherwise noted, all files © 2023 Metabase, Inc.
 
 ## [Metabase Experts](https://www.metabase.com/partners/)
 

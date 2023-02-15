@@ -50,6 +50,9 @@ interface LegacyContextProps {
 }
 
 // Modal components uses legacy React context to pass `isModal` prop
+/**
+ * @deprecated
+ */
 const CustomFormFooterLegacyContext = (
   props: CustomFormFooterProps,
   { isModal }: LegacyContextProps,

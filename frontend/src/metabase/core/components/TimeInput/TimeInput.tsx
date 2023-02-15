@@ -1,11 +1,7 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
-import { Moment } from "moment-timezone";
-import Tooltip from "metabase/components/Tooltip";
-
-import useTimeInput, { BaseTimeInputProps } from "./useTimeInput";
-import CompactTimeInput from "./CompactTimeInput";
-
+import moment, { Moment } from "moment-timezone";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   InputClearButton,
   InputClearIcon,
@@ -16,15 +12,21 @@ import {
   InputRoot,
 } from "./TimeInput.styled";
 
-export interface TimeInputProps extends BaseTimeInputProps {
+const TIME_FORMAT_12 = "h:mm A";
+
+export interface TimeInputProps {
+  value: Moment;
+  timeFormat?: string;
+  autoFocus?: boolean;
   hasClearButton?: boolean;
+  onChange?: (value: Moment) => void;
   onClear?: (value: Moment) => void;
 }
 
 const TimeInput = forwardRef(function TimeInput(
   {
     value,
-    is24HourMode,
+    timeFormat = TIME_FORMAT_12,
     autoFocus,
     hasClearButton = true,
     onChange,
@@ -32,19 +34,58 @@ const TimeInput = forwardRef(function TimeInput(
   }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const {
-    isAm,
-    isPm,
-    hoursText,
-    minutesText,
-    amText,
-    pmText,
-    handleHoursChange,
-    handleMinutesChange,
-    handleAM: handleAmClick,
-    handlePM: handlePmClick,
-    handleClear: handleClearClick,
-  } = useTimeInput({ value, is24HourMode, onChange, onClear });
+  const is24HourMode = timeFormat === "HH:mm";
+  const hoursText = value.format(is24HourMode ? "HH" : "hh");
+  const minutesText = value.format("mm");
+  const isAm = value.hours() < 12;
+  const isPm = !isAm;
+  const amText = moment.localeData().meridiem(0, 0, false);
+  const pmText = moment.localeData().meridiem(12, 0, false);
+
+  const handleHoursChange = useCallback(
+    (hours = 0) => {
+      const newValue = value.clone();
+      if (is24HourMode) {
+        newValue.hours(hours % 24);
+      } else {
+        newValue.hours((hours % 12) + (isAm ? 0 : 12));
+      }
+      onChange?.(newValue);
+    },
+    [value, isAm, is24HourMode, onChange],
+  );
+
+  const handleMinutesChange = useCallback(
+    (minutes = 0) => {
+      const newValue = value.clone();
+      newValue.minutes(minutes % 60);
+      onChange?.(newValue);
+    },
+    [value, onChange],
+  );
+
+  const handleAmClick = useCallback(() => {
+    if (isPm) {
+      const newValue = value.clone();
+      newValue.hours(newValue.hours() - 12);
+      onChange?.(newValue);
+    }
+  }, [value, isPm, onChange]);
+
+  const handlePmClick = useCallback(() => {
+    if (isAm) {
+      const newValue = value.clone();
+      newValue.hours(newValue.hours() + 12);
+      onChange?.(newValue);
+    }
+  }, [value, isAm, onChange]);
+
+  const handleClearClick = useCallback(() => {
+    const newValue = value.clone();
+    newValue.hours(0);
+    newValue.minutes(0);
+    onClear?.(newValue);
+  }, [value, onClear]);
 
   return (
     <InputRoot ref={ref}>
@@ -88,6 +129,4 @@ const TimeInput = forwardRef(function TimeInput(
   );
 });
 
-export default Object.assign(TimeInput, {
-  Compact: CompactTimeInput,
-});
+export default TimeInput;

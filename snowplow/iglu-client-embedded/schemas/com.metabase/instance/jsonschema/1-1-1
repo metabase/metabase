@@ -1,0 +1,110 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Metabase instance",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "instance",
+    "format": "jsonschema",
+    "version": "1-1-1"
+  },
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Instance ID",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "version": {
+      "description": "Instance version",
+      "type": "object",
+      "properties": {
+        "tag": {
+          "description": "Instance version tag",
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    },
+    "created_at": {
+      "description": "The date the instance was created",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "maxLength": 1024
+    },
+    "token_features": {
+      "description": "Premium token features",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "embedding": {
+          "description": "Should we hide the 'Powered by Metabase' attribution on the embedding pages?",
+          "type": "boolean"
+        },
+        "whitelabel": {
+          "description": "Should we allow full whitelabel embedding (reskinning the entire interface?)",
+          "type": "boolean"
+        },
+        "audit_app": {
+          "description": "Should we enable the Audit Logs interface in the Admin UI?",
+          "type": "boolean"
+        },
+        "sandboxes": {
+          "description": "Should we enable data sandboxes (row-level permissions)?",
+          "type": "boolean"
+        },
+        "sso": {
+          "description": "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?",
+          "type": "boolean"
+        },
+        "advanced_config": {
+          "description": "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for notifications, more in the future)?",
+          "type": "boolean"
+        },
+        "advanced_permissions": {
+          "description": "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level permissions, etc.)?",
+          "type": "boolean"
+        },
+        "content_management": {
+          "description": "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking, etc.)?",
+          "type": "boolean"
+        },
+        "hosting": {
+          "description": "Is the Metabase instance running in the cloud?",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "application_database": {
+      "description": "Application database type",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "application_database_version": {
+      "description": "Application database version",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "id",
+    "version"
+  ],
+  "additionalProperties": true
+}

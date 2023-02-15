@@ -1,5 +1,6 @@
 (ns hooks.metabase.test.util
-  (:require [clj-kondo.hooks-api :as hooks]))
+  (:require [clj-kondo.hooks-api :as hooks]
+            [hooks.common :as common]))
 
 (defn- namespaced-symbol-node? [node]
   (when (hooks/token-node? node)
@@ -20,16 +21,17 @@
 
   for analysis purposes. We only need to 'capture' namespaced Setting bindings with a `_` so Kondo considers their
   namespace to be 'used' and to catch undefined var usage."
-  [{{[_ bindings & body] :children} :node}]
-  (let [bindings (if (hooks/vector-node? bindings)
+  [{:keys [node]}]
+  (let [{[_ bindings & body] :children} node
+        bindings (if (hooks/vector-node? bindings)
                    (hooks/vector-node (into []
                                             (mapcat (fn [[setting-name v]]
                                                       (concat
-                                                       [(hooks/token-node '_) v]
-                                                       ;; if the setting name is namespace-qualified add a `_`
-                                                       ;; entry for it too.
-                                                       (when (namespaced-symbol-node? setting-name)
-                                                         [(hooks/token-node '_) setting-name]))))
+                                                        [(with-meta (hooks/token-node '_) (meta setting-name)) v]
+                                                        ;; if the setting name is namespace-qualified add a `_`
+                                                        ;; entry for it too.
+                                                        (when (namespaced-symbol-node? setting-name)
+                                                          [(with-meta (hooks/token-node '_) (meta setting-name)) setting-name]))))
                                             (partition 2 (:children bindings))))
                    bindings)]
     {:node (-> (list*

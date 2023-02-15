@@ -1,15 +1,16 @@
 (ns metabase.pulse.render
-  (:require [clojure.tools.logging :as log]
-            [hiccup.core :refer [h]]
-            [metabase.models.dashboard-card :as dashboard-card]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.png :as png]
-            [metabase.pulse.render.style :as style]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.urls :as urls]
-            [schema.core :as s]))
+  (:require
+   [hiccup.core :refer [h]]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.png :as png]
+   [metabase.pulse.render.style :as style]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.urls :as urls]
+   [schema.core :as s]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -81,8 +82,13 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
+        (and (some? maybe-dashcard)
+             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))
+             (not (#{:combo} display-type)))
+        (chart-type :multiple "result has multiple card semantics, a multiple chart")
+
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not= display-type :progress)
+        (and (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -92,16 +98,13 @@
            :area
            :bar
            :combo
+           :row
            :funnel
            :progress
+           :gauge
            :table
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
-
-        (and (some? maybe-dashcard)
-             (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
-             (not (#{:combo} display-type)))
-        (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (= display-type :pie)
         (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))

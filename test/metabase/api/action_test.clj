@@ -1,559 +1,362 @@
 (ns metabase.api.action-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.api.action :as api.action]
-            [metabase.driver :as driver]
-            [metabase.models.action :refer [Action]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.action :as api.action]
+   [metabase.models :refer [Card]]
+   [metabase.models.action :refer [Action]]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (comment api.action/keep-me)
 
-(def ^:private ExpectedGetCardActionAPIResponse
-  "Expected schema for a CardAction as it should appear in the response for an API request to one of the GET endpoints."
-  {:id       su/IntGreaterThanOrEqualToZero
-   :card     {:id            su/IntGreaterThanOrEqualToZero
-              :dataset_query {:database su/IntGreaterThanOrEqualToZero
-                              :type     (s/eq "native")
-                              :native   {:query    s/Str
-                                         s/Keyword s/Any}
-                              s/Keyword s/Any}
-              s/Keyword      s/Any}
-   :parameters s/Any
+(def ^:private ExpectedGetQueryActionAPIResponse
+  "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
+  {:id                     su/IntGreaterThanOrEqualToZero
+   :type                   (s/eq "query")
+   :model_id               su/IntGreaterThanOrEqualToZero
+   :database_id            su/IntGreaterThanOrEqualToZero
+   :dataset_query          {:database su/IntGreaterThanOrEqualToZero
+                            :type     (s/eq "native")
+                            :native   {:query    s/Str
+                                       s/Keyword s/Any}
+                            s/Keyword s/Any}
+   :parameters             s/Any
+   :parameter_mappings     s/Any
    :visualization_settings su/Map
-   s/Keyword s/Any})
+   :public_uuid            (s/maybe su/UUIDString)
+   :made_public_by_id      (s/maybe su/IntGreaterThanOrEqualToZero)
+   :creator_id             su/IntGreaterThanZero
+   :creator                user/DefaultUser
+   s/Keyword               s/Any})
 
 (deftest list-actions-test
-  (testing "GET /api/action"
-    (actions.test-util/with-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id]} {}]
-        (let [response (mt/user-http-request :crowberto :get 200 "action")]
-          (is (schema= [{:id       su/IntGreaterThanZero
-                         s/Keyword s/Any}]
-                       response))
-          (let [action (some (fn [action]
-                               (when (= (:id action) action-id)
-                                 action))
-                             response)]
-            (testing "Should return Card dataset_query deserialized (#23201)"
-              (is (schema= ExpectedGetCardActionAPIResponse
-                           action)))))))))
+  (mt/with-actions-enabled
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                          action-1 {:name              "Get example"
+                                    :type              :http
+                                    :model_id          card-id
+                                    :template          {:method "GET"
+                                                        :url "https://example.com/{{x}}"}
+                                    :parameters        [{:id "x" :type "text"}]
+                                    :public_uuid       (str (UUID/randomUUID))
+                                    :made_public_by_id (mt/user->id :crowberto)
+                                    :response_handle   ".body"
+                                    :error_handle      ".status >= 400"}
+                          action-2 {:name                   "Query example"
+                                    :type                   :query
+                                    :model_id               card-id
+                                    :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                    :type name)
+                                    :database_id            (mt/id)
+                                    :parameters             [{:id "x" :type "number"}]
+                                    :visualization_settings {:position "top"}}
+                          action-3 {:name       "Implicit example"
+                                    :type       :implicit
+                                    :model_id   card-id
+                                    :kind       "row/create"
+                                    :parameters [{:id "x" :type "number"}]}
+                          _archived {:name                   "Archived example"
+                                     :type                   :query
+                                     :model_id               card-id
+                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                     :type name)
+                                     :database_id            (mt/id)
+                                     :parameters             [{:id "x" :type "number"}]
+                                     :visualization_settings {:position "top"}
+                                     :archived               true}]
+          (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
+            (is (= (map :action-id [action-1 action-2 action-3])
+                   (map :id response)))
+            (doseq [action response
+                    :when (= (:type action) "query")]
+              (testing "Should return a query action deserialized (#23201)"
+                (is (schema= ExpectedGetQueryActionAPIResponse
+                             action)))))
+          (testing "Should not be allowed to list actions without permission on the model"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
+                "Should not be able to list actions without read permission on the model"))
+          (testing "Should not be possible to demote a model with actions"
+            (is (partial= {:message "Cannot make a question from a model with actions"}
+                          (mt/user-http-request :crowberto :put 500 (str "card/" card-id)
+                                                {:dataset false})))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
-    (testing "Should return Card dataset_query deserialized (#23201)"
-      (actions.test-util/with-actions-enabled
-        (actions.test-util/with-action [{:keys [action-id]} {}]
+    (mt/with-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-actions [{:keys [action-id]} {}]
           (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
-            (testing "Should return Card dataset_query deserialized (#23201)"
-              (is (schema= ExpectedGetCardActionAPIResponse
-                           action)))))))))
+            (testing "Should return a query action deserialized (#23201)"
+              (is (schema= ExpectedGetQueryActionAPIResponse
+                           action))))
+          (testing "Should not be allowed to get the action without permission on the model"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
-(defn- format-field-name
-  "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
-  [field-name]
-  (keyword (mt/format-name (name field-name))))
+(deftest unified-action-create-test
+  (mt/with-actions-enabled
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-actions-test-data-tables #{"users" "categories"}
+        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                          {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
+          (doseq [initial-action [{:name "Get example"
+                                   :description "A dummy HTTP action"
+                                   :type "http"
+                                   :model_id card-id
+                                   :template {:method "GET"
+                                              :url "https://example.com/{{x}}"}
+                                   :parameters [{:id "x" :type "text"}]
+                                   :response_handle ".body"
+                                   :error_handle ".status >= 400"}
+                                  {:name "Query example"
+                                   :description "A simple update query action"
+                                   :type "query"
+                                   :model_id card-id
+                                   :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
+                                                          :type name)
+                                   :database_id (mt/id)
+                                   :parameters [{:id "x" :type "type/biginteger"}]}
+                                  {:name "Implicit example"
+                                   :type "implicit"
+                                   :model_id card-id
+                                   :kind "row/create"
+                                   :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}]]
+            (let [update-fn      (fn [m]
+                                   (cond-> (assoc m :name "New name")
+                                     (= (:type initial-action) "implicit")
+                                     (assoc :kind "row/update" :description "A new description")
 
-(defn- categories-row-count []
-  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
+                                     (= (:type initial-action) "query")
+                                     (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
+                                                                   :type name))
 
-(deftest create-test
-  (testing "POST /api/action/row/create"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             "action/row/create"
-                                             (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
-          (is (schema= {:created-row {(format-field-name :id)   (s/eq 76)
-                                      (format-field-name :name) (s/eq "created_row")}}
-                       response)
-              "Create should return the entire row")
-          (let [created-id (get-in response [:created-row (format-field-name :id)])]
-            (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
-                "The record at created-id should now have its name set to \"created_row\"")))))))
+                                     (= (:type initial-action) "http")
+                                     (-> (assoc :response_handle ".body.result"  :description nil))))
+                  expected-fn    (fn [m]
+                                   (cond-> m
+                                     (= (:type initial-action) "implicit")
+                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                  updated-action (update-fn initial-action)]
+              (testing "Create fails with"
+                (testing "no permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 "action" initial-action))))
+                (testing "actions disabled"
+                  (mt/with-actions-disabled
+                    (is (= "Actions are not enabled."
+                           (:cause
+                            (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
+                (testing "a plain card instead of a model"
+                  (mt/with-temp Card [{plain-card-id :id}]
+                    (is (= "Actions must be made with models, not cards."
+                           (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
+              (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+                    action-path    (str "action/" (:id created-action))]
+                (testing "Create"
+                  (testing "works with acceptable params"
+                    (is (partial= (expected-fn initial-action) created-action))))
+                (testing "Update"
+                  (is (partial= (expected-fn updated-action)
+                                (mt/user-http-request :crowberto :put 200 action-path (update-fn {}))))
+                  (testing "Update fails with"
+                    (testing "no permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :put 403 action-path (update-fn {})))))
+                    (testing "actions disabled"
+                      (mt/with-actions-disabled
+                        (is (= "Actions are not enabled."
+                               (:cause
+                                (mt/user-http-request :crowberto :put 400 action-path (update-fn {}))))))))
+                  (testing "Get"
+                    (is (partial= (expected-fn updated-action)
+                                  (mt/user-http-request :crowberto :get 200 action-path)))
+                    (testing "Should not be possible without permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :get 403 action-path))))
+                    (testing "Should still work if actions are disabled"
+                      (mt/with-actions-disabled
+                        (is (partial= (expected-fn updated-action)
+                                      (mt/user-http-request :crowberto :get 200 action-path))))))
+                  (testing "Get All"
+                    (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                   (expected-fn updated-action)]
+                                  (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
+                    (testing "Should not be possible without permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))
+                    (testing "Should still work if actions are disabled"
+                      (mt/with-actions-disabled
+                        (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                       (expected-fn updated-action)]
+                                      (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))))
+                (testing "Delete"
+                  (testing "Should not be possible without permission"
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :delete 403 action-path))))
+                  (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+                  (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
 
-(deftest create-invalid-data-test
-  (testing "POST /api/action/row/create -- invalid data"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= 75
-               (categories-row-count)))
-        (is (schema= {:message  (case driver/*driver*
-                                  :h2       #"^Data conversion error converting \"created_row\""
-                                  :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"created_row\"")
-                      s/Keyword s/Any}
-                     ;; bad data -- ID is a string instead of an Integer.
-                     (mt/user-http-request :crowberto :post 400
-                                           "action/row/create"
-                                           (assoc (mt/mbql-query categories) :create-row {(format-field-name :id) "created_row"}))))
-        (testing "no row should have been inserted"
-          (is (= 75
-                 (categories-row-count))))))))
+(deftest action-parameters-test
+  (mt/with-actions-enabled
+    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+      (mt/with-model-cleanup [Action]
+        (let [initial-action {:name "Get example"
+                              :type "http"
+                              :model_id card-id
+                              :template {:method "GET"
+                                         :url "https://example.com/{{x}}"
+                                         :parameters [{:id "x" :type "text"}]}
+                              :response_handle ".body"
+                              :error_handle ".status >= 400"}
+              created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+              action-id      (u/the-id created-action)
+              action-path    (str "action/" action-id)]
+          (testing "Archiving"
+            (mt/user-http-request :crowberto :put 200 action-path {:archived true})
+            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (mt/user-http-request :crowberto :put 200 action-path {:archived false})
+            (is (false? (db/select-one-field :archived Action :id action-id))))
+          (testing "Validate POST"
+            (testing "Required fields"
+              (is (partial= {:errors {:name "string"},
+                             :specific-errors {:name ["should be a string"]}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
+              (is (partial= {:errors {:model_id "integer greater than 0"},
+                             :specific-errors {:model_id ["should be a positive int"]}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
+            (testing "Handles need to be valid jq"
+              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
+              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
+          (testing "Validate PUT"
+            (testing "Template needs method and url"
+              (is (partial= {:errors
+                             {:template
+                              "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"},
+                             :specific-errors {:template {:method ["missing required key"],
+                                                          :url ["missing required key"]}}}
+                            (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
+            (testing "Handles need to be valid jq"
+              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+                            (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
+              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+                            (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))
 
-(deftest update-test
-  (testing "POST /api/action/row/update"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= {:rows-updated [1]}
-               (mt/user-http-request :crowberto :post 200
-                                     "action/row/update"
-                                     (assoc (mt/mbql-query categories {:filter [:= $id 50]})
-                                            :update_row {(format-field-name :name) "updated_row"})))
-            "Update should return the right shape")
-        (is (= "updated_row"
-               (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})) last last))
-            "The row should actually be updated")))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest delete-test
-  (testing "POST /api/action/row/delete"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= {:rows-deleted [1]}
-               (mt/user-http-request :crowberto :post 200
-                                     "action/row/delete"
-                                     (mt/mbql-query categories {:filter [:= $id 50]})))
-            "Delete should return the right shape")
-        (is (= 74
-               (categories-row-count)))
-        (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})))
-            "Selecting for deleted rows should return an empty result")))))
+(def ^:private unshared-action-opts
+  {:public_uuid       nil
+   :made_public_by_id nil})
 
-(defn- mock-requests
-  "Mock requests for testing validation for various actions. Don't use these for happy path tests! It's way too hard to
-  wrap your head around them. Use them for validating preconditions and stuff like that."
-  []
-  [{:action       "action/row/create"
-    :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
-    :expect-fn    (fn [result]
-                    ;; check that we return the entire row
-                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
-                                                (format-field-name :name) su/NonBlankString}}
-                                 result)))}
-   {:action       "action/row/update"
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
-                         :update_row {(format-field-name :name) "updated_row"})
-    :expected     {:rows-updated [1]}}
-   {:action       "action/row/delete"
-    :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}
-   {:action       "action/row/update"
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
-                         :update_row {(format-field-name :name) "new-category-name"})
-    :expected     {:rows-updated [1]}}])
+(defn- shared-action-opts []
+  {:public_uuid       (str (UUID/randomUUID))
+   :made_public_by_id (mt/user->id :crowberto)})
 
-(deftest feature-flags-test
-  (testing "Disable endpoints unless both global and Database feature flags are enabled"
-    (doseq [{:keys [action request-body]} (mock-requests)
-            enable-global-feature-flag?   [true false]
-            enable-database-feature-flag? [true false]]
-      (testing action
-        (mt/with-temporary-setting-values [experimental-enable-actions enable-global-feature-flag?]
-          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-database-feature-flag?}}
-            (cond
-              (not enable-global-feature-flag?)
-              (testing "Should return a 400 if global feature flag is disabled"
+(deftest fetch-public-actions-test
+  (testing "GET /api/action/public"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [action-opts (assoc (shared-action-opts) :name "Test action")]
+        (mt/with-actions [{:keys [action-id model-id]} action-opts]
+          (testing "Test that it requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "action/public"))))
+          (testing "Test that superusers can fetch a list of publicly-accessible actions"
+            (is (= [{:name "Test action" :id action-id :public_uuid (:public_uuid action-opts) :model_id model-id}]
+                   (filter #(= (:id %) action-id) (mt/user-http-request :crowberto :get 200 "action/public"))))))))))
+
+(deftest share-action-test
+  (testing "POST /api/action/:id/public_link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions-enabled
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (testing "We can share an action"
+            (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+              (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
+                                                      (format "action/%d/public_link" action-id)))]
+                (is (db/exists? Action :id action-id, :public_uuid uuid))
+                (testing "Test that if an Action has already been shared we reuse the existing UUID"
+                  (is (= uuid
+                         (:uuid (mt/user-http-request :crowberto :post 200
+                                                      (format "action/%d/public_link" action-id)))))))))
+
+          (testing "We cannot share an archived action"
+            (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404
+                                           (format "action/%d/public_link" action-id))))))
+          (mt/with-actions [{:keys [action-id]} {}]
+            (testing "We *cannot* share a Action if the setting is disabled"
+              (mt/with-temporary-setting-values [enable-public-sharing false]
+                (is (= "Public sharing is not enabled."
+                       (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
+
+            (testing "We *cannot* share an action if actions are disabled"
+              (mt/with-actions-disabled
                 (is (= "Actions are not enabled."
-                       (mt/user-http-request :crowberto :post 400 action request-body))))
+                       (:cause
+                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
 
-              (not enable-database-feature-flag?)
-              (testing "Should return a 400 if Database feature flag is disabled."
-                (is (re= #"^Actions are not enabled for Database [\d,]+\.$"
-                         (mt/user-http-request :crowberto :post 400 action request-body)))))))))))
+            (testing "We get a 404 if the Action doesn't exist"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
 
-(driver/register! ::feature-flag-test-driver, :parent :h2)
+        (testing "We *cannot* share an action if we aren't admins"
+          (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 (format "action/%d/public_link" action-id))))))))))
 
-(defmethod driver/database-supports? [::feature-flag-test-driver :actions]
-  [_driver _feature _database]
-  false)
+(deftest disable-sharing-action-test
+  (testing "DELETE /api/action/:id/public_link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions-enabled
+        (let [action-opts (shared-action-opts)]
+          (mt/with-actions [{:keys [action-id]} action-opts]
+            (testing "We *cannot* unshare an action if actions are disabled"
+              (mt/with-actions-disabled
+                (is (= "Actions are not enabled."
+                       (:cause
+                        (mt/user-http-request :crowberto :delete 400 (format "action/%d/public_link" action-id)))))))
+            (testing "Test that we can unshare an action"
+              (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
+              (is (= false
+                     (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
 
-(deftest actions-feature-test
-  (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
-                                             :engine   ::feature-flag-test-driver
-                                             :settings {:database-enable-actions true}}]
-                      Table    [{table-id :id} {:db_id db-id}]]
-        (is (partial= {:message (format "%s Database %d \"Birds\" does not support actions."
-                                        (u/qualified-name ::feature-flag-test-driver)
-                                        db-id)}
-                      ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
-                      ;; update this test when the PR to support row insertion is in.
-                      (mt/user-http-request :crowberto :post 400 "action/table/insert"
-                                            {:database db-id
-                                             :table-id table-id
-                                             :values   {:name "Toucannery"}})))))))
+        (testing "Test that we cannot unshare an action if it's archived"
+          (let [action-opts (merge {:archived true} (shared-action-opts))]
+            (mt/with-actions [{:keys [action-id]} action-opts]
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
 
-(defn- row-action? [action]
-  (str/starts-with? action "action/row"))
 
-(deftest validation-test
-  (actions.test-util/with-actions-enabled
-    (doseq [{:keys [action request-body]} (mock-requests)]
-      (testing (str action " without :query")
-        (when (row-action? action)
-          (is (re= #"Value does not match schema:.*"
-                   (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body :query))))))))))
+        (testing "Test that we *cannot* unshare a action if we are not admins"
+          (let [action-opts (shared-action-opts)]
+            (mt/with-actions [{:keys [action-id]} action-opts]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
 
-(deftest row-update-action-gives-400-when-matching-more-than-one
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
-                                                    :update_row {(format-field-name :name) "new-name"})
-            result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-        (is (< 1 result-count))
-        (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
-                :when            (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (schema= {:message #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
-                        s/Keyword s/Any}
-                       (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-              "The result-count after a rollback must remain the same!"))))))
+        (testing "Test that we get a 404 if Action isn't shared"
+          (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
 
-(deftest row-delete-action-gives-400-when-matching-more-than-one
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
-                                                    :update_row {(format-field-name :name) "new-name"})
-            result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-        (is (< 1 result-count))
-        (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
-                :when            (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (schema= {:message  #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
-                        s/Keyword s/Any}
-                       (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-              "The result-count after a rollback must remain the same!"))))))
-
-(deftest row-delete-unparseable-values-test
-  (testing "POST /api/action/row/delete"
-    (testing "should return error message if value cannot be parsed correctly for Field in question"
-      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-        (actions.test-util/with-actions-test-data-and-actions-enabled
-          (is (schema= {:message  #"Error filtering against :type/(Big)?Integer Field: unable to parse String \"one\" to a :type/(Big)?Integer"
-                        s/Keyword s/Any}
-                       ;; TODO -- this really should be returning a 400 but we need to rework the code in
-                       ;; [[metabase.driver.sql-jdbc.actions]] a little to have that happen without changing other stuff
-                       ;; that SHOULD be returning a 404
-                       (mt/user-http-request :crowberto :post 404
-                                             "action/row/delete"
-                                             (mt/mbql-query categories {:filter [:= $id "one"]})))
-              "Delete should return the right shape")
-          (testing "no rows should have been deleted"
-            (is (= 75
-                   (categories-row-count)))))))))
-
-(deftest row-delete-fk-constraint-violation-test
-  (testing "POST /api/action/row/delete"
-    (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
-      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-        (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
-          (actions.test-util/with-actions-test-data-and-actions-enabled
-            ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
-            ;; this `category_id` -- it's an FK constraint violation.
-            (is (schema= (case driver/*driver*
-                           ;; TODO -- we need nice error messages for `:h2`, and need to implement
-                           ;; [[metabase.driver.sql-jdbc.actions/parse-sql-error]] for it
-                           :h2       #"Referential integrity constraint violation.*PUBLIC\.VENUES FOREIGN KEY\(CATEGORY_ID\) REFERENCES PUBLIC\.CATEGORIES\(ID\).*"
-                           :postgres {:errors {:id #"violates foreign key constraint .*"}})
-                         (mt/user-http-request :crowberto :post 400
-                                               "action/row/delete"
-                                               (mt/mbql-query categories {:filter [:= $id 58]})))
-                "Delete should return the right shape")
-            (testing "no rows should have been deleted"
-              (is (= 75
-                     (categories-row-count))))))))))
-
-(deftest unknown-row-action-gives-404
-  (actions.test-util/with-actions-enabled
-    (testing "404 for unknown Row action"
-      (is (re= #"^Unknown Action :row/fake. Valid Actions are: .+"
-               (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]})))))))
-
-(deftest four-oh-four-test
-  (actions.test-util/with-actions-enabled
-    (doseq [{:keys [action request-body]} (mock-requests)]
-      (testing action
-        (testing "404 for unknown Table"
-          (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
-                 (:message (mt/user-http-request :crowberto :post 404 action
-                                                 (assoc-in request-body [:query :source-table] Integer/MAX_VALUE))))))))))
-
-(deftest action-crud-test
-  (mt/with-model-cleanup [Action]
-    (actions.test-util/with-actions-enabled
-      (let [initial-action {:name "Get example"
-                            :type "http"
-                            :template {:method "GET"
-                                       :url "https://example.com/{{x}}"
-                                       :parameters [{:id "x" :type "text"}]}
-                            :response_handle ".body"
-                            :error_handle ".status >= 400"}
-            created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-            updated-action (merge initial-action {:name "New name"})
-            action-path (str "action/" (:id created-action))]
-        (testing "Create"
-          (is (partial= initial-action created-action)))
-        (testing "Validate POST"
-          (testing "Required fields"
-            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
-            (is (partial= {:errors {:name "value must be a string."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
-          (testing "Template needs method and url"
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
-          (testing "Template parameters should be well formed"
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"
-                                                                               :name "Test"
-                                                                               :template {:url "https://example.com"
-                                                                                          :method "GET"
-                                                                                          :parameters {}}}))))
-          (testing "Handles need to be valid jq"
-            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
-        (testing "Update"
-          (is (partial= updated-action
-                        (mt/user-http-request :crowberto :put 200 action-path
-                                              {:name "New name" :type "http"}))))
-        (testing "Get"
-          (is (partial= updated-action
-                        (mt/user-http-request :crowberto :get 200 action-path)))
-          (is (partial= updated-action
-                        (last (mt/user-http-request :crowberto :get 200 "action")))))
-        (testing "Validate PUT"
-          (testing "Can't create or change http type"
-            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
-                          (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
-          (testing "Template needs method and url"
-            (is (partial= {:errors {:template "value may be nil, or if non-nil, value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
-          (testing "Handles need to be valid jq"
-            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x"))))))
-        (testing "Delete"
-          (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
-          (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))
-
-(deftest bulk-create-happy-path-test
-  (testing "POST /api/action/bulk/create/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= 75
-               (categories-row-count)))
-        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
-                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
-               (mt/user-http-request :crowberto :post 200
-                                     (format "action/bulk/create/%d" (mt/id :categories))
-                                     [{(format-field-name :name) "NEW_A"}
-                                      {(format-field-name :name) "NEW_B"}])))
-        (is (= [[76 "NEW_A"]
-                [77 "NEW_B"]]
-               (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
-                                                       :order-by [[:asc $id]]}))))
-        (is (= 77
-               (categories-row-count)))))))
-
-(deftest bulk-create-failure-test
-  (testing "POST /api/action/bulk/create/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (testing "error in some of the rows in request body"
-          (is (= 75
-                 (categories-row-count)))
-          (testing "Should report indices of bad rows"
-            (is (schema= {:errors [(s/one {:index (s/eq 1)
-                                           :error (s/constrained
-                                                   s/Str
-                                                   (case driver/*driver*
-                                                     :h2       #(str/starts-with? % "NULL not allowed for column \"NAME\"")
-                                                     :postgres #(str/starts-with? % "ERROR: null value in column \"name\"")))}
-                                          "first error")
-                                   (s/one {:index (s/eq 3)
-                                           :error (case driver/*driver*
-                                                    :h2       #"^Data conversion error converting \"STRING\""
-                                                    :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\"")}
-                                          "second error")]}
-                         (mt/user-http-request :crowberto :post 400
-                                               (format "action/bulk/create/%d" (mt/id :categories))
-                                               [{(format-field-name :name) "NEW_A"}
-                                                ;; invalid because name has to be non-nil
-                                                {(format-field-name :name) nil}
-                                                {(format-field-name :name) "NEW_B"}
-                                                ;; invalid because ID is supposed to be an integer
-                                                {(format-field-name :id) "STRING"}]))))
-          (testing "Should not have committed any of the valid rows"
-            (is (= 75
-                   (categories-row-count)))))))))
-
-(deftest bulk-delete-happy-path-test
-  (testing "POST /api/action/bulk/delete/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= 75
-               (categories-row-count)))
-        (is (= {:success true}
-               (mt/user-http-request :crowberto :post 200
-                                     (format "action/bulk/delete/%d" (mt/id :categories))
-                                     [{(format-field-name :id) 74}
-                                      {(format-field-name :id) 75}])))
-        (is (= 73
-               (categories-row-count)))))))
-
-(deftest bulk-delete-failure-test
-  (testing "POST /api/action/bulk/delete/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (testing "error in some of the rows"
-          (is (= 75
-                 (categories-row-count)))
-          (testing "Should report indices of bad rows"
-            (is (schema= {:errors
-                          [(s/one
-                            {:index (s/eq 1)
-                             :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
-                            "first error")
-                           (s/one
-                            {:index (s/eq 3)
-                             :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
-                            "second error")]}
-                         (mt/user-http-request :crowberto :post 400
-                                               (format "action/bulk/delete/%d" (mt/id :categories))
-                                               [{(format-field-name :id) 74}
-                                                {(format-field-name :id) "foo"}
-                                                {(format-field-name :id) 75}
-                                                {(format-field-name :id) 107}]))))
-          (testing "Should report inconsistent keys"
-            (is (partial= {:message (format "Some rows have different sets of columns: %s, %s"
-                                            (pr-str #{(name (format-field-name :nonid))})
-                                            (pr-str #{(name (format-field-name :id))}))}
-                          (mt/user-http-request :crowberto :post 400
-                                                (format "action/bulk/delete/%d" (mt/id :categories))
-                                                [{(format-field-name :id) 74}
-                                                 {(format-field-name :nonid) 75}]))))
-          (testing "Should report non-pk keys"
-            (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
-                                            (pr-str #{(name (format-field-name :id))})
-                                            (pr-str #{(name (format-field-name :nonid))}))}
-                          (mt/user-http-request :crowberto :post 400
-                                                (format "action/bulk/delete/%d" (mt/id :categories))
-                                                [{(format-field-name :nonid) 75}])))
-            (testing "Even if all PK columns are specified"
-              (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
-                                              (pr-str #{(name (format-field-name :id))})
-                                              (pr-str #{(name (format-field-name :id))
-                                                        (name (format-field-name :nonid))}))}
-                            (mt/user-http-request :crowberto :post 400
-                                                  (format "action/bulk/delete/%d" (mt/id :categories))
-                                                  [{(format-field-name :id)    75
-                                                    (format-field-name :nonid) 75}])))))
-          (testing "Should report repeat rows"
-            (is (partial= {:message (format "Rows need to be unique: repeated rows {%s 74} × 3, {%s 75} × 2"
-                                            (pr-str (name (format-field-name :id)))
-                                            (pr-str (name (format-field-name :id))))}
-                          (mt/user-http-request :crowberto :post 400
-                                                (format "action/bulk/delete/%d" (mt/id :categories))
-                                                [{(format-field-name :id) 73}
-                                                 {(format-field-name :id) 74}
-                                                 {(format-field-name :id) 74}
-                                                 {(format-field-name :id) 74}
-                                                 {(format-field-name :id) 75}
-                                                 {(format-field-name :id) 75}]))))
-          (is (= 75
-                 (categories-row-count))))))))
-
-(defn- first-three-categories []
-  (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
-
-(deftest bulk-update-happy-path-test
-  (testing "POST /api/action/bulk/update/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (is (= [[1 "African"]
-                [2 "American"]
-                [3 "Artisan"]]
-               (first-three-categories)))
-        (is (= {:rows-updated 2}
-               (mt/user-http-request :crowberto :post 200
-                                     (format "action/bulk/update/%d" (mt/id :categories))
-                                     (let [id   (format-field-name :id)
-                                           name (format-field-name :name)]
-                                       [{id 1, name "Seed Bowl"}
-                                        {id 2, name "Millet Treat"}]))))
-        (testing "rows should be updated in the DB"
-          (is (= [[1 "Seed Bowl"]
-                  [2 "Millet Treat"]
-                  [3 "Artisan"]]
-                 (first-three-categories))))))))
-
-(deftest bulk-update-failure-test
-  (testing "POST /api/action/bulk/update/:table-id"
-    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (actions.test-util/with-actions-test-data-and-actions-enabled
-        (let [id                 (format-field-name :id)
-              name               (format-field-name :name)
-              update-categories! (fn [rows]
-                                   (mt/user-http-request :crowberto :post 400
-                                                         (format "action/bulk/update/%d" (mt/id :categories))
-                                                         rows))]
-          (testing "Initial values"
-            (is (= [[1 "African"]
-                    [2 "American"]
-                    [3 "Artisan"]]
-                   (first-three-categories))))
-          (testing "Should report the index of input rows with errors in the data warehouse"
-            (let [error-message-regex (case driver/*driver*
-                                        :h2       #"^NULL not allowed for column \"NAME\""
-                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint")]
-              (is (schema= {:errors   [(s/one
-                                        {:index (s/eq 0)
-                                         :error error-message-regex}
-                                        "first error")
-                                       (s/one
-                                        {:index (s/eq 2)
-                                         :error error-message-regex}
-                                        "second error")]
-                            s/Keyword s/Any}
-                           (update-categories! [{id 1, name nil}
-                                                {id 2, name "Millet Treat"}
-                                                {id 3, name nil}])))))
-          ;; TODO -- maybe this should come back with the row index as well. Maybe it's a little less important for the
-          ;; Clojure-side validation because an error like this is presumably the result of the frontend passing in bad
-          ;; maps since it should be enforcing this in the FE client as well. Row indexes are more important for errors
-          ;; that happen in the DW since they often can't be enforced in the frontend client OR in the backend without
-          ;; actually hitting the DW
-          (testing "Should validate that every row has required PK columns"
-            (is (partial= {:message (format "Row is missing required primary key column. Required %s; got %s"
-                                            (pr-str #{(clojure.core/name (format-field-name :id))})
-                                            (pr-str #{(clojure.core/name (format-field-name :name))}))}
-                          (update-categories! [{id 1, name "Seed Bowl"}
-                                               {name "Millet Treat"}]))))
-          (testing "Should validate that the fields in the row maps are valid for the Table"
-            (is (schema= {:errors [(s/one
-                                    {:index (s/eq 0)
-                                     :error (case driver/*driver*
-                                              :h2       #"^Column \"FAKE\" not found"
-                                              :postgres #"ERROR: column \"fake\" of relation \"categories\" does not exist")}
-                                    "first error")]}
-                         (update-categories! [{id 1, (format-field-name :fake) "FAKE"}]))))
-          (testing "Should throw error if row does not contain any non-PK columns"
-            (is (partial= {:message (format "Invalid update row map: no non-PK columns. Got #{%s}, all of which are PKs."
-                                            (pr-str (clojure.core/name (format-field-name :id))))}
-                          (update-categories! [{id 1}]))))
-          (testing "Rows should be unchanged"
-            (is (= [[1 "African"]
-                    [2 "American"]
-                    [3 "Artisan"]]
-                   (first-three-categories)))))))))
+        (testing "Test that we get a 404 if Action doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))

@@ -3,15 +3,9 @@ import { t, jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
+import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
+
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import {
-  isActionDashCard,
-  getActionButtonLabel,
-} from "metabase/writeback/utils";
-
-import type { DashboardOrderedCard } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
-
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 import {
   ColumnClickBehaviorHeader,
@@ -29,7 +23,7 @@ function DefaultHeader({ children }: { children: React.ReactNode }) {
 
 interface Props {
   dashcard: DashboardOrderedCard;
-  selectedColumn?: Column | null;
+  selectedColumn?: DatasetColumn | null;
   onUnsetColumn: () => void;
 }
 
@@ -46,10 +40,6 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
       );
     }
     return <Heading>{t`On-click behavior for each column`}</Heading>;
-  }
-  if (isActionDashCard(dashcard)) {
-    const label = getActionButtonLabel(dashcard);
-    return <DefaultHeader>{label || t`an action button`}</DefaultHeader>;
   }
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
 }

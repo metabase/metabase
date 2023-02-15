@@ -1,30 +1,33 @@
 (ns metabase-enterprise.serialization.serialize
   "Transform entity into a form suitable for serialization."
-  (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:const ^Long serialization-protocol-version
   "Current serialization protocol version.
@@ -100,7 +103,7 @@
   [entity]
   (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
-                  :pulse_id :result_metadata)
+                  :pulse_id :result_metadata :entity_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one

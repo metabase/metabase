@@ -1,20 +1,22 @@
 (ns metabase.server.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [context defroutes GET]]
-            [compojure.route :as route]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.routes :as api]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.routes.index :as index]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [ring.util.response :as response]))
+  (:require
+   [compojure.core :refer [context defroutes GET]]
+   [compojure.route :as route]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.routes :as api]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.routes.index :as index]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [ring.util.response :as response]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
@@ -49,7 +51,8 @@
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" []
        (if (init-status/complete?)
-         (try (if (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)})
+         (try (if (or (mdb.connection-pool-setup/recent-activity?)
+                      (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)}))
                 {:status 200, :body {:status "ok"}}
                 {:status 503 :body {:status "Unable to get app-db connection"}})
               (catch Exception e

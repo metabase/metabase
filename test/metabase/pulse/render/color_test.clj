@@ -1,7 +1,8 @@
 (ns metabase.pulse.render.color-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.color :as color]
-            [metabase.pulse.render.js-engine :as js]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.js-engine :as js]))
 
 (def ^:private red "#ff0000")
 (def ^:private green "#00ff00")

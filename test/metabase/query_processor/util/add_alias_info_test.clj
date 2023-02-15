@@ -1,14 +1,16 @@
 (ns metabase.query-processor.util.add-alias-info-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.test :as mt]))
 
 (comment h2/keep-me)
 
@@ -341,7 +343,7 @@
                                                                           ::add/position      0}]
                                               [:value 1 {:base_type         :type/Text
                                                          :coercion_strategy nil
-                                                         :database_type     "VARCHAR"
+                                                         :database_type     "CHARACTER VARYING"
                                                          :effective_type    :type/Text
                                                          :name              "CATEGORY"
                                                          :semantic_type     :type/Category}]]}]
@@ -531,7 +533,7 @@
                                             "Doohickey"
                                             {:base_type         :type/Text
                                              :coercion_strategy nil
-                                             :database_type     "VARCHAR"
+                                             :database_type     "CHARACTER VARYING"
                                              :effective_type    :type/Text
                                              :name              "CATEGORY"
                                              :semantic_type     :type/Category}]]}

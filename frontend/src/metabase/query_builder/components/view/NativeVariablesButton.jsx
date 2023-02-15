@@ -5,9 +5,9 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const NativeVariablesButton = ({
   toggleTemplateTagsEditor,

@@ -1,11 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.group-manager
-  (:require [clojure.data :as data]
-            [clojure.set :as set]
-            [metabase.api.common :as api]
-            [metabase.models :refer [PermissionsGroupMembership]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [metabase.api.common :as api]
+   [metabase.models :refer [PermissionsGroupMembership]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]))
 
 (defn user-group-memberships
   "Return a list of group memberships a User belongs to.

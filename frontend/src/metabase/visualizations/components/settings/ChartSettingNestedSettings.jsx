@@ -18,10 +18,10 @@ const chartSettingNestedSettings =
       getEditingObjectKey = () => {
         return (
           this.state.objectKeyOverride ||
-          this.props.initialKey ||
-          (this.props.objects.length === 1
-            ? getObjectKey(this.props.objects[0])
-            : null)
+          (this.props.initialKey ??
+            (this.props.objects.length === 1
+              ? getObjectKey(this.props.objects[0])
+              : null))
         );
       };
 
@@ -39,7 +39,7 @@ const chartSettingNestedSettings =
 
       handleChangeSettingsForEditingObject = newSettings => {
         const editingObjectKey = this.getEditingObjectKey();
-        if (editingObjectKey) {
+        if (editingObjectKey != null) {
           this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
         }
       };
@@ -65,7 +65,7 @@ const chartSettingNestedSettings =
       render() {
         const { series, objects, extra } = this.props;
         const editingObjectKey = this.getEditingObjectKey();
-        if (editingObjectKey) {
+        if (editingObjectKey !== undefined) {
           const editingObject = _.find(
             objects,
             o => getObjectKey(o) === editingObjectKey,

@@ -1,15 +1,16 @@
 (ns metabase.query-processor-test.sum-where-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.test :as mt]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 179.0
            (->> {:aggregation [[:sum-where
-                                [:field-id (mt/id :venues :price)]
-                                [:< [:field-id (mt/id :venues :price)] 4]]]}
+                                [:field (mt/id :venues :price) nil]
+                                [:< [:field (mt/id :venues :price) nil] 4]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
                 ffirst
@@ -18,8 +19,8 @@
     (testing "Should get normalized correctly and work as expected"
       (is (= 179.0
              (->> {:aggregation [["sum-where"
-                                  ["field-id" (mt/id :venues :price)]
-                                  ["<" ["field-id" (mt/id :venues :price)] 4]]]}
+                                  ["field" (mt/id :venues :price) nil]
+                                  ["<" ["field" (mt/id :venues :price) nil] 4]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst
@@ -29,10 +30,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 34.0
            (->> {:aggregation [[:sum-where
-                                [:field-id (mt/id :venues :price)]
-                                [:and [:< [:field-id (mt/id :venues :price)] 4]
-                                 [:or [:starts-with [:field-id (mt/id :venues :name)] "M"]
-                                  [:ends-with [:field-id (mt/id :venues :name)] "t"]]]]]}
+                                [:field (mt/id :venues :price) nil]
+                                [:and [:< [:field (mt/id :venues :price) nil] 4]
+                                 [:or [:starts-with [:field (mt/id :venues :name) nil] "M"]
+                                  [:ends-with [:field (mt/id :venues :name) nil] "t"]]]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
                 ffirst
@@ -41,8 +42,8 @@
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= nil
-           (->> {:aggregation [[:sum-where [:field-id (mt/id :venues :price)] [:< [:field-id (mt/id :venues :price)] 4]]]
-                 :filter      [:> [:field-id (mt/id :venues :price)] Long/MAX_VALUE]}
+           (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:< [:field (mt/id :venues :price) nil] 4]]]
+                 :filter      [:> [:field (mt/id :venues :price) nil] Long/MAX_VALUE]}
                 (mt/run-mbql-query venues)
                 mt/rows
                 ffirst)))))
@@ -54,9 +55,9 @@
             [4 1.0]
             [5 1.0]]
            (->> {:aggregation [[:sum-where
-                                [:field-id (mt/id :venues :price)]
-                                [:< [:field-id (mt/id :venues :price)] 2]]]
-                 :breakout    [[:field-id (mt/id :venues :category_id)]]
+                                [:field (mt/id :venues :price) nil]
+                                [:< [:field (mt/id :venues :price) nil] 2]]]
+                 :breakout    [[:field (mt/id :venues :category_id) nil]]
                  :limit       4}
                 (mt/run-mbql-query venues)
                 (mt/round-all-decimals 2)
@@ -70,8 +71,8 @@
            (->> {:aggregation [[:+
                                 [:/
                                  [:sum-where
-                                  [:field-id (mt/id :venues :price)]
-                                  [:< [:field-id (mt/id :venues :price)] 4]]
+                                  [:field (mt/id :venues :price) nil]
+                                  [:< [:field (mt/id :venues :price) nil] 4]]
                                  2]
                                 1]]}
                 (mt/run-mbql-query venues)
@@ -83,9 +84,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
                                              :definition {:source-table (mt/id :venues)
-                                                          :filter       [:< [:field-id (mt/id :venues :price)] 4]}}]
+                                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
       (is (= 179.0
-             (->> {:aggregation [[:sum-where [:field-id (mt/id :venues :price)] [:segment segment-id]]]}
+             (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:segment segment-id]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst
@@ -96,8 +97,8 @@
     (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
                                            :definition {:source-table (mt/id :venues)
                                                         :aggregation  [:sum-where
-                                                                       [:field-id (mt/id :venues :price)]
-                                                                       [:< [:field-id (mt/id :venues :price)] 4]]}}]
+                                                                       [:field (mt/id :venues :price) nil]
+                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}]
       (is (= 179.0
              (->> {:aggregation [[:metric metric-id]]}
                   (mt/run-mbql-query venues)

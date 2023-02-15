@@ -1,16 +1,19 @@
 (ns metabase.query-processor.util.persisted-cache
-  (:require    [clojure.string :as str]
-               [metabase.driver :as driver]
-               [metabase.driver.ddl.interface :as ddl.i]
-               [metabase.driver.sql.util :as sql.u]
-               [metabase.driver.util :as driver.u]
-               [metabase.models.persisted-info :as persisted-info]
-               [metabase.public-settings :as public-settings]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.public-settings :as public-settings]))
 
 (defn- segmented-user?
   []
   (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented?)
+    (try (segmented?)
+      ;; Fail closed (i.e. default to true) if `segmented-user` throws an exception due to no current user being bound
+      (catch Throwable _ true))
     false))
 
 (defn can-substitute?

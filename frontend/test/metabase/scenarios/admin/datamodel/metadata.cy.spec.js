@@ -21,7 +21,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Product ID" column in "Orders" table
     cy.findByText("Orders").click();
-    cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
+    cy.findByTestId("column-PRODUCT_ID").find(".Icon-gear").click();
 
     // remap its original value to use foreign key
     cy.findByText("Use original value").click();
@@ -52,7 +52,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
     cy.findByText("Reviews").click();
-    cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
+    cy.findByTestId("column-RATING").find(".Icon-gear").click();
 
     // apply custom remapping for "Rating" values 1-5
     cy.findByText("Use original value").click();

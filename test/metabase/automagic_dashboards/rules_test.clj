@@ -1,6 +1,7 @@
 (ns metabase.automagic-dashboards.rules-test
-  (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.rules :as rules]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.rules :as rules]))
 
 (deftest ga-dimension?-test
   (are [x expected] (= expected

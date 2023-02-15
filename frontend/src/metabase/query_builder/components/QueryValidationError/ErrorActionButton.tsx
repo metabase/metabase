@@ -7,7 +7,7 @@ import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
   ErrorType,
-} from "metabase-lib/lib/ValidationError";
+} from "metabase-lib/ValidationError";
 
 import { QueryValidationErrorProps } from "./QueryValidationError";
 import { QueryErrorActionButton } from "./QueryValidationError.styled";

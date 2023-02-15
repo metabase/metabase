@@ -4,7 +4,6 @@ import React, {
   Ref,
   useCallback,
   useMemo,
-  useState,
 } from "react";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
@@ -22,7 +21,7 @@ export interface DateSelectorProps {
   style?: CSSProperties;
   value?: Moment;
   hasTime?: boolean;
-  is24HourMode?: boolean;
+  timeFormat?: string;
   onChange?: (date?: Moment) => void;
   onHasTimeChange?: (hasTime: boolean) => void;
   onSubmit?: () => void;
@@ -34,7 +33,7 @@ const DateSelector = forwardRef(function DateSelector(
     style,
     value,
     hasTime,
-    is24HourMode,
+    timeFormat,
     onChange,
     onHasTimeChange,
     onSubmit,
@@ -79,7 +78,7 @@ const DateSelector = forwardRef(function DateSelector(
         <SelectorTimeContainer>
           <TimeInput
             value={value}
-            is24HourMode={is24HourMode}
+            timeFormat={timeFormat}
             onChange={onChange}
             onClear={handleTimeClear}
           />

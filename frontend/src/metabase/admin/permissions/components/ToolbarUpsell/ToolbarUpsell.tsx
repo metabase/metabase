@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { jt, t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

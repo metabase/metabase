@@ -1,23 +1,24 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.table :as api.table]
-            [metabase.driver.util :as driver.u]
-            [metabase.http-client :as client]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Database Field FieldValues Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :as table]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.table :as api.table]
+   [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -31,7 +32,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -46,6 +47,7 @@
     :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
+    :settings                    nil
     :cache_ttl                   nil}))
 
 (defn- table-defaults []
@@ -160,7 +162,7 @@
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
                                      :display_name             "Name"
-                                     :database_type            "VARCHAR"
+                                     :database_type            "CHARACTER VARYING"
                                      :base_type                "type/Text"
                                      :effective_type           "type/Text"
                                      :visibility_type          "normal"
@@ -189,7 +191,7 @@
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
                                      :display_name     "Password"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :visibility_type  "sensitive"
@@ -226,7 +228,7 @@
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
                                      :display_name     "Name"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :has_field_values "list"
@@ -328,31 +330,33 @@
                             (let [fut (original unhidden)]
                               (when (future? fut)
                                 (deref fut)))))]
-            (let [set-visibility (fn [state]
-                                   (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name    "Userz"
-                                                          :visibility_type state
-                                                          :description     "What a nice table!"}))
-                  set-name      (fn []
-                                  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name (mt/random-name)
-                                                          :description  "What a nice table!"}))]
+            (letfn [(set-visibility! [state]
+                      (testing (format "Set state => %s" (pr-str state))
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name    "Userz"
+                                               :visibility_type state
+                                               :description     "What a nice table!"})))
+                    (set-name! []
+                      (testing "set display name"
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name (mt/random-name)
+                                               :description  "What a nice table!"})))]
 
-              (set-visibility "hidden")
-              (set-visibility nil)        ; <- should get synced
+              (set-visibility! "hidden")
+              (set-visibility! nil)     ; <- should get synced
               (is (= 1
                      @called))
-              (set-visibility "hidden")
-              (set-visibility "cruft")
-              (set-visibility "technical")
-              (set-visibility nil)        ; <- should get synced again
+              (set-visibility! "hidden")
+              (set-visibility! "cruft")
+              (set-visibility! "technical")
+              (set-visibility! nil)     ; <- should get synced again
               (is (= 2
                      @called))
-              (set-visibility "technical")
+              (set-visibility! "technical")
               (is (= 2
                      @called))
               (testing "Update table's properties shouldn't trigger sync"
-                (set-name)
+                (set-name!)
                 (is (= 2
                        @called)))))))))
 
@@ -361,17 +365,18 @@
       (mt/with-temp* [Table [{id-1 :id} {}]
                       Table [{id-2 :id} {:visibility_type "hidden"}]]
         (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
-          (let [set-many-vis (fn [ids state]
-                               (reset! unhidden-ids #{})
-                               (mt/user-http-request :crowberto :put 200 "table/"
-                                                     {:ids ids :visibility_type state}))]
-            (set-many-vis [id-1 id-2] nil) ;; unhides only 2
+          (letfn [(set-many-vis! [ids state]
+                    (reset! unhidden-ids #{})
+                    (testing (format "Set visibility type => %s" (pr-str state))
+                      (mt/user-http-request :crowberto :put 200 "table/"
+                                            {:ids ids :visibility_type state})))]
+            (set-many-vis! [id-1 id-2] nil) ;; unhides only 2
             (is (= @unhidden-ids #{id-2}))
 
-            (set-many-vis [id-1 id-2] "hidden")
+            (set-many-vis! [id-1 id-2] "hidden")
             (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
 
-            (set-many-vis [id-1 id-2] nil) ;; both are made unhidden so both synced
+            (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest get-fks-test
@@ -449,7 +454,7 @@
                               :semantic_type            "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
-                              :database_type            "VARCHAR"
+                              :database_type            "CHARACTER VARYING"
                               :base_type                "type/Text"
                               :effective_type           "type/Text"
                               :dimension_options        []
@@ -502,42 +507,42 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          [{:name         "NAME"
-                                            :display_name "NAME"
-                                            :base_type    "type/Text"
-                                            :effective_type "type/Text"
-                                            :semantic_type "type/Name"
-                                            :fingerprint  (:name mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
-                                           {:name         "ID"
-                                            :display_name "ID"
-                                            :base_type    "type/BigInteger"
-                                            :effective_type "type/BigInteger"
-                                            :semantic_type nil
-                                            :fingerprint  (:id mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
-                                           (with-numeric-dimension-options
-                                             {:name         "PRICE"
-                                              :display_name "PRICE"
-                                              :base_type    "type/Integer"
-                                              :effective_type "type/Integer"
-                                              :semantic_type nil
-                                              :fingerprint  (:price mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
-                                           (with-coordinate-dimension-options
-                                             {:name         "LATITUDE"
-                                              :display_name "LATITUDE"
-                                              :base_type    "type/Float"
-                                              :effective_type "type/Float"
-                                              :semantic_type "type/Latitude"
-                                              :fingerprint  (:latitude mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
+                                          (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+                                                name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
+                                            [{:name           "NAME"
+                                              :display_name   "NAME"
+                                              :base_type      "type/Text"
+                                              :effective_type "type/Text"
+                                              :semantic_type  "type/Name"
+                                              :fingerprint    (name->fingerprint :name)
+                                              :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
+                                             {:name           "ID"
+                                              :display_name   "ID"
+                                              :base_type      "type/BigInteger"
+                                              :effective_type "type/BigInteger"
+                                              :semantic_type  nil
+                                              :fingerprint    (name->fingerprint :id)
+                                              :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
+                                             (with-numeric-dimension-options
+                                               {:name           "PRICE"
+                                                :display_name   "PRICE"
+                                                :base_type      "type/Integer"
+                                                :effective_type "type/Integer"
+                                                :semantic_type  nil
+                                                :fingerprint    (name->fingerprint :price)
+                                                :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
+                                             (with-coordinate-dimension-options
+                                               {:name           "LATITUDE"
+                                                :display_name   "LATITUDE"
+                                                :base_type      "type/Float"
+                                                :effective_type "type/Float"
+                                                :semantic_type  "type/Latitude"
+                                                :fingerprint    (name->fingerprint :latitude)
+                                                :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
                (->> card
                     u/the-id
                     (format "table/card__%d/query_metadata")
-                    (mt/user-http-request :crowberto :get 200)
-                    (tu/round-fingerprint-cols [:fields])
-                    (mt/round-all-decimals 2))))))))
+                    (mt/user-http-request :crowberto :get 200))))))))
 
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
@@ -589,10 +594,9 @@
         :when (contains? (set category-names) (:name field))]
     (-> field
         (select-keys [:id :table_id :name :values :dimensions])
-        (update :dimensions (fn [dim]
-                              (if (map? dim)
-                                (dissoc dim :id :entity_id :created_at :updated_at)
-                                dim))))))
+        (update :dimensions (fn [dimensions]
+                              (for [dim dimensions]
+                                (dissoc dim :id :entity_id :created_at :updated_at)))))))
 
 (defn- category-id-semantic-type
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
@@ -608,10 +612,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -626,10 +630,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -645,10 +649,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [external remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id (mt/id :categories :name)
-                              :type                    "external"}}
+                 :dimensions [{:name                    "Category ID [external remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id (mt/id :categories :name)
+                               :type                    "external"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -747,7 +751,7 @@
                    (dimension-options-for-field response "timestamp"))))))
 
       (testing "time columns"
-        (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
+        (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
           (mt/dataset test-data-with-time
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes
@@ -827,7 +831,7 @@
                                           {:field_order :database})
                     :fields
                     (map :name)))))
-      (testing "Cane we set custom field ordering?"
+      (testing "Can we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))

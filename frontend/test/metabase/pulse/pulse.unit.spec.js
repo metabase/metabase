@@ -26,8 +26,8 @@ describe("recipient picker", () => {
         />,
       );
       // Popover with all names should be open on focus
-      await screen.findByText("Barb");
-      await screen.findByText("Dustin");
+      expect(await screen.findByText("Barb")).toBeInTheDocument();
+      expect(await screen.findByText("Dustin")).toBeInTheDocument();
     });
     it("should not be focused if there are existing recipients", () => {
       render(
@@ -40,7 +40,7 @@ describe("recipient picker", () => {
       );
       // Now only the recipient name should be visible
       screen.getByText("Barb");
-      expect(screen.queryByText("Dustin")).toBeNull();
+      expect(screen.queryByText("Dustin")).not.toBeInTheDocument();
     });
   });
 });

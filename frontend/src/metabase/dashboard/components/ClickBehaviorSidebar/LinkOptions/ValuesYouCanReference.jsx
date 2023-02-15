@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
@@ -47,6 +46,11 @@ const ValuesYouCanReference = withUserAttributes(
         name: t`User attributes`,
       },
     ].filter(section => section.items.length > 0);
+
+    if (!sections.length) {
+      return null;
+    }
+
     return (
       <PopoverWithTrigger
         triggerElement={

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext } from "ttag";
 
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 
 import { Label, LabelContainer } from "../MetadataInfo.styled";
 

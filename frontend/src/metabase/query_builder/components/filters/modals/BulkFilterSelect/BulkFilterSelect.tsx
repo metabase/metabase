@@ -1,15 +1,15 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { isBoolean, isDate } from "metabase/lib/schema_metadata";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
+import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 import StructuredQuery, {
   SegmentOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
+} from "metabase-lib/queries/StructuredQuery";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Dimension from "metabase-lib/lib/Dimension";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Dimension from "metabase-lib/Dimension";
 
 import {
   SelectFilterButton,
@@ -80,6 +80,7 @@ export const BulkFilterSelect = ({
               </SelectFilterButton>
             )
       }
+      maxWidth={370}
       popoverContent={({ closePopover }) => (
         <SelectFilterPopover
           query={query}

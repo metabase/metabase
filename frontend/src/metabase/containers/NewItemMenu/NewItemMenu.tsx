@@ -1,46 +1,36 @@
-import { ReactNode } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import _ from "underscore";
 import { closeNavbar } from "metabase/redux/app";
 import NewItemMenu from "metabase/components/NewItemMenu";
+import Databases from "metabase/entities/databases";
 import {
   getHasDataAccess,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-} from "metabase/nav/selectors";
+} from "metabase/selectors/data";
+import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-interface MenuOwnProps {
-  className?: string;
-  trigger?: ReactNode;
-  triggerIcon?: string;
-  triggerTooltip?: string;
-  analyticsContext?: string;
+interface MenuDatabaseProps {
+  databases?: Database[];
 }
 
-interface MenuStateProps {
-  hasDataAccess: boolean;
-  hasNativeWrite: boolean;
-  hasDatabaseWithJsonEngine: boolean;
-}
-
-interface MenuDispatchProps {
-  onChangeLocation: (location: string) => void;
-  onCloseNavbar: () => void;
-}
-
-const mapStateToProps = (state: State): MenuStateProps => ({
-  hasDataAccess: getHasDataAccess(state),
-  hasNativeWrite: getHasNativeWrite(state),
-  hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(state),
+const mapStateToProps = (
+  state: State,
+  { databases = [] }: MenuDatabaseProps,
+) => ({
+  hasDataAccess: getHasDataAccess(databases),
+  hasNativeWrite: getHasNativeWrite(databases),
+  hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
 });
 
 const mapDispatchToProps = {
-  onChangeLocation: push,
   onCloseNavbar: closeNavbar,
 };
 
-export default connect<MenuStateProps, MenuDispatchProps, MenuOwnProps, State>(
-  mapStateToProps,
-  mapDispatchToProps,
+export default _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NewItemMenu);

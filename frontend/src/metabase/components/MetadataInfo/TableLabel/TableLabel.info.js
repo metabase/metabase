@@ -2,7 +2,7 @@ import React from "react";
 import styled from "@emotion/styled";
 
 import { PRODUCTS } from "__support__/sample_database_fixture";
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 
 import TableLabel from "./TableLabel";
 

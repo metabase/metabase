@@ -1,28 +1,32 @@
 (ns metabase.api.table
   "/api/table endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.related :as related]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            #_:clj-kondo/ignore
-            [metabase.sync.field-values :as sync.field-values]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [compojure.core :refer [GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.related :as related]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   #_:clj-kondo/ignore
+   [metabase.sync.field-values :as sync.field-values]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -52,17 +56,16 @@
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} body]
-  (api/check-500
-   (db/update! Table id
-               (u/select-keys-when body
-                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                 :present [:description :caveats :points_of_interest :visibility_type])))
+  (when-let [changes (not-empty (u/select-keys-when body
+                                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+    (api/check-500 (db/update! Table id changes)))
   (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-       (table/update-field-positions! updated-table)
-       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+        (table/update-field-positions! updated-table)
+        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -90,7 +93,8 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
@@ -104,7 +108,8 @@
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
 
-(api/defendpoint PUT "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
@@ -289,7 +294,8 @@
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
-(api/defendpoint GET "/:id/query_metadata"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
@@ -305,8 +311,8 @@
    include_hidden_fields (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
   (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
-                                    :include-hidden-fields?       include_hidden_fields
-                                    :include-editable-data-model? include_editable_data_model}))
+                                                      :include-hidden-fields?       include_hidden_fields
+                                                      :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -338,7 +344,7 @@
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
   any collection)."
   []
-  (tru "Everything else"))
+  "Everything else")
 
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
@@ -369,21 +375,22 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(api/defendpoint GET "/card__:id/query_metadata"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
   (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
-                                                      :id id)
-        moderated-status              (->> (db/query {:select   [:status]
-                                                      :from     [:moderation_review]
-                                                      :where    [:and
-                                                                 [:= :moderated_item_type "card"]
-                                                                 [:= :moderated_item_id id]
-                                                                 [:= :most_recent true]]
-                                                      :order-by [[:id :desc]]
-                                                      :limit    1}
-                                                     :id id)
+                                         :id id)
+        moderated-status              (->> (mdb.query/query {:select   [:status]
+                                                             :from     [:moderation_review]
+                                                             :where    [:and
+                                                                        [:= :moderated_item_type "card"]
+                                                                        [:= :moderated_item_id id]
+                                                                        [:= :most_recent true]]
+                                                             :order-by [[:id :desc]]
+                                                             :limit    1}
+                                                            :id id)
                                            first :status)]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
@@ -409,7 +416,6 @@
        :origin         (hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
        :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
-
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
@@ -440,7 +446,8 @@
   [id]
   (-> (db/select-one Table :id id) api/read-check related/related))
 
-(api/defendpoint PUT "/:id/fields/order"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}

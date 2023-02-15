@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 
 import FormMessage from "metabase/components/form/FormMessage";
 
@@ -10,6 +9,9 @@ export interface CustomFormMessageProps {
   noPadding?: boolean;
 }
 
+/**
+ * @deprecated
+ */
 function CustomFormMessage(props: CustomFormMessageProps) {
   const { error } = useForm();
   if (error) {

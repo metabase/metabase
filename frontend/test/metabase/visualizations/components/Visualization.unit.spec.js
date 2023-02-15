@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { delay } from "metabase/lib/promise";
 
@@ -9,10 +9,7 @@ import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 describe("Visualization", () => {
   const renderViz = async series => {
-    const utils = renderWithProviders(<Visualization rawSeries={series} />, {
-      withSettings: true,
-      withEmbedSettings: true,
-    });
+    const utils = renderWithProviders(<Visualization rawSeries={series} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
@@ -26,13 +23,14 @@ describe("Visualization", () => {
 
   describe("scalar", () => {
     it("should render", async () => {
-      const { container } = await renderViz([
+      await renderViz([
         {
           card: { display: "scalar" },
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
-      expect(container.querySelector("h1").textContent).toEqual("1");
+
+      expect(screen.getByTestId("scalar-value")).toHaveTextContent("1");
     });
   });
 

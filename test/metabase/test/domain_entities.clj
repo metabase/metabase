@@ -1,6 +1,7 @@
 (ns metabase.test.domain-entities
-  (:require [clojure.test :refer :all]
-            [metabase.domain-entities.specs :as de.specs]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.domain-entities.specs :as de.specs]))
 
 (def test-domain-entity-specs
   "A test domain specs written against our test DB."

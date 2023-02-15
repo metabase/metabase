@@ -1,16 +1,22 @@
 (ns metabase.integrations.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
-  (:require [clj-ldap.client :as ldap]
-            [clojure.string :as str]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap.interface :as i]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :refer [defenterprise-schema]]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool]))
+  (:require
+   [clj-ldap.client :as ldap]
+   [clojure.string :as str]
+   [metabase.integrations.common :as integrations.common]
+   [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise-schema]]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 
@@ -113,7 +119,7 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo

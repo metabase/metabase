@@ -1,11 +1,6 @@
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import {
-  hasDefaultParameterValue,
-  hasParameterValue,
-  normalizeParameterValue,
-} from "metabase/parameters/utils/parameter-values";
 
 import {
   Channel,
@@ -14,6 +9,12 @@ import {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/types";
+import {
+  hasDefaultParameterValue,
+  hasParameterValue,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -101,7 +102,10 @@ export function recipientIsValid(recipient: NotificationRecipient) {
 
   const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
-  return _.isEmpty(allowedDomains) || allowedDomains.includes(recipientDomain);
+  return (
+    _.isEmpty(allowedDomains) ||
+    (recipientDomain && allowedDomains.includes(recipientDomain))
+  );
 }
 
 export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
@@ -219,5 +223,5 @@ export function getActivePulseParameters(
           : parameter.default,
       };
     })
-    .filter(Boolean);
+    .filter(isNotNull);
 }

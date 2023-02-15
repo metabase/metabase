@@ -1,37 +1,41 @@
 (ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.oracle :as oracle]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
-            [metabase.sync :as sync]
-            metabase.sync.util
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.oracle :as oracle.tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.test.util :as tu]
-            [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.util.Base64))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.oracle :as oracle]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.sync :as sync]
+   [metabase.sync.util]
+   [metabase.test :as mt]
+   [metabase.test.data.env :as te]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.oracle :as oracle.tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (java.util Base64)))
+
+(set! *warn-on-reflection* true)
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
@@ -169,8 +173,7 @@
                             ;; doesn't wrap every exception in an SshdException
                             :tunnel-port    21212
                             :tunnel-user    "bogus"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+               (driver.u/can-connect-with-details? engine details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
@@ -179,8 +182,8 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :oracle (mt/db))))))
 
 (deftest insert-rows-ddl-test
   (mt/test-driver :oracle
@@ -291,7 +294,7 @@
                                         (id "test_data_categories__via__cat" "name" "varchar2")
                                         "BBQ"]
                             :order-by  [[(id "id" "number") :asc]]}]
-                  :where  [:<= (hsql/raw "rownum") 100]})
+                  :where  [:<= (hx/raw "rownum") 100]})
                (#'sql.qp/mbql->honeysql
                 :oracle
                 (qp/preprocess
@@ -357,13 +360,16 @@
                                   ;; database, and the logic within metabase.test.data.interface/metabase-instance would
                                   ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
                                   ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                                  tx/*database-name-override* "test-data"]
+                                  tx/*database-name-override* "test-data"
+                                  ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
+                                  ;; results in errors because of column name formatting.
+                                  te/*test-drivers* (constantly #{:oracle})]
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
-      (println (u/format-color 'yellow
-                               "Skipping %s because %s env var is not set"
-                               "oracle-connect-with-ssl-test"
-                               "MB_ORACLE_SSL_TEST_SSL")))))
+      (log/warn (u/format-color 'yellow
+                                "Skipping %s because %s env var is not set"
+                                "oracle-connect-with-ssl-test"
+                                "MB_ORACLE_SSL_TEST_SSL")))))
 
 (deftest text-equals-empty-string-test
   (mt/test-driver :oracle

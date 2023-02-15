@@ -6,7 +6,7 @@ import { delay } from "metabase/lib/promise";
 // import the un-connected component so we can test its internal logic sans
 // redux
 import { SavedQuestionLoader } from "metabase/containers/SavedQuestionLoader";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 describe("SavedQuestionLoader", () => {
   let loadQuestionSpy, loadMetadataSpy, mockChild;

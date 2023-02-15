@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, getIcon } from "__support__/ui";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 
@@ -12,8 +12,10 @@ describe("EntityMenuItem", () => {
         action={() => ({})}
       />,
     );
-    screen.getByRole("img", { name: /pencil icon/i });
-    screen.getByText("A pencil icon");
+
+    expect(getIcon("pencil")).toBeInTheDocument();
+
+    expect(screen.getByText("A pencil icon")).toBeInTheDocument();
   });
 
   describe("actions and links", () => {
@@ -25,18 +27,18 @@ describe("EntityMenuItem", () => {
           <EntityMenuItem title="A pencil icon" icon="pencil" action={spy} />,
         );
 
-        fireEvent.click(screen.getByRole("img", { name: /pencil icon/i }));
+        fireEvent.click(getIcon("pencil"));
         expect(spy).toHaveBeenCalledTimes(1);
       });
     });
 
     describe("links", () => {
       it("should be a link if a link is provided", () => {
-        const { container } = render(
+        render(
           <EntityMenuItem title="A pencil icon" icon="pencil" link="/derp" />,
         );
 
-        expect(container.querySelector("a")).toBeInTheDocument();
+        expect(screen.getByTestId("entity-menu-link")).toBeInTheDocument();
       });
     });
   });

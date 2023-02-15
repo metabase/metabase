@@ -1,15 +1,16 @@
 (ns build
-  (:require [build-drivers :as build-drivers]
-            [build.licenses :as license]
-            [build.version-info :as version-info]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.build.api :as b]
-            [environ.core :as env]
-            [flatland.ordered.map :as ordered-map]
-            [i18n.create-artifacts :as i18n]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers :as build-drivers]
+   [build.licenses :as license]
+   [build.version-info :as version-info]
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.build.api :as b]
+   [environ.core :as env]
+   [flatland.ordered.map :as ordered-map]
+   [i18n.create-artifacts :as i18n]
+   [metabuild-common.core :as u]))
 
 (defn- edition-from-env-var []
   (case (env/env :mb-edition)
@@ -132,7 +133,7 @@
 (defn list-without-license [{:keys []}]
   (let [[classpath]        (u/sh {:dir    u/project-root-directory
                                            :quiet? true}
-                                          "clojure" "-A:ee" "-Spath")
+                                 "clojure" "-A:ee" "-Spath")
         classpath-entries (license/jar-entries classpath)
         {:keys [without-license]} (license/process*
                                    {:classpath-entries classpath-entries

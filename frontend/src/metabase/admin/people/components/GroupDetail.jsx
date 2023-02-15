@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
-import _ from "underscore";
 
 import {
   isAdminGroup,

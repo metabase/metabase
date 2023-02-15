@@ -1,14 +1,14 @@
 (ns build-drivers.verify
-  (:require [build-drivers.common :as c]
-            [build-drivers.lint-manifest-file :as lint-manifest-file]
-            [clojure.spec.alpha :as s]
-            [colorize.core :as colorize]
-            [expound.alpha :as expound]
-            [clojure.java.io :as io]
-            [metabuild-common.core :as u]
-            [spell-spec.expound]
-            [yaml.core :as yaml])
-  (:import [java.util.zip ZipEntry ZipFile]))
+  (:require
+   [build-drivers.common :as c]
+   [build-drivers.lint-manifest-file :as lint-manifest-file]
+   [clojure.spec.alpha :as s]
+   [colorize.core :as colorize]
+   [expound.alpha :as expound]
+   [metabuild-common.core :as u]
+   [yaml.core :as yaml])
+  (:import
+   (java.util.zip ZipEntry ZipFile)))
 
 (defn- get-jar-entry [^String jar-path ^String filename]
   (with-open [zip-file (ZipFile. jar-path)]

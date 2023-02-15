@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
 import Value from "metabase/components/Value";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 import { normalizeValue } from "../normalizeValue";
 

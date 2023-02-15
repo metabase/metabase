@@ -18,6 +18,7 @@ import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustom
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
+  PublicLinksActionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
@@ -228,6 +229,7 @@ const SECTIONS = updateSectionsWithPlugins({
     name: t`Authentication`,
     order: 6,
     settings: [], // added by plugins
+    adminOnly: true,
   },
   maps: {
     name: t`Maps`,
@@ -325,6 +327,12 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: PublicLinksQuestionListing,
         getHidden: settings => !settings["enable-public-sharing"],
       },
+      {
+        key: "-public-sharing-actions",
+        display_name: t`Shared Actions`,
+        widget: PublicLinksActionListing,
+        getHidden: settings => !settings["enable-public-sharing"],
+      },
     ],
   },
   "embedding-in-other-applications": {
@@ -359,7 +367,9 @@ const SECTIONS = updateSectionsWithPlugins({
         description: jt`Allow questions, dashboards, and more to be embedded. ${(
           <ExternalLink
             key="learn-embedding-link"
-            href="https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html"
+            href={MetabaseSettings.learnUrl(
+              "embedding/embedding-charts-and-dashboards.html",
+            )}
           >
             {t`Learn more.`}
           </ExternalLink>

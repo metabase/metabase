@@ -421,6 +421,10 @@ function setupDashboard(cardId, addedSeriesCardId) {
     return cy
       .request("POST", `/api/dashboard/${dashboardId}/cards`, {
         cardId,
+        row: 0,
+        col: 0,
+        size_x: 18,
+        size_y: 12,
       })
       .then(({ body: { id: dashCardId } }) => {
         return cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {

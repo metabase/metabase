@@ -1,22 +1,26 @@
 (ns metabase.test.data.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [honeysql.format :as hformat]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.models :refer [Database Table]]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [honeysql.format :as hformat]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.models :refer [Database Table]]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -38,24 +42,32 @@
 (defn- connection-details []
   (let [details* {:host         (tx/db-test-env-var-or-throw :oracle :host "localhost")
                   :port         (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-                  :user         (tx/db-test-env-var-or-throw :oracle :user "system")
-                  :password     (tx/db-test-env-var-or-throw :oracle :password "password")
+                  :user         (tx/db-test-env-var :oracle :user)
+                  :password     (tx/db-test-env-var :oracle :password)
                   :sid          (tx/db-test-env-var :oracle :sid)
                   :service-name (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
                   :ssl          (tx/db-test-env-var :oracle :ssl false)}
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
-                  :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
-                  :ssl-keystore-password-value]]
-    (merge details*
-      (m/filter-vals some?
-        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
+                  :ssl-use-keystore :ssl-keystore-options :ssl-keystore-path :ssl-keystore-value
+                  :ssl-keystore-password-value]
+        details* (merge details*
+                        (m/filter-vals some?
+                                       (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))]
+    ;; if user or password are not set and we cannot possibly be using SSL auth, set the defaults
+    (cond-> details*
+      (and (nil? (:user details*)) (not (:ssl-use-keystore details*)))
+      (assoc :user "system")
+
+      (and (nil? (:password details*)) (not (:ssl-use-keystore details*)))
+      (assoc :password "password"))))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
-  (let [conn-details (connection-details)]
-    (identity conn-details)))
+  (connection-details))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
+
+(defmethod tx/supports-time-type? :oracle [_driver] false)
 
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
@@ -120,14 +132,14 @@
           (let [existing-db-id (u/the-id existing-db)
                 all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})
-              (println (u/format-color 'yellow
-                                       (str "[oracle] At least one table's schema for the existing '%s' Database"
+              (log/warn (u/format-color 'yellow
+                                        (str "[oracle] At least one table's schema for the existing '%s' Database"
                                             " (id %d), which include all of [%s], does not match current session-schema"
                                             " of %s; deleting this DB so it can be recreated")
-                                       database-name
-                                       existing-db-id
-                                       (str/join "," all-schemas)
-                                       session-schema))
+                                        database-name
+                                        existing-db-id
+                                        (str/join "," all-schemas)
+                                        session-schema))
               (db/delete! Database :id existing-db-id))))
         (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
 
@@ -207,9 +219,9 @@
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]
-    (println (u/format-color 'blue "[oracle] %s" sql))
+    (log/info (u/format-color 'blue "[oracle] %s" sql))
     (jdbc/execute! (dbspec) sql))
-  (println (u/format-color 'blue "[ok]")))
+  (log/info (u/format-color 'blue "[ok]")))
 
 (defn create-user!
   ;; default to using session-password for all users created this session

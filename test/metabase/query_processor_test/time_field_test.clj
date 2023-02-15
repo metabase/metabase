@@ -1,8 +1,9 @@
 (ns metabase.query-processor-test.time-field-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]))
 
 (defn- time-query [filter-type & filter-args]
   (mt/formatted-rows [int identity identity]
@@ -12,12 +13,11 @@
          :order-by [[:asc $id]]
          :filter   (into [filter-type $last_login_time] filter-args)}))))
 
-;; TIMEZONE FIXME
-(def ^:private skip-time-test-drivers
-  #{:oracle :mongo :redshift :sparksql})
+(defn- normal-drivers-that-support-time-type []
+  (filter mt/supports-time-type? (mt/normal-drivers)))
 
 (deftest basic-test
-  (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
+  (mt/test-drivers (normal-drivers-that-support-time-type)
     (doseq [[message [start end]] {"Basic between query on a time field"
                                    ["08:00:00" "09:00:00"]
 
@@ -33,7 +33,7 @@
                (time-query :between start end)))))))
 
 (deftest greater-than-test
-  (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
+  (mt/test-drivers (normal-drivers-that-support-time-type)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]
               [5 "Quentin Sören" "17:30:00"]
@@ -45,14 +45,14 @@
            (time-query :> "16:00:00Z")))))
 
 (deftest equals-test
-  (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
+  (mt/test-drivers (normal-drivers-that-support-time-type)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]]
              [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
            (time-query := "16:15:00Z")))))
 
 (deftest report-timezone-test
-  (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
+  (mt/test-drivers (normal-drivers-that-support-time-type)
     (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (is (= (cond
                (= :sqlite driver/*driver*)

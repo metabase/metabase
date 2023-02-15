@@ -1,17 +1,18 @@
-(ns metabase.sync.field-values-test
+(ns ^:mb/once metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models :refer [Field FieldValues Table]]
-            [metabase.models.field-values :as field-values]
-            [metabase.sync :as sync]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.models :refer [Field FieldValues Table]]
+   [metabase.models.field-values :as field-values]
+   [metabase.sync :as sync]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [toucan.db :as db]))
 
 (defn- venues-price-field-values []
   (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
@@ -24,6 +25,8 @@
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
+      ;; sync to make sure the field values are filled
+      (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Delete the Field values, make sure they're gone"
@@ -41,6 +44,8 @@
 (deftest sync-should-update-test
   (testing "Test that syncing will cause FieldValues to be updated"
     (testing "Check that we have expected field values to start with"
+      ;; sync to make sure the field values are filled
+      (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
@@ -53,6 +58,29 @@
     (testing "Make sure the value is back"
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
+
+(deftest sync-should-properly-handle-last-used-at
+  (testing "Test that syncing will skip updating inactive FieldValues"
+    (db/update! FieldValues
+                (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
+                :last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                :values [1 2 3])
+    (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
+           (sync-database!' "update-field-values" (data/db))))
+    (is (= [1 2 3] (venues-price-field-values)))
+    (testing "Fetching field values causes an on-demand update and marks Field Values as active"
+      (is (partial= {:values [[1] [2] [3] [4]]}
+                    (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))
+      (is (t/after? (db/select-one-field :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
+                    (t/minus (t/offset-date-time) (t/hours 2))))
+      (testing "Field is syncing after usage"
+        (db/update! FieldValues
+                    (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
+                    :values [1 2 3])
+        (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+               (sync-database!' "update-field-values" (data/db))))
+        (is (partial= {:values [[1] [2] [3] [4]]}
+                      (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))
 
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"

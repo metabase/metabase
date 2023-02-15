@@ -31,7 +31,7 @@ describe("formatDateTimeForParameter", () => {
     expect(formatDateTimeForParameter(value, "hour")).toBe("2020-01-01");
   });
 
-  it("should format hour as a day", () => {
+  it("should format minute", () => {
     expect(formatDateTimeForParameter(value, "minute")).toBe("2020-01-01");
   });
 

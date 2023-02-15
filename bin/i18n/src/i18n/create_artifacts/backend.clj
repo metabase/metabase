@@ -1,20 +1,28 @@
 (ns i18n.create-artifacts.backend
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [i18n.common :as i18n]
-            [metabuild-common.core :as u])
-  (:import [java.io FileOutputStream OutputStreamWriter]
-           java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [i18n.common :as i18n]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io FileOutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
 
 (defn- backend-message? [{:keys [source-references]}]
-  (some (fn [path]
-          (some
-           (fn [dir]
-             (str/starts-with? path dir))
-           ["src" "backend" "enterprise/backend" "shared"]))
-        ;; sometimes 2 paths exist in a single string, space separated
-        ;; if a backend path is second, it is missed if we don't str/split
-        (mapcat #(str/split % #" ") source-references)))
+  (boolean
+   (let [paths (eduction
+                ;; Sometimes 2 paths exist in a single string, space separated
+                (mapcat #(str/split % #" "))
+                ;; Strip off the line number at the end of some paths
+                (map #(str/split % #":"))
+                (map first)
+                source-references)]
+     (some (fn [path]
+             (some
+              (fn [suffix]
+                (str/ends-with? path suffix))
+              [".clj" ".cljc"]))
+           paths))))
 
 (def ^:private apostrophe-regex
   "Regex that matches incorrectly escaped apostrophe characters.

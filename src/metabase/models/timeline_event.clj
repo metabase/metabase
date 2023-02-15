@@ -1,16 +1,15 @@
 (ns metabase.models.timeline-event
-  (:require [java-time :as t]
-            [metabase.models.interface :as mi]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
 
@@ -34,6 +33,14 @@
     (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
+
+(mi/define-simple-hydration-method timeline
+  :timeline
+  "Attach the parent `:timeline` to this [[TimelineEvent]]."
+  [{:keys [timeline_id]}]
+  (db/select-one 'Timeline :id timeline_id))
+
+;(hydrate (db/select-one 'TimelineEvent))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
@@ -59,9 +66,9 @@
                            [:and
                             [:= :time_matters false]
                             (when start
-                              [:<= (hx/->date start) (hx/->date :timestamp)])
+                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
-                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]}]
+                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
     (hydrate (db/select TimelineEvent clause) :creator)))
 
 (defn include-events
@@ -85,40 +92,20 @@
 
 ;;;; model
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})})
+(mi/define-methods
+ TimelineEvent
+ {:properties (constantly {::mi/timestamped? true})})
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :timestamp (serdes.hash/hydrated-hash :timeline)])})
+(defmethod serdes.hash/identity-hash-fields TimelineEvent
+  [_timeline-event]
+  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
-(defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]
-  (u.date/format (t/offset-date-time timestamp)))
-
-(defmethod serdes.base/serdes-generate-path "TimelineEvent"
-  [_ event]
-  (let [timeline (db/select-one 'Timeline :id (:timeline_id event))
-        self     (serdes.base/infer-self-path "TimelineEvent" event)]
-    (conj (serdes.base/serdes-generate-path "Timeline" timeline)
-          (assoc self :label (:name event)))))
-
-(defmethod serdes.base/extract-one "TimelineEvent"
-  [_model-name _opts event]
-  (-> (serdes.base/extract-one-basics "TimelineEvent" event)
-      (update :timeline_id serdes.util/export-fk 'Timeline)
-      (update :creator_id  serdes.util/export-user)
-      (update :timestamp   #(u.date/format (t/offset-date-time %)))))
-
+;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].
 (defmethod serdes.base/load-xform "TimelineEvent" [event]
   (-> event
       serdes.base/load-xform-basics
       (update :timeline_id serdes.util/import-fk 'Timeline)
       (update :creator_id  serdes.util/import-user)
-      (update :timestamp   u.date/parse)))
-
-(defmethod serdes.base/serdes-dependencies "TimelineEvent" [{:keys [timeline_id]}]
-  [[{:model "Timeline" :id timeline_id}]])
+      (update :timestamp   u.date/parse)
+      (update :created_at  #(if (string? %) (u.date/parse %) %))))

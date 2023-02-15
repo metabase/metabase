@@ -1,14 +1,18 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import Tooltip from "metabase/core/components/Tooltip";
+
+import ActionMenu from "metabase/collections/components/ActionMenu";
+import ModelDetailLink from "metabase/models/components/ModelDetailLink";
+
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   Body,
   Description,
   Header,
-  HoverMenu,
+  ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
@@ -65,20 +69,25 @@ function PinnedItemCard({
   };
 
   return (
-    <ItemLink className={className} to={item.getUrl({ isModelDetail: true })}>
+    <ItemLink className={className} to={item.getUrl()}>
       <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon} />
-            <HoverMenu
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              item={item}
-              collection={collection}
-              onCopy={onCopy}
-              onMove={onMove}
-            />
+            <ActionsContainer>
+              {item.model === "dataset" && (
+                <ModelDetailLink model={item as CollectionItem<"dataset">} />
+              )}
+              <ActionMenu
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
+                item={item}
+                collection={collection}
+                onCopy={onCopy}
+                onMove={onMove}
+              />
+            </ActionsContainer>
           </Header>
           <Tooltip
             tooltip={name}

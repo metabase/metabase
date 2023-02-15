@@ -20,12 +20,10 @@ const mapStateToProps = (state: State) => ({
   isStepCompleted: isStepCompleted(state, USER_STEP),
   isSetupCompleted: isSetupCompleted(state),
   isLocaleLoaded: isLocaleLoaded(state),
+  onValidatePassword: validatePassword,
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onPasswordChange: async (user: UserInfo) => {
-    await dispatch(validatePassword(user));
-  },
   onStepSelect: () => {
     dispatch(setStep(USER_STEP));
   },

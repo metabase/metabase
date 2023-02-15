@@ -12,14 +12,13 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
-    cy.route("PUT", "/api/table/*").as("tableUpdate");
-    cy.route("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
   });
 
   it("should allow editing of the name and description", () => {
-    cy.route(
+    cy.intercept(
       "GET",
       "/api/table/2/query_metadata?include_sensitive_fields=true",
     ).as("tableMetadataFetch");
@@ -141,7 +140,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   });
 
   it("should allow sorting columns", () => {
-    cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
+    cy.intercept("PUT", "/api/table/2/fields/order").as("fieldReorder");
 
     visitAlias("@ORDERS_URL");
     cy.icon("sort_arrows").click();

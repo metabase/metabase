@@ -2,20 +2,23 @@
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
   (:refer-clojure :exclude [format range])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [java-time.core :as t.core]
-            [metabase.util.date-2.common :as u.date.common]
-            [metabase.util.date-2.parse :as u.date.parse]
-            [metabase.util.i18n :as i18n :refer [tru]]
-            [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period
-            ZonedDateTime]
-           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle]
-           [java.time.temporal Temporal TemporalAdjuster WeekFields]
-           org.threeten.extra.PeriodDuration))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [java-time.core :as t.core]
+   [metabase.util.date-2.common :as u.date.common]
+   [metabase.util.date-2.parse :as u.date.parse]
+   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [potemkin.types :as p.types]
+   [schema.core :as s])
+  (:import
+   (java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime)
+   (java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle)
+   (java.time.temporal Temporal TemporalAdjuster WeekFields)
+   (org.threeten.extra PeriodDuration)))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
@@ -207,7 +210,11 @@
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
 (def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (u.date.common/static-instances DayOfWeek))
+  (let [m (u.date.common/static-instances DayOfWeek)]
+    (fn [k]
+      (or (get m k)
+          (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
+                          {:k k, :allowed (keys m)}))))))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
@@ -233,7 +240,7 @@
   ([unit]
    (extract (t/zoned-date-time) unit))
 
-  ([t :- Temporal, unit :- (apply s/enum extract-units)]
+  ([t :- Temporal unit :- (apply s/enum extract-units)]
    (t/as t (case unit
              :second-of-minute :second-of-minute
              :minute-of-hour   :minute-of-hour
@@ -297,7 +304,12 @@
       :hours   t
       :days    t)))
 
-(def truncate-units  "Valid date trucation units"
+;;; See https://github.com/dm3/clojure.java-time/issues/95. We need to update the `java-time/truncate-to` copy of the
+;;; actual underlying method since `extend-protocol` mutates the var
+(alter-var-root #'t/truncate-to (constantly t.core/truncate-to))
+
+(def truncate-units
+  "Valid date trucation units"
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
 (s/defn truncate :- Temporal

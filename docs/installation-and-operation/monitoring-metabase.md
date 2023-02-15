@@ -7,6 +7,7 @@ redirect_from:
 
 # Monitoring Your Metabase
 
+
 Diagnosing performance related issues can be a challenge. Luckily the JVM ships with tools that can help diagnose many common issues. Enabling JMX and using a tool like VisualVM can help diagnose issues related to running out of memory, a stalled Metabase instance, and slow response times.
 
 This guide assumes that you have the VisualVM tool installed
@@ -120,3 +121,8 @@ that specific point in time. Collect a thread dump via the "Threads"
 tab:
 
 ![threaddump](images/ThreadDump.png)
+
+
+## Further reading
+
+- [Observability with Prometheus](./observability-with-prometheus.md)

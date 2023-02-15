@@ -2,25 +2,27 @@
   "SSH tunnel support for JDBC-based DWs. TODO -- it seems like this code is JDBC-specific, or at least big parts of
   this all. We should consider moving some or all of this code to a new namespace like
   `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u])
-  (:import java.io.ByteArrayInputStream
-           java.util.concurrent.TimeUnit
-           org.apache.sshd.client.future.ConnectFuture
-           org.apache.sshd.client.session.ClientSession
-           org.apache.sshd.client.session.forward.PortForwardingTracker
-           org.apache.sshd.client.SshClient
-           [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
-           [org.apache.sshd.common.session
-            SessionHeartbeatController$HeartbeatType
-            SessionHolder]
-           org.apache.sshd.common.util.GenericUtils
-           org.apache.sshd.common.util.io.resource.AbstractIoResource
-           org.apache.sshd.common.util.net.SshdSocketAddress
-           org.apache.sshd.common.util.security.SecurityUtils
-           org.apache.sshd.server.forward.AcceptAllForwardingFilter))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.log :as log])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.util.concurrent TimeUnit)
+   (org.apache.sshd.client SshClient)
+   (org.apache.sshd.client.future ConnectFuture)
+   (org.apache.sshd.client.session ClientSession)
+   (org.apache.sshd.client.session.forward PortForwardingTracker)
+   (org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult)
+   (org.apache.sshd.common.session SessionHeartbeatController$HeartbeatType SessionHolder)
+   (org.apache.sshd.common.util GenericUtils)
+   (org.apache.sshd.common.util.io.resource AbstractIoResource)
+   (org.apache.sshd.common.util.net SshdSocketAddress)
+   (org.apache.sshd.common.util.security SecurityUtils)
+   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^Long default-ssh-timeout 30000)
 

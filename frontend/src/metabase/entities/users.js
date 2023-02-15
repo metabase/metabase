@@ -2,11 +2,11 @@ import { assocIn } from "icepick";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
 
 import { createEntity } from "metabase/lib/entities";
 
 import { UserApi, SessionApi } from "metabase/services";
+import { generatePassword } from "metabase/lib/security";
 
 import forms from "./users/forms";
 
@@ -46,7 +46,7 @@ const Users = createEntity({
       if (!MetabaseSettings.isEmailConfigured()) {
         user = {
           ...user,
-          password: MetabaseUtils.generatePassword(),
+          password: generatePassword(),
         };
       }
       const result = await thunkCreator(user)(dispatch, getState);
@@ -83,10 +83,7 @@ const Users = createEntity({
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
-    resetPasswordManual: async (
-      { id },
-      password = MetabaseUtils.generatePassword(),
-    ) => {
+    resetPasswordManual: async ({ id }, password = generatePassword()) => {
       MetabaseAnalytics.trackStructEvent(
         "People Admin",
         "Manual Password Reset",

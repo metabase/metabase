@@ -1,6 +1,5 @@
 import { createSelector } from "reselect";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { State } from "metabase-types/store";
 import { Group } from "metabase-types/api";

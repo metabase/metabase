@@ -7,11 +7,7 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { applyParameters } from "metabase/meta/Card";
-import {
-  getParameterValuesBySlug,
-  getParameterValuesByIdFromQueryParams,
-} from "metabase/parameters/utils/parameter-values";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
 import Utils from "metabase/lib/utils";
 
@@ -28,6 +24,8 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,
@@ -110,11 +108,7 @@ const loadingComplete = createThunkAction(
         dispatch(setShowLoadingCompleteFavicon(false));
       }, 3000);
     } else {
-      const dashboard = getDashboardComplete(getState());
-      const message = dashboard.is_app_age
-        ? t`Your page is ready`
-        : t`Your dashboard is ready`;
-      dispatch(setDocumentTitle(message));
+      dispatch(setDocumentTitle(t`Your dashboard is ready`));
       document.addEventListener(
         "visibilitychange",
         () => {

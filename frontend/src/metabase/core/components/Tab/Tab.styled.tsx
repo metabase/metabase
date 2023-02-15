@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
-import Ellipsified from "../Ellipsified";
+import { focusOutlineStyle } from "metabase/core/style/input";
 
 export interface TabProps {
   isSelected?: boolean;
@@ -14,7 +14,7 @@ export const TabRoot = styled.button<TabProps>`
   flex: 1;
   text-align: left;
 
-  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
+  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.1) : "transparent"};
   cursor: pointer;
@@ -28,13 +28,7 @@ export const TabRoot = styled.button<TabProps>`
     color: ${color("brand")};
   }
 
-  &:focus {
-    outline: 2px solid ${color("focus")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
+  ${focusOutlineStyle("brand")};
 `;
 
 export const TabIcon = styled(Icon)`

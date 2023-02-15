@@ -6,8 +6,9 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.context.default :as default]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest query-cancelation-test
   (mt/test-driver :druid
@@ -63,8 +64,7 @@
                          ;; doesn't wrap every exception in an SshdException
                          :tunnel-port    21212
                          :tunnel-user    "bogus"}]
-            (tu.log/suppress-output
-             (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+            (driver.u/can-connect-with-details? engine details :throw-exceptions))
           (catch Throwable e
             (loop [^Throwable e e]
               (or (when (instance? java.net.ConnectException e)

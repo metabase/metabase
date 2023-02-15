@@ -1,6 +1,7 @@
 (ns change-set.common
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
 ;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
 

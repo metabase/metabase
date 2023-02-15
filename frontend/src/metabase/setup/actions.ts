@@ -1,9 +1,11 @@
 import { createAction } from "redux-actions";
+import { getIn } from "icepick";
 import { SetupApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
-import Settings from "metabase/lib/settings";
-import { UserInfo, DatabaseInfo, Locale } from "metabase-types/store";
+import MetabaseSettings from "metabase/lib/settings";
+import { DatabaseData } from "metabase-types/api";
+import { Locale } from "metabase-types/store";
 import { getUserToken, getDefaultLocale, getLocales } from "./utils";
 
 export const SET_STEP = "metabase/setup/SET_STEP";
@@ -50,26 +52,31 @@ export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createThunkAction(
   LOAD_LOCALE_DEFAULTS,
   () => async (dispatch: any) => {
-    const data = Settings.get("available-locales");
+    const data = MetabaseSettings.get("available-locales") || [];
     const locale = getDefaultLocale(getLocales(data));
     await dispatch(setLocale(locale));
   },
 );
 
-export const VALIDATE_PASSWORD = "metabase/setup/VALIDATE_PASSWORD";
-export const validatePassword = createThunkAction(
-  VALIDATE_PASSWORD,
-  (user: UserInfo) => async () => {
-    await UtilApi.password_check({ password: user.password });
-  },
-);
+export const validatePassword = async (password: string) => {
+  const error = MetabaseSettings.passwordComplexityDescription(password);
+  if (error) {
+    return error;
+  }
+
+  try {
+    await UtilApi.password_check({ password });
+  } catch (error) {
+    return getIn(error, ["data", "errors", "password"]);
+  }
+};
 
 export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
 export const validateDatabase = createThunkAction(
   VALIDATE_DATABASE,
-  (database: DatabaseInfo) => async () => {
+  (database: DatabaseData) => async () => {
     await SetupApi.validate_db({
-      token: Settings.get("setup-token"),
+      token: MetabaseSettings.get("setup-token"),
       details: database,
     });
   },
@@ -78,7 +85,7 @@ export const validateDatabase = createThunkAction(
 export const SUBMIT_DATABASE = "metabase/setup/SUBMIT_DATABASE";
 export const submitDatabase = createThunkAction(
   SUBMIT_DATABASE,
-  (database: DatabaseInfo) => async (dispatch: any) => {
+  (database: DatabaseData) => async (dispatch: any) => {
     const sslDetails = { ...database.details, ssl: true };
     const sslDatabase = { ...database, details: sslDetails };
     const nonSslDetails = { ...database.details, ssl: false };
@@ -102,7 +109,7 @@ export const submitSetup = createThunkAction(
     const { locale, user, database, invite, isTrackingAllowed } = setup;
 
     await SetupApi.create({
-      token: Settings.get("setup-token"),
+      token: MetabaseSettings.get("setup-token"),
       user,
       database,
       invite,
@@ -113,6 +120,6 @@ export const submitSetup = createThunkAction(
       },
     });
 
-    Settings.set("setup-token", null);
+    MetabaseSettings.set("setup-token", null);
   },
 );

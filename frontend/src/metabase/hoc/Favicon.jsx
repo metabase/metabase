@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import _ from "underscore";
 import MetabaseSettings from "../lib/settings";
 
 const DEFAULT_FAVICON = () => MetabaseSettings.get("application-favicon-url");

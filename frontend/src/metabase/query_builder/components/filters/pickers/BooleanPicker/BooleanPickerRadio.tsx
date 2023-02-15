@@ -1,8 +1,8 @@
-import React, { Key } from "react";
+import React from "react";
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import { RadioContainer, Toggle, FilterRadio } from "./BooleanPicker.styled";
 
@@ -23,7 +23,7 @@ function BooleanPicker({
   const value = getValue(filter);
   const [isExpanded, { toggle }] = useToggle(!_.isBoolean(value));
 
-  const updateFilter = (value: Key | boolean) => {
+  const updateFilter = (value: unknown) => {
     if (_.isBoolean(value)) {
       onFilterChange(filter.setOperator("=").setArguments([value]));
     } else if (typeof value === "string") {

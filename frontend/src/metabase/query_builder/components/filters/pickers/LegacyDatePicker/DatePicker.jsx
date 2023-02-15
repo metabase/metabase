@@ -7,7 +7,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { FieldDimension } from "metabase-lib/Dimension";
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
 import SpecificDatePicker from "./SpecificDatePicker";

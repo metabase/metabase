@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.query-to-native-test
   "Tests around the `compile` function."
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models.permissions :as perms]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models.permissions :as perms]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest compile-test
   (testing "Can we convert an MBQL query to a native query?"

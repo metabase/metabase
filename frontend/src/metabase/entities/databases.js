@@ -14,8 +14,6 @@ import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
 
-import forms from "./databases/forms";
-
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
@@ -89,9 +87,6 @@ const Databases = createEntity({
         }),
     ),
   },
-
-  // FORM
-  forms,
 });
 
 export default Databases;

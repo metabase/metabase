@@ -23,12 +23,11 @@ import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
-
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -159,7 +158,7 @@ const Tables = createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
-      const virtualQuestionId = getQuestionVirtualTableId(card);
+      const virtualQuestionId = getQuestionVirtualTableId(card.id);
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];

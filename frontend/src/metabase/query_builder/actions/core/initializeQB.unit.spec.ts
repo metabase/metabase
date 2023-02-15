@@ -1,16 +1,16 @@
+import nock from "nock";
 import { LocationDescriptorObject } from "history";
-import _ from "underscore";
-import xhrMock from "xhr-mock";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
 import * as alert from "metabase/alert/alert";
+import * as questionActions from "metabase/questions/actions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
-import { User } from "metabase-types/api";
+import { DatabaseId, TableId, User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
@@ -30,15 +30,13 @@ import {
   getStructuredModel,
   getNativeModel,
 } from "metabase-lib/mocks";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
 
-import * as navigation from "../navigation";
 import * as querying from "../querying";
 
 import * as core from "./core";
-import * as metadataActions from "./metadata";
 import { initializeQB } from "./initializeQB";
 
 type BaseSetupOpts = {
@@ -115,9 +113,7 @@ async function setup({
   const card = question.card();
 
   if ("id" in card) {
-    xhrMock.get(`/api/card/${card.id}`, {
-      body: JSON.stringify(card),
-    });
+    nock(global.location.origin).get(`/api/card/${card.id}`).reply(200, card);
   }
 
   jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
@@ -150,12 +146,8 @@ describe("QB Actions > initializeQB", () => {
     console.warn = jest.fn();
   });
 
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
     jest.restoreAllMocks();
   });
 
@@ -236,7 +228,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("fetches question metadata", async () => {
           const loadMetadataForCardSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -246,12 +238,6 @@ describe("QB Actions > initializeQB", () => {
           expect(loadMetadataForCardSpy).toHaveBeenCalledWith(
             expect.objectContaining(question.card()),
           );
-        });
-
-        it("runs question query in view mode", async () => {
-          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          await setup({ question });
-          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
         });
 
         it("does not run non-runnable question queries", async () => {
@@ -405,6 +391,12 @@ describe("QB Actions > initializeQB", () => {
             ),
           );
         });
+
+        it("runs question query in view mode", async () => {
+          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+          await setup({ question });
+          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+        });
       });
     });
   });
@@ -433,9 +425,9 @@ describe("QB Actions > initializeQB", () => {
           original_card_id: ORIGINAL_CARD_ID,
         });
 
-        xhrMock.get(`/api/card/${originalQuestion.id()}`, {
-          body: JSON.stringify(originalQuestion.card()),
-        });
+        nock(location.origin)
+          .get(`/api/card/${originalQuestion.id()}`)
+          .reply(200, originalQuestion.card());
 
         jest
           .spyOn(CardLib, "loadCard")
@@ -507,6 +499,26 @@ describe("QB Actions > initializeQB", () => {
           expect(dispatch).toHaveBeenCalledWith(setErrorPage(error));
         });
       });
+    });
+  });
+
+  describe("unsaved structured questions", () => {
+    const { question } = TEST_CASE.SAVED_STRUCTURED_QUESTION;
+
+    it("runs question query in view mode", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("unsaved native questions", () => {
+    const { question } = TEST_CASE.UNSAVED_NATIVE_QUESTION;
+
+    it("doesn't run an ad-hoc native question in view mode automatically", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -636,8 +648,8 @@ describe("QB Actions > initializeQB", () => {
 
   describe("blank question", () => {
     type BlankSetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
-      db?: number;
-      table?: number;
+      db?: DatabaseId;
+      table?: TableId;
       segment?: number;
       metric?: number;
     };
@@ -728,12 +740,6 @@ describe("QB Actions > initializeQB", () => {
       expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
     });
 
-    it("opens summarization sidebar if metric is applied", async () => {
-      const METRIC_ID = 777;
-      const { result } = await setupOrdersTable({ metric: METRIC_ID });
-      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
-    });
-
     it("applies 'metric' param correctly", async () => {
       const METRIC_ID = 777;
 
@@ -766,7 +772,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("fetches question metadata", async () => {
       const loadMetadataForCardSpy = jest.spyOn(
-        metadataActions,
+        questionActions,
         "loadMetadataForCard",
       );
 

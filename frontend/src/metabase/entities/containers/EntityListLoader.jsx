@@ -12,7 +12,7 @@ import { capitalize } from "metabase/lib/formatting";
 import entityType from "./EntityType";
 
 const propTypes = {
-  entityType: PropTypes.string,
+  entityType: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
   entityQuery: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   // We generally expect booleans here,
   // but a parent entity loader may pass `reload` as a function.
@@ -26,6 +26,7 @@ const propTypes = {
   listName: PropTypes.string,
   selectorName: PropTypes.string,
   children: PropTypes.func,
+  onLoaded: PropTypes.func,
 
   // via entityType HOC
   entityDef: PropTypes.object,
@@ -118,6 +119,9 @@ class EntityListLoaderInner extends React.Component {
           !result.payload.result || result.payload.result.length === pageSize,
         );
       }
+
+      this.props?.onLoaded?.(result);
+
       return result;
     },
     250,

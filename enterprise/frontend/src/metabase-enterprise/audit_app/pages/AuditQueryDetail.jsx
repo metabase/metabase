@@ -54,9 +54,9 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
 import { getMetadata } from "metabase/selectors/metadata";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { loadMetadataForCard } from "metabase/query_builder/actions";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
 import * as QueryDetailCards from "../lib/cards/query_detail";
 import OpenInMetabase from "../components/OpenInMetabase";
 import AuditCustomView from "../containers/AuditCustomView";

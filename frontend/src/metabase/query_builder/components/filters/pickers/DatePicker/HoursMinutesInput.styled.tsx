@@ -6,12 +6,8 @@ export interface AmPmLabelProps {
 }
 
 export const AmPmLabel = styled.span<AmPmLabelProps>`
-  color: ${props => props.isSelected && color("filter")};
-  font-weight: ${props => props.isSelected && 900};
+  color: ${color("brand")};
+  font-weight: 900;
   margin-right: 0.5rem;
-  cursor: ${props => !props.isSelected && "pointer"};
-
-  &:hover {
-    color: ${color("filter")};
-  }
+  cursor: pointer;
 `;

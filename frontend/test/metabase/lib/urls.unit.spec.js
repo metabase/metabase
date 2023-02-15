@@ -3,17 +3,15 @@ import {
   browseDatabase,
   collection,
   dashboard,
-  dataApp,
   question,
+  model,
+  modelDetail,
+  modelEditor,
   extractQueryParams,
   extractEntityId,
   extractCollectionId,
   isCollectionPath,
 } from "metabase/lib/urls";
-import {
-  createMockDataApp,
-  createMockCollection,
-} from "metabase-types/api/mocks";
 
 describe("urls", () => {
   describe("question", () => {
@@ -116,26 +114,6 @@ describe("urls", () => {
         expect(url).toBe("/question/1-foo/5?a=b#abc");
       });
     });
-
-    describe("model", () => {
-      it("returns /model URLS", () => {
-        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
-          "/model/1-foo",
-        );
-
-        expect(
-          question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
-        ).toEqual("/model/42-foo");
-
-        expect(
-          question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
-        ).toEqual("/model/42-foo");
-
-        expect(
-          question({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
-        ).toEqual("/model/1-foo/4");
-      });
-    });
   });
 
   describe("query", () => {
@@ -162,6 +140,66 @@ describe("urls", () => {
       const extractedParams2 = extractQueryParams({ foo: ["1", "2"] });
       expect(extractedParams2).toContainEqual(["foo", "1"]);
       expect(extractedParams2).toContainEqual(["foo", "2"]);
+    });
+  });
+
+  describe("model", () => {
+    it("should return correct URL", () => {
+      expect(model({ id: 1, dataset: true, name: "Foo" })).toBe("/model/1-foo");
+    });
+
+    it("should prefer card_id when building a URL", () => {
+      expect(model({ id: 1, card_id: 42, dataset: true, name: "Foo" })).toBe(
+        "/model/42-foo",
+      );
+    });
+
+    it("should work with `model: dataset` property", () => {
+      expect(model({ id: 1, card_id: 42, model: "dataset", name: "Foo" })).toBe(
+        "/model/42-foo",
+      );
+    });
+
+    it("should handle object ID", () => {
+      expect(
+        model({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
+      ).toBe("/model/1-foo/4");
+    });
+
+    describe("detail page", () => {
+      it("should return correct URL", () => {
+        expect(modelDetail({ id: 1, dataset: true, name: "Foo" })).toBe(
+          "/model/1-foo/detail",
+        );
+      });
+    });
+
+    describe("editor", () => {
+      it("should return correct query editor URL", () => {
+        expect(modelEditor({ id: 1, name: "Order" }, { type: "query" })).toBe(
+          "/model/1-order/query",
+        );
+      });
+
+      it("should return query editor URL if `type` isn't provided explicitly", () => {
+        expect(modelEditor({ id: 1, name: "Order" })).toBe(
+          "/model/1-order/query",
+        );
+      });
+
+      it("should return correct metadata editor URL", () => {
+        expect(
+          modelEditor({ id: 1, name: "Order" }, { type: "metadata" }),
+        ).toBe("/model/1-order/metadata");
+      });
+
+      it("should handle missing name", () => {
+        expect(modelEditor({ id: 1 })).toBe("/model/1/query");
+      });
+
+      it("should prefer card_id over id", () => {
+        expect(modelEditor({ id: 1, card_id: 2 })).toBe("/model/2/query");
+      });
     });
   });
 
@@ -223,51 +261,6 @@ describe("urls", () => {
         }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
     });
-
-    it("handles data app collections", () => {
-      const appCollection = createMockCollection({
-        id: 2,
-        app_id: 5,
-        name: "My App",
-      });
-      expect(collection(appCollection)).toBe("/apps/5-my-app");
-    });
-  });
-
-  describe("dataApp", () => {
-    const appCollection = createMockCollection({ id: 1 });
-    const app = createMockDataApp({ id: 2, collection: appCollection });
-
-    const appId = app.id;
-    const appName = appCollection.name.toLowerCase();
-
-    const appSearchItem = {
-      id: appCollection.id,
-      app_id: app.id,
-      collection: { ...appCollection, app_id: app.id },
-    };
-
-    it("returns data app preview URL", () => {
-      expect(dataApp(app, { mode: "preview" })).toBe(
-        `/apps/${appId}-${appName}`,
-      );
-    });
-
-    it("returns data app internal URL", () => {
-      expect(dataApp(app, { mode: "internal" })).toBe(`/a/${appId}-${appName}`);
-    });
-
-    it("returns data app preview URL out of search result item", () => {
-      expect(dataApp(appSearchItem, { mode: "preview" })).toBe(
-        `/apps/${appId}-${appName}`,
-      );
-    });
-
-    it("returns data app internal URL out of search result item", () => {
-      expect(dataApp(appSearchItem, { mode: "internal" })).toBe(
-        `/a/${appId}-${appName}`,
-      );
-    });
   });
 
   describe("bookmarks", () => {
@@ -312,18 +305,6 @@ describe("urls", () => {
           type: "collection",
         }),
       ).toBe("/collection/8-growth");
-    });
-
-    it("returns data app bookmark path", () => {
-      expect(
-        bookmark({
-          id: "collection-3",
-          item_id: 3,
-          name: "Shop",
-          type: "collection",
-          app_id: 14,
-        }),
-      ).toBe("/apps/14-shop");
     });
   });
 

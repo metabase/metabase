@@ -9,13 +9,12 @@ import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
-import { isCurrency } from "metabase/lib/schema_metadata";
-import { isFK } from "metabase/lib/types";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
 import { getFieldRawName } from "../../../utils";
 import { ColumnItemInput } from "./ColumnItem.styled";
 
@@ -60,7 +59,7 @@ class Column extends Component {
               <ColumnItemInput
                 variant="primary"
                 style={{ minWidth: 420 }}
-                className="AdminInput TableEditor-field-name float-left inline-block rounded text-bold"
+                className="float-left inline-block"
                 type="text"
                 value={this.props.field.display_name || ""}
                 onBlurChange={this.handleChangeName}
@@ -94,11 +93,12 @@ class Column extends Component {
             <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
               <ColumnItemInput
                 variant="secondary"
-                className="AdminInput TableEditor-field-description rounded"
+                className="TableEditor-field-description rounded"
                 type="text"
                 value={this.props.field.description || ""}
                 onBlurChange={this.handleChangeDescription}
                 placeholder={t`No column description yet`}
+                fullWidth
               />
             </div>
           </div>
@@ -114,7 +114,7 @@ export default withRouter(Column);
 const getFkFieldPlaceholder = (field, idfields) => {
   const hasIdFields = idfields?.length > 0;
   const isRestrictedFKTargedSelected =
-    isFK(field.semantic_type) &&
+    isTypeFK(field.semantic_type) &&
     field.fk_target_field_id != null &&
     !idfields?.some(idField => idField.id === field.fk_target_field_id);
 
@@ -153,7 +153,11 @@ export class SemanticTypeAndTargetPicker extends Component {
     const { field, updateField } = this.props;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
-    if (field.target && field.target.id != null && isFK(field.semantic_type)) {
+    if (
+      field.target &&
+      field.target.id != null &&
+      isTypeFK(field.semantic_type)
+    ) {
       await updateField({
         semantic_type,
         fk_target_field_id: null,
@@ -203,7 +207,7 @@ export class SemanticTypeAndTargetPicker extends Component {
     ];
 
     const hasIdFields = idfields?.length > 0;
-    const showFKTargetSelect = isFK(field.semantic_type);
+    const showFKTargetSelect = isTypeFK(field.semantic_type);
     const showCurrencyTypeSelect = isCurrency(field);
 
     // If all FK target fields are in the same schema (like `PUBLIC` for sample database)

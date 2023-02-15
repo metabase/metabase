@@ -3,23 +3,27 @@
   (:refer-clojure :exclude [replace])
   #?@
   (:clj
-   [(:require [clojure.string :as str]
-              [clojure.tools.logging :as log]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.models.dispatch :as models.dispatch]
-              [metabase.shared.util.i18n :as i18n]
-              metabase.util.i18n
-              [potemkin :as p]
-              [schema.core :as s])]
+   [(:require
+     [clojure.string :as str]
+     [metabase.mbql.predicates :as mbql.preds]
+     [metabase.mbql.schema :as mbql.s]
+     [metabase.mbql.schema.helpers :as schema.helpers]
+     [metabase.mbql.util.match :as mbql.match]
+     [metabase.models.dispatch :as models.dispatch]
+     [metabase.shared.util.i18n :as i18n]
+     [metabase.util.i18n]
+     [metabase.util.log :as log]
+     [potemkin :as p]
+     [schema.core :as s])]
    :cljs
-   [(:require [clojure.string :as str]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.shared.util.i18n :as i18n]
-              [schema.core :as s])]))
+   [(:require
+     [clojure.string :as str]
+     [metabase.mbql.predicates :as mbql.preds]
+     [metabase.mbql.schema :as mbql.s]
+     [metabase.mbql.schema.helpers :as schema.helpers]
+     [metabase.mbql.util.match :as mbql.match]
+     [metabase.shared.util.i18n :as i18n]
+     [schema.core :as s])]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -32,6 +36,7 @@
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
@@ -252,24 +257,47 @@
 
 (def temporal-extract-ops->unit
   "Mapping from the sugar syntax to extract datetime to the unit."
-  {:get-year        :year
-   :get-quarter     :quarter
-   :get-month       :month
-   :get-day         :day
-   :get-day-of-week :day-of-week
-   :get-hour        :hour
-   :get-minute      :minute
-   :get-second      :second})
+  {[:get-year        nil]       :year-of-era
+   [:get-quarter     nil]       :quarter-of-year
+   [:get-month       nil]       :month-of-year
+   ;; default get-week mode is iso
+   [:get-week        nil]       :week-of-year-iso
+   [:get-week        :iso]      :week-of-year-iso
+   [:get-week        :us]       :week-of-year-us
+   [:get-week        :instance] :week-of-year-instance
+   [:get-day         nil]       :day-of-month
+   [:get-day-of-week nil]       :day-of-week
+   [:get-hour        nil]       :hour-of-day
+   [:get-minute      nil]       :minute-of-hour
+   [:get-second      nil]       :second-of-minute})
 
 (def ^:private temporal-extract-ops
-  (set (keys temporal-extract-ops->unit)))
+  (->> (keys temporal-extract-ops->unit)
+       (map first)
+       set))
 
 (defn desugar-temporal-extract
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
   [m]
   (mbql.match/replace m
-    [(op :guard temporal-extract-ops) field]
-    [:temporal-extract field (temporal-extract-ops->unit op)]))
+    [(op :guard temporal-extract-ops) field & args]
+    [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
+
+(defn- desugar-divide-with-extra-args [expression]
+  (mbql.match/replace expression
+    [:/ x y z & more]
+    (recur (into [:/ [:/ x y]] (cons z more)))))
+
+(s/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+  "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
+  to compile."
+  [expression :- mbql.s/FieldOrExpressionDef]
+  (-> expression
+      desugar-divide-with-extra-args))
+
+(defn- maybe-desugar-expression [clause]
+  (cond-> clause
+    (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -286,7 +314,8 @@
       desugar-is-empty-and-not-empty
       desugar-inside
       simplify-compound-filter
-      desugar-temporal-extract))
+      desugar-temporal-extract
+      maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
 
@@ -450,17 +479,6 @@
   [field]
   (and (temporal-field? field)
        (not (time-field? field))))
-
-(defn datetime-arithmetics?
-  "Is a given artihmetics clause operating on datetimes?"
-  [clause]
-  (mbql.match/match-one clause
-    #{:interval :relative-datetime}
-    true
-
-    [:field _ (_ :guard :temporal-unit)]
-    true))
-
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 

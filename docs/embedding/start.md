@@ -8,10 +8,15 @@ title: Embedding overview
 
 What is embedding, and how does it work?
 
-## [Signed embedding](./signed-embedding.md)
-
-Also known as standalone embedding. Display interactive charts and dashboards on your website while securing the underlying data.
-
 ## [Full-app embedding](./full-app-embedding.md)
 
-Put all of Metabase (including the [query builder](../questions/query-builder/introduction.md#the-query-builder)) in your app to give people secure self-serve access to data.
+The solution to self-service customer analytics: embed the full Metabase app in your app. Full-app embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
+
+## [Signed embedding](./signed-embedding.md)
+
+Also known as Standalone Embedding, Signed Embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
+
+## [Parameters for signed embeds](./signed-embedding-parameters.md)
+
+You can pass parameters between Metabase and your website via the embedding URL to specify how Metabase items should look and behave inside the iframe on your website.
+

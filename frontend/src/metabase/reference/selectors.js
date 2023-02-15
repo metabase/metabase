@@ -4,12 +4,7 @@ import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import Dashboards from "metabase/entities/dashboards";
 
-import * as Query from "metabase/lib/query/query";
-import * as Filter from "metabase/lib/query/filter";
-import * as Aggregation from "metabase/lib/query/aggregation";
-
 import { resourceListToMap } from "metabase/lib/redux";
-
 import {
   getShallowDatabases as getDatabases,
   getShallowTables as getTables,
@@ -17,6 +12,10 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
+import * as Query from "metabase-lib/queries/utils/query";
+import * as Filter from "metabase-lib/queries/utils/filter";
+import * as Aggregation from "metabase-lib/queries/utils/aggregation";
+
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
 
 // import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";

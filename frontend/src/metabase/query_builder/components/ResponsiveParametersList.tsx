@@ -2,8 +2,8 @@ import React, { useCallback, useState, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import Button from "metabase/core/components/Button";
-
-import { Parameter } from "metabase-types/types/Parameter";
+import { Parameter } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 
 import {
   FilterButton,
@@ -14,12 +14,14 @@ import {
 } from "./ResponsiveParametersList.styled";
 
 interface ResponsiveParametersListProps {
+  question: Question;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
 }
 
 export const ResponsiveParametersList = ({
+  question,
   parameters,
   setParameterValue,
   setParameterIndex,
@@ -73,6 +75,7 @@ export const ResponsiveParametersList = ({
           </ParametersListHeader>
         )}
         <StyledParametersList
+          question={question}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}

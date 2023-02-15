@@ -2,18 +2,21 @@
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
   testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [java-time :as t]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db])
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [java-time :as t]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
+
+(set! *warn-on-reflection* true)
 
 (deftest annotations-test
   (testing "make sure our annotations are present"
@@ -170,25 +173,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 #_(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
-  (let [sync-db-metadata-ran?    (promise)
-        analyze-db-ran?          (promise)
-        update-field-values-ran? (promise)]
-    (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
-                  metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
-                  metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
-      (with-scheduler-setup
-        (mt/with-temp Database [database db-info]
-          ;; deref the promises in parallel so they all get sufficient time to run.
-          (into {} (pmap (fn [[k promis]]
-                           (let [wait-time-ms (or (get waits k)
-                                                  (throw (ex-info (str "Don't know how long to wait for " k) {})))]
-                             [k (deref promis wait-time-ms false)]))
-                         {:ran-sync?                sync-db-metadata-ran?
-                          :ran-analyze?             analyze-db-ran?
-                          :ran-update-field-values? update-field-values-ran?})))))))
+   (let [sync-db-metadata-ran?    (promise)
+         analyze-db-ran?          (promise)
+         update-field-values-ran? (promise)]
+     (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
+                   metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
+                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
+       (with-scheduler-setup
+         (mt/with-temp Database [database db-info]
+           ;; deref the promises in parallel so they all get sufficient time to run.
+           (into {} (pmap (fn [[k promis]]
+                            (let [wait-time-ms (or (get waits k)
+                                                   (throw (ex-info (str "Don't know how long to wait for " k) {})))]
+                              [k (deref promis wait-time-ms false)]))
+                          {:ran-sync?                sync-db-metadata-ran?
+                           :ran-analyze?             analyze-db-ran?
+                           :ran-update-field-values? update-field-values-ran?})))))))
 
 #_(defn- cron-schedule-for-next-year []
-  (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
+   (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
 #_(deftest check-sync-tasks-run-test

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Moment } from "moment-timezone";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import DateInput from "./DateInput";
 
 export default {

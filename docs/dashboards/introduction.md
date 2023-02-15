@@ -24,7 +24,17 @@ In the top right of the screen, click the **+** icon to open the **Create** menu
 
 ![Create Dashboard](images/create.png)
 
-If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. From an existing dashboard, click on the **...** menu in the upper right, and select **Duplicate**.
+## Duplicating a dashboard
+
+If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. 
+
+To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
+
+By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard, and save everything to the collection you specify. 
+
+If you don't wish to copy the dashboard's underlying questions, check the box that says **Only duplicate the dashboard**. Metabase will copy the dashboard and refer to the original questions.
+
+In both cases, duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
 
 ## Adding saved questions to a dashboard
 
@@ -181,13 +191,11 @@ The part that says `refresh=60` sets the dashboard to automatically refresh ever
 
 There is one important limitation with the `fullscreen` option: for security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
 
-## Archiving a dashboard
+## Dashboard version history
 
-Archiving a dashboard removes the dashboard from searches and collections. Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard.
+For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
-To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
-
-To view all archived items, click the **menu** icon in the top-right of any collection page. You can **unarchive** a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
+See [History](../exploration-and-organization/history.md).
 
 ## Tips on creating helpful dashboards
 

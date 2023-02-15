@@ -6,7 +6,7 @@ redirect_from:
 
 # Overview of premium features
 
-Metabase's [Enterprise and Pro][pricing] plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
+Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
 
 ## Setting up
 
@@ -48,15 +48,21 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
+## Restrict which domains people can send alerts and subscriptions to
+
+As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
+
+- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
+
 ## Official collections
 
 You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
 
 ## Question moderation
 
-People can ask administrators to verify their questions.
+People can ask administrators to verify their questions and models.
 
-- [Question moderation](../questions/sharing/answers.md#question-moderation)
+- [Verified items](../exploration-and-organization/exploration.md#verified-items)
 
 ## Advanced caching controls
 
@@ -82,4 +88,6 @@ You can export Metabase application data and use that to spin up new instances p
 
 - [Serialization](../installation-and-operation/serialization.md)
 
-[pricing]: https://www.metabase.com/pricing
+## Configuration file
+
+For self-hosted installations, you can load Metabase from a [configuration file](../configuring-metabase/config-file.md).

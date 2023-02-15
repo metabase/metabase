@@ -12,7 +12,7 @@ import {
   guiQuestion,
   guiDashboard,
   mapGUIDashboardParameters,
-} from "./embedding-linked-filters";
+} from "./shared/embedding-linked-filters";
 
 describe("scenarios > embedding > dashboard > linked filters (metabase#13639, metabase#13868)", () => {
   beforeEach(() => {

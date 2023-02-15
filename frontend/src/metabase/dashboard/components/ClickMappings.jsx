@@ -10,13 +10,13 @@ import Select from "metabase/core/components/Select";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { getTargetsWithSourceFilters } from "metabase/lib/click-behavior";
 import { GTAPApi } from "metabase/services";
 
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
-import Question from "metabase-lib/lib/Question";
+import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
+import Question from "metabase-lib/Question";
 
 class ClickMappingsInner extends React.Component {
   render() {

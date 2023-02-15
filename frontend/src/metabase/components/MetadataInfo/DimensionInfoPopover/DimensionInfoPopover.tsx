@@ -5,7 +5,7 @@ import { hideAll } from "tippy.js";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";
 

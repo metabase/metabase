@@ -1,27 +1,30 @@
-(ns metabase.automagic-dashboards.core-test
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.automagic-dashboards.rules :as rules]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Database Field Metric Table]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query :as query :refer [Query]]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :as automagic-dashboards.test]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]))
+(ns ^:mb/once metabase.automagic-dashboards.core-test
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Card Collection Database Field Metric Table]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.automagic-dashboards :as automagic-dashboards.test]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------- `->reference` -------------------
 
@@ -288,7 +291,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
+                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]

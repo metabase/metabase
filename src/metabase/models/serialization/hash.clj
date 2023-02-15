@@ -19,28 +19,30 @@
     - Any foreign keys should be hydrated and the identity-hash of the foreign entity used as part of the hash.
       - There's a [[hydrated-hash]] helper for this with several example uses."
   (:require
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
-   [potemkin.types :as p.types]
    [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Identity Hashes                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;;; Generated entity_id values have lately been added to most exported models, but they only get populated on newly
 ;;; created entities. Since we can't rely on entity_id being present, we need a content-based definition of identity for
 ;;; all exported models.
-(p.types/defprotocol+ IdentityHashable
-  (identity-hash-fields
-    [entity]
-    "You probably want to call [[metabase.models.serialization.hash/identity-hash]] instead of calling this directly.
 
-    Content-based identity for the entities we export in serialization. This should return a sequence of functions to
-    apply to an entity and then hash. For example, Metric's [[identity-hash-fields]] is `[:name :table]`. These
-    functions are mapped over each entity and [[clojure.core/hash]] called on the result. This gives a portable hash
-    value across JVMs, Clojure versions, and platforms.
+(defmulti identity-hash-fields
+  "You probably want to call [[metabase.models.serialization.hash/identity-hash]] instead of calling this directly.
 
-    NOTE: No numeric database IDs! For any foreign key, use [[hydrated-hash]] to hydrate the foreign entity and include
-    its [[identity-hash]] as part of this hash. This is a portable way of capturing the foreign relationship."))
+  Content-based identity for the entities we export in serialization. This should return a sequence of functions to
+  apply to an entity and then hash. For example, Metric's [[identity-hash-fields]] is `[:name :table]`. These
+  functions are mapped over each entity and [[clojure.core/hash]] called on the result. This gives a portable hash
+  value across JVMs, Clojure versions, and platforms.
+
+  NOTE: No numeric database IDs! For any foreign key, use [[hydrated-hash]] to hydrate the foreign entity and include
+  its [[identity-hash]] as part of this hash. This is a portable way of capturing the foreign relationship."
+  {:arglists '([model-or-instance])}
+  mi/dispatch-on-model)
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
@@ -71,16 +73,23 @@
                       {:entity entity}
                       e)))))
 
+(defn identity-hash?
+  "Given a string, confirms whether it is a valid identity hash. That is, an 8-character hexadecimal number."
+  [s]
+  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
+
 (defn hydrated-hash
   "Many entities reference other entities. Using the autoincrementing ID is not portable, so we use the identity hash
   of the referenced entity. This is a helper for writing [[identity-hash-fields]]."
-  [hydration-key]
-  (fn [entity]
-    (let [hydrated-value (get (hydrate entity hydration-key) hydration-key)]
-      (when (nil? hydrated-value)
-        (throw (ex-info (tru "Error calculating hydrated hash: {0} is nil after hydrating {1}"
-                             (pr-str hydration-key)
-                             (name entity))
-                        {:entity        entity
-                         :hydration-key hydration-key})))
-      (identity-hash hydrated-value))))
+  ([hydration-key] (hydrated-hash hydration-key nil))
+  ([hydration-key default]
+   (fn [entity]
+     (let [hydrated-value (get (hydrate entity hydration-key) hydration-key)]
+       (cond
+         hydrated-value (identity-hash hydrated-value)
+         default        default
+         :else          (throw (ex-info (tru "Error calculating hydrated hash: {0} is nil after hydrating {1}"
+                                             (pr-str hydration-key)
+                                             (name entity))
+                                        {:entity        entity
+                                         :hydration-key hydration-key})))))))

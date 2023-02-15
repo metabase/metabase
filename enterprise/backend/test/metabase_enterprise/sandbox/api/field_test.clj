@@ -1,16 +1,18 @@
 (ns metabase-enterprise.sandbox.api.field-test
   "Tests for special behavior of `/api/metabase/field` endpoints in the Metabase Enterprise Edition."
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase.models :refer [Field FieldValues User]]
-            [metabase.models.field-values :as field-values]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
+   [metabase-enterprise.test :as met]
+   [metabase.models :refer [Field FieldValues User]]
+   [metabase.models.field-values :as field-values]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest fetch-field-test
   (testing "GET /api/field/:id"
-    (mt/with-gtaps {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                          :remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}}}
+    (met/with-gtaps {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
+                                          :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                     :attributes {:cat 50}}
       (testing "Can I fetch a Field that I don't have read access for if I have segmented table access for it?"
         (let [result (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name)))]
@@ -39,7 +41,7 @@
                                        :remappings {:cat [:variable [:template-tag "cat"]]}}}
                  :attributes {:cat 50}}]]]
         (testing (format "GTAP rule is a %s query" query-type)
-          (mt/with-gtaps gtap-rule
+          (met/with-gtaps gtap-rule
             (testing (str "When I call the FieldValues API endpoint for a Field that I have segmented table access only "
                           "for, will I get ad-hoc values?\n")
               (letfn [(fetch-values [user field]
@@ -84,7 +86,7 @@
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
                       (mt/with-temp User [another-user {:password password}]
-                        (mt/with-gtaps-for-user another-user {:gtaps      {:venues
+                        (met/with-gtaps-for-user another-user {:gtaps      {:venues
                                                                            {:remappings
                                                                             {:cat
                                                                              [:dimension (mt/id :venues :category_id)]}}}
@@ -109,16 +111,16 @@
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
-        (mt/with-gtaps {:gtaps      {:venues
-                                     {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}}}
+        (met/with-gtaps {:gtaps      {:venues
+                                     {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                         :attributes {:cat 4}}
           (is (= [[1 "$"] [3 "$$$"]]
                  (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
 
 (deftest search-test
   (testing "GET /api/field/:id/search/:search-id"
-    (mt/with-gtaps {:gtaps      {:venues
-                                 {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+    (met/with-gtaps {:gtaps      {:venues
+                                 {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                   :query      (mt.tu/restricted-column-query (mt/id))}}
                     :attributes {:cat 50}}
       (testing (str "Searching via the query builder needs to use a GTAP when the user has segmented permissions. "
@@ -135,9 +137,9 @@
                  (mt/user-http-request :rasta :get 200 url :value "Ta"))))))))
 
 (deftest caching-test
-  (mt/with-gtaps {:gtaps
+  (met/with-gtaps {:gtaps
                   {:venues
-                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                     :query      (mt.tu/restricted-column-query (mt/id))}}
                   :attributes {:cat 50}}
     (let [field (db/select-one Field :id (mt/id :venues :name))]
@@ -155,8 +157,8 @@
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
           (mt/with-temp User [another-user {:password password}]
-            (mt/with-gtaps-for-user another-user {:gtaps      {:venues
-                                                               {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+            (met/with-gtaps-for-user another-user {:gtaps      {:venues
+                                                               {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                 :query      (mt.tu/restricted-column-query (mt/id))}}
                                                   :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))

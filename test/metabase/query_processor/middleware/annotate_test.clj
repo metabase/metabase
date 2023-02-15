@@ -1,15 +1,18 @@
 (ns metabase.query-processor.middleware.annotate-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
@@ -279,17 +282,39 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-    (testing "if there is no matching expression it should give a meaningful error message"
-      (is (= {:data    {:expression-name "double-price"
-                        :tried           ["double-price" :double-price]
-                        :found           #{"one-hundred"}
-                        :type            :invalid-query}
-              :message "No expression named 'double-price'"}
-             (try
-               (mt/$ids venues
-                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "col-info for convert-timezone should have a `converted_timezone` property"
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                 [:expression "last-login-converted"]))))
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:datetime-add
+                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                 [:expression "last-login-converted"])))))
 
+   (testing "if there is no matching expression it should give a meaningful error message"
+     (is (= {:data    {:expression-name "double-price"
+                       :tried           ["double-price" :double-price]
+                       :found           #{"one-hundred"}
+                       :type            :invalid-query}
+             :message "No expression named 'double-price'"}
+            (try
+              (mt/$ids venues
+                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
@@ -507,6 +532,22 @@
                                          [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
+
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field (mt/id :checkins :date) {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
@@ -756,3 +797,32 @@
           (is (= "alias → B Column" (-> results :data :results_metadata
                                         :columns second :display_name))
               "Results metadata cols has wrong display name"))))))
+
+(deftest preserve-original-join-alias-test
+  (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset sample-dataset
+        (let [join-alias "Products with a very long name - Product ID with a very long name"
+              results    (mt/run-mbql-query orders
+                           {:joins  [{:source-table $$products
+                                      :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
+                                      :alias        join-alias
+                                      :fields       [[:field %products.title {:join-alias join-alias}]]}]
+                            :fields [$orders.id
+                                     [:field %products.title {:join-alias join-alias}]]
+                            :limit  4})]
+          (doseq [[location metadata] {"data.cols"                     (mt/cols results)
+                                       "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
+            (testing location
+              (is (= (mt/$ids
+                       [{:display_name "ID"
+                         :field_ref    $orders.id}
+                        (merge
+                         {:display_name (str join-alias " → Title")
+                          :field_ref    [:field %products.title {:join-alias join-alias}]}
+                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
+                         (when (= location "data.cols")
+                           {:source_alias join-alias}))])
+                     (map
+                      #(select-keys % [:display_name :field_ref :source_alias])
+                      metadata))))))))))

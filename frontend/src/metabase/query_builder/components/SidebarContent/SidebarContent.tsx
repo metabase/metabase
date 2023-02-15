@@ -55,4 +55,6 @@ function SidebarContent({
   );
 }
 
-export default SidebarContent;
+export default Object.assign(SidebarContent, {
+  Header: SidebarHeader,
+});

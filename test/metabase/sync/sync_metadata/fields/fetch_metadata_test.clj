@@ -1,15 +1,16 @@
 (ns metabase.sync.sync-metadata.fields.fetch-metadata-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.test :as mt]
-            [metabase.test.mock.toucanery :as toucanery]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.test :as mt]
+   [metabase.test.mock.toucanery :as toucanery]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test

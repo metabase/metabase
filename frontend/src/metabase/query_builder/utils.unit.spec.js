@@ -4,12 +4,12 @@ import {
   PRODUCTS,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
-import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
-import Breakout from "metabase-lib/lib/queries/structured/Breakout";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Join from "metabase-lib/lib/queries/structured/Join";
-import OrderBy from "metabase-lib/lib/queries/structured/OrderBy";
+import Question from "metabase-lib/Question";
+import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import Breakout from "metabase-lib/queries/structured/Breakout";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Join from "metabase-lib/queries/structured/Join";
+import OrderBy from "metabase-lib/queries/structured/OrderBy";
 import { normalizeQuery } from "./selectors";
 
 function toFieldRef(field) {

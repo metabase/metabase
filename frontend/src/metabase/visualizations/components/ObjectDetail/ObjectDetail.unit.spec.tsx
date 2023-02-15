@@ -22,8 +22,8 @@ describe("Object Detail", () => {
         closeObjectDetail={() => null}
       />,
     );
-    screen.getAllByText(/Large Sandstone Socks/i);
-    screen.getByText(/778/i);
+    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
+    expect(screen.getByText(/778/i)).toBeInTheDocument();
   });
 
   it("renders an object detail header with enabled next object button and disabled previous object button", () => {
@@ -69,8 +69,8 @@ describe("Object Detail", () => {
       />,
     );
 
-    screen.getByText("Synergistic Granite Chair");
-    screen.getByText("Doohickey");
+    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
+    expect(screen.getByText("Doohickey")).toBeInTheDocument();
   });
 
   it("renders an object detail component", () => {
@@ -111,9 +111,15 @@ describe("Object Detail", () => {
       />,
     );
 
-    screen.getAllByText(/Product/i);
-    screen.getByText(testDataset.rows[0][2].toString());
-    screen.getByText(testDataset.rows[0][3].toString());
-    screen.getByText(testDataset.rows[0][4].toString());
+    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][2].toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][3].toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][4].toString()),
+    ).toBeInTheDocument();
   });
 });

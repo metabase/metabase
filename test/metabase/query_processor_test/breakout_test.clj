@@ -1,16 +1,17 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [clojure.test :refer :all]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
@@ -198,16 +199,15 @@
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
-    (mt/suppress-output
-      (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-        (is (= {:status :failed
-                :class  clojure.lang.ExceptionInfo
-                :error  "Unable to bin Field without a min/max value"}
-               (-> (qp/process-userland-query
-                    (mt/mbql-query venues
-                      {:aggregation [[:count]]
-                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
-                   (select-keys [:status :class :error]))))))))
+    (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+      (is (= {:status :failed
+              :class  clojure.lang.ExceptionInfo
+              :error  "Unable to bin Field without a min/max value"}
+             (-> (qp/process-userland-query
+                  (mt/mbql-query venues
+                                 {:aggregation [[:count]]
+                                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
+                 (select-keys [:status :class :error])))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id

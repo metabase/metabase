@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -72,8 +72,16 @@ export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
   }
 `;
 
+export const EditWarning = styled.div`
+  display: flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+`;
+
 interface HeaderContentProps {
   showSubHeader: boolean;
+  hasSubHeader: boolean;
 }
 
 export const HeaderContent = styled.div<HeaderContentProps>`
@@ -86,15 +94,19 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     opacity: ${props => (props.showSubHeader ? "1x" : "0")};
   }
 
-  &:hover,
-  &:focus-within {
-    ${HeaderCaptionContainer} {
-      top: 0;
-    }
-    ${HeaderLastEditInfoLabel} {
-      opacity: 1;
-    }
-  }
+  ${({ hasSubHeader }) =>
+    hasSubHeader &&
+    css`
+      &:hover,
+      &:focus-within {
+        ${HeaderCaptionContainer} {
+          top: 0;
+        }
+        ${HeaderLastEditInfoLabel} {
+          opacity: 1;
+        }
+      }
+    `}
 
   ${breakpointMaxSmall} {
     padding-top: 0;

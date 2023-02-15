@@ -7,11 +7,10 @@ import {
 } from "__support__/sample_database_fixture";
 
 import NativeQuery, {
-  replaceCardTagNameById,
   recognizeTemplateTags,
   cardIdFromTagName,
   updateCardTemplateTagNames,
-} from "metabase-lib/lib/queries/NativeQuery";
+} from "metabase-lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -51,7 +50,7 @@ describe("NativeQuery", () => {
       });
     });
     describe("databaseId()", () => {
-      it("returns the Database ID of the wrapped query ", () => {
+      it("returns the Database ID of the wrapped query", () => {
         expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });
@@ -76,14 +75,6 @@ describe("NativeQuery", () => {
       });
       it("Verify that MongoDB queries do not support Parameters", () => {
         expect(makeMongoQuery("").supportsNativeParameters()).toBe(false);
-      });
-    });
-    describe("aceMode()", () => {
-      it("Mongo gets JSON mode ", () => {
-        expect(makeMongoQuery("").aceMode()).toBe("ace/mode/json");
-      });
-      it("H2 gets generic SQL mode in the editor", () => {
-        expect(query.aceMode()).toBe("ace/mode/sql");
       });
     });
   });
@@ -143,19 +134,19 @@ describe("NativeQuery", () => {
       expect(q1).toEqual(q2);
     });
   });
-  describe("Acessing the underlying native query", () => {
-    describe("You can access the actual native query via queryText()", () => {
+  describe("Accessing the underlying native query", () => {
+    test("You can access the actual native query via queryText()", () => {
       expect(makeQuery("SELECT * FROM ORDERS").queryText()).toEqual(
         "SELECT * FROM ORDERS",
       );
     });
-    describe("You can update query text the same way as well via setQueryText(newQueryText)", () => {
+    test("You can update query text the same way as well via setQueryText(newQueryText)", () => {
       const newQuery = makeQuery("SELECT 1");
       expect(newQuery.queryText()).toEqual("SELECT 1");
       const newerQuery = newQuery.setQueryText("SELECT 2");
       expect(newerQuery.queryText()).toEqual("SELECT 2");
     });
-    describe("lineCount() lets you know how long your query is", () => {
+    test("lineCount() lets you know how long your query is", () => {
       expect(makeQuery("SELECT 1").lineCount()).toBe(1);
       expect(makeQuery("SELECT \n 1").lineCount()).toBe(2);
     });
@@ -276,42 +267,38 @@ describe("NativeQuery", () => {
         expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
       });
     });
-    describe("replaceCardTagNameById", () => {
-      it("should update the query text", () => {
-        const query = makeQuery().setQueryText("SELECT * from {{ #123 }}");
-        const newQuery = replaceCardTagNameById(
-          query,
-          "123",
-          "#456-a-card-name",
-        );
-        expect(newQuery.queryText()).toBe("SELECT * from {{#456-a-card-name}}");
-        const tags = newQuery.templateTags();
-        expect(tags.length).toBe(1);
-        const [{ "card-id": cardId, type, name }] = tags;
-        expect(cardId).toEqual(456);
-        expect(type).toEqual("card");
-        expect(name).toEqual("#456-a-card-name");
-      });
+  });
+  describe("values source settings", () => {
+    it("should preserve the order of templates tags when updating", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTag(
+        "t1",
+        oldQuery.templateTagsMap()["t1"],
+      );
 
-      it("should perform multiple updates", () => {
-        const query = makeQuery().setQueryText(
-          "{{#123}} {{foo}} {{#1234}} {{ #123-original-card-name }}",
-        );
-        const newQuery = replaceCardTagNameById(
-          query,
-          "123",
-          "#456-a-card-name",
-        );
-        expect(newQuery.queryText()).toBe(
-          "{{#456-a-card-name}} {{foo}} {{#1234}} {{#456-a-card-name}}",
-        );
-      });
+      expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
+    });
 
-      it("should replace a blank id", () => {
-        const query = makeQuery().setQueryText("{{#}} {{#123}}");
-        const newQuery = replaceCardTagNameById(query, "", "#456-a-card-name");
-        expect(newQuery.queryText()).toBe("{{#456-a-card-name}} {{#123}}");
-      });
+    it("should allow setting source settings for tags", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTagConfig(
+        oldQuery.templateTagsMap()["t1"],
+        {
+          values_query_type: "search",
+          values_source_type: "static-list",
+          values_source_config: { values: ["A"] },
+        },
+      );
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(2);
+      expect(newParameters[0].values_query_type).toEqual("search");
+      expect(newParameters[0].values_source_type).toEqual("static-list");
+      expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
     });
   });
   describe("variables", () => {

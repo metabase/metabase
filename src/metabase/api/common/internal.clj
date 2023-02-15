@@ -1,17 +1,23 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`.
    These are primarily used as the internal implementation of `defendpoint`."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.config :as config]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           metabase.async.streaming_response.StreamingResponse))
+  (:require
+   [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.config :as config]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli.describe :as umd]
+   [metabase.util.schema :as su]
+   [potemkin.types :as p.types]
+   [schema.core :as s])
+  (:import
+   (metabase.async.streaming_response StreamingResponse)))
+
+(set! *warn-on-reflection* true)
 
 (comment streaming-response/keep-me)
 
@@ -80,6 +86,19 @@
                                      "Consider wrapping it in `su/with-api-error-message`.")
                            (u/pprint-to-str schema) (u/add-period route-str)))))))
 
+(defn- malli-dox-for-schema
+  "Generate the docstring for `schema` for use in auto-generated API documentation."
+  [schema route-str]
+  (try (umd/describe schema)
+       (catch Exception _
+         (ex-data
+          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+            (log/warn
+             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                             (u/pprint-to-str schema)
+                             (u/add-period route-str)))))
+         "")))
+
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
   `param-symb`, but if the schema used a call to `su/api-param` we;ll use that name instead."
@@ -87,6 +106,19 @@
   (or (when (record? schema)
         (:api-param-name schema))
       (name param-symb)))
+
+(defn- malli-format-route-schema-dox
+  "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
+  `param-symb->schema` map passed in after the argslist."
+  [param-symb->schema route-str]
+  ;; these are here
+  (when (seq param-symb->schema)
+    (str "\n\n### PARAMS:\n\n"
+         (str/join "\n\n"
+                   (for [[param-symb schema] param-symb->schema]
+                     (format "*  **`%s`** %s"
+                             (param-name param-symb schema)
+                             (malli-dox-for-schema schema route-str)))))))
 
 (defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
@@ -105,12 +137,29 @@
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
 
+(defn- malli-format-route-dox
+  "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
+  [route-str docstr param->schema]
+  (str (format "## `%s`" route-str)
+       (when (seq docstr)
+         (str "\n\n" (u/add-period docstr)))
+       (malli-format-route-schema-dox param->schema route-str)))
+
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
   (let [body (set body)]
     (or (contains? body '(check-superuser))
         (contains? body '(api/check-superuser)))))
+
+(defn malli-route-dox
+  "Prints a markdown route doc for defendpoint"
+  [method route docstr args param->schema body]
+  (malli-format-route-dox (endpoint-name method route)
+                          (str (u/add-period docstr) (when (contains-superuser-check? body)
+                                                       "\n\nYou must be a superuser to do this."))
+                          (merge (args-form-symbols args)
+                                 param->schema)))
 
 (defn route-dox
   "Generate a documentation string for a `defendpoint` route."
@@ -230,6 +279,19 @@
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn malli-validate-param
+  "Validate a parameter against its respective malli schema, or throw an Exception."
+  [field-name value schema]
+  (when-not (mc/validate schema value)
+    (throw (ex-info (tru "Invalid m field: {0}" field-name)
+                    {:status-code 400
+                     :errors      {(keyword field-name) (umd/describe schema)}
+                     :specific-errors {(keyword field-name)
+                                       (-> schema
+                                           (mc/explain value)
+                                           me/with-spell-checking
+                                           me/humanize)}}))))
+
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."
   [field-name value schema]
@@ -240,6 +302,12 @@
                           :errors      {(keyword field-name) (or (su/api-error-message schema)
                                                                  (:message (ex-data e))
                                                                  (.getMessage e))}})))))
+
+(defn malli-validate-params
+  "Generate a series of `malli-validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
+  [param->schema]
+  (for [[param schema] param->schema]
+    `(malli-validate-param '~param ~param ~schema)))
 
 (defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
@@ -281,10 +349,6 @@
   StreamingResponse
   (wrap-response-if-needed [this]
     this)
-
-  ManyToManyChannel
-  (wrap-response-if-needed [chan]
-    {:status 202, :body chan})
 
   clojure.lang.IPersistentMap
   (wrap-response-if-needed [m]

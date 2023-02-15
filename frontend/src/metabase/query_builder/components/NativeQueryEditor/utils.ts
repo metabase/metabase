@@ -1,4 +1,4 @@
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 
 const LINE_HEIGHT = 16;
@@ -15,7 +15,7 @@ const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
 
 // the query editor needs a fixed pixel height for now
 // until we extract the resizable component
-const FULL_HEIGHT = 500;
+const FULL_HEIGHT = 400;
 
 // This determines the max height that the editor *automatically* takes.
 // - On load, long queries will be capped at this length

@@ -14,9 +14,8 @@ Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/all-models.
 
   To search in archived portions of models, pass in `archived=true`.
-  If you want, while searching tables, only tables of a certain DB id,
-  pass in a DB id value to `table_db_id`.
-
+  To search for tables, cards, and models of a certain DB, pass in a DB id value
+  to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   .
 

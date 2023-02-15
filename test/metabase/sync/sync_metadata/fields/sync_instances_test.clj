@@ -1,14 +1,15 @@
-(ns metabase.sync.sync-metadata.fields.sync-instances-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.sync-metadata.fields :as sync-fields]
-            [metabase.test.mock.toucanery :as toucanery]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+(ns ^:mb/once metabase.sync.sync-metadata.fields.sync-instances-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.test.mock.toucanery :as toucanery]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil

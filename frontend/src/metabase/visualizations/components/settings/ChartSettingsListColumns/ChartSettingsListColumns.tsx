@@ -4,12 +4,11 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { keyForColumn } from "metabase/lib/dataset";
-
-import { Column } from "metabase-types/types/Dataset";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
-import Question from "metabase-lib/lib/Question";
+import { DatasetColumn } from "metabase-types/api";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 
 import {
   ColumnItemContainer,
@@ -26,10 +25,13 @@ type SettingValue = {
 
 interface Props {
   value: SettingValue;
-  columns: Column[];
+  columns: DatasetColumn[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
+  onShowPopoverWidget: (
+    config: unknown,
+    targetElement: HTMLElement | null,
+  ) => void;
 }
 
 type ListColumnSlot = "left" | "right";
@@ -51,7 +53,7 @@ function ChartSettingsListColumns({
   value,
   columns,
   onChange,
-  onShowWidget,
+  onShowPopoverWidget,
 }: Props) {
   const onChangeColumn = useCallback(
     (slot: ListColumnSlot, index: number, val: FieldIdOrFieldRef) => {
@@ -75,18 +77,18 @@ function ChartSettingsListColumns({
           _.isEqual(column.field_ref, fieldIdOrFieldRef),
       );
       if (column) {
-        onShowWidget(
+        onShowPopoverWidget(
           {
             id: "column_settings",
             props: {
-              initialKey: keyForColumn(column),
+              initialKey: getColumnKey(column),
             },
           },
           targetElement,
         );
       }
     },
-    [columns, onShowWidget],
+    [columns, onShowPopoverWidget],
   );
 
   const columnOptions = columns.map(column => ({

@@ -58,14 +58,6 @@ To move a question, dashboard, or pulse into a collection, or from one collectio
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
 
-## Archiving items
-
-Sometimes questions outlive their usefulness and need to be sent to Question Heaven. To archive a question or dashboard, just click on the `…` menu that appears on the far right when you hover over a question and pick the Archive action. You'll only see that option if you have "curate" permission for the current collection. You can also archive multiple items at once, the same way as you move multiple items. Note that archiving a question removes it from all dashboards or Pulses where it appears, so be careful!
-
-You can also archive _collections_ if you have curate permissions for the collection you're trying to archive, the collection _it's_ inside of, as well as any and all collections inside of _it_. Archiving a collection archives all of its contents as well.
-
-If you have second thoughts and want to bring an archived item back, you can see all your archived questions from the archive; click the menu icon in the top-right of any collection page to get to the archive. To unarchive a question, hover over it and click the unarchive icon that appears on the far right.
-
 ## Events and timelines
 
 You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).

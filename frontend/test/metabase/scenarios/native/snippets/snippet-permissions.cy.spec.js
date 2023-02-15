@@ -78,8 +78,9 @@ describeEE("scenarios > question > snippets", () => {
       });
     modal().within(() => cy.findByText("Top folder").click());
     popover().within(() => cy.findByText("my favorite snippets").click());
-    cy.server();
-    cy.route("/api/collection/root/items?namespace=snippets").as("updateList");
+    cy.intercept("/api/collection/root/items?namespace=snippets").as(
+      "updateList",
+    );
     modal().within(() => cy.findByText("Save").click());
 
     // check that everything is in the right spot

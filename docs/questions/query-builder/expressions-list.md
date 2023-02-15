@@ -22,7 +22,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [Share](#share)
   - [StandardDeviation](#standarddeviation)
   - [Sum](#sum)
-  - [SumIf](#sumif)
+  - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
 - [Functions](#functions)
   - [abs](#abs)
@@ -32,9 +32,15 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [convertTimezone](./expressions/converttimezone.md)
+  - [datetimeAdd](./expressions/datetimeadd.md)
+  - [datetimeDiff](./expressions/datetimediff.md)
+  - [datetimeSubtract](./expressions/datetimesubtract.md)
+  - [day](#day)
   - [endswith](#endswith)
   - [exp](#exp)
   - [floor](#floor)
+  - [hour](#hour)
   - [interval](#interval)
   - [isempty](./expressions/isempty.md)
   - [isnull](./expressions/isnull.md)
@@ -42,16 +48,22 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [length](#length)
   - [log](#log)
   - [lower](#lower)
+  - [minute](#minute)
+  - [month](#month)
   - [power](#power)
-  - [regexextract](#regexextract)
+  - [quarter](#quarter)
+  - [regexextract](./expressions/regexextract.md)
   - [replace](#replace)
   - [righttrim](#righttrim)
   - [round](#round)
+  - [second](#second)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
   - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
+  - [week](#week)
+  - [year](#year)
 - [Database limitations](#database-limitations)
 
 ## Aggregations
@@ -174,7 +186,7 @@ Syntax: `Sum(column)`
 
 Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
-### SumIf
+### [SumIf](./expressions/sumif.md)
 
 Sums up the specified column only for rows where the condition is true.
 
@@ -224,7 +236,7 @@ Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a
 
 ### ceil
 
-Rounds a decimal up (ciel as in ceiling).
+Rounds a decimal up (ceil as in ceiling).
 
 Syntax: `ceil(column)`.
 
@@ -258,6 +270,50 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
+### [convertTimezone](./expressions/converttimezone.md)
+
+Shifts a date or timestamp value into a specified time zone.
+
+Syntax: `convertTimezone(column, target, source)`.
+
+Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
+
+### [datetimeAdd](./expressions/datetimeadd.md)
+
+Adds some unit of time to a date or timestamp value.
+
+Syntax: `datetimeAdd(column, amount, unit)`.
+
+Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
+
+Related: [between](#between), [datetimeSubtract](#datetimesubtract).
+
+### [datetimeDiff](./expressions/datetimediff.md)
+
+Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
+
+Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
+
+Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
+
+### [datetimeSubtract](./expressions/datetimesubtract.md)
+
+Subtracts some unit of time from a date or timestamp value.
+
+Syntax: `datetimeSubtract(column, amount, unit)`.
+
+Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+Related: [between](#between), [datetimeAdd](#datetimeadd).
+
+### day
+
+Takes a datetime and returns the day of the month as an integer.
+
+Syntax: `day([datetime column])`.
+
+Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
+
 ### endswith
 
 Returns true if the end of the text matches the comparison text.
@@ -270,7 +326,7 @@ Related: [contains](#contains) and [startswith](#startswith).
 
 ### exp
 
-Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant)), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
+Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
 Syntax: `exp(column)`.
 
@@ -287,6 +343,14 @@ Syntax: `floor(column)`
 Example: `floor([Price])`. If the `Price` were 1.99, the expression would return 1.
 
 Related: [ceil](#ceil), [round](#round).
+
+### hour
+
+Takes a datetime and returns the hour as an integer (0-23).
+
+Syntax: `hour([datetime column])`.
+
+Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
 ### interval
 
@@ -350,6 +414,22 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
+### minute
+
+Takes a datetime and returns the minute as an integer (0-59).
+
+Syntax: `minute([datetime column])`.
+
+Example: `minute("2021-03-25T12:52:37")` would return `52`.
+
+### month
+
+Takes a datetime and returns the month number (1-12) as an integer.
+
+Syntax: `month([datetime column])`.
+
+Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
+
 ### power
 
 Raises a number to the power of the exponent value.
@@ -362,7 +442,15 @@ Databases that don't support `power`: SQLite.
 
 Related: [exp](#exp).
 
-### regexextract
+### quarter
+
+Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
+
+Syntax: `quarter([datetime column])`.
+
+Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
+
+### [regexextract](./expressions/regexextract.md)
 
 Extracts matching substrings according to a regular expression.
 
@@ -372,11 +460,11 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains).
+Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
-Replaces a part of the input text with new text.
+Replaces all occurrences of a search text in the input text with the replacement text.
 
 Syntax: `replace(text, find, replace)`.
 
@@ -399,6 +487,14 @@ Rounds a decimal number either up or down to the nearest integer value.
 Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
+
+### second
+
+Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
+
+Syntax: `second([datetime column)`.
+
+Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
 ### sqrt
 
@@ -430,7 +526,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
 
-Related: [replace](#replace).
+Related: [regexextract](#regexextract), [replace](#replace).
 
 ### trim
 
@@ -447,6 +543,28 @@ Returns the text in all upper case.
 Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+### week
+
+Takes a datetime and returns the week as an integer.
+
+Syntax: `week(column, mode)`.
+
+Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`.
+
+- column: the name of the column of the date or datetime value.
+- mode: Optional.
+  - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
+  - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+  - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+### year
+
+Takes a datetime and returns the year as an integer.
+
+Syntax: `year([datetime column])`.
+
+Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
 ## Database limitations
 

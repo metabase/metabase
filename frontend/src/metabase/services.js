@@ -1,11 +1,10 @@
 import _ from "underscore";
-
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
-import Question from "metabase-lib/lib/Question";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import Question from "metabase-lib/Question";
+import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -48,39 +47,16 @@ export const StoreApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  function canonicalFieldRef(ref) {
-    // Field refs between the query and setting might differ slightly.
-    // This function trims binned dimensions to just the field-id
-    const dimension = FieldDimension.parseMBQL(ref);
-    if (!dimension) {
-      return ref;
-    }
-    return dimension.withoutOptions("binning").mbql();
-  }
-
   const question = new Question(card, metadata);
 
   function wrap(api) {
     return (params, ...rest) => {
-      const setting = question.setting("pivot_table.column_split");
-      const breakout =
-        (question.isStructured() && question.query().breakouts()) || [];
-      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
-        setting,
-        fieldRefs =>
-          fieldRefs
-            .map(field_ref =>
-              breakout.findIndex(b =>
-                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
-              ),
-            )
-            .filter(index => index !== -1),
-      );
+      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
   if (
-    card.display !== "pivot" ||
+    question.display() !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
@@ -133,6 +109,8 @@ export const CardApi = {
   // related
   related: GET("/api/card/:cardId/related"),
   adHocRelated: POST("/api/card/related"),
+  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
+  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
@@ -144,9 +122,9 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  addcard: POST("/api/dashboard/:dashId/cards"),
-  removecard: DELETE("/api/dashboard/:dashId/cards"),
-  reposition_cards: PUT("/api/dashboard/:dashId/cards"),
+  addCard: POST("/api/dashboard/:dashId/cards"),
+  removeCard: DELETE("/api/dashboard/:dashId/cards"),
+  updateCards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
@@ -180,18 +158,14 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
-export const DataAppsApi = {
-  list: GET("/api/app"),
-  create: POST("/api/app"),
-  update: PUT("/api/app/:id"),
-
-  scaffoldNewApp: POST("/api/app/scaffold"),
-  scaffoldNewPages: POST("/api/app/:id/scaffold"),
-};
-
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
+  action: GET("/api/public/action/:uuid"),
+  executeDashcardAction: POST(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
+  executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
@@ -201,6 +175,9 @@ export const PublicApi = {
   ),
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
+  prefetchValues: GET(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
 
@@ -238,6 +215,10 @@ export const SlackApi = {
 
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
+};
+
+export const GoogleApi = {
+  updateSettings: PUT("/api/google/settings"),
 };
 
 export const TimelineApi = {
@@ -282,6 +263,7 @@ export const MetabaseApi = {
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
+  db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
   table_update: PUT("/api/table/:id"),
@@ -290,47 +272,7 @@ export const MetabaseApi = {
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   table_query_metadata: GET(
     "/api/table/:tableId/query_metadata",
-    async table => {
-      // HACK: inject GA metadata that we don't have intergrated on the backend yet
-      if (table && table.db && table.db.engine === "googleanalytics") {
-        const GA = await getGAMetadata();
-        table.fields = table.fields.map(field => ({
-          ...field,
-          ...GA.fields[field.name],
-        }));
-        table.metrics.push(
-          ...GA.metrics.map(metric => ({
-            ...metric,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-        table.segments.push(
-          ...GA.segments.map(segment => ({
-            ...segment,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-      }
-
-      if (table && table.fields) {
-        // replace dimension_options IDs with objects
-        for (const field of table.fields) {
-          if (field.dimension_options) {
-            field.dimension_options = field.dimension_options.map(
-              id => table.dimension_options[id],
-            );
-          }
-          if (field.default_dimension_option) {
-            field.default_dimension_option =
-              table.dimension_options[field.default_dimension_option];
-          }
-        }
-      }
-
-      return table;
-    },
+    injectTableMetadata,
   ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
@@ -356,6 +298,11 @@ export const MetabaseApi = {
     // this prevents the `endpoint` parameter from being URL encoded
     raw: { endpoint: true },
   }),
+};
+
+export const ParameterApi = {
+  parameterValues: POST("/api/dataset/parameter/values"),
+  parameterSearch: POST("/api/dataset/parameter/search/:query"),
 };
 
 export const ModerationReviewApi = {
@@ -492,27 +439,38 @@ export const TaskApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+  setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 export function setPublicDashboardEndpoints() {
-  setParamsEndpoints("/api/public");
+  setDashboardEndpoints("/api/public");
 }
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/card/:token", { token });
+    setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setParamsEndpoints("/api/embed");
+    setDashboardEndpoints("/api/embed");
   }
 }
 
-function GET_with(url, params) {
-  return (data, options) => GET(url)({ ...params, ...data }, options);
+function GET_with(url, params, omitKeys) {
+  return (data, options) =>
+    GET(url)({ ...params, ..._.omit(data, omitKeys) }, options);
 }
 
-function setFieldEndpoints(prefix, params) {
+function setCardEndpoints(prefix, params) {
+  CardApi.parameterValues = GET_with(
+    prefix + "/params/:paramId/values",
+    params,
+    ["cardId"],
+  );
+  CardApi.parameterSearch = GET_with(
+    prefix + "/params/:paramId/search/:query",
+    params,
+    ["cardId"],
+  );
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -527,22 +485,25 @@ function setFieldEndpoints(prefix, params) {
   );
 }
 
-function setParamsEndpoints(prefix) {
+function setDashboardEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/values",
+    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
   DashboardApi.parameterSearch = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/search/:query",
+    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 
 export const ActionsApi = {
-  create: POST("/api/action/row/create"),
-  update: POST("/api/action/row/update"),
-  delete: POST("/api/action/row/delete"),
-  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
-  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
-  execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+  list: GET("/api/action"),
+  get: GET("/api/action/:id"),
+  create: POST("/api/action"),
+  update: PUT("/api/action/:id"),
+  prefetchValues: GET(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
+  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+  createPublicLink: POST("/api/action/:id/public_link"),
+  deletePublicLink: DELETE("/api/action/:id/public_link"),
+  listPublic: GET("/api/action/public"),
 };

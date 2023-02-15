@@ -25,6 +25,12 @@ export default class QuestionAlertWidget extends React.Component {
     this.setState({ isFrozen: true });
   };
 
+  constructor(props, context) {
+    super(props, context);
+
+    this.rootRef = React.createRef();
+  }
+
   render() {
     const {
       question,
@@ -41,12 +47,13 @@ export default class QuestionAlertWidget extends React.Component {
 
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {
       return (
-        <span onClick={this.open}>
+        <span onClick={this.open} ref={this.rootRef}>
           <Icon
             name="bell"
             className={cx(className, "text-brand cursor-pointer")}
           />
           <Popover
+            target={this.rootRef.current}
             isOpen={isOpen}
             className={isFrozen ? "hide" : null}
             onClose={this.close}

@@ -56,7 +56,6 @@
                  commons-daemon/commons-daemon
                  commons-dbcp/commons-dbcp
                  commons-io/commons-io
-                 commons-lang/commons-lang
                  commons-logging/commons-logging
                  commons-net/commons-net
                  commons-pool/commons-pool

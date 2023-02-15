@@ -1,13 +1,13 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor-test.timezones-test :as timezones-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -110,28 +110,19 @@
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]}))))))))
-
-(defn- mongo-major-version [db]
-  (when (= driver/*driver* :mongo)
-    (-> (driver/describe-database :mongo db)
-        :version (str/split #"\.") first parse-long)))
+                    :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
 
 (defn- timezone-arithmetic-drivers []
   (set/intersection
-   ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
-   ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
-   ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME, see #23422)
-   (conj (mt/normal-drivers-with-feature :expressions) :mongo)
-   (timezones-test/timezone-aware-column-drivers)))
+    (mt/normal-drivers-with-feature :expressions)
+    (mt/normal-drivers-with-feature :date-arithmetics)
+    (timezones-test/timezone-aware-column-drivers)))
 
 (deftest temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
+        (doseq [offset-unit [:year :day]
                   interval-unit [:year :day]
                   compare-op [:between := :< :<= :> :>=]
                   compare-order (cond-> [:field-first]
@@ -155,15 +146,13 @@
                   (if (= driver/*driver* :mongo)
                     (is (or (nil? result)
                             (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+                    (is (nat-int? result)))))))))))
 
 (deftest nonstandard-temporal-arithmetic-test
   (testing "Nonstandard temporal arithmetic should also be supported"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
+        (doseq [offset-unit [:year :day]
                   interval-unit [:year :day]
                   compare-op [:between := :< :<= :> :>=]
                   add-op [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
@@ -192,7 +181,7 @@
                   (if (= driver/*driver* :mongo)
                     (is (or (nil? result)
                             (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+                    (is (nat-int? result)))))))))))
 
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)
@@ -490,12 +479,12 @@
       (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
         (is (= 4
                (count-with-filter-clause checkins [:between
-                                                   [:datetime-field $timestamp :minute]
+                                                   !minute.timestamp
                                                    "2019-01-01T12:30:00"
                                                    "2019-01-14"])))))
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
-             (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))
+             (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
 (deftest string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -518,7 +507,7 @@
                        []
                        [[expected-count]])
                      (mt/formatted-rows [int]
-                                        (qp/process-query query)))))))))
+                       (qp/process-query query)))))))))
 
     (testing "Make sure we're not being too aggressive and encoding percent signs (e.g. SQL `LIKE`)"
       (is (= [[1]]

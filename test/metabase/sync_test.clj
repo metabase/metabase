@@ -1,20 +1,21 @@
-(ns ^:deprecated metabase.sync-test
+(ns ^:deprecated ^:mb/once metabase.sync-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces.
 
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :as mock.util]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -39,7 +40,8 @@
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 2}}}
+                        :database-position 2}}
+             :description nil}
    "studio" {:name   "studio"
              :schema nil
              :fields #{{:name              "studio"
@@ -50,7 +52,8 @@
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 1}}}})
+                        :database-position 1}}
+             :description ""}})
 
 (driver/register! ::sync-test, :abstract? true)
 

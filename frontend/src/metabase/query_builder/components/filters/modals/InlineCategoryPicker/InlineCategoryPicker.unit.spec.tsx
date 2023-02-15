@@ -7,10 +7,10 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 import { metadata } from "__support__/sample_database_fixture";
 
-import Field from "metabase-lib/lib/metadata/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Question from "metabase-lib/lib/Question";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Field from "metabase-lib/metadata/Field";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
@@ -160,9 +160,9 @@ describe("InlineCategoryPicker", () => {
       />,
     );
 
-    screen.getByTestId("category-picker");
+    expect(screen.getByTestId("category-picker")).toBeInTheDocument();
     smallCategoryField.values.forEach(([value]) => {
-      screen.getByText(value);
+      expect(screen.getByText(value)).toBeInTheDocument();
     });
   });
 
@@ -232,9 +232,9 @@ describe("InlineCategoryPicker", () => {
       />,
     );
 
-    screen.getByTestId("category-picker");
+    expect(screen.getByTestId("category-picker")).toBeInTheDocument();
     smallCategoryField.values.forEach(([value]) => {
-      screen.getByText(value);
+      expect(screen.getByText(value)).toBeInTheDocument();
     });
   });
 
@@ -495,7 +495,7 @@ describe("InlineCategoryPicker", () => {
       );
 
       expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("value-picker")).toBeInTheDocument();
+      expect(screen.getByTestId("value-picker")).toBeInTheDocument();
     });
   });
 });

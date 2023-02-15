@@ -10,8 +10,8 @@
    [clojure.string :as str]
    [grasp.api :as g]
    [metabuild-common.core :as u])
-  (:import [org.fedorahosted.tennera.jgettext
-            Catalog HeaderFields HeaderFields Message PoWriter]))
+  (:import
+   (org.fedorahosted.tennera.jgettext Catalog HeaderFields Message PoWriter)))
 
 (set! *warn-on-reflection* true)
 

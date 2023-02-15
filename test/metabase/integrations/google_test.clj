@@ -1,12 +1,16 @@
 (ns metabase.integrations.google-test
-  (:require [clojure.test :refer :all]
-            [metabase.email-test :as et]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.google.interface :as google.i]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email-test :as et]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.google.interface :as google.i]
+   [metabase.models.interface :as mi]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- google-auth-client-id ----------------------------------------------
 
@@ -128,9 +132,9 @@
       (mt/with-temp User [_ {:email "cam@sf-toucannery.com"}]
         (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
           (testing "their account should return a UserInstance"
-            (is (schema= metabase.models.user.UserInstance
-                         (#'google/google-auth-fetch-or-create-user!
-                          "Cam" "Saul" "cam@sf-toucannery.com")))))))
+            (is (mi/instance-of? User
+                                 (#'google/google-auth-fetch-or-create-user!
+                                  "Cam" "Saul" "cam@sf-toucannery.com")))))))
 
     (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
@@ -145,8 +149,8 @@
         (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                            admin-email                             "rasta@toucans.com"]
           (try
-            (is (schema= metabase.models.user.UserInstance
-                         (#'google/google-auth-fetch-or-create-user!
-                          "Rasta" "Toucan" "rasta@sf-toucannery.com")))
+            (is (mi/instance-of? User
+                                 (#'google/google-auth-fetch-or-create-user!
+                                  "Rasta" "Toucan" "rasta@sf-toucannery.com")))
             (finally
               (db/delete! User :email "rasta@sf-toucannery.com"))))))))

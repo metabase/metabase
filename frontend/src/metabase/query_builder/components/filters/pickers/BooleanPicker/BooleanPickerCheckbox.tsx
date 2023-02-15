@@ -2,7 +2,7 @@ import React, { Key } from "react";
 import _ from "underscore";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import { CheckboxContainer } from "./BooleanPicker.styled";
 

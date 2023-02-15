@@ -124,19 +124,26 @@ function getSettingWidget(
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = value => {
-    const newSettings = { [settingId]: value };
+    const newSettings = { [settingDef.writeSettingId || settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
+    }
+    for (const settingId of settingDef.eraseDependencies || []) {
+      newSettings[settingId] = null;
     }
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,

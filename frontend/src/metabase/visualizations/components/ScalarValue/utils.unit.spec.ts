@@ -1,4 +1,5 @@
 import * as measureText from "metabase/lib/measure-text";
+import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { findSize } from "./utils";
 
 jest.doMock("metabase/lib/measure-text", () => ({
@@ -6,11 +7,7 @@ jest.doMock("metabase/lib/measure-text", () => ({
 }));
 
 const createMockMeasureText = (width: number) => {
-  return (_text: string, _style: measureText.FontStyle) => {
-    return {
-      width,
-    } as TextMetrics;
-  };
+  return (_text: string, _style: FontStyle) => width;
 };
 
 const defaults = {

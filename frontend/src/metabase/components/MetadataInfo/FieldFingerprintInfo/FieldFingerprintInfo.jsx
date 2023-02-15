@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 import { Table } from "../MetadataInfo.styled";
 import CategoryFingerprint from "./CategoryFingerprint";

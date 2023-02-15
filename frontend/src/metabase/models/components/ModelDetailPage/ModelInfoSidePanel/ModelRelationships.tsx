@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import type Question from "metabase-lib/lib/Question";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 import { ModelInfoTitle, ModelInfoSection } from "./ModelInfoSidePanel.styled";
 import { List, ListItemLink, ListItemName } from "./ModelRelationships.styled";
@@ -25,17 +25,20 @@ function ModelRelationships({ model, mainTable }: Props) {
     );
   }, [model, mainTable]);
 
-  if (relatedTables.length <= 0) {
+  if (relatedTables.length === 0) {
     return null;
   }
 
   return (
     <ModelInfoSection>
       <ModelInfoTitle>{t`Relationships`}</ModelInfoTitle>
-      <List>
+      <List data-testid="model-relationships">
         {relatedTables.map(table => (
           <li key={table.id}>
-            <ListItemLink to={table.newQuestion().getUrl()}>
+            <ListItemLink
+              to={table.newQuestion().getUrl()}
+              aria-label={table.displayName()}
+            >
               <Icon name="table" />
               <ListItemName>{table.displayName()}</ListItemName>
             </ListItemLink>

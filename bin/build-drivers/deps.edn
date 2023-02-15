@@ -11,12 +11,20 @@
   io.forward/yaml                 {:mvn/version "1.0.9"} ; Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
   io.github.clojure/tools.build   {:git/tag "v0.7.4" :git/sha "ac442da"}
   org.clojure/tools.deps.alpha    {:mvn/version "0.12.985"}
-  org.flatland/ordered            {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
   com.bhauman/spell-spec          {:mvn/version "0.1.1"} ; used to find misspellings in YAML files
   stencil/stencil                 {:mvn/version "0.5.0"}
   ;; local source
   metabase/metabase-core          {:local/root "../.."}
   metabase/driver-modules         {:local/root "../../modules/drivers"}}
+
+ ;; These are needed for the Athena and Redshift drivers in order to build them. Maven repos from subprojects do not
+ ;; get copied over -- see
+ ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
+ :mvn/repos
+ {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
+  ;; for metabase/saml20-clj
+  "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
 
  :jvm-opts
  ["-XX:-OmitStackTraceInFastThrow"]

@@ -2,15 +2,17 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {
   isDraggable: boolean;
+  isHidden: boolean;
 }
 
 export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   margin: 0.5rem 0;
   overflow: hidden;
-  display: flex;
+  display: ${({ isHidden }) => (isHidden ? "none" : "flex")};
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
@@ -73,4 +75,9 @@ export const ColumnItemIcon = styled(Icon)`
 
 export const ColumnItemDragHandle = styled(Icon)`
   color: ${color("text-medium")};
+`;
+
+export const ColumnItemColorPicker = styled(ChartSettingColorPicker)`
+  margin-bottom: 0;
+  margin-left: 0.25rem;
 `;

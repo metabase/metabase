@@ -10,7 +10,8 @@
    [metabase.util.schema :as su]
    [toucan.db :as db]))
 
-(api/defendpoint POST "/data-model"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/data-model"
   "This endpoint should serialize: the data model, settings.yaml, and all the selected Collections
 
   The data model should only change if the user triggers a manual sync or scan (since the scheduler is turned off)
@@ -34,9 +35,10 @@
                            (pr-str (set/difference (set collection_ids) (set existing-collection-ids))))
                       {:status-code 404}))))
   (serialization.cmd/dump path
-                          {:v2      true
-                           :targets (for [collection-id collection_ids]
-                                      ["Collection" collection-id])})
+                          {:v2                   true
+                           :selected-collections collection_ids
+                           :targets              (for [collection-id collection_ids]
+                                                   ["Collection" collection-id])})
   ;; TODO -- not 100% sure this response makes sense. We can change it later with something more meaningful maybe
   {:status :ok})
 

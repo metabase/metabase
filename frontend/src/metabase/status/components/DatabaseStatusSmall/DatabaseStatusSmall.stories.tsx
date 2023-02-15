@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
 

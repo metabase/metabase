@@ -1,8 +1,9 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions
-  (:require [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Shared Util Functions                                                 |

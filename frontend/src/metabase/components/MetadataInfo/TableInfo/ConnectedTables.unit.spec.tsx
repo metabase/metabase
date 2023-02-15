@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 
 import ConnectedTables from "./ConnectedTables";
 
@@ -14,7 +14,7 @@ describe("ConnectedTables", () => {
     const table = new Table();
     const { container } = setup(table);
 
-    expect(container.firstChild).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("should show a label for each connected table", () => {

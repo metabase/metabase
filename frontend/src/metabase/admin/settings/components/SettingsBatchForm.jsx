@@ -188,7 +188,8 @@ class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  handleSubmit = updateSettings => {
+  handleSubmit = () => {
+    const { updateSettings } = this.props;
     const { formData, valid } = this.state;
 
     if (valid) {
@@ -217,7 +218,7 @@ class SettingsBatchForm extends Component {
 
   handleSubmitClick = event => {
     event.preventDefault();
-    this.handleSubmit(this.props.updateSettings);
+    this.handleSubmit();
   };
 
   render() {
@@ -337,7 +338,7 @@ export default connect(
       updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
   }),
   null,
-  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+  { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (

@@ -1,3 +1,5 @@
+import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
+
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -40,11 +42,15 @@ export function openNativeEditor({
 /**
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
- * @param {string} [xhrAlias ="dataset"]
  */
-export function runNativeQuery(xhrAlias = "dataset") {
+export function runNativeQuery({ wait = true } = {}) {
+  cy.intercept("POST", "api/dataset").as("dataset");
   cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
+
+  if (wait) {
+    cy.wait("@dataset");
+  }
+
   cy.icon("play").should("not.exist");
 }
 
@@ -213,4 +219,45 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   if (!isAlreadyDefined) {
     cy.intercept(method, url).as(alias);
   }
+}
+
+export function saveQuestion(
+  name,
+  { wrapId = false, idAlias = "questionId" } = {},
+) {
+  cy.intercept("POST", "/api/card").as("saveQuestion");
+  cy.findByText("Save").click();
+
+  modal().within(() => {
+    cy.findByLabelText("Name").type(name);
+    cy.button("Save").click();
+  });
+
+  cy.wait("@saveQuestion").then(({ response: { body } }) => {
+    if (wrapId) {
+      cy.wrap(body.id).as(idAlias);
+    }
+  });
+
+  modal().within(() => {
+    cy.button("Not now").click();
+  });
+}
+
+export function visitPublicQuestion(id) {
+  cy.request("POST", `/api/card/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.signOut();
+      cy.visit(`/public/question/${uuid}`);
+    },
+  );
+}
+
+export function visitPublicDashboard(id) {
+  cy.request("POST", `/api/dashboard/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.signOut();
+      cy.visit(`/public/dashboard/${uuid}`);
+    },
+  );
 }

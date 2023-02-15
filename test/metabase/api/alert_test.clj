@@ -1,19 +1,21 @@
 (ns metabase.api.alert-test
   "Tests for `/api/alert` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email-test :as et]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.pulse-test :as pulse-test]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email-test :as et]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-test :as pulse-test]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -394,20 +396,6 @@
                (et/regex-email-bodies #"https://metabase.com/testmb"
                                       #"meets its goal"
                                       #"My question")))))))
-
-(deftest disallow-creating-alert-with-is-write-card-test
-  (testing "POST /api/alert"
-    (testing "Disallow creating an Alert with a QueryAction is_write Card (#22846)"
-      (mt/with-temp Card [{card-id :id} {:is_write true}]
-        (is (= "You cannot create an Alert for an is_write Card."
-               (mt/user-http-request :crowberto :post 400 "alert"
-                                     {:card             {:id                card-id
-                                                         :include_csv       false
-                                                         :include_xls       false
-                                                         :dashboard_card_id nil}
-                                      :alert_condition  "goal"
-                                      :alert_first_only false
-                                      :channels         [daily-email-channel]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
