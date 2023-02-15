@@ -119,14 +119,19 @@
   ;; the first request to finish
   (let [lock (Object.)
         f    (memoize/ttl
-              fetch-token-status*
+              (fn [token]
+                ;; this is a sanity check to make sure we can actually get the active user count BEFORE we try to call
+                ;; [[fetch-token-status*]], because `fetch-token-status*` catches Exceptions and therefore caches failed
+                ;; results. We were running into issues in the e2e tests where `active-user-count` was timing out
+                ;; because of to weird timeouts after restoring the app DB from a snapshot, which would cause other
+                ;; tests to fail because a timed-out token check would get cached as a result.
+                (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+                (u/with-timeout (u/seconds->ms 5)
+                  (active-user-count))
+                (fetch-token-status* token))
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
-      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
       (locking lock
-        ;; SANITY CHECK!
-        (u/with-timeout (u/seconds->ms 5)
-          (active-user-count))
         (f token)))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
