@@ -249,26 +249,30 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
-(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME]
+  [_driver ^ResultSet rs _rsmeta ^Long i]
+  (fn read-time []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rsmeta ^Long i]
+  (fn read-time-with-timezone []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+        t))))
 
 ;; for some reason vertica `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
 ;; bug with the JDBC driver?
-(defmethod sql-jdbc.execute/read-column [:vertica Types/TIMESTAMP]
-  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [has-timezone? (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
-          t             (u.date/parse s (when has-timezone? "UTC"))]
-      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIMESTAMP]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Long i]
+  (let [has-timezone?    (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
+        ^String timezone (when has-timezone? "UTC")]
+    (fn read-timestamp []
+      (when-let [s (.getString rs i)]
+        (let [t (u.date/parse s timezone)]
+          (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+          t)))))
