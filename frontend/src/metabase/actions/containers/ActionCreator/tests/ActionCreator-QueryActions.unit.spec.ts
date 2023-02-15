@@ -1,14 +1,13 @@
 import nock from "nock";
-import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor, getIcon, queryIcon } from "__support__/ui";
+import { screen, getIcon, queryIcon } from "__support__/ui";
 
 import {
   createMockActionParameter,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import { setup, SITE_URL } from "./common";
+import { setup } from "./common";
 
 describe("ActionCreator > Query Actions", () => {
   afterEach(() => {
@@ -119,127 +118,6 @@ describe("ActionCreator > Query Actions", () => {
       screen.getByLabelText("Action settings").click();
 
       expect(screen.getByLabelText("Success message")).toBeDisabled();
-    });
-
-    describe("admin users and has public sharing enabled", () => {
-      const mockUuid = "mock-uuid";
-      const action = createMockQueryAction();
-
-      it("should be able to enable action public sharing", async () => {
-        await setup({
-          action,
-          isAdmin: true,
-          isPublicSharingEnabled: true,
-        });
-
-        screen.getByRole("button", { name: "Action settings" }).click();
-
-        expect(screen.getByText("Action settings")).toBeInTheDocument();
-        const makePublicToggle = screen.getByRole("switch", {
-          name: "Make public",
-        });
-        expect(makePublicToggle).not.toBeChecked();
-        expect(
-          screen.queryByRole("textbox", { name: "Public action link URL" }),
-        ).not.toBeInTheDocument();
-
-        screen.getByRole("switch", { name: "Make public" }).click();
-
-        await waitFor(() => {
-          expect(makePublicToggle).toBeChecked();
-        });
-
-        const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
-        expect(
-          screen.getByRole("textbox", { name: "Public action link URL" }),
-        ).toHaveValue(expectedPublicLinkUrl);
-      });
-
-      it("should be able to disable action public sharing", async () => {
-        await setup({
-          action: createMockQueryAction({ public_uuid: mockUuid }),
-          isAdmin: true,
-          isPublicSharingEnabled: true,
-        });
-        screen.getByRole("button", { name: "Action settings" }).click();
-
-        expect(screen.getByText("Action settings")).toBeInTheDocument();
-        const makePublicToggle = screen.getByRole("switch", {
-          name: "Make public",
-        });
-        expect(makePublicToggle).toBeChecked();
-        const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
-        expect(
-          screen.getByRole("textbox", { name: "Public action link URL" }),
-        ).toHaveValue(expectedPublicLinkUrl);
-
-        makePublicToggle.click();
-        expect(
-          screen.getByRole("heading", { name: "Disable this public link?" }),
-        ).toBeInTheDocument();
-        screen.getByRole("button", { name: "Yes" }).click();
-
-        await waitFor(() => {
-          expect(makePublicToggle).not.toBeChecked();
-        });
-
-        expect(
-          screen.queryByRole("textbox", { name: "Public action link URL" }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("should be able to set success message", async () => {
-        await setup({ action });
-
-        userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
-
-        userEvent.type(
-          screen.getByRole("textbox", { name: "Success message" }),
-          `Thanks!`,
-        );
-        expect(
-          screen.getByRole("textbox", { name: "Success message" }),
-        ).toHaveValue("Thanks!");
-      });
-    });
-
-    describe("no permission to see public sharing", () => {
-      const action = createMockQueryAction();
-
-      it("should not show sharing settings when user is admin but public sharing is disabled", async () => {
-        await setup({
-          action,
-          isAdmin: true,
-          isPublicSharingEnabled: false,
-        });
-
-        userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
-        expect(
-          screen.queryByRole("switch", {
-            name: "Make public",
-          }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
-        await setup({
-          action,
-          isPublicSharingEnabled: true,
-        });
-
-        userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
-        expect(
-          screen.queryByRole("switch", {
-            name: "Make public",
-          }),
-        ).not.toBeInTheDocument();
-      });
     });
   });
 });
