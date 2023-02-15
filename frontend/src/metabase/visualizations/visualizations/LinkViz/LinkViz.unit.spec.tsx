@@ -1,7 +1,6 @@
 import React from "react";
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 
-import type { Card } from "metabase-types/api";
 import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
@@ -14,7 +13,7 @@ const linkDashcard = createMockDashboardCardWithVirtualCard({
     },
     virtual_card: {
       display: "link",
-    } as unknown as Card,
+    },
   },
 });
 
@@ -25,7 +24,7 @@ const emptyLinkDashcard = createMockDashboardCardWithVirtualCard({
     },
     virtual_card: {
       display: "link",
-    } as unknown as Card,
+    },
   },
 });
 
