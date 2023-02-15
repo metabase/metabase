@@ -1,6 +1,6 @@
 import React from "react";
 import nock from "nock";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import {
   getIcon,
@@ -251,7 +251,7 @@ describe("ActionCreator", () => {
 
         userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
-          `${specialChars.selectAll}Thanks!`,
+          `Thanks!`,
         );
         expect(
           screen.getByRole("textbox", { name: "Success message" }),

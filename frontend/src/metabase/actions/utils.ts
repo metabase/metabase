@@ -101,7 +101,7 @@ export const getDefaultFormSettings = (
 export const getSuccessMessage = (action: WritebackAction) => {
   return (
     action.visualization_settings?.successMessage ||
-    t`${action.name} was run successfully`
+    t`${action.name} ran successfully`
   );
 };
 
