@@ -158,7 +158,7 @@ describe("scenarios > models > actions", () => {
 
     cy.findByLabelText(TEST_PARAMETER.name).type("-2");
     cy.findByRole("button", { name: "Submit" }).click();
-    cy.findByText(`${SAMPLE_QUERY_ACTION} ran successfully`).should(
+    cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
       "be.visible",
     );
     cy.findByRole("form").should("not.exist");
