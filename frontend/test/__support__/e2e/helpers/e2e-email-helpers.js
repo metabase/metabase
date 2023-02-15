@@ -53,11 +53,13 @@ export const clearInbox = () => {
 };
 
 export const openEmailPage = emailSubject => {
-  cy.window().then(win => (win.location.href = "http://localhost"));
+  const webmailInterface = `http://localhost:${WEB_PORT}`;
+
+  cy.window().then(win => (win.location.href = webmailInterface));
   cy.findByText(emailSubject).click();
 
   return cy.hash().then(path => {
-    const htmlPath = `http://localhost${path.slice(1)}/html`;
+    const htmlPath = `${webmailInterface}${path.slice(1)}/html`;
     cy.window().then(win => (win.location.href = htmlPath));
     cy.findByText(emailSubject);
   });
