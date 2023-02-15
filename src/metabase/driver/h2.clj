@@ -392,15 +392,9 @@
 
 (defmethod sql-jdbc.execute/connection-with-timezone :h2
   [driver database ^String _timezone-id]
-  ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
-  ;; steps that are in the default impl
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      (doto conn
-        (.setReadOnly true))
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+  ;; h2 doesn't support setting timezones, or setting the connection to read-only, or changing the transaction level
+  ;; without admin perms, so we can skip those steps that are in the default impl
+  (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database)))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
