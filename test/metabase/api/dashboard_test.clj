@@ -2014,7 +2014,7 @@
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
         ;; dashboard.
-        (mt/with-temp* [Card [{question-id :id :as question}
+        (mt/with-temp* [Card [{question-id :id}
                               {:database_id   (mt/id)
                                :name          "card on native query"
                                :dataset_query {:type     :query
@@ -2027,13 +2027,13 @@
                                                             :id        "_NATIVE_CATEGORY_NAME_"
                                                             :type      :string/=
                                                             :sectionId "string"}]}]
-                        DashboardCard [dashcard {:parameter_mappings
-                                                 [{:parameter_id "_NATIVE_CATEGORY_NAME_"
-                                                   :card_id      question-id
-                                                   :target       [:dimension
-                                                                  [:field "CATEGORY" {:base-type :type/Text}]]}]
-                                                 :card_id      question-id
-                                                 :dashboard_id (:id dashboard)}]]
+                        DashboardCard [_dashcard {:parameter_mappings
+                                                  [{:parameter_id "_NATIVE_CATEGORY_NAME_"
+                                                    :card_id      question-id
+                                                    :target       [:dimension
+                                                                   [:field "CATEGORY" {:base-type :type/Text}]]}]
+                                                  :card_id      question-id
+                                                  :dashboard_id (:id dashboard)}]]
           (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
             (is (= {:values          ["Doohickey"
                                       "Gadget"
