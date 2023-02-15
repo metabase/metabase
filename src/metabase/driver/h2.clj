@@ -129,7 +129,8 @@
     (when-let [command (try (.prepareCommand h2-parser query)
                             ;; if the query is invalid, errors will get caught later
                             (catch Throwable _ nil))]
-      (when (or ;; if the command is a CommandList, then it is a multi-statement query
+      (when (or ;; If the command returned by prepareCommand is a CommandList, then it is a multi-statement query.
+                ;; We can't allow multiple statements because we can only check the command type for the first statement.
                 (= (type command) org.h2.command.CommandList)
                 ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
                 (not (= (.getCommandType command) CommandInterface/SELECT)))
