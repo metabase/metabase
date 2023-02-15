@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
+
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
