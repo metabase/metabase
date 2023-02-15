@@ -2,8 +2,6 @@ info:
   name: Metabase Presto JDBC Driver
   version: 1.0.0-350-SNAPSHOT
   description: Allows Metabase to connect to Presto databases using the Presto JDBC driver
-dependencies:
-  - plugin: Presto Common Driver
 driver:
   name: presto-jdbc
   display-name: Presto
