@@ -32,26 +32,22 @@ export function currentUserPersonalCollections(
     .map(preparePersonalCollection);
 }
 
-function getNonRootParentId(collection: Collection) {
-  if (Array.isArray(collection.effective_ancestors)) {
-    const [, nonRootParent] = collection.effective_ancestors;
-    return nonRootParent ? nonRootParent.id : undefined;
-  }
-  // location is a string like "/1/4" where numbers are parent collection IDs
-  const nonRootParentId = collection.location?.split("/")?.[0];
-  return canonicalCollectionId(nonRootParentId);
-}
-
 export function isPersonalCollectionChild(
   collection: Collection,
   collectionList: Collection[],
 ): boolean {
-  const nonRootParentId = getNonRootParentId(collection);
-  if (!nonRootParentId) {
-    return false;
+  if (collection.effective_ancestors) {
+    return collection.effective_ancestors.some(c => c.personal_owner_id);
   }
-  const parentCollection = collectionList.find(c => c.id === nonRootParentId);
-  return Boolean(parentCollection && !!parentCollection.personal_owner_id);
+
+  if (collection.location) {
+    // location is a string like "/1/4" where numbers are parent collection IDs
+    const parentId = canonicalCollectionId(collection.location.split("/")[0]);
+    const parentCollection = collectionList.find(c => c.id === parentId);
+    return parentCollection?.personal_owner_id != null;
+  }
+
+  return false;
 }
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
