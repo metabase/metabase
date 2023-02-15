@@ -19,8 +19,8 @@ type GroupSelectProps = {
   groups: UserGroupsType;
   selectedGroupIds: GroupIds;
   onGroupChange: (group: UserGroupType, selected: boolean) => void;
-  isCurrentUser: boolean;
-  emptyListMessage: string;
+  isCurrentUser?: boolean;
+  emptyListMessage?: string;
 };
 
 export const GroupSelect = ({
