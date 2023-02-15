@@ -26,6 +26,7 @@ import {
   ActionsHeader,
   ActionMenu,
   ActionList,
+  ActionAlert,
 } from "./ModelActionDetails.styled";
 
 interface OwnProps {
@@ -105,6 +106,11 @@ function ModelActionDetails({
             />
           )}
         </ActionsHeader>
+      )}
+      {database && !hasActionsEnabled && (
+        <ActionAlert icon="warning" variant="error">
+          {t`Running Actions is not enabled for database ${database.displayName()}`}
+        </ActionAlert>
       )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>
