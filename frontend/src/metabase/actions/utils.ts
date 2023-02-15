@@ -94,14 +94,15 @@ export const getDefaultFormSettings = (
   description: "",
   fields: {},
   confirmMessage: "",
-  successMessage: getSuccessMessage(overrides),
+  successMessage: "",
   ...overrides,
 });
 
-export const getSuccessMessage = (
-  formSettings: Partial<ActionFormSettings> = {},
-) => {
-  return formSettings.successMessage ?? t`Thanks for your submission.`;
+export const getSuccessMessage = (action: WritebackAction) => {
+  return (
+    action.visualization_settings?.successMessage ||
+    t`${action.name} was run successfully`
+  );
 };
 
 export const getDefaultFieldSettings = (
