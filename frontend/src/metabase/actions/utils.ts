@@ -18,9 +18,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-export const checkDatabaseSupportsActions = (database: Database) =>
-  database.features.includes("actions");
-
 export const checkDatabaseActionsEnabled = (database: Database) =>
   !!database.settings?.["database-enable-actions"];
 

@@ -13,7 +13,6 @@ import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
@@ -95,9 +94,8 @@ function ModelDetailPage({
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
-  const database = model.database()?.getPlainObject();
-  const hasActionsEnabled =
-    database != null && checkDatabaseActionsEnabled(database);
+  const database = model.database();
+  const hasActionsEnabled = database != null && database.hasActionsEnabled();
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
