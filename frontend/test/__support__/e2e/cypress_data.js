@@ -173,13 +173,15 @@ export const QA_DB_CONFIG = {
   },
 };
 
-export const TESTING_DB_CONFIG = {
+export const WRITABLE_DB_ID = 2;
+
+export const WRITABLE_DB_CONFIG = {
   mysql: {
     client: "mysql2",
     connection: {
       ...QA_DB_CREDENTIALS,
       user: "root", // only the root user has create database privileges
-      database: "testing_db",
+      database: "writable_db",
       port: QA_MYSQL_PORT,
       multipleStatements: true,
     },
@@ -188,7 +190,7 @@ export const TESTING_DB_CONFIG = {
     client: "pg",
     connection: {
       ...QA_DB_CREDENTIALS,
-      database: "testing_db",
+      database: "writable_db",
       port: QA_POSTGRES_PORT,
     },
   },

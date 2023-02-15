@@ -4,7 +4,7 @@ import {
   addPostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
-  setupTestDB,
+  setupWritableDB,
 } from "__support__/e2e/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
@@ -31,14 +31,14 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
     restoreAndAuthenticate();
 
-    setupTestDB("mysql");
+    setupWritableDB("mysql");
     addMySQLDatabase("Writable MySQL8", true);
     snapshot("mysql-writable");
     deleteDatabase("mysqlID");
 
     restoreAndAuthenticate();
 
-    setupTestDB("postgres");
+    setupWritableDB("postgres");
     addPostgresDatabase("Writable Postgres12", true);
     snapshot("postgres-writable");
     deleteDatabase("postgresID");

@@ -3,7 +3,8 @@ import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_DB_CREDENTIALS,
-  TESTING_DB_CONFIG,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
   QA_DB_CONFIG,
 } from "__support__/e2e/cypress_data";
 
@@ -32,11 +33,11 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
   const db_name = enable_actions
-    ? TESTING_DB_CONFIG[engine].connection.database
+    ? WRITABLE_DB_CONFIG[engine].connection.database
     : QA_DB_CREDENTIALS.database;
 
   const credentials = enable_actions
-    ? TESTING_DB_CONFIG[engine].connection
+    ? WRITABLE_DB_CONFIG[engine].connection
     : QA_DB_CREDENTIALS;
 
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
@@ -116,7 +117,7 @@ function recursiveCheck(id, i = 0) {
   });
 }
 
-export const setupTestDB = (type = "postgres") => {
+export const setupWritableDB = (type = "postgres") => {
   const connectionConfig = {
     postgres: {
       client: "pg",
@@ -135,14 +136,14 @@ export const setupTestDB = (type = "postgres") => {
     },
   };
 
-  const dbName = TESTING_DB_CONFIG[type].connection.database;
+  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
 
   const dbCheckQuery = {
     postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
     mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
   };
 
-  // we need to initially connect to the db we know exists to create the testing_db
+  // we need to initially connect to the db we know exists to create the writable_db
   cy.task("connectAndQueryDB", {
     connectionConfig: connectionConfig[type],
     query: dbCheckQuery[type],
@@ -151,7 +152,7 @@ export const setupTestDB = (type = "postgres") => {
       cy.log(`**-- Adding ${type} DB for actions --**`);
       cy.task("connectAndQueryDB", {
         connectionConfig: connectionConfig[type],
-        query: `CREATE DATABASE testing_db;`,
+        query: `CREATE DATABASE ${dbName};`,
       });
     }
   });
@@ -164,15 +165,15 @@ export function queryQADB(query, type = "postgres") {
   });
 }
 
-export function queryTestDB(query, type = "postgres") {
+export function queryWritableDB(query, type = "postgres") {
   return cy.task("connectAndQueryDB", {
-    connectionConfig: TESTING_DB_CONFIG[type],
+    connectionConfig: WRITABLE_DB_CONFIG[type],
     query,
   });
 }
 
 // will this work for multiple schemas?
-export function getTableId({ databaseId = 2, name }) {
+export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
