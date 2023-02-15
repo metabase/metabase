@@ -197,13 +197,10 @@
                        "update venues set name = 'bill'"
                        "delete venues"]]
           (is (= nil (check query)))))
-      (testing "multiple statements shouldn't pass"
+      (testing "multiple statements should pass if the first statement isn't ddl"
         (doseq [query ["select 1; select 2;"
-                       "select 1; update venues set name = 'bill'; delete venues;"]]
-          (is (thrown?
-               IllegalArgumentException
-               #"Only a single statement is allowed."
-               (check query)))))
+                       "update venues set name = 'bill'; delete venues;"]]
+          (is (= nil (check query))))
       (testing "ddl statements shouldn't pass"
         (doseq [query ["create table foo (id int)"
                        (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
@@ -212,4 +209,4 @@
           (is (thrown?
                IllegalArgumentException
                #"DDL commands are not allowed to be used with h2."
-               (check query))))))))
+               (check query)))))))))

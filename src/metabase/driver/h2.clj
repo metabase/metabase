@@ -124,19 +124,21 @@
         (Parser. session)))))
 
 (defn- check-disallow-ddl-commands
+  "DDL commands aren't allowed on H2 for security reasons.
+   This throws an error with a suitable error message if a DDL command is used in a query.
+   DDL commands aren't possible with H2 regardless because the user needs to be non-admin, but
+   this check results in a better error message than 'Admin rights are required to execute
+   this command'. The parser only checks the first statement, so if there are multiple statements
+   and the first one is not DDL and a following one is, it will not be caught by this check."
   [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
     (when-let [command (try (.prepareCommand h2-parser query)
                             ;; if the query is invalid, errors will get caught later
                             (catch Throwable _ nil))]
-      (cond
-        ;; if the command is a CommandList, then it is a multi-statement query
-        (= (type command) org.h2.command.CommandList)
-          ;; TODO: support multiple statements while checking all the command types
-        (throw (IllegalArgumentException. "Only a single statement is allowed."))
-          ;; Command types are organized with all DDL commands listed first
-          ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< (.getCommandType command) CommandInterface/ALTER_SEQUENCE)
+      ;; This will only check the command type of the first statement.
+      ;; Command types are organized with all DDL commands listed first
+      ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+      (when (< (.getCommandType command) CommandInterface/ALTER_SEQUENCE)
         (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))))
 
 (defn- check-single-select-statement
@@ -155,6 +157,8 @@
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
+  ;; check the query is a single select statement because the connection is not read only,
+  ;; so it could modify the database otherwise
   (check-single-select-statement query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
