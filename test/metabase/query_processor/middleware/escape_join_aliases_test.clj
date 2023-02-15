@@ -132,7 +132,7 @@
                                           [:field 6 {:temporal-unit :month}]
                                           [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]
            :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}
-          (#'escape/escape-fn :h2)))))
+          (#'escape/driver->escape-fn :h2)))))
 
 (deftest ^:parallel add-original->escaped-alias-maps-test
   (is (= {:source-query              {:joins                     [{:alias                 "Products"

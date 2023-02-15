@@ -17,7 +17,7 @@
 (defn- escape-alias [driver join-alias]
   (driver/escape-alias driver join-alias))
 
-(defn- escape-fn [driver]
+(defn- driver->escape-fn [driver]
   (comp (mbql.u/unique-name-generator
          ;; some databases treat aliases as case-insensitive so make sure the generated aliases
          ;; are unique regardless of case
@@ -161,7 +161,7 @@
   ;; add logging around the steps to make this easier to debug.
   (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
   (letfn [(add-escaped-aliases* [query]
-            (add-escaped-aliases query (escape-fn driver/*driver*)))
+            (add-escaped-aliases query (driver->escape-fn driver/*driver*)))
           (add-original->escaped-alias-maps* [query]
             (log/tracef "Adding ::escaped-alias to joins\n%s" (u/pprint-to-str query))
             (add-original->escaped-alias-maps query))
