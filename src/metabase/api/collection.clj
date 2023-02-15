@@ -87,7 +87,8 @@
              :order-by [[:%lower.name :asc]]}) collections
           ;; Remove other users' personal collections
           (if exclude-other-user-collections?
-            (remove-other-users-personal-collections collections))
+            (remove-other-users-personal-collections collections)
+            collections)
           ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
