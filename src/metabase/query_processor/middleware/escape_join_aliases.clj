@@ -14,6 +14,19 @@
 
 ;;; this is done in a series of discrete steps
 
+(defn- escape-alias [driver join-alias]
+  (driver/escape-alias driver join-alias))
+
+(defn- escape-fn [driver]
+  (comp (mbql.u/unique-name-generator
+         ;; some databases treat aliases as case-insensitive so make sure the generated aliases
+         ;; are unique regardless of case
+         :name-key-fn     u/lower-case-en
+         ;; uniqified aliases needs to be escaped again just in case
+         :unique-alias-fn (fn [original suffix]
+                            (escape-alias driver (str original \_ suffix))))
+        (partial escape-alias driver)))
+
 (defn- add-escaped-aliases
   "Walk the query and add an `::escaped-alias` key to every join in the query."
   [query escape-fn]
@@ -35,24 +48,34 @@
 
 (defn- merge-original->escaped-maps
   "Walk the query and merge the `::original->escaped` maps from nested levels (i.e., source queries or joins) up into
-  their parent levels. When duplicate original aliases exist, the one at the top level should 'shadow' ones in nested
-  levels."
+  their parent levels. When duplicate original aliases exist, they should shadow each other in this order:
+
+  1. Direct `:joins` at the current level;
+
+  2. `:joins` inside the `:source-query` chain
+
+  3. `:joins` inside of other joins
+
+  e.g. when duplicate aliases exist, a join with alias `X` from the source query should 'shadow' a join with the alias
+  `X` inside another join."
   [query]
   (mbql.u/replace query
     (m :guard (every-pred map? ::original->escaped))
-    ;; first, recursively merge all the stuff in the source levels.
-    (let [m'                            (merge-original->escaped-maps (dissoc m ::original->escaped))
+    ;; first, recursively merge all the stuff in the source levels (`:source-query` and `:joins`)
+    (let [m'                                 (merge-original->escaped-maps (dissoc m ::original->escaped))
           ;; once things are recursively merged we can collect all the ones that are visible to this level into a
-          ;; sequence of maps...
-          source-original->escaped-maps (mbql.u/match m'
-                                          (nested :guard (every-pred map? ::original->escaped))
-                                          (::original->escaped nested))
-          ;; ...and then merge them together into one merged map. Remember, key at this level should 'shadow' ones in
-          ;; the source levels.
-          merged-original->escaped      (reduce (fn [m1 m2]
-                                                  (merge m2 m1))
-                                                (::original->escaped m)
-                                                source-original->escaped-maps)]
+          ;; sequence of maps. For :source-query:
+          source-query-original->escaped-map (get-in m' [:source-query ::original->escaped])
+          ;; For :joins:
+          joins-original->escaped-maps       (keep ::original->escaped (:joins m'))
+          ;; ...and then merge them together into one merged map.
+          merged-original->escaped           (reduce (fn [m1 m2]
+                                                       (merge m2 m1))
+                                                     (::original->escaped m)
+                                                     (filter some?
+                                                             (cons
+                                                              source-query-original->escaped-map
+                                                              joins-original->escaped-maps)))]
       (assoc m' ::original->escaped merged-original->escaped))))
 
 (defn- add-escaped-join-aliases-to-fields
@@ -129,51 +152,45 @@
                            (assoc :join-alias (::escaped-join-alias options))
                            (dissoc ::escaped-join-alias))]))
 
-(defn- escape-alias [join-alias]
-  (driver/escape-alias driver/*driver* join-alias))
-
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
   with [[metabase.driver/escape-alias]]. If aliases are 'uniquified', will include a map
   at [:info :alias/escaped->original] of the escaped name back to the original, to be restored in post processing."
   [query]
-  (let [escape-fn (comp (mbql.u/unique-name-generator
-                         ;; some databases treat aliases as case-insensitive so make sure the generated aliases
-                         ;; are unique regardless of case
-                         :name-key-fn     u/lower-case-en
-                         ;; uniqified aliases needs to be escaped again just in case
-                         :unique-alias-fn (fn [original suffix]
-                                            (escape-alias (str original \_ suffix))))
-                        escape-alias)]
-    ;; add logging around the steps to make this easier to debug.
-    (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
-    (letfn [(add-escaped-aliases* [query]
-              (add-escaped-aliases query escape-fn))
-            (add-original->escaped-alias-maps* [query]
-              (log/tracef "Adding ::escaped-alias to joins\n%s" (u/pprint-to-str query))
-              (add-original->escaped-alias-maps query))
-            (merge-original->escaped-maps* [query]
-              (log/tracef "Adding ::original->escaped alias maps\n%s" (u/pprint-to-str query))
-              (merge-original->escaped-maps query))
-            (add-escaped-join-aliases-to-fields* [query]
-              (log/tracef "Adding ::escaped-join-alias to :field clauses with :join-alias\n%s" (u/pprint-to-str query))
-              (add-escaped-join-aliases-to-fields query))
-            (add-escaped->original-info* [query]
-              (log/tracef "Adding [:info :alias/escaped->original]\n%s" (u/pprint-to-str query))
-              (add-escaped->original-info query))
-            (replace-original-aliases-with-escaped-aliases* [query]
-              (log/tracef "Replacing original aliases with escaped aliases\n%s" query)
-              (replace-original-aliases-with-escaped-aliases query))]
-      (let [result (-> query
-                       add-escaped-aliases*
-                       add-original->escaped-alias-maps*
-                       merge-original->escaped-maps*
-                       add-escaped-join-aliases-to-fields*
+  ;; add logging around the steps to make this easier to debug.
+  (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
+  (letfn [(add-escaped-aliases* [query]
+            (add-escaped-aliases query (escape-fn driver/*driver*)))
+          (add-original->escaped-alias-maps* [query]
+            (log/tracef "Adding ::escaped-alias to joins\n%s" (u/pprint-to-str query))
+            (add-original->escaped-alias-maps query))
+          (merge-original->escaped-maps* [query]
+            (log/tracef "Adding ::original->escaped alias maps\n%s" (u/pprint-to-str query))
+            (merge-original->escaped-maps query))
+          (add-escaped-join-aliases-to-fields* [query]
+            (log/tracef "Adding ::escaped-join-alias to :field clauses with :join-alias\n%s" (u/pprint-to-str query))
+            (add-escaped-join-aliases-to-fields query))
+          (add-escaped->original-info* [query]
+            (log/tracef "Adding [:info :alias/escaped->original]\n%s" (u/pprint-to-str query))
+            (add-escaped->original-info query))
+          (replace-original-aliases-with-escaped-aliases* [query]
+            (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
+            (replace-original-aliases-with-escaped-aliases query))]
+    (let [result (if-not (:query query)
+                   ;; nothing to do if this is a native query rather than MBQL.
+                   query
+                   (-> query
+                       (update :query (fn [inner-query]
+                                        (-> inner-query
+                                            add-escaped-aliases*
+                                            add-original->escaped-alias-maps*
+                                            merge-original->escaped-maps*
+                                            add-escaped-join-aliases-to-fields*)))
                        add-escaped->original-info*
-                       replace-original-aliases-with-escaped-aliases*)]
-        (log/debugf "=>\n%s" (u/pprint-to-str result))
-        result))))
+                       (update :query replace-original-aliases-with-escaped-aliases*)))]
+      (log/debugf "=>\n%s" (u/pprint-to-str result))
+      result)))
 
 ;;; The stuff below is used by the [[metabase.query-processor.middleware.annotate]] middleware when generating results
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you
