@@ -229,6 +229,7 @@ export function ObjectDetailFn({
     cols: data.cols,
     zoomedRow,
     tableId: table?.id,
+    settings,
   });
 
   const hasPk = !!data.cols.find(isPK);
