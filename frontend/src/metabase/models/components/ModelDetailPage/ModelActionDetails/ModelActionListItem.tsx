@@ -37,8 +37,6 @@ function ImplicitActionCardContent() {
 }
 
 function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
-  const canChangeAction = canWrite && action.type !== "implicit";
-
   const renderCardContent = () =>
     action.type === "query" ? (
       <QueryActionCardContent action={action} />
@@ -64,7 +62,7 @@ function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
       )}
       <Card>
         {renderCardContent()}
-        <EditorLink icon={canChangeAction ? "pencil" : "eye"} to={editorUrl} />
+        <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
       </Card>
     </>
   );
