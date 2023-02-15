@@ -1,45 +1,47 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Actions from "metabase/entities/actions";
-import Questions from "metabase/entities/questions";
+import Search from "metabase/entities/search";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import Button from "metabase/core/components/Button";
 
 import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import {
+  ActionsList,
   ActionItem,
   EditButton,
   EmptyState,
   ModelCollapseSection,
   EmptyModelStateContainer,
+  NewActionButton,
 } from "./ActionPicker.styled";
 
 export default function ActionPicker({
-  modelIds,
+  models,
   onClick,
+  currentAction,
 }: {
-  modelIds: number[];
+  models: Card[];
   onClick: (action: WritebackAction) => void;
+  currentAction?: WritebackAction;
 }) {
   return (
     <div className="scroll-y">
-      {modelIds.map(modelId => (
+      {models.map(model => (
         <ConnectedModelActionPicker
-          key={modelId}
-          modelId={modelId}
+          key={model.id}
+          model={model}
           onClick={onClick}
+          currentAction={currentAction}
         />
       ))}
-      {!modelIds.length && (
+      {!models.length && (
         <EmptyState
           message={t`No models found`}
           action={t`Create new model`}
@@ -54,10 +56,12 @@ function ModelActionPicker({
   onClick,
   model,
   actions,
+  currentAction,
 }: {
   onClick: (newValue: WritebackAction) => void;
   model: Card;
   actions: WritebackAction[];
+  currentAction?: WritebackAction;
 }) {
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
     undefined,
@@ -73,16 +77,25 @@ function ModelActionPicker({
     setEditingActionId(undefined);
   };
 
+  const hasCurrentAction = currentAction?.model_id === model.id;
+
   return (
     <>
-      <ModelCollapseSection header={<h4>{model.name}</h4>}>
+      <ModelCollapseSection
+        header={<h4>{model.name}</h4>}
+        initialState={hasCurrentAction ? "expanded" : "collapsed"}
+      >
         {actions?.length ? (
-          <ul>
+          <ActionsList>
             {actions?.map(action => (
-              <ActionItem key={action.id}>
-                <Button onlyText onClick={() => onClick(action)}>
-                  <span>{action.name}</span>
-                </Button>
+              <ActionItem
+                key={action.id}
+                role="button"
+                isSelected={currentAction?.id === action.id}
+                aria-selected={currentAction?.id === action.id}
+                onClick={() => onClick(action)}
+              >
+                <span>{action.name}</span>
                 {!isImplicitAction(action) && (
                   <EditButton
                     icon="pencil"
@@ -95,18 +108,16 @@ function ModelActionPicker({
                 )}
               </ActionItem>
             ))}
-            <ActionItem>
-              <Button onlyText onClick={toggleIsActionCreatorVisible}>
-                {t`Create new action`}
-              </Button>
-            </ActionItem>
-          </ul>
+            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
+              {t`Create new action`}
+            </NewActionButton>
+          </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <Button onClick={toggleIsActionCreatorVisible} borderless>
+            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
               {t`Create new action`}
-            </Button>
+            </NewActionButton>
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>
@@ -122,14 +133,17 @@ function ModelActionPicker({
   );
 }
 
-const ConnectedModelActionPicker = _.compose(
-  Questions.load({
-    id: (state: State, props: { modelId?: number | null }) => props?.modelId,
-    entityAlias: "model",
+const ConnectedModelActionPicker = Actions.loadList({
+  query: (state: State, props: { model: { id: number | null } }) => ({
+    "model-id": props?.model?.id,
   }),
-  Actions.loadList({
-    query: (state: State, props: { modelId?: number | null }) => ({
-      "model-id": props?.modelId,
-    }),
+  loadingAndErrorWrapper: false,
+})(ModelActionPicker);
+
+export const ConnectedActionPicker = Search.loadList({
+  query: () => ({
+    models: ["dataset"],
   }),
-)(ModelActionPicker);
+  loadingAndErrorWrapper: true,
+  listName: "models",
+})(ActionPicker);
