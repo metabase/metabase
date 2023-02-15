@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.action :as api.action]
-   [metabase.models :refer [Card]]
-   [metabase.models.action :refer [Action]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -364,3 +363,36 @@
         (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
+
+(deftest execute-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (testing "Action execution"
+        (is (=? {:rows-affected 1}
+                (mt/user-http-request :crowberto
+                                      :post 200
+                                      (format "action/%s/execute" action-id)
+                                      {:parameters {:id 1 :name "European"}})))))
+    (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
+      (testing "Check that we get a 404 if the action is archived"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto
+                                     :post 404
+                                     (format "action/%s/execute" action-id)
+                                     {:parameters {:id 1 :name "European"}})))))
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+        (testing "Check that we get a 404 if the action doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto
+                                       :post 404
+                                       (format "action/%s/execute" nonexistent-id)
+                                       {:parameters {:id 1 :name "European"}})))))
+      (testing "Check that we get a 400 if actions are disabled for the database."
+        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+          (is (= "Actions are not enabled."
+                 (:cause
+                  (mt/user-http-request :crowberto
+                                        :post 400
+                                        (format "action/%s/execute" action-id)
+                                        {:parameters {:id 1 :name "European"}})))))))))
