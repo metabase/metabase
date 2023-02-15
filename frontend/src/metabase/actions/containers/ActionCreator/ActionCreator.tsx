@@ -85,6 +85,7 @@ function ActionCreator({
     formSettings,
     isNew,
     canSave,
+    ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
     handleSetupExample,
@@ -134,6 +135,7 @@ function ActionCreator({
   return (
     <>
       <ActionCreatorView
+        {...UIProps}
         action={action}
         formSettings={formSettings}
         canSave={canSave}

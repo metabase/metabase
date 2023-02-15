@@ -42,6 +42,11 @@ function ImplicitActionContextProvider({
       ),
       isNew: false,
       canSave: false,
+      ui: {
+        canRename: false,
+        canChangeFormSettings: false,
+        hasSaveButton: false,
+      },
       handleActionChange: _.noop,
       handleFormSettingsChange: _.noop,
       handleSetupExample: _.noop,

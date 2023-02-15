@@ -19,17 +19,19 @@ import {
 import { isNotNull } from "metabase/core/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import type { SideView } from "./types";
+import type { ActionCreatorUIProps, SideView } from "./types";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
 } from "./InlineActionSettings";
 
-interface ActionCreatorProps {
+interface ActionCreatorProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
+
   canSave: boolean;
   isNew: boolean;
   isEditable: boolean;
+
   children: React.ReactNode;
 
   onChangeAction: (action: Partial<WritebackAction>) => void;
@@ -47,6 +49,9 @@ export default function ActionCreatorView({
   canSave,
   isNew,
   isEditable,
+  canRename,
+  canChangeFormSettings,
+  hasSaveButton,
   children,
   onChangeAction,
   onChangeFormSettings,
@@ -88,6 +93,7 @@ export default function ActionCreatorView({
           <ActionCreatorHeader
             type="query"
             name={action.name ?? t`New Action`}
+            canRename={canRename}
             isEditable={isEditable}
             onChangeName={name => onChangeAction({ name })}
             actionButtons={[
@@ -106,7 +112,7 @@ export default function ActionCreatorView({
             <Button onClick={onCloseModal} borderless>
               {t`Cancel`}
             </Button>
-            {isEditable && (
+            {isEditable && hasSaveButton && (
               <Button primary disabled={!canSave} onClick={onClickSave}>
                 {isNew ? t`Save` : t`Update`}
               </Button>
@@ -117,7 +123,7 @@ export default function ActionCreatorView({
           <FormCreator
             params={action.parameters ?? []}
             formSettings={formSettings}
-            isEditable={isEditable}
+            isEditable={isEditable && canChangeFormSettings}
             onChange={onChangeFormSettings}
             onExampleClick={onClickExample}
           />

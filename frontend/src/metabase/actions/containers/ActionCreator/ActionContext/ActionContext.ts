@@ -4,6 +4,7 @@ import _ from "underscore";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import { getDefaultFormSettings } from "../../../utils";
+import type { ActionCreatorUIProps } from "../types";
 import type { EditableActionParams, EditorBodyProps } from "./types";
 import { createEmptyWritebackAction } from "./utils";
 
@@ -12,6 +13,7 @@ export type ActionContextType = {
   formSettings: ActionFormSettings;
   canSave: boolean;
   isNew: boolean;
+  ui: ActionCreatorUIProps;
   handleActionChange: (action: EditableActionParams) => void;
   handleFormSettingsChange: (formSettings: ActionFormSettings) => void;
   handleSetupExample: () => void;
@@ -23,6 +25,11 @@ export const ActionContext = createContext<ActionContextType>({
   formSettings: getDefaultFormSettings(),
   canSave: false,
   isNew: true,
+  ui: {
+    canRename: true,
+    canChangeFormSettings: true,
+    hasSaveButton: true,
+  },
   handleActionChange: _.noop,
   handleFormSettingsChange: _.noop,
   handleSetupExample: _.noop,
