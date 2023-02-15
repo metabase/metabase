@@ -36,8 +36,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.hydrate :refer [hydrate]]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,82 +45,63 @@
 
 (declare root-collection)
 
-(defn- coll-query
-  "Generate a query to return collections viewable by the current user.
-  The user-id is required as well as a boolean flag indicating whether other
-  users' collections (including subcollections) should be ignored (e.g. if the
-  specified user is an admin). Additional where clauses can be provided and
-  will be and'ed in on the where.
-
-  Note that and-clauses should be aliased as c (for collection).
-
-  Also, MySQL 5.7 does not support CTEs so this was all inlined. A much more
-  readable solution existed with CTEs, but we needed to inline for backwards
-  compatibility. TODO: Use CTEs when we drop MySQL 5.7."
-  [owner-id exclude-other-user-collections? & and-clauses]
-  {:select    [:c.*]
-   :from      [[:collection :c]]
-   :left-join [[{:select [[:cwo.id :id]
-                          [true :visible]]
-                 :from   [[{:select    [[:c.id :id]
-                                        [[:coalesce
-                                          :c.personal_owner_id
-                                          :pr.personal_owner_id] :owner]]
-                            :from      [[:collection :c]]
-                            :left-join [[{:select [:c.personal_owner_id
-                                                   [[:concat "/" :c.id "/%"] :pc_prefix]]
-                                          :from   [[:collection :c]]
-                                          :where  [:not= :c.personal_owner_id nil]} :pr]
-                                        [:like :c.location :pr.pc_prefix]]} :cwo]]
-                 :where  [:or
-                          [:= :cwo.owner owner-id]
-                          [:= :cwo.owner nil]]} :a]
-               [:= :a.id :c.id]]
-   :where     (cond-> (into [:and] (or and-clauses [true]))
-                      exclude-other-user-collections? (conj [:= :a.visible true]))
-   :order-by  [[:%lower.name :asc]]})
+(defn- remove-other-users-personal-collections
+  "Remove from the provided collections any that are personal and belong to another user."
+  ([user-id collections]
+   (let [path    (format "/%s/" user-id)]
+     (filter (fn [{:keys [personal_owner_id location]}]
+               (or
+                (= personal_owner_id user-id)
+                (str/starts-with? location path)
+                (and
+                 (nil? personal_owner_id)
+                 (= location "/"))
+                collections)))))
+  ([collections]
+   (remove-other-users-personal-collections (:id @api/*current-user*) collections)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
-  By default, this returns non-archived Collections, but instead you can show archived ones by passing\n
+  By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
   By default, admin users will see all collections. To hide other user's collections pass in\n
   `?exclude-other-user-collections=true`.
   "
   [archived exclude-other-user-collections namespace]
-  {archived                       (s/maybe su/BooleanString)
+  {archived  (s/maybe su/BooleanString)
    exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace                      (s/maybe su/NonBlankString)}
+   namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
-        q         (coll-query
-                   api/*current-user-id*
-                   (Boolean/parseBoolean exclude-other-user-collections)
-                   [:= :c.archived archived?]
-                   [:= :c.namespace namespace]
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :c.id
-                    (collection/permissions-set->visible-collection-ids
-                     @api/*current-user-permissions-set*)))]
-    (as-> (->> (mdb.query/query q)
-               (map (partial models/do-post-select Collection))) collections
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
+    (as-> (db/select Collection
+            {:where    [:and
+                        [:= :archived archived?]
+                        [:= :namespace namespace]
+                        (collection/visible-collection-ids->honeysql-filter-clause
+                         :id
+                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+             :order-by [[:%lower.name :asc]]}) collections
+          ;; Remove other users' personal collections
+          (if exclude-other-user-collections?
+            (remove-other-users-personal-collections collections))
           ;; include Root Collection at beginning or results if archived isn't `true`
-          (if archived?
-            collections
-            (let [root (root-collection namespace)]
-              (cond->> collections
-                       (mi/can-read? root)
-                       (cons root))))
-          (hydrate collections :can_write)
-          ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-          ;; and for personal collections we translate the name to user's locale
-          (for [collection collections]
-            (-> collection
-                (dissoc ::collection.root/is-root?)
-                collection/personal-collection-with-ui-details)))))
+      (if archived?
+        collections
+        (let [root (root-collection namespace)]
+          (cond->> collections
+            (mi/can-read? root)
+            (cons root))))
+      (hydrate collections :can_write)
+      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+      ;; and for personal collections we translate the name to user's locale
+      (for [collection collections]
+        (-> collection
+            (dissoc ::collection.root/is-root?)
+            collection/personal-collection-with-ui-details)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/tree"
@@ -146,30 +126,30 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived exclude-other-user-collections namespace]
-  {exclude-archived               (s/maybe su/BooleanString)
+  {exclude-archived (s/maybe su/BooleanString)
    exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace                      (s/maybe su/NonBlankString)}
-  (let [exclude-archived?               (Boolean/parseBoolean exclude-archived)
-        coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                                  (update acc (if dataset :dataset :card) conj collection_id))
-                                                {:dataset #{}
-                                                 :card    #{}}
-                                                (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                                            :from            [:report_card]
-                                                                            :where           [:= :archived false]}))
-        q                               (coll-query
-                                         api/*current-user-id*
-                                         (Boolean/parseBoolean exclude-other-user-collections)
-                                         (when exclude-archived? [:= :c.archived false])
-                                         [:= :c.namespace namespace]
-                                         (collection/visible-collection-ids->honeysql-filter-clause
-                                          :c.id
-                                          (collection/permissions-set->visible-collection-ids
-                                           @api/*current-user-permissions-set*)))
-        colls                           (->> (mdb.query/query q)
-                                             (map (comp
-                                                   collection/personal-collection-with-ui-details
-                                                   (partial models/do-post-select Collection))))]
+   namespace        (s/maybe su/NonBlankString)}
+  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                (update acc (if dataset :dataset :card) conj collection_id))
+                              {:dataset #{}
+                               :card    #{}}
+                              (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                          :from            [:report_card]
+                                                          :where           [:= :archived false]}))
+        colls (cond->
+               (->> {:where [:and
+                             (when exclude-archived?
+                               [:= :archived false])
+                             [:= :namespace namespace]
+                             (collection/visible-collection-ids->honeysql-filter-clause
+                              :id
+                              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}
+                    (db/select Collection)
+                    (map collection/personal-collection-with-ui-details))
+               exclude-other-user-collections?
+               remove-other-users-personal-collections)]
     (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
