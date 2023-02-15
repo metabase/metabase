@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
 
-import type { WritebackImplicitQueryAction } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  WritebackImplicitQueryAction,
+} from "metabase-types/api";
 
 import { getDefaultFormSettings } from "../../../../utils";
 import type { ActionContextProviderProps } from "../types";
@@ -30,22 +33,35 @@ function EditorBody() {
   );
 }
 
+function cleanFormSettings(formSettings?: ActionFormSettings) {
+  const formSettingsWithDefaults = getDefaultFormSettings(formSettings);
+
+  // For implicit actions fields are generated dynamically according to the current schema
+  // For now, we don't let to customize the form to avoid dealing with fields getting out of sync
+  return _.omit(formSettingsWithDefaults, "fields");
+}
+
 function ImplicitActionContextProvider({
   initialAction,
   children,
 }: ImplicitActionContextProviderProps) {
   const [formSettings, setFormSettings] = useState(
-    getDefaultFormSettings(initialAction?.visualization_settings),
+    cleanFormSettings(initialAction.visualization_settings),
   );
 
-  const canSave = useMemo(
-    () =>
-      !_.isEqual(
-        formSettings,
-        getDefaultFormSettings(initialAction?.visualization_settings),
-      ),
-    [formSettings, initialAction?.visualization_settings],
+  const handleFormSettingsChange = useCallback(
+    (nextFormSettings: ActionFormSettings) => {
+      setFormSettings(cleanFormSettings(nextFormSettings));
+    },
+    [],
   );
+
+  const canSave = useMemo(() => {
+    return !_.isEqual(
+      formSettings,
+      cleanFormSettings(initialAction?.visualization_settings),
+    );
+  }, [formSettings, initialAction?.visualization_settings]);
 
   const value = useMemo(
     () => ({
@@ -57,12 +73,12 @@ function ImplicitActionContextProvider({
         canRename: false,
         canChangeFieldSettings: false,
       },
-      handleFormSettingsChange: setFormSettings,
+      handleFormSettingsChange,
       handleActionChange: _.noop,
       handleSetupExample: _.noop,
       renderEditorBody: EditorBody,
     }),
-    [initialAction, formSettings, canSave],
+    [initialAction, formSettings, canSave, handleFormSettingsChange],
   );
 
   return (
