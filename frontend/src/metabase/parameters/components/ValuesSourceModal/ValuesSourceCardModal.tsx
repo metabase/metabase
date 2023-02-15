@@ -23,7 +23,7 @@ import {
   ValuesSourceConfig,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import {
   getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,
@@ -184,7 +184,9 @@ const mapStateToProps = (
   state: State,
   { card }: ModalCardProps,
 ): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
+  question: card
+    ? buildQuestion({ card, metadata: getMetadata(state) })
+    : undefined,
 });
 
 const mapDispatchToProps: ModalDispatchProps = {

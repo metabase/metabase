@@ -10,7 +10,7 @@ import {
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
 const VERIFIED_ICON_LABEL = "verified icon";
@@ -36,8 +36,8 @@ const BASE_QUESTION = {
 };
 
 function getVerifiedDataset() {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...BASE_QUESTION,
       moderation_reviews: [
         {
@@ -49,12 +49,12 @@ function getVerifiedDataset() {
       ],
     },
     metadata,
-  );
+  });
 }
 
 function getUnverifiedDataset() {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...BASE_QUESTION,
       moderation_reviews: [
         {
@@ -66,7 +66,7 @@ function getUnverifiedDataset() {
       ],
     },
     metadata,
-  );
+  });
 }
 
 function setup({ question } = {}) {

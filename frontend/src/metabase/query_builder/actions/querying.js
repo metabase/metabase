@@ -11,7 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
@@ -99,7 +99,7 @@ export const runQuestionQuery = ({
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
     const questionFromCard = card =>
-      card && new Question(card, getMetadata(getState()));
+      card && buildQuestion({ card, metadata: getMetadata(getState()) });
 
     const question = overrideWithCard
       ? questionFromCard(overrideWithCard)

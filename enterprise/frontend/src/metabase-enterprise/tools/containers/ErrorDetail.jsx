@@ -13,7 +13,7 @@ import { CardApi } from "metabase/services";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { columnNameToUrl } from "../../audit_app/lib/mode";
 
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
@@ -140,7 +140,7 @@ function ErrorDetail(props) {
       args: [cardId],
     },
   };
-  const question = new Question(card, null);
+  const question = buildQuestion({ card });
 
   return (
     <div>

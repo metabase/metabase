@@ -25,7 +25,7 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
@@ -173,7 +173,7 @@ class PublicQuestion extends Component {
       metadata,
     } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
-    const question = new Question(card, metadata);
+    const question = buildQuestion({ card, metadata });
 
     const actionButtons = result && (
       <QueryDownloadWidget

@@ -5,7 +5,7 @@ import {
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -30,7 +30,10 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
       display_name: "~*~Products.ID~*~",
     });
 
-    const nativeDatasetQuestion = new Question(NATIVE_QUERY_CARD, metadata)
+    const nativeDatasetQuestion = buildQuestion({
+      card: NATIVE_QUERY_CARD,
+      metadata,
+    })
       .setDataset(true)
       .setDisplayName("Native Dataset Question");
 
@@ -69,8 +72,8 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
   });
 
   describe("native query associated with botha `collection` and a `database`", () => {
-    const nativeQuestionWithCollection = new Question(
-      merge(NATIVE_QUERY_CARD, {
+    const nativeQuestionWithCollection = buildQuestion({
+      card: merge(NATIVE_QUERY_CARD, {
         dataset_query: {
           native: {
             collection: PRODUCTS.name,
@@ -78,7 +81,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
         },
       }),
       metadata,
-    );
+    });
 
     const table = getNativeQueryTable(
       nativeQuestionWithCollection.query() as NativeQuery,
@@ -90,7 +93,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
   });
 
   describe("basic native query question", () => {
-    const nativeQuestion = new Question(NATIVE_QUERY_CARD, metadata);
+    const nativeQuestion = buildQuestion({ card: NATIVE_QUERY_CARD, metadata });
     const table = getNativeQueryTable(nativeQuestion.query() as NativeQuery);
 
     it("should not return a table", () => {

@@ -6,7 +6,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!="];
 const OTHER_FILTERS = ["=", "!="];
@@ -63,8 +63,8 @@ describe("QuickFilterDrill", () => {
 
   it("should not be valid for native questions", () => {
     const actions = QuickFilterDrill({
-      question: new Question(
-        {
+      question: buildQuestion({
+        card: {
           dataset_query: {
             type: "native",
             native: {
@@ -74,7 +74,7 @@ describe("QuickFilterDrill", () => {
           },
         },
         metadata,
-      ),
+      }),
       column: createMockColumn({
         name: "TOTAL",
         field_ref: ["field", "TOTAL", { base_type: "type/BigInteger" }],
@@ -162,7 +162,7 @@ describe("QuickFilterDrill", () => {
 
   describe("aggregated numeric cell", () => {
     const { actions, cellValue } = setup({
-      question: new Question(AGGREGATED_QUESTION, metadata),
+      question: buildQuestion({ card: AGGREGATED_QUESTION, metadata }),
       column: createMockColumn({
         name: "count",
         field_ref: ["aggregation", 0],
@@ -197,7 +197,7 @@ describe("QuickFilterDrill", () => {
   });
 
   describe("numeric field cell from a nested query", () => {
-    const question = new Question(NESTED_QUESTION);
+    const question = buildQuestion({ card: NESTED_QUESTION });
     question.query().isEditable = () => true;
 
     const fieldRef = ["field", "count", { "base-type": "type/BigInteger" }];

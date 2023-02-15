@@ -24,7 +24,7 @@ import { isSavedCard } from "metabase-types/guards";
 import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
-import Question from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/queries/NativeQuery";
@@ -302,7 +302,7 @@ async function handleQBInit(
   await dispatch(loadMetadataForCard(card));
   const metadata = getMetadata(getState());
 
-  let question = new Question(card, metadata);
+  let question = buildQuestion({ card, metadata });
   if (question.isSaved()) {
     // Don't set viz automatically for saved questions
     question = question.lockDisplay();

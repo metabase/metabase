@@ -6,7 +6,7 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
@@ -49,7 +49,8 @@ const PinnedQuestionLoader = ({
           return children({ loading: true });
         }
 
-        const question = questionRef.current ?? new Question(card, metadata);
+        const question =
+          questionRef.current ?? buildQuestion({ card, metadata });
         questionRef.current = question;
 
         return (

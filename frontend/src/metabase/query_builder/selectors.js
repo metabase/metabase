@@ -40,7 +40,7 @@ import {
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
 import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
 export const getUiControls = state => state.qb.uiControls;
@@ -305,13 +305,13 @@ export const getDatasetEditorTab = createSelector(
 
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
-  (metadata, card) => metadata && card && new Question(card, metadata),
+  (metadata, card) => metadata && card && buildQuestion({ card, metadata }),
 );
 
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
+    card && metadata && buildQuestion({ card, metadata, parameterValues }),
 );
 
 export const getQuestion = createSelector(
@@ -320,7 +320,7 @@ export const getQuestion = createSelector(
     if (!metadata || !card) {
       return;
     }
-    const question = new Question(card, metadata, parameterValues);
+    const question = buildQuestion({ card, metadata, parameterValues });
 
     const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
@@ -345,7 +345,7 @@ export const getQuestion = createSelector(
 /** @type {function(unknown, unknown): Question} */
 export const getQuestionFromCard = createCachedSelector(
   [getMetadata, (_state, card) => card],
-  (metadata, card) => new Question(card, metadata),
+  (metadata, card) => buildQuestion({ card, metadata }),
 )((_state, card) => card.id);
 
 function normalizeClause(clause) {

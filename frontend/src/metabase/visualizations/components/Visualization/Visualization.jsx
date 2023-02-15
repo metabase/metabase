@@ -31,7 +31,7 @@ import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
@@ -197,7 +197,7 @@ class Visualization extends React.PureComponent {
       return;
     }
     const { isQueryBuilder, queryBuilderMode } = this.props;
-    const question = new Question(card, metadata);
+    const question = buildQuestion({ card, metadata });
 
     // Datasets in QB should behave as raw tables opened in simple mode
     // composeDataset replaces the dataset_query with a clean query using the dataset as a source table

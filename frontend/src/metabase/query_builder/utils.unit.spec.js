@@ -4,7 +4,7 @@ import {
   PRODUCTS,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import Breakout from "metabase-lib/queries/structured/Breakout";
 import Filter from "metabase-lib/queries/structured/Filter";
@@ -38,13 +38,15 @@ function getQuestion({ type = "query", query = {} } = {}) {
     queryObject = query;
   }
 
-  return new Question({
-    display: "table",
-    visualization_settings: {},
-    dataset_query: {
-      type,
-      database: SAMPLE_DATABASE.id,
-      [queryObjectKey]: queryObject,
+  return buildQuestion({
+    card: {
+      display: "table",
+      visualization_settings: {},
+      dataset_query: {
+        type,
+        database: SAMPLE_DATABASE.id,
+        [queryObjectKey]: queryObject,
+      },
     },
   });
 }

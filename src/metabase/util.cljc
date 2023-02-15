@@ -638,6 +638,16 @@
   [hours]
   (-> (* 60 hours) minutes->seconds seconds->ms))
 
+(defn parse-int
+  "Parses an integer from a string, in a cross-platform way.
+  Returns NaN if it fails to parse."
+  [s]
+  #?(:clj  (try
+             (Long/parseLong s)
+             (catch NumberFormatException _
+               ##NaN))
+     :cljs (js/parseInt s)))
+
 (defn parse-currency
   "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
 

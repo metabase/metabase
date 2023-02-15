@@ -23,7 +23,10 @@ class QueryInner {
   _datasetQuery: DatasetQuery;
 
   constructor(question: Question, datasetQuery: DatasetQuery) {
-    this._metadata = question._metadata;
+    this._metadata = question.metadata();
+    if (!this._metadata || !(this._metadata instanceof Metadata)) {
+      throw new Error("bad metadata");
+    }
     this._datasetQuery = datasetQuery;
     this._originalQuestion = question;
   }

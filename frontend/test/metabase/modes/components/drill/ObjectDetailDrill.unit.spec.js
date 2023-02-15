@@ -7,7 +7,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 const DEFAULT_CELL_VALUE = 1;
 
@@ -27,8 +27,8 @@ function setup({
   };
 }
 
-const SAVED_QUESTION = new Question(
-  {
+const SAVED_QUESTION = buildQuestion({
+  card: {
     id: 1,
     name: "orders",
     dataset_query: {
@@ -40,7 +40,7 @@ const SAVED_QUESTION = new Question(
     },
   },
   metadata,
-);
+});
 
 describe("ObjectDetailDrill", () => {
   it("should not be valid for top level actions", () => {

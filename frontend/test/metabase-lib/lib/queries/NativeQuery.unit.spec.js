@@ -295,6 +295,7 @@ describe("NativeQuery", () => {
       );
 
       const newParameters = newQuery.question().parameters();
+      console.log(newParameters);
       expect(newParameters).toHaveLength(2);
       expect(newParameters[0].values_query_type).toEqual("search");
       expect(newParameters[0].values_source_type).toEqual("static-list");

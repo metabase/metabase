@@ -10,7 +10,7 @@ import {
 
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
@@ -30,6 +30,7 @@ const orders_raw_card = {
   id: 1,
   name: "Raw orders data",
   display: "table",
+  cache_ttl: 700,
   visualization_settings: {},
   can_write: true,
   dataset_query: {
@@ -154,8 +155,8 @@ const orders_count_by_id_card = {
 
 describe("Question", () => {
   describe("CREATED WITH", () => {
-    describe("new Question(alreadyDefinedCard, metadata)", () => {
-      const question = new Question(orders_raw_card, metadata);
+    describe("buildQuestion({card: alreadyDefinedCard, metadata})", () => {
+      const question = buildQuestion({ card: orders_raw_card, metadata });
       it("isn't empty", () => {
         expect(question.isEmpty()).toBe(false);
       });
@@ -194,27 +195,30 @@ describe("Question", () => {
   describe("STATUS METHODS", () => {
     describe("canRun()", () => {
       it("You should be able to run a newly created query", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         expect(question.canRun()).toBe(true);
       });
     });
     describe("canWrite()", () => {
       it("You should be able to write to a question you have permissions to", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         expect(question.canWrite()).toBe(true);
       });
       it("You should not be able to write to a question you dont  have permissions to", () => {
-        const question = new Question(orders_count_by_id_card, metadata);
+        const question = buildQuestion({
+          card: orders_count_by_id_card,
+          metadata,
+        });
         expect(question.canWrite()).toBe(false);
       });
     });
     describe("isSaved()", () => {
       it("A newly created query doesn't have an id and shouldn't be marked as isSaved()", () => {
-        const question = new Question(card, metadata);
+        const question = buildQuestion({ card: card, metadata });
         expect(question.isSaved()).toBe(false);
       });
       it("A saved question does have an id and should be marked as isSaved()", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         expect(question.isSaved()).toBe(true);
       });
     });
@@ -223,18 +227,30 @@ describe("Question", () => {
   describe("CARD METHODS", () => {
     describe("card()", () => {
       it("A question wraps a query/card and you can see the underlying card with card()", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         expect(question.card()).toEqual(orders_raw_card);
       });
     });
 
     describe("setCard(card)", () => {
       it("changes the underlying card", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         expect(question.card()).toEqual(orders_raw_card);
         const newQustion = question.setCard(orders_count_by_id_card);
         expect(question.card()).toEqual(orders_raw_card);
         expect(newQustion.card()).toEqual(orders_count_by_id_card);
+      });
+    });
+
+    describe("cacheTTL()", () => {
+      it("fetches the TTL for the underlying card", () => {
+        const question = buildQuestion({ card: orders_raw_card, metadata });
+        expect(question.cacheTTL()).toBe(orders_raw_card.cache_ttl);
+      });
+
+      it("fetches null if the underlying card has no cache TTL", () => {
+        const question = buildQuestion({ card: orders_count_card, metadata });
+        expect(question.cacheTTL()).toBe(null);
       });
     });
   });
@@ -242,28 +258,34 @@ describe("Question", () => {
   describe("At the heart of a question is an MBQL query.", () => {
     describe("query()", () => {
       it("returns a correct class instance for structured query", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         // This is a bit wack, and the repetitive naming is pretty confusing.
         const query = question.query();
         expect(query instanceof StructuredQuery).toBe(true);
       });
       it("returns a correct class instance for native query", () => {
-        const question = new Question(native_orders_count_card, metadata);
+        const question = buildQuestion({
+          card: native_orders_count_card,
+          metadata,
+        });
         const query = question.query();
         expect(query instanceof NativeQuery).toBe(true);
       });
       it("throws an error for invalid queries", () => {
-        const question = new Question(invalid_orders_count_card, metadata);
+        const question = buildQuestion({
+          card: invalid_orders_count_card,
+          metadata,
+        });
         expect(question.query).toThrow();
       });
     });
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const question = new Question(orders_raw_card, metadata);
-        const rawQuery = new Question(
-          native_orders_count_card,
+        const question = buildQuestion({ card: orders_raw_card, metadata });
+        const rawQuery = buildQuestion({
+          card: native_orders_count_card,
           metadata,
-        ).query();
+        }).query();
 
         const newRawQuestion = question.setQuery(rawQuery);
 
@@ -272,7 +294,7 @@ describe("Question", () => {
     });
     describe("setDatasetQuery(datasetQuery)", () => {
       it("updates the dataset_query of card", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         const rawQuestion = question.setDatasetQuery(
           native_orders_count_card.dataset_query,
         );
@@ -285,14 +307,14 @@ describe("Question", () => {
   describe("RESETTING METHODS", () => {
     describe("withoutNameAndId()", () => {
       it("unsets the name and id", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         const newQuestion = question.withoutNameAndId();
 
         expect(newQuestion.id()).toBeUndefined();
         expect(newQuestion.displayName()).toBeUndefined();
       });
       it("retains the dataset query", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
 
         expect(question.id()).toBeDefined();
         expect(question.displayName()).toBeDefined();
@@ -303,7 +325,7 @@ describe("Question", () => {
   describe("VISUALIZATION METHODS", () => {
     describe("display()", () => {
       it("returns the card's visualization type", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         // this forces a table view
         const tableQuestion = question.toUnderlyingData();
         // Not sure I'm a huge fan of magic strings here.
@@ -312,7 +334,7 @@ describe("Question", () => {
     });
     describe("setDisplay(display)", () => {
       it("sets the card's visualization type", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         // Not sure I'm a huge fan of magic strings here.
         const scalarQuestion = question.setDisplay("scalar");
         expect(scalarQuestion.display()).toBe("scalar");
@@ -320,16 +342,16 @@ describe("Question", () => {
     });
     describe("setDefaultDisplay", () => {
       it("sets display to 'scalar' for order count", () => {
-        const question = new Question(
-          orders_count_card,
+        const question = buildQuestion({
+          card: orders_count_card,
           metadata,
-        ).setDefaultDisplay();
+        }).setDefaultDisplay();
 
         expect(question.display()).toBe("scalar");
       });
 
       it("should not set the display to scalar table was selected", () => {
-        const question = new Question(orders_count_card, metadata)
+        const question = buildQuestion({ card: orders_count_card, metadata })
           .setDisplay("table")
           .lockDisplay()
           .maybeUnlockDisplay(["table", "scalar"])
@@ -339,7 +361,7 @@ describe("Question", () => {
       });
 
       it("should set the display to scalar if funnel was selected", () => {
-        const question = new Question(orders_count_card, metadata)
+        const question = buildQuestion({ card: orders_count_card, metadata })
           .setDisplay("funnel")
           .lockDisplay()
           .maybeUnlockDisplay(["table", "scalar"])
@@ -353,7 +375,7 @@ describe("Question", () => {
       it("should keep display locked when it was locked with unsensible display", () => {
         const sensibleDisplays = ["table", "scalar"];
         const previousSensibleDisplays = sensibleDisplays;
-        const question = new Question(orders_count_card, metadata)
+        const question = buildQuestion({ card: orders_count_card, metadata })
           .setDisplay("funnel")
           .lockDisplay()
           .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
@@ -364,7 +386,7 @@ describe("Question", () => {
       it("should unlock display it was locked with sensible display which has become unsensible", () => {
         const previousSensibleDisplays = ["funnel"];
         const sensibleDisplays = ["table", "scalar"];
-        const question = new Question(orders_count_card, metadata)
+        const question = buildQuestion({ card: orders_count_card, metadata })
           .setDisplay("funnel")
           .lockDisplay()
           .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
@@ -379,12 +401,12 @@ describe("Question", () => {
   // as actions are filtered using those
   describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
     describe("aggregate(...)", () => {
-      const question = new Question(orders_raw_card, metadata);
+      const question = buildQuestion({ card: orders_raw_card, metadata });
       it("returns the correct query for a summarization of a raw data table", () => {
         const summarizedQuestion = question.aggregate(["count"]);
         expect(summarizedQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(summarizedQuestion._card.dataset_query).toEqual(
+        expect(summarizedQuestion.card().dataset_query).toEqual(
           orders_count_card.dataset_query,
         );
       });
@@ -392,7 +414,10 @@ describe("Question", () => {
 
     describe("breakout(...)", () => {
       it("works with a datetime field reference", () => {
-        const ordersCountQuestion = new Question(orders_count_card, metadata);
+        const ordersCountQuestion = buildQuestion({
+          card: orders_count_card,
+          metadata,
+        });
         const brokenOutCard = ordersCountQuestion.breakout([
           "field",
           ORDERS.CREATED_AT.id,
@@ -400,7 +425,7 @@ describe("Question", () => {
         ]);
         expect(brokenOutCard.canRun()).toBe(true);
 
-        expect(brokenOutCard._card.dataset_query).toEqual({
+        expect(brokenOutCard.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -417,7 +442,10 @@ describe("Question", () => {
         });
       });
       it("works with a primary key field reference", () => {
-        const ordersCountQuestion = new Question(orders_count_card, metadata);
+        const ordersCountQuestion = buildQuestion({
+          card: orders_count_card,
+          metadata,
+        });
         const brokenOutCard = ordersCountQuestion.breakout([
           "field",
           ORDERS.ID.id,
@@ -425,7 +453,7 @@ describe("Question", () => {
         ]);
         expect(brokenOutCard.canRun()).toBe(true);
         // This breaks because we're apparently modifying OrdersCountDataCard
-        expect(brokenOutCard._card.dataset_query).toEqual({
+        expect(brokenOutCard.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -444,7 +472,10 @@ describe("Question", () => {
     });
 
     describe("pivot(...)", () => {
-      const ordersCountQuestion = new Question(orders_count_card, metadata);
+      const ordersCountQuestion = buildQuestion({
+        card: orders_count_card,
+        metadata,
+      });
       it("works with a datetime dimension", () => {
         const pivoted = ordersCountQuestion.pivot([
           ["field", ORDERS.CREATED_AT.id, null],
@@ -452,7 +483,7 @@ describe("Question", () => {
         expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(pivoted._card.dataset_query).toEqual({
+        expect(pivoted.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -474,7 +505,7 @@ describe("Question", () => {
         expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(pivoted._card.dataset_query).toEqual({
+        expect(pivoted.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -492,7 +523,10 @@ describe("Question", () => {
     });
 
     describe("filter(...)", () => {
-      const questionForFiltering = new Question(orders_raw_card, metadata);
+      const questionForFiltering = buildQuestion({
+        card: orders_raw_card,
+        metadata,
+      });
 
       it("works with an id filter", () => {
         const filteringQuestion = questionForFiltering.filter(
@@ -501,7 +535,7 @@ describe("Question", () => {
           1,
         );
 
-        expect(filteringQuestion._card.dataset_query).toEqual({
+        expect(filteringQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -517,7 +551,7 @@ describe("Question", () => {
           "Doohickey",
         );
 
-        expect(filteringQuestion._card.dataset_query).toEqual({
+        expect(filteringQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -542,7 +576,7 @@ describe("Question", () => {
           "12/12/2012",
         );
 
-        expect(filteringQuestion._card.dataset_query).toEqual({
+        expect(filteringQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -555,12 +589,15 @@ describe("Question", () => {
 
     describe("drillUnderlyingRecords(...)", () => {
       it("applies a filter to a given query", () => {
-        const question = new Question(orders_count_by_id_card, metadata);
+        const question = buildQuestion({
+          card: orders_count_by_id_card,
+          metadata,
+        });
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
         const newQuestion = question.drillUnderlyingRecords(dimensions);
 
-        expect(newQuestion._card.dataset_query).toEqual({
+        expect(newQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -571,14 +608,17 @@ describe("Question", () => {
       });
 
       it("applies a filter from an aggregation to a given query", () => {
-        const question = new Question(orders_count_where_card, metadata);
+        const question = buildQuestion({
+          card: orders_count_where_card,
+          metadata,
+        });
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
         const column = { field_ref: ["aggregation", 0] };
 
         const newQuestion = question.drillUnderlyingRecords(dimensions, column);
 
         expect(newQuestion.canRun()).toBe(true);
-        expect(newQuestion._card.dataset_query).toEqual({
+        expect(newQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -593,14 +633,17 @@ describe("Question", () => {
       });
 
       it("applies a filter from a metric to a given query", () => {
-        const question = new Question(orders_metric_filter_card, metadata);
+        const question = buildQuestion({
+          card: orders_metric_filter_card,
+          metadata,
+        });
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
         const column = { field_ref: ["aggregation", 0] };
 
         const newQuestion = question.drillUnderlyingRecords(dimensions, column);
 
         expect(newQuestion.canRun()).toBe(true);
-        expect(newQuestion._card.dataset_query).toEqual({
+        expect(newQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -615,14 +658,17 @@ describe("Question", () => {
       });
 
       it("removes post-aggregation filters from a given query", () => {
-        const question = new Question(orders_multi_stage_card, metadata);
+        const question = buildQuestion({
+          card: orders_multi_stage_card,
+          metadata,
+        });
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
         const newQuestion = question
           .topLevelQuestion()
           .drillUnderlyingRecords(dimensions);
 
-        expect(newQuestion._card.dataset_query).toEqual({
+        expect(newQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -638,15 +684,18 @@ describe("Question", () => {
     });
 
     describe("toUnderlyingRecords(...)", () => {
-      const question = new Question(orders_raw_card, metadata);
-      const ordersCountQuestion = new Question(orders_count_card, metadata);
+      const question = buildQuestion({ card: orders_raw_card, metadata });
+      const ordersCountQuestion = buildQuestion({
+        card: orders_count_card,
+        metadata,
+      });
 
       it("returns underlying records correctly for a raw data query", () => {
         const underlyingRecordsQuestion = question.toUnderlyingRecords();
 
         expect(underlyingRecordsQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(underlyingRecordsQuestion._card.dataset_query).toEqual(
+        expect(underlyingRecordsQuestion.card().dataset_query).toEqual(
           orders_raw_card.dataset_query,
         );
 
@@ -661,7 +710,7 @@ describe("Question", () => {
 
         expect(underlyingRecordsQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(underlyingRecordsQuestion._card.dataset_query).toEqual(
+        expect(underlyingRecordsQuestion.card().dataset_query).toEqual(
           orders_raw_card.dataset_query,
         );
 
@@ -673,7 +722,10 @@ describe("Question", () => {
     });
 
     describe("toUnderlyingData()", () => {
-      const ordersCountQuestion = new Question(orders_count_card, metadata);
+      const ordersCountQuestion = buildQuestion({
+        card: orders_count_card,
+        metadata,
+      });
 
       it("returns underlying data correctly for table query", () => {
         const underlyingDataQuestion = ordersCountQuestion
@@ -692,14 +744,14 @@ describe("Question", () => {
     });
 
     describe("drillPK(...)", () => {
-      const question = new Question(orders_raw_card, metadata);
+      const question = buildQuestion({ card: orders_raw_card, metadata });
       it("returns the correct query for a PK detail drill-through", () => {
         const drilledQuestion = question.drillPK(ORDERS.ID, 1);
 
         expect(drilledQuestion.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(drilledQuestion._card.dataset_query).toEqual({
+        expect(drilledQuestion.card().dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
@@ -720,14 +772,14 @@ describe("Question", () => {
         let question;
 
         beforeEach(() => {
-          question = new Question(orders_raw_card, metadata);
+          question = buildQuestion({ card: orders_raw_card, metadata });
         });
 
         it("when drills to one column of a composite key returns equals filter by the column", () => {
           const drilledQuestion = question.drillPK(ORDERS.ID, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
-          expect(drilledQuestion._card.dataset_query).toEqual({
+          expect(drilledQuestion.card().dataset_query).toEqual({
             type: "query",
             database: SAMPLE_DATABASE.id,
             query: {
@@ -743,7 +795,7 @@ describe("Question", () => {
             .drillPK(ORDERS.TOTAL, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
-          expect(drilledQuestion._card.dataset_query).toEqual({
+          expect(drilledQuestion.card().dataset_query).toEqual({
             type: "query",
             database: SAMPLE_DATABASE.id,
             query: {
@@ -763,7 +815,7 @@ describe("Question", () => {
             .drillPK(PRODUCTS.ID, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
-          expect(drilledQuestion._card.dataset_query).toEqual({
+          expect(drilledQuestion.card().dataset_query).toEqual({
             type: "query",
             database: SAMPLE_DATABASE.id,
             query: {
@@ -779,12 +831,12 @@ describe("Question", () => {
   describe("COMPARISON TO OTHER QUESTIONS", () => {
     describe("isDirtyComparedTo(question)", () => {
       it("New questions are automatically dirty", () => {
-        const question = new Question(orders_raw_card, metadata);
+        const question = buildQuestion({ card: orders_raw_card, metadata });
         const newQuestion = question.withoutNameAndId();
         expect(newQuestion.isDirtyComparedTo(question)).toBe(true);
       });
       it("Changing vis settings makes something dirty", () => {
-        const question = new Question(orders_count_card, metadata);
+        const question = buildQuestion({ card: orders_count_card, metadata });
         const underlyingDataQuestion = question.toUnderlyingRecords();
         expect(underlyingDataQuestion.isDirtyComparedTo(question)).toBe(true);
       });
@@ -799,23 +851,26 @@ describe("Question", () => {
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
     describe("getUrl(originalQuestion?)", () => {
       it("returns URL with ID for saved question", () => {
-        const question = new Question(
-          assoc(orders_raw_card, "id", 1),
+        const question = buildQuestion({
+          card: assoc(orders_raw_card, "id", 1),
           metadata,
-        );
+        });
         expect(question.getUrl()).toBe("/question/1-raw-orders-data");
       });
       it("returns a URL with hash for an unsaved question", () => {
-        const question = new Question(dissoc(orders_raw_card, "id"), metadata);
+        const question = buildQuestion({
+          card: dissoc(orders_raw_card, "id"),
+          metadata,
+        });
         expect(question.getUrl()).toBe(adhocUrl);
       });
     });
 
     it("should avoid generating URLs with transient IDs", () => {
-      const question = new Question(
-        assoc(orders_raw_card, "id", "foo"),
+      const question = buildQuestion({
+        card: assoc(orders_raw_card, "id", "foo"),
         metadata,
-      );
+      });
 
       expect(question.getUrl()).toBe(adhocUrl);
     });
@@ -866,7 +921,7 @@ describe("Question", () => {
     ];
 
     beforeEach(() => {
-      question = new Question(native_orders_count_card, metadata);
+      question = buildQuestion({ card: native_orders_count_card, metadata });
       question.setting = jest.fn();
       question.updateSettings = jest.fn();
     });
@@ -999,45 +1054,45 @@ describe("Question", () => {
 
   describe("Question.prototype.getResultMetadata", () => {
     it("should return the `result_metadata` property off the underlying card", () => {
-      const question = new Question(
-        { ...card, result_metadata: [1, 2, 3] },
+      const question = buildQuestion({
+        card: { ...card, result_metadata: [1, 2, 3] },
         metadata,
-      );
+      });
       expect(question.getResultMetadata()).toEqual([1, 2, 3]);
     });
 
     it("should default to an array", () => {
-      const question = new Question(
-        { ...card, result_metadata: null },
+      const question = buildQuestion({
+        card: { ...card, result_metadata: null },
         metadata,
-      );
+      });
       expect(question.getResultMetadata()).toEqual([]);
     });
   });
 
   describe("Question.prototype.dependentMetadata", () => {
     it("should return model FK field targets", () => {
-      const question = new Question(
-        {
+      const question = buildQuestion({
+        card: {
           ...card,
           result_metadata: [
             { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
           ],
         },
         metadata,
-      );
+      });
 
       expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
     });
 
     it("should return skip with with FK target field which are not FKs semantically", () => {
-      const question = new Question(
-        {
+      const question = buildQuestion({
+        card: {
           ...card,
           result_metadata: [{ fk_target_field_id: 5 }],
         },
         metadata,
-      );
+      });
 
       expect(question.dependentMetadata()).toEqual([]);
     });
@@ -1045,7 +1100,7 @@ describe("Question", () => {
 
   describe("Question.prototype.setDashboardProps", () => {
     it("should set a `dashboardId` property and a `dashcardId` property on the question's card", () => {
-      const question = new Question(card, metadata);
+      const question = buildQuestion({ card, metadata });
       const questionWithDashboardId = question.setDashboardProps({
         dashboardId: 123,
         dashcardId: 456,
@@ -1060,7 +1115,7 @@ describe("Question", () => {
   describe("Question.prototype.setParameters", () => {
     it("should set a `parameters` property on the question's card", () => {
       const parameters = [{ type: "category" }];
-      const question = new Question(card, metadata);
+      const question = buildQuestion({ card, metadata });
       const questionWithParameters = question.setParameters(parameters);
 
       expect(question).not.toBe(questionWithParameters);
@@ -1069,14 +1124,14 @@ describe("Question", () => {
   });
 
   describe("Question.prototype.setParameterValues", () => {
-    it("should set a `_parameterValues` property on the question", () => {
+    it("should set a `parameterValues()` property on the question", () => {
       const parameterValues = { foo: "bar" };
-      const question = new Question(card, metadata);
+      const question = buildQuestion({ card, metadata });
       const questionWithParameterValues =
         question.setParameterValues(parameterValues);
 
       expect(question).not.toBe(questionWithParameterValues);
-      expect(questionWithParameterValues._parameterValues).toEqual(
+      expect(questionWithParameterValues.parameterValues()).toEqual(
         parameterValues,
       );
     });
@@ -1084,7 +1139,7 @@ describe("Question", () => {
 
   describe("Question.prototype.parameters", () => {
     it("should return an empty array if no parameters are set on the structured question", () => {
-      const question = new Question(card, metadata);
+      const question = buildQuestion({ card, metadata });
       expect(question.parameters()).toEqual([]);
     });
 
@@ -1115,7 +1170,14 @@ describe("Question", () => {
         },
       };
 
-      const question = new Question(nativeQuestionWithTemplateTags, metadata);
+      const question = buildQuestion({
+        card: nativeQuestionWithTemplateTags,
+        metadata,
+      });
+      expect(question.datasetQuery()).toEqual(
+        nativeQuestionWithTemplateTags.dataset_query,
+      );
+
       expect(question.parameters()).toEqual([
         {
           default: undefined,
@@ -1144,7 +1206,7 @@ describe("Question", () => {
     });
 
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
-      const question = new Question(card, metadata)
+      const question = buildQuestion({ card, metadata })
         .setParameters([
           {
             type: "category",
@@ -1189,7 +1251,10 @@ describe("Question", () => {
 
   describe("Question.prototype.convertParametersToMbql", () => {
     it("should do nothing to a native question", () => {
-      const question = new Question(native_orders_count_card, metadata);
+      const question = buildQuestion({
+        card: native_orders_count_card,
+        metadata,
+      });
       expect(question.convertParametersToMbql()).toBe(question);
     });
 
@@ -1209,7 +1274,7 @@ describe("Question", () => {
         },
       ];
 
-      const question = new Question(card, metadata)
+      const question = buildQuestion({ card, metadata })
         .setParameters(parameters)
         .setParameterValues({
           foo_id: "abc",
@@ -1274,7 +1339,7 @@ describe("Question", () => {
     describe("with structured card", () => {
       let question;
       beforeEach(() => {
-        question = new Question(card, metadata);
+        question = buildQuestion({ card, metadata });
       });
 
       it("should return question URL with no parameters", () => {
@@ -1364,7 +1429,7 @@ describe("Question", () => {
     describe("with structured question & no permissions", () => {
       let question;
       beforeEach(() => {
-        question = new Question(card);
+        question = buildQuestion({ card });
       });
 
       it("should return a card with attached parameters and parameter values as query params", () => {
@@ -1435,7 +1500,7 @@ describe("Question", () => {
 
       let question;
       beforeEach(() => {
-        question = new Question(cardWithTextFilter, metadata);
+        question = buildQuestion({ card: cardWithTextFilter, metadata });
       });
 
       it("should return question URL when there are no parameters", () => {
@@ -1460,7 +1525,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
-        const question = new Question(cardWithFieldFilter, metadata);
+        const question = buildQuestion({ card: cardWithFieldFilter, metadata });
         const url = question.getUrlWithParameters(parametersForNativeQ, {
           5: "111",
         });
@@ -1489,7 +1554,7 @@ describe("Question", () => {
         original_card_id: 123,
       };
 
-      const question = new Question(cardWithTransientId, metadata);
+      const question = buildQuestion({ card: cardWithTransientId, metadata });
       const newQuestion = question.omitTransientCardIds();
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.card().original_card_id).toBe(123);
@@ -1502,7 +1567,7 @@ describe("Question", () => {
         original_card_id: "bar",
       };
 
-      const question = new Question(cardWithTransientId, metadata);
+      const question = buildQuestion({ card: cardWithTransientId, metadata });
       const newQuestion = question.omitTransientCardIds();
       expect(newQuestion.card().original_card_id).toBeUndefined();
       expect(newQuestion.id()).toBe(123);
@@ -1515,7 +1580,10 @@ describe("Question", () => {
         original_card_id: undefined,
       };
 
-      const question = new Question(cardWithoutTransientId, metadata);
+      const question = buildQuestion({
+        card: cardWithoutTransientId,
+        metadata,
+      });
       const newQuestion = question.omitTransientCardIds();
 
       expect(newQuestion).toBe(question);

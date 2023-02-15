@@ -8,7 +8,7 @@ import {
 } from "__support__/sample_database_fixture";
 import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 function renderChartSettingOrderedColumns(props) {
   render(<ChartSettingColumnEditor onChange={() => {}} {...props} />);
@@ -32,8 +32,8 @@ const NATIVE_QUERY_PROPS = {
   columns: ORDERS.dimensions()
     .map(dimension => dimension.column())
     .map(toNativeColumn),
-  question: new Question(
-    {
+  question: buildQuestion({
+    card: {
       dataset_query: {
         type: "native",
         native: {
@@ -43,7 +43,7 @@ const NATIVE_QUERY_PROPS = {
       },
     },
     metadata,
-  ),
+  }),
 };
 
 const STRUCTURED_QUERY_TEST_CASES = [

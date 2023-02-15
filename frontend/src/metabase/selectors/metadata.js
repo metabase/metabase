@@ -13,7 +13,7 @@ import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import Metric from "metabase-lib/metadata/Metric";
 import Segment from "metabase-lib/metadata/Segment";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
@@ -106,7 +106,7 @@ export const instantiateMetric = (obj, metadata) => {
   return instance;
 };
 export const instantiateQuestion = (obj, metadata) =>
-  new Question(obj, metadata);
+  buildQuestion({ card: obj, metadata });
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies

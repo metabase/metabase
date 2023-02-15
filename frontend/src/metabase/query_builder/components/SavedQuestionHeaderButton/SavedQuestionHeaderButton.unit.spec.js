@@ -5,7 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import { metadata } from "__support__/sample_database_fixture";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
 
@@ -20,14 +20,14 @@ function setup({ question }) {
 }
 
 describe("SavedQuestionHeaderButton", () => {
-  const question = new Question(
-    {
+  const question = buildQuestion({
+    card: {
       name: "foo",
       moderation_reviews: [],
       can_write: true,
     },
     metadata,
-  );
+  });
 
   it("renders the name of the question", () => {
     setup({ question });
@@ -52,12 +52,14 @@ describe("SavedQuestionHeaderButton", () => {
   });
 
   describe("when the question has a latest moderation review", () => {
-    const question = new Question({
-      name: "foo",
-      moderation_reviews: [
-        { status: null },
-        { most_recent: true, status: "verified" },
-      ],
+    const question = buildQuestion({
+      card: {
+        name: "foo",
+        moderation_reviews: [
+          { status: null },
+          { most_recent: true, status: "verified" },
+        ],
+      },
     });
 
     it("should have an additional icon to signify the question's moderation status", () => {

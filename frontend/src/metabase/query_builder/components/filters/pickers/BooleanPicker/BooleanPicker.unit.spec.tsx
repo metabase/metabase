@@ -5,7 +5,7 @@ import { render, screen } from "@testing-library/react";
 
 import { metadata } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
 
@@ -40,7 +40,7 @@ const card = {
 
 metadata.fields[booleanField.id] = booleanField;
 
-const question = new Question(card, metadata);
+const question = buildQuestion({ card, metadata });
 
 const fieldRef = ["field", 134, null];
 const filters = {

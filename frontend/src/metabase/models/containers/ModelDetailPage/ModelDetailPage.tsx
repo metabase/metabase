@@ -23,7 +23,7 @@ import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
@@ -70,7 +70,7 @@ function mapStateToProps(
   props: OwnProps & ModelEntityLoaderProps,
 ) {
   const metadata = getMetadata(state);
-  const model = new Question(props.modelCard, metadata);
+  const model = buildQuestion({ card: props.modelCard, metadata });
   return { model };
 }
 

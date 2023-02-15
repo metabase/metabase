@@ -10,7 +10,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import * as Urls from "metabase/lib/urls";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import QuestionDataSource from "./QuestionDataSource";
 
 const BASE_GUI_QUESTION = {
@@ -120,7 +120,7 @@ const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
 // Factories
 
 function getQuestion(card) {
-  return new Question(card, metadata);
+  return buildQuestion({ card, metadata });
 }
 
 function getAdHocQuestion(overrides) {

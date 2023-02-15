@@ -20,7 +20,7 @@ import {
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 
@@ -118,7 +118,7 @@ function DashCardCardParameterMapper({
       return false;
     }
 
-    const question = new Question(card, metadata);
+    const question = buildQuestion({ card, metadata });
     return question.query().isEditable();
   }, [card, metadata, isVirtual]);
 

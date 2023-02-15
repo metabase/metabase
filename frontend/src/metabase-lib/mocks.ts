@@ -12,7 +12,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Query from "metabase-lib/queries/Query";
@@ -57,15 +57,15 @@ const SAVED_QUESTION = {
 };
 
 export function getQuestion(card: Partial<Card>) {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...BASE_GUI_QUESTION,
       display: "table",
       visualization_settings: {},
       ...card,
     },
     metadata,
-  );
+  });
 }
 
 export function getAdHocQuestion(card?: Partial<StructuredUnsavedCard>) {
@@ -134,9 +134,6 @@ export function getComposedModel(
   const question = getStructuredModel(card).composeDataset();
   const query = question.query() as StructuredQuery;
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  question._metadata.tables[query.sourceTableId()] = ORDERS;
-
-  return question;
+  const metadata = (question.metadata().table[query.sourceTableId()] = ORDERS);
+  return buildQuestion({ ...question.inner(), metadata });
 }

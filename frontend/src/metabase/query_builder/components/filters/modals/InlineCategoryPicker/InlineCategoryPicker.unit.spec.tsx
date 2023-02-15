@@ -9,7 +9,7 @@ import { metadata } from "__support__/sample_database_fixture";
 
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
@@ -127,7 +127,7 @@ const card = {
   visualization_settings: {},
 };
 
-const question = new Question(card, metadata);
+const question = buildQuestion({ card, metadata });
 const query = question.query() as StructuredQuery;
 const smallDimension = smallCategoryField.dimension();
 const largeDimension = largeCategoryField.dimension();

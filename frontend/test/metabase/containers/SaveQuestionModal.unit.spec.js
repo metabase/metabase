@@ -13,7 +13,7 @@ import { mockSettings } from "__support__/settings";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 
-import Question from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 
 const setup = async (
   question,
@@ -65,8 +65,8 @@ function getQuestion({
     extraCardParams.can_write = can_write;
   }
 
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...extraCardParams,
       display: "table",
       visualization_settings: {},
@@ -80,7 +80,7 @@ function getQuestion({
       },
     },
     metadata,
-  );
+  });
 }
 
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
@@ -161,8 +161,8 @@ describe("SaveQuestionModal", () => {
 
     it("should not suggest a name for native queries", async () => {
       await setup(
-        new Question(
-          {
+        buildQuestion({
+          card: {
             dataset_query: {
               type: "native",
               database: ORDERS.id,
@@ -173,7 +173,7 @@ describe("SaveQuestionModal", () => {
             },
           },
           metadata,
-        ),
+        }),
       );
 
       expect(screen.getByLabelText("Name")).toHaveValue("");

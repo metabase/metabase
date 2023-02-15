@@ -29,7 +29,7 @@ import {
   ParameterValue,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
@@ -499,7 +499,9 @@ const mapStateToProps = (
   state: State,
   { card }: ModalOwnProps & ModalCardProps,
 ): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
+  question: card
+    ? buildQuestion({ card, metadata: getMetadata(state) })
+    : undefined,
 });
 
 const mapDispatchToProps = {

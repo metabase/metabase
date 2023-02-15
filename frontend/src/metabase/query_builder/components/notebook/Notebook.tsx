@@ -7,7 +7,7 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
@@ -102,7 +102,9 @@ function mapStateToProps(
   { sourceCard }: NotebookCardProps,
 ): NotebookStateProps {
   return {
-    sourceQuestion: sourceCard && new Question(sourceCard, getMetadata(state)),
+    sourceQuestion:
+      sourceCard &&
+      buildQuestion({ card: sourceCard, metadata: getMetadata(state) }),
   };
 }
 

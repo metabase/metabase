@@ -1,9 +1,9 @@
 (ns metabase.domain-entities.malli
   (:refer-clojure :exclude [defn])
   (:require
+    [malli.core :as mc]
     [malli.util :as mut]
-    #?@(:clj  ([malli.core :as mc]
-               [metabase.util.malli :as mu]
+    #?@(:clj  ([metabase.util.malli :as mu]
                [net.cgrand.macrovich :as macros])
         :cljs ([malli.instrument]
                [metabase.domain-entities.converters])))
@@ -19,47 +19,107 @@
 ;; hope. We can assume (deep) immutability so there's lots of room for caching of eg. key conversion.
 
 #?(:clj
-   (clojure.core/defn- argname [arg]
-     (cond
-       (symbol? arg)   arg
-       (and (map? arg)
-            (:as arg)) (:as arg)
-       :else           (gensym "arg"))))
+   (defmacro defn
+     "In Clojure this is simply [[mu/defn]].
+
+     That breaks CLJS advanced compilation since it returns a `let` and not a `defn`.
+     So in CLJS this is just [[clojure.core/defn]]."
+     [sym _ return-schema docs args & body]
+     (macros/case
+       :clj  `(mu/defn ~sym :- ~return-schema ~docs ~args ~@body)
+       :cljs `(clojure.core/defn ~sym ~docs ~(mapv first (partition 3 args)) ~@body))))
+
+(clojure.core/defn schema-for-path
+  "Given a schema and a *value path* (as opposed to a *schema path*), finds the schema for that
+  path. Throws if there are multiple such paths and those paths have different schemas."
+  [schema path]
+  (let [paths (-> schema mc/schema (mut/in->paths path))]
+    (cond
+      (empty? paths)      (throw (ex-info "Path does not match schema" {:schema schema :path path}))
+      (= (count paths) 1) (mut/get-in schema (first paths))
+      :else (let [child-schemas (map #(mut/get-in schema %) paths)]
+              (if (apply = child-schemas)
+                (first child-schemas)
+                (throw (ex-info "Value path has multiple schema paths, with different schemas"
+                                {:schema        schema
+                                 :paths         paths
+                                 :child-schemas child-schemas})))))))
 
 #?(:clj
-   (defmacro defn
-     "Specialized [[clojure.core/defn]] for writing domain objects CLJC code.
+   (defmacro def-getters-and-setters
+     "Generates an accessor (`get-in`) and updater (`assoc-in`) for each specified path.
 
-     Malli schemas are *required* for the return type and arguments!
+     For example:
+     ```
+     (def-getters-and-setters Question
+       dataset-query [:card :dataset-query]
+       cache-ttl     [:card :cache-ttl])
+     ```
+     will generate:
+     ```
+     (mu/defn ^:export dataset-query :- DatasetQuery
+       \"Accessor for [:card :dataset-query].\"
+       [obj :- Question]
+       (get-in obj [:card :dataset-query]))
 
-     In JVM Clojure, this is transparently [[mu/defn]].
+     (mu/defn ^:export with-dataset-query :- Question
+       \"Updater for [:card :dataset-query].\"
+       [obj :- Question new-value :- DatasetQuery]
+       (assoc-in obj [:card :dataset-query] new-value))
 
-     For CLJS, the argument schemas are used to determine how to wrap each vanilla JS
-     argument for idiomatic use in CLJS. This is powered by the `cljs-bean` library.
+     (mu/defn ^:export cache-ttl :- [:maybe number?]
+       \"Accessor for [:card :cache-ttl].\"
+       [obj :- Question]
+       (get-in obj [:card :cache-ttl]))
 
-     See `metabase.domain-entities.converters` for the details of how things get converted.
-     In summary:
-     - `[:map ...]` expects a JS object with `camelCase`, and gets wrapped as a CLJS map with
-       `:kebab-case` keyword keys. Values are recursively converted.
-     - `[:map-of ...]` is converted to a CLJS map, but the keys are left alone.
-     - `[:vector ...]` expects a JS array, and converts it to a vector.
-     - Use [[opaque]] to block conversion of (part of) a schema, if it's treated as opaque by the code."
-     [sym _ return-schema docstring args & body]
-     (macros/case
-       ;; In Clojure, this is a straightforward clone of mu/defn.
-       :clj  `(mu/defn ~sym :- ~return-schema ~docstring ~(vec args) ~@body)
-       ;; In CLJS, we do fancy cljs-bean wrapping based on the schema.
-       :cljs
-       (let [argnames (map (comp argname first) (partition 3 args))]
-         `(clojure.core/defn ~sym ~docstring [~@argnames]
-            (metabase.domain-entities.converters/outgoing
-              (let [~@(apply concat
-                             (for [[sym [argspec _ schema]] (map vector argnames (partition 3 args))]
-                               `[~argspec
-                                 ((metabase.domain-entities.converters/incoming (malli.core/ast ~schema)) ~sym)]))]
-              ~@body)))))))
+     (mu/defn ^:export with-cache-ttl :- Question
+       \"Updater for [:card :cache-ttl].\"
+       [obj :- Question new-value :- number?]
+       (assoc-in obj [:card :cache-ttl] new-value))
+     ```
 
-(clojure.core/defn opaque
-  "Marks a schema as `:bean/opaque true` so that it will be ignored by the converters."
-  [schema]
-  (mut/update-properties schema assoc :bean/opaque true))
+     You provide the schema for the parent object; the macro will examine that schema to
+     determine the schema for the field being fetched or updated.
+
+     The updater's name gets prefixed with `with-`."
+     [schema & specs]
+     (let [parts        (partition 2 specs)]
+       `(do
+          ~@(mapcat (fn [[sym path]]
+                      (let [conv-sym (vary-meta (symbol (str "->" (name sym)))
+                                                assoc :private true)]
+                        [;; Getter
+                         `(clojure.core/defn
+                            ~(vary-meta sym assoc :export true)
+                            ~(str "Accessor for `" path "`.")
+                            [obj#]
+                            (get-in obj# ~path))
+
+                         ;; Incoming converter for the replacement value.
+                         `(def ~conv-sym
+                            ~(macros/case
+                               :cljs (macros/case
+                                       :cljs `(-> ~schema
+                                                  (metabase.domain-entities.malli/schema-for-path ~path)
+                                                  metabase.domain-entities.converters/incoming)
+                                       :clj  `identity)))
+
+                         ;; Setter
+                         `(clojure.core/defn
+                            ~(vary-meta (symbol (str "with-" (name sym)))
+                                        assoc :export true)
+                            ~(str "Updater for `" path "`.")
+                            [obj# new-value#]
+                            (assoc-in obj# ~path (~conv-sym new-value#)))
+
+                         ;; JS conversion
+                         (macros/case :cljs
+                           `(clojure.core/defn
+                              ~(vary-meta (symbol (str (name sym) "-js"))
+                                          assoc :export true) #_#_:- ~schema
+                              ~(str "Fetches `" path "` and converts it to plain JS.")
+                              [obj# #_#_:- ~schema]
+                              ((metabase.domain-entities.converters/outgoing
+                                 (metabase.domain-entities.malli/schema-for-path ~schema ~path))
+                               (get-in obj# ~path))))]))
+                    parts)))))

@@ -9,7 +9,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import MetabaseSettings from "metabase/lib/settings";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { ViewTitleHeader } from "./ViewHeader";
 
 console.warn = jest.fn();
@@ -62,7 +62,7 @@ const SAVED_QUESTION = {
 };
 
 function getQuestion(card) {
-  return new Question(card, metadata);
+  return buildQuestion({ card, metadata });
 }
 
 function getAdHocQuestion(overrides) {

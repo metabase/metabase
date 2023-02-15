@@ -7,7 +7,7 @@ import {
 
 import type { DatetimeUnit } from "metabase-types/api";
 import { Card } from "metabase-types/types/Card";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { getObjectName, getDisplayId, getIdValue } from "./utils";
 
@@ -80,7 +80,7 @@ describe("ObjectDetail utils", () => {
   };
 
   describe("getObjectName", () => {
-    const question = new Question(card, metadata);
+    const question = buildQuestion({ card, metadata });
     const table = question.table();
 
     it("should get an entity name when there is an entity name column", () => {
@@ -119,13 +119,13 @@ describe("ObjectDetail utils", () => {
     it("should fall back to default text", () => {
       const name = getObjectName({
         table: null,
-        question: new Question(
-          {
+        question: buildQuestion({
+          card: {
             ...card,
             name: "",
           },
           metadata,
-        ),
+        }),
         cols: [idCol, qtyCol],
         zoomedRow: [22, 33],
       });

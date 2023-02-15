@@ -7,7 +7,7 @@ import {
 } from "metabase-lib/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/parameters/utils/targets";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
@@ -24,7 +24,7 @@ export function getCardUiParameters(
   const valuePopulatedParameters: (Parameter[] | ParameterWithTarget[]) & {
     value?: any;
   } = getValuePopulatedParameters(parameters, parameterValues);
-  const question = new Question(card, metadata);
+  const question = buildQuestion({ card, metadata });
 
   return valuePopulatedParameters.map(parameter => {
     const target: ParameterTarget | undefined = (

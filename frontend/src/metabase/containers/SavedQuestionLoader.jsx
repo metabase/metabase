@@ -6,7 +6,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 // type annotations
 
@@ -63,7 +63,10 @@ export class SavedQuestionLoader extends React.Component {
     // update the question with that metadata
     if (nextProps.metadata !== this.props.metadata && this.state.card) {
       this.setState({
-        question: new Question(this.state.card, nextProps.metadata),
+        question: buildQuestion({
+          card: this.state.card,
+          metadata: nextProps.metadata,
+        }),
       });
     }
   }
@@ -102,7 +105,7 @@ export class SavedQuestionLoader extends React.Component {
       // so we can use metabase-lib methods to retrieve information and modify
       // the question
       //
-      const question = new Question(card, this.props.metadata);
+      const question = buildQuestion({ card, metadata: this.props.metadata });
 
       // finally, set state to store the Question object so it can be passed
       // to the component using the loader, keep a reference to the card

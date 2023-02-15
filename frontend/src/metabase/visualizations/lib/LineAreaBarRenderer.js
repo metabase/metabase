@@ -13,7 +13,7 @@ import {
   updateNumericFilter,
 } from "metabase-lib/queries/utils/actions";
 import { isStructured } from "metabase-lib/queries/utils/card";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import {
   computeSplit,
@@ -363,7 +363,7 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const query = new Question(card).query();
+      const query = buildQuestion({ card }).query();
       const [start, end] = range;
       if (isDimensionTimeseries(series)) {
         onChangeCardAndRun({

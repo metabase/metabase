@@ -11,7 +11,7 @@ import Dimension, {
 import Field from "metabase-lib/metadata/Field";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 const nestedQuestionCard = {
@@ -631,7 +631,10 @@ describe("Dimension", () => {
 
         describe("when an expression dimension has a query that relies on a nested card", () => {
           it("should return a field inferred from the expression", () => {
-            const question = new Question(nestedQuestionCard, null);
+            const question = buildQuestion({
+              card: nestedQuestionCard,
+              metadata: null,
+            });
             const query = question.query();
             const dimension = Dimension.parseMBQL(
               ["expression", "Foobar"], // "Foobar" does not exist in the metadata
@@ -647,7 +650,10 @@ describe("Dimension", () => {
           });
 
           it("should return a field inferred from the expression (from metadata)", () => {
-            const question = new Question(nestedQuestionCard, metadata);
+            const question = buildQuestion({
+              card: nestedQuestionCard,
+              metadata,
+            });
             const query = question.query();
             const dimension = Dimension.parseMBQL(
               ["expression", "Foo"],
@@ -667,7 +673,7 @@ describe("Dimension", () => {
 
     describe("dimensions()", () => {
       it("should return subdimensions according to the field type", () => {
-        const question = new Question(nestedQuestionCard, metadata);
+        const question = buildQuestion({ card: nestedQuestionCard, metadata });
         const dimension = Dimension.parseMBQL(
           ["expression", 42],
           metadata,
@@ -810,7 +816,7 @@ describe("Dimension", () => {
   });
 
   describe("Nested Question Field Dimension", () => {
-    const question = new Question(nestedQuestionCard, metadata);
+    const question = buildQuestion({ card: nestedQuestionCard, metadata });
 
     const dimension = Dimension.parseMBQL(
       ["field", "boolean", { "base-type": "type/Boolean" }],

@@ -21,8 +21,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question, { buildQuestion } from "metabase-lib/Question";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
@@ -65,7 +65,7 @@ type Props = OwnProps &
   DispatchProps;
 
 const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
-  model: new Question(modelCard, getMetadata(state)),
+  model: buildQuestion({ card: modelCard, metadata: getMetadata(state) }),
   metadata: getMetadata(state),
 });
 

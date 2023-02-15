@@ -11,7 +11,7 @@ import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { updateLatLonFilter } from "metabase-lib/queries/utils/actions";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 export default class LeafletMap extends Component {
   constructor(props) {
@@ -156,7 +156,7 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card);
+    const question = buildQuestion({ card });
     if (question.isStructured()) {
       const nextCard = updateLatLonFilter(
         question.query(),

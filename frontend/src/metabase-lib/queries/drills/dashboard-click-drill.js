@@ -8,7 +8,7 @@ import {
   getDataFromClicked,
   getTargetForQueryParams,
 } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);
@@ -88,10 +88,10 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     clickBehavior,
   );
 
-  const targetQuestion = new Question(
-    extraData.questions[targetId],
-    question.metadata(),
-  ).lockDisplay();
+  const targetQuestion = buildQuestion({
+    card: extraData.questions[targetId],
+    metadata: question.metadata(),
+  }).lockDisplay();
 
   const parameters = _.chain(parameterMapping)
     .values()

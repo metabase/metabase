@@ -1,73 +1,95 @@
 (ns metabase.domain-entities.converters
   (:require
     [camel-snake-kebab.core :as csk]
-    [cljs-bean.core :as bean]
-    ))
+    [malli.core :as mc]
+    [malli.transform :as mtx]))
 
-(defn- ->entity
-  "Conversion of incoming vanilla JS objects and arrays to CLJS maps and vectors.
+(defn- decode-map [x]
+  (cond
+    (map? x)    x
+    (object? x) (into {} (for [prop (js/Object.keys x)]
+                           [(csk/->kebab-case-keyword prop) (unchecked-get x prop)]))))
 
-  You should not need to call this directly; it's an implementation detail of [[defn]]."
-  [x]
-  (bean/->clj x
-              :prop->key csk/->kebab-case-keyword
-              :key->prop csk/->camelCaseString))
+(defn- decode-map-of [keydec valdec x]
+  (cond
+    (map? x)    x
+    (object? x) (into {} (for [prop (js/Object.keys x)]
+                           [(keydec prop) (valdec (unchecked-get x prop))]))))
 
-(defn- entity->
-  "Conversion of cljs-bean wrapped CLJS maps and vectors back into vanilla JS objects and arrays.
+(defn- encode-map [x keyenc]
+  (cond
+    (object? x) x
+    (map? x) (reduce-kv (fn [obj k v]
+                          (unchecked-set obj (keyenc k) v)
+                          obj)
+                        #js {}
+                        x)))
 
-  You should not need to call this directly; it's an implementation detail of [[defn]]."
-  [x]
-  (bean/->js x :key->prop csk/->camelCaseString))
+(def js-transformer
+  "Malli transformer for converting JavaScript data to and from CLJS data.
 
-(defn- opaque? [schema]
-  (-> schema :properties :bean/opaque boolean))
+  This is a bit more flexible than a JSON transformer. In particular, it normalizes the keys of `:map`
+  schema objects to `:kebab-case-keywords`, and restores them to strings with the original spelling when
+  converting back.
 
-(defmulti incoming
-  "Note that this works on the map syntax, the Malli AST, not the raw vectors.
-  It's easier to process that way."
-  (fn [schema]
-    (if (opaque? schema)
-      :bean/opaque
-      (:type schema))))
+  **On keyword conversion**
 
-(defmethod incoming :default [_]
-  identity)
+  Note that `\"snake_case\"` is the default spelling we expect in the JS data.
+  This can be overridden with the `{:js/prop \"correctSpelling\"}` property on the schema, eg.
+  ```
+  [:map
+   [:camel-case {:js/prop \"camelCase\"} string?]
+   [:kebab-case {:js/prop \"kebab-case\"} number?]
+   [:snake-case [:enum \"foo\" \"bar\"]]]
+  ```
 
-(defmethod incoming :bean/opaque [_]
-  identity)
+  Observe that `:snake-case` does not need a `:js/prop` setting, since that is the default.
 
-(defmethod incoming :vector [schema]
-  (let [kf (incoming (:child schema))]
-    #(mapv kf %)))
+  **On `:map-of`**
 
-(defmethod incoming :tuple [schema]
-  (let [inner (map incoming (:children schema))]
-    (fn [value]
-      (mapv #(%1 %2) inner value))))
+  Note that `:map-of` is not `:map`. The spelling of the keys in a `:map-of` is not changed. If the key
+  schema is `keyword?`, they will be converted to keywords and back, but with the original spelling.
 
-(def ^:private conversion-needed? #{:tuple :vector :map :map-of})
+  **On sequences**
+  `:tuple`, `:vector` and `:sequential` all get transformed into CLJS vectors. When converting back to JS,
+  they are JS arrays."
+  (mtx/transformer
+    {:name :js
+     :decoders {:keyword           keyword
+                'keyword?          keyword
+                :qualified-keyword keyword
+                :vector            {:enter vec}
+                :sequential        {:enter vec}
+                :tuple             {:enter vec}
+                :map               {:enter decode-map}
+                :map-of            {:compile (fn [schema _]
+                                               (let [[key-s val-s] (mc/children schema)
+                                                     keydec (mc/decoder key-s js-transformer)
+                                                     valdec (mc/decoder val-s js-transformer)]
+                                                 #(decode-map-of keydec valdec %)))}
+                }
+     :encoders {:keyword           name
+                'keyword?          name
+                :qualified-keyword #(str (namespace %) "/" (name %))
+                :vector            {:leave clj->js}
+                :sequential        {:leave clj->js}
+                :tuple             {:leave clj->js}
+                :map               {:compile
+                                    (fn [schema _]
+                                      (let [js-props (into {} (for [[k props] (mc/children schema)
+                                                                    :when (:js/prop props)]
+                                                                [k (:js/prop props)]))
+                                            keyenc   (fn [k] (or (get js-props k)
+                                                                 (csk/->snake_case_string k)))]
+                                        {:leave #(encode-map % keyenc)}))}
+                :map-of            {:leave #(encode-map % name)}}}))
 
-(defmethod incoming :map-of [schema]
-  (let [vf          (incoming (:value schema))
-        keywordize? (-> schema :key :type (#{:keyword 'keyword?}))
-        recursive?  (-> schema :value :type conversion-needed?)
-        transform   (when (and (not (opaque? (:value schema)))
-                               (not= identity vf))
-                      vf)
-        opts        (cond-> {:recursive       (boolean recursive?)
-                             :keywordize-keys (boolean keywordize?)}
-                      keywordize? (assoc :prop->key csk/->kebab-case-keyword
-                                         :key->prop csk/->camelCaseString)
-                      transform   (assoc :transform transform))]
-    #(bean/bean % opts)))
+(defn incoming
+  "Returns a function for converting a JS value into CLJS data structures, based on a schema."
+  [schema]
+  (mc/decoder schema js-transformer))
 
-(defmethod incoming :map [_schema]
-  ->entity)
-
-;; TODO Does this handle cases where we didn't convert string keys to keywords? Does it need to be schema-smart too?
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]} ;; This is used by macro-generated code.
 (defn outgoing
-  "Converts back to pure JS form."
-  [x]
-  (entity-> x))
+  "Returns a function for converting a CLJS value back into a plain JS one, based on its schema."
+  [schema]
+  (mc/encoder schema js-transformer))

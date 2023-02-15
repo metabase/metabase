@@ -11,7 +11,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
 
@@ -87,7 +87,7 @@ export const getDashCardTable = (state, dashcardId) => {
     return null;
   }
   const metadata = getMetadata(state);
-  const question = new Question(dashcard.card, metadata);
+  const question = buildQuestion({ card: dashcard.card, metadata });
   return question.table();
 };
 

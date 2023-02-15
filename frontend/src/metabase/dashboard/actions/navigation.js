@@ -4,7 +4,7 @@ import { openUrl } from "metabase/redux/app";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 /**
  * All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
@@ -34,7 +34,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         previousCard,
       );
 
-      let question = new Question(cardAfterClick, metadata);
+      let question = buildQuestion({ card: cardAfterClick, metadata });
       if (question.query().isEditable()) {
         question = question
           .setDisplay(cardAfterClick.display || previousCard.display)
@@ -56,7 +56,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       // querying a table for which we don't have any metadata for
       // When building a question URL, it'll usually clean the query and
       // strip clauses referencing fields from tables without metadata
-      const previousQuestion = new Question(previousCard, metadata);
+      const previousQuestion = buildQuestion({ card: previousCard, metadata });
       const isDrillingFromNativeModel =
         previousQuestion.isDataset() && previousQuestion.isNative();
 

@@ -17,14 +17,14 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { QuestionList } from "./QuestionList";
 
 const getQuestions = createSelector(
   [getMetadataWithHiddenTables, (_state, props) => props.questions],
   (metadata, questions) =>
-    questions && questions.map(card => new Question(card, metadata)),
+    questions && questions.map(card => buildQuestion({ card, metadata })),
 );
 
 // TODO: rework this so we don't have to load all cards up front

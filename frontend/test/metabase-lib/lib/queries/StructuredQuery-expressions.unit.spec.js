@@ -1,18 +1,20 @@
 import { ORDERS, SAMPLE_DATABASE } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 const TEST_EXPRESSION = ["+", 1, 1];
 const TEST_EXPRESSION_2 = ["+", 2, 2];
 const TEST_EXPRESSION_3 = ["+", 3, 3];
 
 function getQuery({ expressions } = {}) {
-  const question = new Question({
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DATABASE.id,
-      query: {
-        "source-table": ORDERS.id,
-        expressions: expressions,
+  const question = buildQuestion({
+    card: {
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DATABASE.id,
+        query: {
+          "source-table": ORDERS.id,
+          expressions: expressions,
+        },
       },
     },
   });

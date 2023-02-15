@@ -8,7 +8,7 @@ import Utils from "metabase/lib/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { isEqualCard } from "metabase/lib/card";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
@@ -131,7 +131,7 @@ export const updateUrl = createThunkAction(
         card = getCard(getState());
         question = getQuestion(getState());
       } else {
-        question = new Question(card, getMetadata(getState()));
+        question = buildQuestion({ card, metadata: getMetadata(getState()) });
       }
 
       if (dirty == null) {

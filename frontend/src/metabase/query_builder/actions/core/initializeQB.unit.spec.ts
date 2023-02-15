@@ -32,7 +32,7 @@ import {
 } from "metabase-lib/mocks";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 
 import * as querying from "../querying";
 
@@ -635,7 +635,10 @@ describe("QB Actions > initializeQB", () => {
               name: "bar",
             },
           });
-          const formattedQuestion = new Question(result.card, metadata);
+          const formattedQuestion = buildQuestion({
+            card: result.card,
+            metadata,
+          });
           const query = formattedQuestion.query() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
@@ -697,7 +700,7 @@ describe("QB Actions > initializeQB", () => {
         ...opts,
       });
 
-      const question = new Question(result.card, metadata);
+      const question = buildQuestion({ card: result.card, metadata });
       const query = question.query() as StructuredQuery;
 
       return {
@@ -714,7 +717,7 @@ describe("QB Actions > initializeQB", () => {
       }).card();
 
       const { result } = await setupBlank({ db: SAMPLE_DATABASE?.id });
-      const question = new Question(result.card, metadata);
+      const question = buildQuestion({ card: result.card, metadata });
       const query = question.query() as StructuredQuery;
 
       expect(result.card).toEqual(expectedCard);

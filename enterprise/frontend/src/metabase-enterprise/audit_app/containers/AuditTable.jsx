@@ -9,7 +9,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { usePagination } from "metabase/hooks/use-pagination";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
@@ -60,7 +60,7 @@ function AuditTable({
     .assocIn(["dataset_query", "offset"], pageSize * page)
     .value();
 
-  const question = new Question(card, metadata);
+  const question = buildQuestion({ card, metadata });
   const shouldShowPagination = page > 0 || loadedCount === pageSize;
   const handleChangeLocation = url => dispatch(push(url));
 

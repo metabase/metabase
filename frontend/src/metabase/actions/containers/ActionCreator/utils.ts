@@ -19,7 +19,7 @@ import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 
 type FieldTypeMap = Record<string, ParameterType>;
 
@@ -49,8 +49,8 @@ const fieldTypeToTagTypeMap: TagTypeMap = {
 // This utilities help us to work with the WritebackQueryAction as with a Question
 
 export const newQuestion = (metadata: Metadata, databaseId?: number) => {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       dataset_query: {
         type: "native",
         database: databaseId ?? null,
@@ -60,7 +60,7 @@ export const newQuestion = (metadata: Metadata, databaseId?: number) => {
       },
     },
     metadata,
-  );
+  });
 };
 
 const getTagTypeFromFieldSettings = (fieldType: FieldType): TemplateTagType => {
@@ -196,6 +196,9 @@ export const convertActionToQuestion = (
   action: WritebackQueryAction,
   metadata: Metadata,
 ) => {
-  const question = new Question(convertActionToQuestionCard(action), metadata);
+  const question = buildQuestion({
+    card: convertActionToQuestionCard(action),
+    metadata,
+  });
   return question.setParameters(action.parameters);
 };

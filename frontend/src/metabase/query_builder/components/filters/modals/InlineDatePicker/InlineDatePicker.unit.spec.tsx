@@ -8,7 +8,7 @@ import { metadata } from "__support__/sample_database_fixture";
 
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { InlineDatePicker } from "./InlineDatePicker";
 
@@ -41,7 +41,7 @@ const card = {
   visualization_settings: {},
 };
 
-const question = new Question(card, metadata);
+const question = buildQuestion({ card, metadata });
 const dateDimension = dateField.dimension();
 const query = question.query();
 

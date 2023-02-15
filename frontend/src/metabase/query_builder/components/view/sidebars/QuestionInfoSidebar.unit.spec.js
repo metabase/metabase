@@ -16,7 +16,7 @@ import { mockSettings } from "__support__/settings";
 
 import { createMockUser } from "metabase-types/api/mocks";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
@@ -52,24 +52,24 @@ const BASE_QUESTION = {
 };
 
 function getQuestion(card) {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...BASE_QUESTION,
       ...card,
     },
     metadata,
-  );
+  });
 }
 
 function getDataset(card) {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       ...BASE_QUESTION,
       ...card,
       dataset: true,
     },
     metadata,
-  );
+  });
 }
 
 async function setup({ question, cachingEnabled = true } = {}) {

@@ -1587,8 +1587,7 @@ class StructuredQueryInner extends AtomicQuery {
    * returns the original Table object at the beginning of the nested queries
    */
   rootTable(): Table {
-    const question = this.question();
-    const questionTableId = question?.tableId();
+    const questionTableId = this.question()?.tableId();
     if (questionTableId != null) {
       return this.metadata().table(questionTableId);
     }

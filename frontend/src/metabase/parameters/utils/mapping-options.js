@@ -1,7 +1,7 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
   dimensionFilterForParameter,
@@ -80,7 +80,7 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  const question = new Question(card, metadata);
+  const question = buildQuestion({ card, metadata });
   const query = question.query();
   const options = [];
   if (question.isDataset()) {

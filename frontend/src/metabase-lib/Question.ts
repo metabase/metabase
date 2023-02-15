@@ -1,7 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import { assocIn } from "icepick";
+import * as Q from "cljs/metabase.domain_entities.question";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
@@ -94,41 +95,56 @@ export type QuestionCreatorOpts = {
   dataset_query?: DatasetQuery;
 };
 
-/**
- * This is a wrapper around a question/card object, which may contain one or more Query objects
- */
-
-class QuestionInner {
+interface QuestionContents {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
-  _card: CardObject;
+  readonly card: CardObject;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
    * need metadata for accessing databases, tables and metrics.
    */
-  _metadata: Metadata;
+  readonly metadata: Metadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
-  _parameterValues: ParameterValues;
+  readonly parameterValues: ParameterValues;
+}
+
+type CLJS<_T> = unknown;
+
+/**
+ * This is a wrapper around a question/card object, which may contain one or more Query objects
+ */
+class QuestionInner {
+  /**
+   * All data for the Question is held in a CLJS container.
+   */
+  private readonly _inner: CLJS<QuestionContents>;
 
   /**
    * Question constructor
    */
-  constructor(
-    card: CardObject,
-    metadata?: Metadata,
-    parameterValues?: ParameterValues,
-  ) {
-    this._card = card;
-    this._metadata =
-      metadata ||
-      new Metadata({
+  constructor(contents: QuestionContents) {
+    this._inner = Q.from_js(contents);
+  }
+
+  clone() {
+    return buildQuestion(this._inner);
+  }
+
+  private inner(): CLJS<QuestionContents> {
+    return this._inner;
+  }
+
+  metadata(): Metadata {
+    const metadata = Q.metadata(this.inner());
+    if (!metadata) {
+      return new Metadata({
         databases: {},
         tables: {},
         fields: {},
@@ -136,50 +152,35 @@ class QuestionInner {
         segments: {},
         questions: {},
       });
-    this._parameterValues = parameterValues || {};
-  }
-
-  clone() {
-    return new Question(this._card, this._metadata, this._parameterValues);
-  }
-
-  metadata(): Metadata {
-    return this._metadata;
+    } else if (metadata instanceof Metadata) {
+      return metadata;
+    } else {
+      return new Metadata(metadata);
+    }
   }
 
   card() {
-    return this._card;
+    return Q.card_js(this.inner());
+  }
+
+  parameterValues() {
+    return Q.parameter_values_js(this.inner()) || {};
   }
 
   setCard(card: CardObject): Question {
-    const q = this.clone();
-    q._card = card;
-    return q;
+    const inner = Q.with_card(this.inner(), card);
+    const nu = buildQuestion(inner);
+    return nu;
   }
 
-  withoutNameAndId() {
-    return this.setCard(
-      chain(this.card())
-        .dissoc("id")
-        .dissoc("name")
-        .dissoc("description")
-        .value(),
-    );
+  withoutNameAndId(): Question {
+    return buildQuestion(Q.without_name_and_id(this.inner()));
   }
 
-  omitTransientCardIds() {
-    let question = this;
-
-    const card = question.card();
-    const { id, original_card_id } = card;
-    if (isTransientId(id)) {
-      question = question.setCard(_.omit(question.card(), "id"));
-    }
-    if (isTransientId(original_card_id)) {
-      question = question.setCard(_.omit(question.card(), "original_card_id"));
-    }
-
-    return question;
+  omitTransientCardIds(): Question {
+    // omit_transient_card_ids returns this, unchanged, if there's nothing for it to do.
+    const question = Q.omit_transient_card_ids(this.inner(), this);
+    return question instanceof Question ? question : buildQuestion(question);
   }
 
   /**
@@ -187,10 +188,10 @@ class QuestionInner {
    * - StructuredQuery for queries written in MBQL
    * - NativeQuery for queries written in data source's native query language
    *
-   * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
+   * This is just a wrapper object, the data is stored in `this._inner.card.dataset_query` in a format specific to the query type.
    */
   query(): AtomicQuery {
-    const datasetQuery = this._card.dataset_query;
+    const datasetQuery = this.datasetQuery();
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
@@ -198,7 +199,7 @@ class QuestionInner {
       }
     }
 
-    console.warn("Unknown query type: " + datasetQuery?.type);
+    console.warn("Unknown query type: " + datasetQuery?.type, datasetQuery);
   }
 
   isNative(): boolean {
@@ -214,21 +215,18 @@ class QuestionInner {
    * The query is saved to the `dataset_query` field of the Card object.
    */
   setQuery(newQuery: Query): Question {
-    if (this._card.dataset_query !== newQuery.datasetQuery()) {
-      return this.setCard(
-        assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
-      );
-    }
-
-    return this;
+    // TODO Check if the query is identical, and just return this.
+    return buildQuestion(
+      Q.with_dataset_query(this.inner(), newQuery.datasetQuery()),
+    );
   }
 
   datasetQuery(): DatasetQuery {
-    return this.card().dataset_query;
+    return Q.dataset_query_js(this.inner());
   }
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
-    return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+    return buildQuestion(Q.with_dataset_query(this.inner(), newDatasetQuery));
   }
 
   /**
@@ -248,19 +246,19 @@ class QuestionInner {
    * The visualization type of the question
    */
   display(): string {
-    return this._card && this._card.display;
+    return Q.display(this.inner());
   }
 
   setDisplay(display) {
-    return this.setCard(assoc(this.card(), "display", display));
+    return buildQuestion(Q.with_display(this.inner(), display));
   }
 
   cacheTTL(): number | null {
-    return this._card?.cache_ttl;
+    return Q.cache_ttl(this.inner());
   }
 
   setCacheTTL(cache) {
-    return this.setCard(assoc(this.card(), "cache_ttl", cache));
+    return buildQuestion(Q.with_cache_ttl(this.inner(), cache));
   }
 
   /**
@@ -268,24 +266,24 @@ class QuestionInner {
    * @returns boolean
    */
   isDataset() {
-    return this._card && this._card.dataset;
+    return !!Q.dataset(this.inner());
   }
 
   isPersisted() {
-    return this._card && this._card.persisted;
+    return !!Q.persisted(this.inner());
   }
 
   setPersisted(isPersisted) {
-    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+    return buildQuestion(Q.with_persisted(this.inner(), isPersisted));
   }
 
   setDataset(dataset) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
+    return buildQuestion(Q.with_dataset(this.inner(), dataset));
   }
 
   setPinned(pinned: boolean) {
-    return this.setCard(
-      assoc(this.card(), "collection_position", pinned ? 1 : null),
+    return buildQuestion(
+      Q.with_collection_position(this.inner(), pinned ? 1 : null),
     );
   }
 
@@ -295,11 +293,11 @@ class QuestionInner {
   }
 
   setDisplayIsLocked(locked: boolean): Question {
-    return this.setCard(assoc(this.card(), "displayIsLocked", locked));
+    return buildQuestion(Q.with_display_is_locked(this.inner(), locked));
   }
 
   displayIsLocked(): boolean {
-    return this._card && this._card.displayIsLocked;
+    return !!Q.display_is_locked(this.inner());
   }
 
   // If we're locked to a display that is no longer "sensible", unlock it
@@ -422,28 +420,27 @@ class QuestionInner {
   }
 
   settings(): VisualizationSettings {
-    return (this._card && this._card.visualization_settings) || {};
+    return Q.settings_js(this.inner()) || {};
   }
 
   setting(settingName, defaultValue = undefined) {
-    const value = this.settings()[settingName];
-    return value === undefined ? defaultValue : value;
+    return Q.setting(this.inner(), settingName, defaultValue);
   }
 
   setSettings(settings: VisualizationSettings) {
-    return this.setCard(assoc(this.card(), "visualization_settings", settings));
+    return buildQuestion(Q.with_settings(this.inner(), settings));
   }
 
   updateSettings(settings: VisualizationSettings) {
-    return this.setSettings({ ...this.settings(), ...settings });
+    return buildQuestion(Q.merge_settings(this.inner(), settings));
   }
 
   type(): string {
-    return this.datasetQuery().type;
+    return Q.dataset_query_type(this.inner());
   }
 
   creationType(): string {
-    return this.card().creationType;
+    return Q.creation_type(this.inner());
   }
 
   isEmpty(): boolean {
@@ -454,7 +451,7 @@ class QuestionInner {
    * How many filters or other widgets are this question's values used for?
    */
   getParameterUsageCount(): number {
-    return this.card().parameter_usage_count || 0;
+    return Q.parameter_usage_count(this.inner()) || 0;
   }
 
   /**
@@ -465,7 +462,7 @@ class QuestionInner {
   }
 
   canWrite(): boolean {
-    return this._card && this._card.can_write;
+    return !!Q.can_write(this.inner());
   }
 
   canWriteActions(): boolean {
@@ -829,33 +826,34 @@ class QuestionInner {
    * A user-defined name for the question
    */
   displayName(): string | null | undefined {
-    return this._card && this._card.name;
+    return Q.display_name(this.inner()) || undefined;
   }
 
   slug(): string | null | undefined {
-    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
+    // TODO Get an identical slug algorithm into CLJS. For now, keeping this logic in TS.
+    const id = Q.card_id(this.inner());
+    const name = Q.display_name(this.inner());
+    return name && `${id}-${slugg(name)}`;
   }
 
   setDisplayName(name: string | null | undefined) {
-    return this.setCard(assoc(this.card(), "name", name));
+    return buildQuestion(Q.with_display_name(this.inner(), name));
   }
 
   collectionId(): number | null | undefined {
-    return this._card && this._card.collection_id;
+    return Q.collection_id(this.inner());
   }
 
   setCollectionId(collectionId: number | null | undefined) {
-    return this.setCard(assoc(this.card(), "collection_id", collectionId));
+    return buildQuestion(Q.with_collection_id(this.inner(), collectionId));
   }
 
-  id(): number {
-    return this._card && this._card.id;
+  id(): number | undefined {
+    return Q.card_id(this.inner()) || undefined;
   }
 
   markDirty(): Question {
-    return this.setCard(
-      dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
-    );
+    return buildQuestion(Q.mark_dirty(this.inner()));
   }
 
   setDashboardProps({
@@ -864,28 +862,25 @@ class QuestionInner {
   }:
     | { dashboardId: number; dashcardId: number }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
-    const card = chain(this.card())
-      .assoc("dashboardId", dashboardId)
-      .assoc("dashcardId", dashcardId)
-      .value();
-
-    return this.setCard(card);
+    return buildQuestion(
+      Q.with_dashboard_props(this.inner(), dashboardId, dashcardId),
+    );
   }
 
   description(): string | null {
-    return this._card && this._card.description;
+    return Q.description(this.inner());
   }
 
   setDescription(description) {
-    return this.setCard(assoc(this.card(), "description", description));
+    return buildQuestion(Q.with_description(this.inner(), description));
   }
 
   lastEditInfo() {
-    return this._card && this._card["last-edit-info"];
+    return Q.last_edit_info(this.inner());
   }
 
   lastQueryStart() {
-    return this._card?.last_query_start;
+    return Q.last_query_start(this.inner());
   }
 
   isSaved(): boolean {
@@ -893,7 +888,7 @@ class QuestionInner {
   }
 
   publicUUID(): string {
-    return this._card && this._card.public_uuid;
+    return Q.public_uuid(this.inner());
   }
 
   database(): Database | null | undefined {
@@ -932,6 +927,11 @@ class QuestionInner {
     includeDisplayIsLocked?: boolean;
     creationType?: string;
   } = {}): string {
+    // clean,
+    // originalQuestion: this,
+    // includeDisplayIsLocked,
+    // query: { objectId },
+
     const question = this.omitTransientCardIds();
 
     if (
@@ -967,9 +967,7 @@ class QuestionInner {
     if (questionId != null && !isTransientId(questionId)) {
       return `/auto/dashboard/question/${questionId}${cellQuery}`;
     } else {
-      const adHocQuery = utf8_to_b64url(
-        JSON.stringify(this.card().dataset_query),
-      );
+      const adHocQuery = utf8_to_b64url(JSON.stringify(this.datasetQuery()));
       return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
     }
   }
@@ -1005,15 +1003,13 @@ class QuestionInner {
   }
 
   setResultsMetadata(resultsMetadata) {
-    const metadataColumns = resultsMetadata && resultsMetadata.columns;
-    return this.setCard({
-      ...this.card(),
-      result_metadata: metadataColumns,
-    });
+    return buildQuestion(
+      Q.with_result_metadata(this.inner(), resultsMetadata?.columns),
+    );
   }
 
   getResultMetadata() {
-    return this.card().result_metadata ?? [];
+    return Q.result_metadata(this.inner()) || [];
   }
 
   dependentMetadata(): DependentMetadataItem[] {
@@ -1044,32 +1040,8 @@ class QuestionInner {
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
-  isEqual(other, { compareResultsMetadata = true } = {}) {
-    if (!other) {
-      return false;
-    }
-    if (this.id() !== other.id()) {
-      return false;
-    }
-
-    const card = this.card();
-    const otherCard = other.card();
-    const areCardsEqual = compareResultsMetadata
-      ? _.isEqual(card, otherCard)
-      : _.isEqual(
-          _.omit(card, "result_metadata"),
-          _.omit(otherCard, "result_metadata"),
-        );
-
-    if (!areCardsEqual) {
-      return false;
-    }
-
-    if (!_.isEqual(this.parameters(), other.parameters())) {
-      return false;
-    }
-
-    return true;
+  isEqual(other, { compareResultsMetadata = true } = {}): boolean {
+    return Q.is_equal(this.inner(), other.inner(), compareResultsMetadata);
   }
 
   /**
@@ -1089,8 +1061,8 @@ class QuestionInner {
     const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
-      const dashboardId = this._card.dashboardId;
-      const dashcardId = this._card.dashcardId;
+      const dashboardId = Q.dashboard_id(this.inner());
+      const dashcardId = Q.dashcard_id(this.inner());
 
       const queryParams = {
         cardId: this.id(),
@@ -1133,7 +1105,7 @@ class QuestionInner {
     }
   }
 
-  setParameter(id: ParameterId, parameter: ParameterObject) {
+  setParameter(id: ParameterId, parameter: ParameterObject): Question {
     const newParameters = this.parameters().map(oldParameter =>
       oldParameter.id === id ? parameter : oldParameter,
     );
@@ -1141,22 +1113,22 @@ class QuestionInner {
     return this.setParameters(newParameters);
   }
 
-  setParameters(parameters) {
-    return this.setCard(assoc(this.card(), "parameters", parameters));
+  setParameters(parameters: ParameterObject[]): Question {
+    return buildQuestion(Q.with_card_parameters(this.inner(), parameters));
   }
 
   setParameterValues(parameterValues) {
-    const question = this.clone();
-    question._parameterValues = parameterValues;
-    return question;
+    return buildQuestion(
+      Q.with_parameter_values(this.inner(), parameterValues),
+    );
   }
 
   // TODO: Fix incorrect Flow signature
-  parameters(): ParameterObject[] {
+  parameters(): ParameterObject[] | undefined {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
-      this._parameterValues,
+      this.parameterValues(),
     );
   }
 
@@ -1182,10 +1154,11 @@ class QuestionInner {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
+    // TODO Port this - it uses card() but it's too tangled up with serialization to tackle right now.
     const [a, b] = [this, originalQuestion].map(q => {
       return (
         q &&
-        new Question(q.card(), this.metadata())
+        buildQuestion({ card: q.card(), metadata: Q.metadata(this.inner) })
           .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
@@ -1204,35 +1177,37 @@ class QuestionInner {
     creationType,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
+    const card = this.card();
     const cardCopy = {
-      name: this._card.name,
-      description: this._card.description,
-      collection_id: this._card.collection_id,
+      name: card.name,
+      description: card.description,
+      collection_id: card.collection_id,
       dataset_query: query.datasetQuery(),
-      display: this._card.display,
-      parameters: this._card.parameters,
-      dataset: this._card.dataset,
-      ...(_.isEmpty(this._parameterValues)
+      display: card.display,
+      parameters:
+        (card.parameters?.length ?? 0) > 0 ? card.parameters : undefined,
+      dataset: card.dataset,
+      ...(_.isEmpty(this.parameterValues())
         ? undefined
         : {
-            parameterValues: this._parameterValues,
+            parameterValues: this.parameterValues(),
           }),
       // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: this._card.visualization_settings,
+      visualization_settings: card.visualization_settings,
       ...(includeOriginalCardId
         ? {
-            original_card_id: this._card.original_card_id,
+            original_card_id: card.original_card_id,
           }
         : {}),
       ...(includeDisplayIsLocked
         ? {
-            displayIsLocked: this._card.displayIsLocked,
+            displayIsLocked: card.displayIsLocked,
           }
         : {}),
 
       ...(creationType ? { creationType } : {}),
-      dashboardId: this._card.dashboardId,
-      dashcardId: this._card.dashcardId,
+      dashboardId: card.dashboardId,
+      dashcardId: card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -1300,8 +1275,14 @@ class QuestionInner {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]) || [];
+    return Q.moderation_reviews_js(this.inner()) || [];
   }
+}
+
+export function buildQuestion(
+  contents: QuestionContents | CLJS<QuestionContents>,
+): Question {
+  return new Question(contents);
 }
 
 export default class Question extends memoizeClass<QuestionInner>("query")(
@@ -1347,6 +1328,6 @@ export default class Question extends memoizeClass<QuestionInner>("query")(
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
 
-    return new Question(card, metadata, parameterValues);
+    return buildQuestion({ card, metadata, parameterValues });
   }
 }

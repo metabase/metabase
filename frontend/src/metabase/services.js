@@ -2,7 +2,7 @@ import _ from "underscore";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -46,7 +46,7 @@ export const StoreApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  const question = new Question(card, metadata);
+  const question = buildQuestion({ card, metadata });
 
   function wrap(api) {
     return (params, ...rest) => {

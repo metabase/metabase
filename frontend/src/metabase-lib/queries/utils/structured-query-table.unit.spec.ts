@@ -6,7 +6,7 @@ import {
   ORDERS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 
@@ -15,8 +15,8 @@ import { getStructuredQueryTable } from "./structured-query-table";
 
 describe("metabase-lib/queries/utils/structured-query-table", () => {
   describe("Card that relies on another card as its source table", () => {
-    const NESTED_CARD_QUESTION = new Question(
-      {
+    const NESTED_CARD_QUESTION = buildQuestion({
+      card: {
         dataset_query: {
           database: SAMPLE_DATABASE?.id,
           query: {
@@ -31,10 +31,10 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         name: "Question based on another question",
       },
       metadata,
-    );
+    });
 
-    const BASE_QUESTION = new Question(
-      {
+    const BASE_QUESTION = buildQuestion({
+      card: {
         ...PRODUCTS.newQuestion().card(),
         id: 1,
         display: "table",
@@ -43,7 +43,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         name: "Base question",
       },
       metadata,
-    );
+    });
 
     const NESTED_CARD_TABLE = new Table({
       id: "card__1",
@@ -156,8 +156,8 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
   });
 
   describe("Card that relies on a source query", () => {
-    const SOURCE_QUERY_QUESTION = new Question(
-      {
+    const SOURCE_QUERY_QUESTION = buildQuestion({
+      card: {
         dataset_query: {
           database: SAMPLE_DATABASE?.id,
           query: { "source-query": { "source-table": PRODUCTS.id } },
@@ -170,7 +170,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         name: "Question using a nested query",
       },
       metadata,
-    );
+    });
 
     metadata.questions = {
       [SOURCE_QUERY_QUESTION.id()]: SOURCE_QUERY_QUESTION,

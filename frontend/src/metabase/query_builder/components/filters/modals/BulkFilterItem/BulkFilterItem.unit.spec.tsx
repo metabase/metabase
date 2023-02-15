@@ -8,7 +8,7 @@ import { renderWithProviders } from "__support__/ui";
 
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 import { BulkFilterItem } from "./BulkFilterItem";
 
@@ -150,7 +150,7 @@ const card = {
   visualization_settings: {},
 };
 
-const question = new Question(card, metadata);
+const question = buildQuestion({ card, metadata });
 const query = question.query();
 const booleanDimension = booleanField.dimension();
 const floatDimension = floatField.dimension();

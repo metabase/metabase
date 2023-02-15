@@ -9,7 +9,7 @@ import {
 } from "metabase-lib/parameters/utils/filters";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 
@@ -107,7 +107,7 @@ function getTargetsForAction(action) {
 }
 
 function getTargetsForQuestion(question, metadata) {
-  const query = new Question(question, metadata).query();
+  const query = buildQuestion({ card: question, metadata }).query();
   return query
     .dimensionOptions()
     .all()

@@ -1,7 +1,7 @@
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 
 import {
@@ -263,8 +263,8 @@ describe("data model utils", () => {
 });
 
 function getNativeQuestion({ tags = {}, isModel } = {}) {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       id: 1,
       dataset: isModel,
       display: "table",
@@ -281,7 +281,7 @@ function getNativeQuestion({ tags = {}, isModel } = {}) {
       visualization_settings: {},
     },
     metadata,
-  );
+  });
 }
 
 function getStructuredQuestion({
@@ -289,8 +289,8 @@ function getStructuredQuestion({
   sourceTable = 1,
   isModel = false,
 } = {}) {
-  return new Question(
-    {
+  return buildQuestion({
+    card: {
       id,
       dataset: isModel,
       display: "table",
@@ -306,7 +306,7 @@ function getStructuredQuestion({
       visualization_settings: {},
     },
     metadata,
-  );
+  });
 }
 
 function getTemplateTag(tag = {}) {

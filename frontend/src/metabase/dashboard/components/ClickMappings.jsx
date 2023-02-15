@@ -16,7 +16,7 @@ import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 
 class ClickMappingsInner extends React.Component {
   render() {
@@ -288,7 +288,9 @@ function loadQuestionMetadata(getQuestion) {
       fetch() {
         const { question, metadata, loadMetadataForQuery } = this.props;
         if (question) {
-          loadMetadataForQuery(new Question(question, metadata).query());
+          loadMetadataForQuery(
+            buildQuestion({ card: question, metadata }).query(),
+          );
         }
       }
 

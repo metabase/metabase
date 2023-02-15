@@ -353,7 +353,7 @@ for (let i = 0; i < list.length; i++) {
 const foo = list.filter(entry => entry.bar !== false);
 ```
 
-When dealing with business logic you don't want to be concerned with the specifics of the language. Instead of writing `const query = new Question(card).query();` which entails instantiating a new `Question` instance and calling a `query` method on said instance, you should introduce a function like `getQueryFromCard(card)` so that implementers can avoid thinking about what goes into getting a `query` value from a card.
+When dealing with business logic you don't want to be concerned with the specifics of the language. Instead of writing `const query = buildQuestion({ card }).query();` which entails instantiating a new `Question` instance and calling a `query` method on said instance, you should introduce a function like `getQueryFromCard(card)` so that implementers can avoid thinking about what goes into getting a `query` value from a card.
 
 ## Component Styling Tree Rings
 

@@ -56,7 +56,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import { buildQuestion } from "metabase-lib/Question";
 import * as QueryDetailCards from "../lib/cards/query_detail";
 import OpenInMetabase from "../components/OpenInMetabase";
 import AuditCustomView from "../containers/AuditCustomView";
@@ -81,7 +81,7 @@ class QueryBuilderReadOnlyInner extends React.Component {
 
   render() {
     const { card, metadata, height } = this.props;
-    const question = new Question(card, metadata);
+    const question = buildQuestion({ card, metadata });
 
     const query = question.query();
 
