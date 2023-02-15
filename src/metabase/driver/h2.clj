@@ -129,16 +129,15 @@
     (when-let [command (try (.prepareCommand h2-parser query)
                             ;; if the query is invalid, errors will get caught later
                             (catch Throwable _ nil))]
-      (let [command-type (.getCommandType command)]
-        (cond
-          ;; if the command is a CommandList, then it is a multi-statement query
-          (= (type command) org.h2.command.CommandList)
+      (cond
+        ;; if the command is a CommandList, then it is a multi-statement query
+        (= (type command) org.h2.command.CommandList)
           ;; TODO: support multiple statements while checking all the command types
-          (throw (IllegalArgumentException. "Only a single statement is allowed."))
+        (throw (IllegalArgumentException. "Only a single statement is allowed."))
           ;; Command types are organized with all DDL commands listed first
           ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-          (< command-type CommandInterface/ALTER_SEQUENCE)
-          (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2.")))))))
+        (< (.getCommandType command) CommandInterface/ALTER_SEQUENCE)
+        (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))))
 
 (defn- check-single-select-statement
   [{:keys [database] {:keys [query]} :native}]
