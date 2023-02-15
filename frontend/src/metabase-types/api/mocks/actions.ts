@@ -49,10 +49,10 @@ export const createMockQueryAction = ({
 export const createMockImplicitQueryAction = ({
   creator = createMockUserInfo(),
   ...opts
-}: Partial<WritebackImplicitQueryAction>): WritebackImplicitQueryAction => ({
+}: Partial<WritebackImplicitQueryAction> = {}): WritebackImplicitQueryAction => ({
   id: 1,
   kind: "row/create",
-  name: "",
+  name: "Implicit Query Action",
   description: "",
   model_id: 1,
   parameters: [],
