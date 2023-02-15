@@ -56,7 +56,6 @@ export const EditorLink = styled(Button)`
 
 EditorLink.defaultProps = {
   as: Link,
-  icon: "pencil",
   onlyIcon: true,
 };
 

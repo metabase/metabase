@@ -36,7 +36,7 @@ function ImplicitActionCardContent() {
 }
 
 function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
-  const canEdit = action.type !== "implicit" && canWrite;
+  const hasEditorLink = action.type !== "implicit";
 
   const renderCardContent = () =>
     action.type === "query" ? (
@@ -63,7 +63,9 @@ function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
       )}
       <Card>
         {renderCardContent()}
-        {canEdit && <EditorLink to={editorUrl} />}
+        {hasEditorLink && (
+          <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
+        )}
       </Card>
     </>
   );

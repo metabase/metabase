@@ -4,17 +4,19 @@ import {
   popover,
   restore,
 } from "__support__/e2e/helpers";
-import { SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const PG_DB_ID = 2;
+const PG_ORDERS_TABLE_ID = 9;
 
 const SAMPLE_ORDERS_MODEL = {
   name: "Order",
   dataset: true,
   display: "table",
+  database: PG_DB_ID,
   query: {
-    "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+    "source-table": PG_ORDERS_TABLE_ID,
   },
 };
 
@@ -66,7 +68,6 @@ describe("scenarios > models > actions", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    enableActionsForDB();
     enableActionsForDB(PG_DB_ID);
 
     cy.createQuestion(SAMPLE_ORDERS_MODEL, {
@@ -188,16 +189,54 @@ describe("scenarios > models > actions", () => {
       cy.findByText("An error occurred.").should("be.visible");
     });
   });
+
+  it("should respect permissions", () => {
+    cy.get("@modelId").then(modelId => {
+      cy.request("POST", "/api/action", {
+        ...SAMPLE_QUERY_ACTION,
+        model_id: modelId,
+      });
+      cy.signIn("readonly");
+      cy.visit(`/model/${modelId}/detail/actions`);
+      cy.wait("@getModel");
+    });
+
+    openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+      cy.button("Save").should("not.exist");
+      cy.button("Update").should("not.exist");
+
+      assertQueryEditorDisabled();
+
+      cy.findByRole("form").within(() => {
+        cy.icon("gear").should("not.exist");
+      });
+
+      cy.findByLabelText("Action settings").click();
+      cy.findByLabelText("Success message").should("be.disabled");
+    });
+  });
 });
 
-function openActionEditorFor(actionName) {
+function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
-    cy.icon("pencil").click();
+    const icon = isReadOnly ? "eye" : "pencil";
+    cy.icon(icon).click();
   });
 }
 
 function fillQuery(query) {
   cy.get(".ace_content").type(query, { parseSpecialCharSequences: false });
+}
+
+function assertQueryEditorDisabled() {
+  // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
+  // Instead we'd assert that a user can't type in the editor
+  fillQuery("QWERTY");
+  cy.findByText("QWERTY").should("not.exist");
 }
 
 function fieldSettings() {

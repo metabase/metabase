@@ -3,17 +3,22 @@ import nock from "nock";
 import userEvent, { specialChars } from "@testing-library/user-event";
 
 import {
-  getIcon,
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  getIcon,
+  queryIcon,
 } from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import {
   createMockActionParameter,
+  createMockCard,
   createMockQueryAction,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -44,12 +49,14 @@ function getTableObject(table: Table) {
 
 type SetupOpts = {
   action?: WritebackQueryAction;
+  canEdit?: boolean;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
 };
 
 async function setup({
   action,
+  canEdit = true,
   isAdmin,
   isPublicSharingEnabled,
 }: SetupOpts = {}) {
@@ -58,6 +65,14 @@ async function setup({
   setupDatabasesEndpoints(scope, [getDatabaseObject(SAMPLE_DATABASE)]);
 
   if (action) {
+    setupCardsEndpoints(scope, [
+      createMockCard({
+        id: action.model_id,
+        dataset: true,
+        can_write: canEdit,
+      }),
+    ]);
+
     scope.get(`/api/action/${action.id}`).reply(200, action);
     scope.delete(`/api/action/${action.id}/public_link`).reply(204);
     scope
@@ -147,7 +162,7 @@ describe("ActionCreator", () => {
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Update" }),
+        await screen.findByRole("button", { name: "Update" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Create" }),
@@ -164,6 +179,24 @@ describe("ActionCreator", () => {
       await setupEditing({ action });
 
       expect(screen.getByText("FooBar")).toBeInTheDocument();
+    });
+
+    it("blocks editing if a user doesn't have editing permissions", async () => {
+      const action = createMockQueryAction({
+        parameters: [createMockActionParameter({ name: "FooBar" })],
+      });
+      await setupEditing({ action, isAdmin: false, canEdit: false });
+
+      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update" }),
+      ).not.toBeInTheDocument();
+
+      screen.getByLabelText("Action settings").click();
+
+      expect(screen.getByLabelText("Success message")).toBeDisabled();
     });
 
     describe("admin users and has public sharing enabled", () => {
@@ -248,17 +281,15 @@ describe("ActionCreator", () => {
         userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
-        expect(
-          screen.getByRole("textbox", { name: "Success message" }),
-        ).toHaveValue("Thanks for your submission.");
 
-        userEvent.type(
-          screen.getByRole("textbox", { name: "Success message" }),
-          `${specialChars.selectAll}Thanks!`,
-        );
-        expect(
-          screen.getByRole("textbox", { name: "Success message" }),
-        ).toHaveValue("Thanks!");
+        const messageBox = screen.getByRole("textbox", {
+          name: "Success message",
+        });
+        expect(messageBox).toHaveValue("Thanks for your submission.");
+
+        await waitFor(() => expect(messageBox).toBeEnabled());
+        userEvent.type(messageBox, `${specialChars.selectAll}Thanks!`);
+        expect(messageBox).toHaveValue("Thanks!");
       });
     });
 

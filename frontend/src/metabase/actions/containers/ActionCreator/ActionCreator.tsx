@@ -10,10 +10,12 @@ import Actions, {
   UpdateQueryActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   ActionFormSettings,
+  Card,
   DatabaseId,
   WritebackActionId,
   WritebackQueryAction,
@@ -47,6 +49,10 @@ interface ActionLoaderProps {
   action?: WritebackQueryAction;
 }
 
+interface ModelLoaderProps {
+  model?: Card;
+}
+
 interface StateProps {
   metadata: Metadata;
 }
@@ -58,7 +64,11 @@ interface DispatchProps {
 
 export type ActionCreatorProps = OwnProps;
 
-type Props = OwnProps & ActionLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps &
+  ActionLoaderProps &
+  ModelLoaderProps &
+  StateProps &
+  DispatchProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -83,6 +93,7 @@ function resolveQuestion(
 
 function ActionCreator({
   action,
+  model,
   modelId,
   databaseId,
   metadata,
@@ -102,6 +113,7 @@ function ActionCreator({
 
   const query = question.query() as NativeQuery;
   const isNew = !action && !question.isSaved();
+  const isEditable = isNew || Boolean(model?.can_write);
 
   useEffect(() => {
     setQuestion(resolveQuestion(action, { metadata, databaseId }));
@@ -161,6 +173,7 @@ function ActionCreator({
     <>
       <ActionCreatorView
         isNew={isNew}
+        isEditable={isEditable}
         canSave={query.isEmpty()}
         action={action}
         question={question}
@@ -191,10 +204,22 @@ function ActionCreator({
   );
 }
 
+function maybeGetModelId(
+  state: State,
+  { action }: OwnProps & ActionLoaderProps,
+) {
+  return action?.model_id;
+}
+
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
     loadingAndErrorWrapper: false,
+  }),
+  Questions.load({
+    id: maybeGetModelId,
+    loadingAndErrorWrapper: false,
+    entityAlias: "model",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

@@ -14,7 +14,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
     );
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
@@ -29,7 +29,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
     );
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
@@ -54,7 +54,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
     );
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
@@ -78,7 +78,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
     );
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),

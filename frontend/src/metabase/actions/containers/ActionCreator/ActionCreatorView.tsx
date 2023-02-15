@@ -30,6 +30,7 @@ import InlineActionSettings, {
 interface ActionCreatorProps {
   isNew: boolean;
   canSave: boolean;
+  isEditable: boolean;
 
   action?: WritebackAction;
   question: Question;
@@ -48,6 +49,7 @@ const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 export default function ActionCreatorView({
   isNew,
   canSave,
+  isEditable,
   action,
   question,
   formSettings,
@@ -92,6 +94,7 @@ export default function ActionCreatorView({
           <ActionCreatorHeader
             type="query"
             name={question.displayName() ?? t`New Action`}
+            isEditable={isEditable}
             onChangeName={onChangeName}
             actionButtons={[
               <DataReferenceTriggerButton
@@ -107,6 +110,7 @@ export default function ActionCreatorView({
           <EditorContainer>
             <QueryActionEditor
               query={question.query() as NativeQuery}
+              isEditable={isEditable}
               onChangeQuestionQuery={onChangeQuestionQuery}
             />
           </EditorContainer>
@@ -114,15 +118,18 @@ export default function ActionCreatorView({
             <Button onClick={onCloseModal} borderless>
               {t`Cancel`}
             </Button>
-            <Button primary disabled={canSave} onClick={onClickSave}>
-              {isNew ? t`Save` : t`Update`}
-            </Button>
+            {isEditable && (
+              <Button primary disabled={canSave} onClick={onClickSave}>
+                {isNew ? t`Save` : t`Update`}
+              </Button>
+            )}
           </ModalActions>
         </ModalLeft>
         {activeSideView === "actionForm" ? (
           <FormCreator
             params={question.parameters() ?? []}
             formSettings={formSettings}
+            isEditable={isEditable}
             onChange={onChangeFormSettings}
             onExampleClick={onClickExample}
           />
@@ -132,6 +139,7 @@ export default function ActionCreatorView({
           <InlineActionSettings
             action={action}
             formSettings={formSettings}
+            isEditable={isEditable}
             onChangeFormSettings={onChangeFormSettings}
             onClose={closeSideView}
           />
