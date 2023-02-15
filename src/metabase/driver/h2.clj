@@ -123,24 +123,6 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- check-disallow-ddl-commands
-  "DDL commands aren't allowed on H2 for security reasons.
-   This throws an error with a suitable error message if a DDL command is used in a query.
-   DDL commands aren't possible with H2 regardless because the user needs to be non-admin, but
-   this check results in a better error message than 'Admin rights are required to execute
-   this command'. The parser only checks the first statement, so if there are multiple statements
-   and the first one is not DDL and a following one is, it will not be caught by this check."
-  [{:keys [database] {:keys [query]} :native}]
-  (when-let [h2-parser (make-h2-parser database)]
-    (when-let [command (try (.prepareCommand h2-parser query)
-                            ;; if the query is invalid, errors will get caught later
-                            (catch Throwable _ nil))]
-      ;; This will only check the command type of the first statement.
-      ;; Command types are organized with all DDL commands listed first
-      ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-      (when (< (.getCommandType command) CommandInterface/ALTER_SEQUENCE)
-        (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))))
-
 (defn- check-single-select-statement
   [{:keys [database] {:keys [query]} :native}]
   (when-let [h2-parser (make-h2-parser database)]
@@ -150,8 +132,11 @@
       (when (or ;; If the command returned by .prepareCommand is a CommandList, then it is a multi-statement query.
                 ;; We can't allow multiple statements because we can only check the command type for the first statement.
                 (= (type command) org.h2.command.CommandList)
+                ;; This checks the command type of the first statement.
                 ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-                (not (= (.getCommandType command) CommandInterface/SELECT)))
+                (not (contains? #{CommandInterface/SELECT
+                                  CommandInterface/EXPLAIN
+                                  CommandInterface/CALL} (.getCommandType command))))
         (throw (IllegalArgumentException. "Only a single SELECT statement is allowed."))))))
 
 (defmethod driver/execute-reducible-query :h2
@@ -165,7 +150,6 @@
 (defmethod driver/execute-write-query! :h2
   [driver query]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
