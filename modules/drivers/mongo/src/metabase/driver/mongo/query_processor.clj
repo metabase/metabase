@@ -833,13 +833,13 @@
 
 (defn- find-source-table-id [join-or-query]
   (or (some-> join-or-query :source-table)
-      (some-> join-or-query :source-query find-source-table-id)))
+      (some-> join-or-query :source-query recur)))
 
 (defn- find-source-collection [join]
   (or (-> join :source-query :collection)
       (-> join find-source-table-id qp.store/table :name)))
 
-(declare ^:private add-aggregation-pipeline)
+(declare ^:private mbql->native-rec)
 
 (defn- handle-join [{:keys [join-aliases] :as pipeline-ctx}
                     {:keys [alias condition source-query strategy] :as join}]
@@ -847,31 +847,30 @@
         {:keys [projections] pipeline :query join-aliases' :join-aliases
          :or {projections [] pipeline []}}
         (when source-query
-          (binding [*field-mappings* (apply dissoc *field-mappings* result-fields)
-                    *query* (assoc (select-keys *query* [:database :type])
-                                   :query source-query)]
-            ;; TODO should see the existing join-aliases?
-            (add-aggregation-pipeline source-query)))
+          (if-let [native (:native source-query)]
+            {:projections (:projections source-query)
+             :query (:query native)}
+            (binding [*field-mappings* (apply dissoc *field-mappings* result-fields)
+                      *query* (assoc (select-keys *query* [:database :type])
+                                     :query source-query)]
+              (mbql->native-rec source-query))))
         field-mappings (when source-query
                          (zipmap result-fields
                                  projections))
         own-fields (->> (mbql.u/match condition
                           [:field _ (_ :guard #(not= (:join-alias %) alias))])
-                        ;; WARN: assuming no clashes with fields from nested queries
                         (remove *field-mappings*))
         mapping (map (fn [f] (let [n (str/replace (->lvalue f) "~" "")]
-                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
+                               {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
                      own-fields)
         let-map (into {} (map (juxt :alias :rvalue)) mapping)
         context-map (into {} (map (juxt :field #(str \$ (:alias %)))) mapping)
-        ;; TODO this could theoretically clash with DB field names
         lookup-as (name (gensym (str "join_alias_" alias "_")))]
     (binding [*field-mappings* (merge *field-mappings* field-mappings context-map)
               *join-aliases* (merge join-aliases join-aliases')]
       (let [pipeline (cond-> pipeline
                        condition (conj {$match (compile-filter condition)}))
             stages [{$lookup {:from (find-source-collection join)
-                              ;; TODO optimisation: omit if let-map is empty
                               :let let-map
                               :pipeline pipeline
                               :as lookup-as}}
