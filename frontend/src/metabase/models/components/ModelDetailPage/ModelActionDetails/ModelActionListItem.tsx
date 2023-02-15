@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
 
+import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
+
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import { isNotNull } from "metabase/core/utils/types";
-import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionTitle,
   ActionSubtitle,
@@ -29,7 +30,7 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 function ImplicitActionCardContent() {
   return (
     <ImplicitActionCardContentRoot>
-      <StackedInsightIcon />
+      <ImplicitActionIcon size={32} />
       <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
     </ImplicitActionCardContentRoot>
   );
