@@ -85,14 +85,6 @@ async function setup({
   );
 }
 
-async function setupEditing({
-  action = createMockQueryAction(),
-  ...opts
-}: SetupOpts = {}) {
-  await setup({ action, ...opts });
-  return { action };
-}
-
 const SITE_URL = "http://localhost:3000";
 
 describe("ActionCreator", () => {
@@ -141,7 +133,8 @@ describe("ActionCreator", () => {
 
   describe("editing action", () => {
     it("renders correctly", async () => {
-      const { action } = await setupEditing();
+      const action = createMockQueryAction();
+      await setup({ action });
 
       expect(screen.getByText(action.name)).toBeInTheDocument();
       expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
@@ -160,10 +153,11 @@ describe("ActionCreator", () => {
     });
 
     it("renders parameters", async () => {
-      const action = createMockQueryAction({
-        parameters: [createMockActionParameter({ name: "FooBar" })],
+      await setup({
+        action: createMockQueryAction({
+          parameters: [createMockActionParameter({ name: "FooBar" })],
+        }),
       });
-      await setupEditing({ action });
 
       expect(screen.getByText("FooBar")).toBeInTheDocument();
     });
@@ -172,7 +166,7 @@ describe("ActionCreator", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      await setupEditing({ action, canWrite: false });
+      await setup({ action, canWrite: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();
@@ -190,7 +184,7 @@ describe("ActionCreator", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      await setupEditing({ action, hasActionsEnabled: false });
+      await setup({ action, hasActionsEnabled: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();
@@ -206,9 +200,11 @@ describe("ActionCreator", () => {
 
     describe("admin users and has public sharing enabled", () => {
       const mockUuid = "mock-uuid";
+      const action = createMockQueryAction();
 
       it("should show action settings button", async () => {
-        await setupEditing({
+        await setup({
+          action,
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
@@ -219,7 +215,8 @@ describe("ActionCreator", () => {
       });
 
       it("should be able to enable action public sharing", async () => {
-        await setupEditing({
+        await setup({
+          action,
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
@@ -248,7 +245,7 @@ describe("ActionCreator", () => {
       });
 
       it("should be able to disable action public sharing", async () => {
-        await setupEditing({
+        await setup({
           action: createMockQueryAction({ public_uuid: mockUuid }),
           isAdmin: true,
           isPublicSharingEnabled: true,
@@ -281,7 +278,7 @@ describe("ActionCreator", () => {
       });
 
       it("should be able to set success message", async () => {
-        await setupEditing();
+        await setup({ action });
 
         userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
@@ -298,8 +295,11 @@ describe("ActionCreator", () => {
     });
 
     describe("no permission to see public sharing", () => {
+      const action = createMockQueryAction();
+
       it("should not show sharing settings when user is admin but public sharing is disabled", async () => {
-        await setupEditing({
+        await setup({
+          action,
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
@@ -315,7 +315,8 @@ describe("ActionCreator", () => {
       });
 
       it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
-        await setupEditing({
+        await setup({
+          action,
           isPublicSharingEnabled: true,
         });
 
