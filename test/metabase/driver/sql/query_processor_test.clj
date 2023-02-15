@@ -265,25 +265,26 @@
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
     (are [driver expected] (= [expected]
                               (compile-join driver))
-      :sql      "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
+      :sql      "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
       :h2       "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
       :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\"")))
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2
-    (with-redefs [driver/db-start-of-week   (constantly :monday)
-                  setting/get-value-of-type (constantly :sunday)]
-      (is (= (hx/call :dateadd
-               (hx/literal "day")
-               (hx/with-database-type-info (hx/call :cast -1 #sql/raw "long") "long")
-               (hx/with-database-type-info
-                 (hx/call :cast
-                   (hx/call :week (hx/call :dateadd (hx/literal "day")
-                                     (hx/with-database-type-info (hx/call :cast 1 #sql/raw "long") "long")
-                                     (hx/with-database-type-info (hx/call :cast :created_at #sql/raw "datetime") "datetime")))
-                   #sql/raw "datetime")
-                 "datetime"))
-             (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at))))
+    (binding [hx/*honey-sql-version* 2]
+      (with-redefs [driver/db-start-of-week   (constantly :monday)
+                    setting/get-value-of-type (constantly :sunday)]
+        (is (= [:dateadd
+                (hx/literal "day")
+                (hx/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
+                (hx/with-database-type-info
+                  [:cast
+                   [:week [:dateadd (hx/literal "day")
+                           (hx/with-database-type-info [:cast [:inline 1] [:raw "long"]] "long")
+                           (hx/with-database-type-info [:cast :created_at [:raw "datetime"]] "datetime")]]
+                   [:raw "datetime"]]
+                  "datetime")]
+               (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at)))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
                     setting/get-value-of-type (constantly :monday)]
@@ -453,13 +454,13 @@
                                        PEOPLE AS PEOPLE__via__USER_ID
                                        ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]}
                           AS source]
-               :where    [((source.PEOPLE__via__USER_ID__SOURCE = ? OR source.PEOPLE__via__USER_ID__SOURCE = ?)
+               :where    [((source.PEOPLE__via__USER_ID__SOURCE = ?) OR (source.PEOPLE__via__USER_ID__SOURCE = ?))
                            AND
-                           (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
+                           ((source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?) OR (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?))
                            AND
-                           source.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime)))
+                           (source.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))))
                            AND
-                           source.CREATED_AT < DATE_TRUNC ("year" NOW ()))]
+                           (source.CREATED_AT < DATE_TRUNC ("year" NOW ()))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE
                           DATE_TRUNC ("year" source.CREATED_AT)
@@ -828,7 +829,7 @@
                                   (VENUES.PRICE AS float)
                                   /
                                   CASE WHEN (VENUES.PRICE + 2) = 0 THEN NULL
-                                  ELSE (VENUES.PRICE + 2)
+                                  ELSE VENUES.PRICE + 2
                                   END AS my_cool_new_field]
                          :from   [VENUES]}
                         AS source]

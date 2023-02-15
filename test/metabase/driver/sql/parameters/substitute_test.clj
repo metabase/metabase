@@ -6,7 +6,6 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Field]]
    [metabase.query-processor :as qp]
@@ -14,18 +13,12 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
-                      (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
-                        (thunk))))
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
