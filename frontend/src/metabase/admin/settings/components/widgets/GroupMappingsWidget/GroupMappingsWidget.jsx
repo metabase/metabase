@@ -31,13 +31,16 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
   useEffect(() => {
     async function fetchData() {
-      const setting = _.findWhere(await SettingsApi.list(), {
+      const [settings, groupsIncludingDefaultGroup] = await Promise.all([
+        SettingsApi.list(),
+        PermissionsApi.groups(),
+      ]);
+
+      const setting = _.findWhere(settings, {
         key: mappingSetting,
       });
 
       setMappings(setting?.value || {});
-
-      const groupsIncludingDefaultGroup = await PermissionsApi.groups();
       setGroups(groupsIncludingDefaultGroup.filter(groupIsMappable));
     }
 
