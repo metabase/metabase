@@ -438,10 +438,11 @@ describe("ModelDetailPage", () => {
 
         it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
 
           await setup({
             model: model,
-            actions: [createMockQueryAction({ model_id: model.id() })],
+            actions: [action],
             hasActionsEnabled: false,
           });
 
@@ -466,10 +467,11 @@ describe("ModelDetailPage", () => {
 
         it("does not redirect to another tab if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
 
           await setup({
             model,
-            actions: [createMockQueryAction({ model_id: model.id() })],
+            actions: [action],
             hasActionsEnabled: false,
             tab: "actions",
           });
@@ -487,6 +489,27 @@ describe("ModelDetailPage", () => {
           ).not.toBeInTheDocument();
           expect(
             screen.getByText(/No actions have been created yet/i),
+          ).toBeInTheDocument();
+        });
+
+        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+
+          await setup({
+            model,
+            actions: [action],
+            tab: "actions",
+            hasActionsEnabled: false,
+          });
+
+          expect(
+            screen.getByRole("list", { name: /Action list/i }),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(
+              `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
+            ),
           ).toBeInTheDocument();
         });
 
