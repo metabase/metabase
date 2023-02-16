@@ -2440,14 +2440,19 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (doseq [action-type [:http :implicit :query]]
-        (mt/with-actions [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
+        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
               (is (partial= {:visualization_settings {:label "Update"}
-                             :action_id action-id
-                             :card_id model-id}
+                             :action_id              action-id
+                             :card_id                nil}
                             (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                  {:size_x 1 :size_y 1 :row 1 :col 1 :cardId model-id :action_id action-id
+                                                  {:size_x                 1
+                                                   :size_y                 1
+                                                   :row                    1
+                                                   :col                    1
+                                                   :cardId                 nil
+                                                   :action_id              action-id
                                                    :visualization_settings {:label "Update"}})))
               (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
                                                        :type (name action-type)
