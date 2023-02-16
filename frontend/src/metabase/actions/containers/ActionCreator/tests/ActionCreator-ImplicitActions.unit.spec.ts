@@ -45,15 +45,24 @@ describe("ActionCreator > Implicit Actions", () => {
     expect(screen.getByText("FooBar")).toBeInTheDocument();
   });
 
-  test.each([
-    ["write permissions", true],
-    ["read-only permissions", false],
-  ])("doesn't let to change the action with %s", async (_, canEdit) => {
+  it("allows only form settings changes", async () => {
     const { action } = await setup({
       action: createMockImplicitQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       }),
-      canEdit,
+    });
+
+    expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+    expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
+    expect(queryIcon("grabber2")).not.toBeInTheDocument();
+  });
+
+  it("blocks editing if the user doesn't have write permissions for the collection", async () => {
+    const { action } = await setup({
+      action: createMockImplicitQueryAction({
+        parameters: [createMockActionParameter({ name: "FooBar" })],
+      }),
+      canWrite: false,
     });
 
     expect(screen.getByDisplayValue(action.name)).toBeDisabled();

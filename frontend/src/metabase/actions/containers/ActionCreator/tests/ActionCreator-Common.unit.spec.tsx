@@ -1,7 +1,7 @@
 import nock from "nock";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen } from "__support__/ui";
 
 import {
   createMockImplicitQueryAction,
@@ -29,7 +29,7 @@ describe("ActionCreator > Common", () => {
   ])(`%s actions`, (_, getAction) => {
     describe("with write permissions", () => {
       it("should show action settings button", async () => {
-        await setup({ action: getAction(), canEdit: true });
+        await setup({ action: getAction(), canWrite: true });
         const button = screen.getByRole("button", { name: "Action settings" });
         expect(button).toBeInTheDocument();
       });
@@ -41,26 +41,25 @@ describe("ActionCreator > Common", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
 
-        const messageBox = screen.getByRole("textbox", {
-          name: "Success message",
-        });
-        expect(messageBox).toHaveValue("Thanks for your submission.");
-
-        await waitFor(() => expect(messageBox).toBeEnabled());
-        userEvent.type(messageBox, `${specialChars.selectAll}Thanks!`);
-        expect(messageBox).toHaveValue("Thanks!");
+        userEvent.type(
+          screen.getByRole("textbox", { name: "Success message" }),
+          `Thanks!`,
+        );
+        expect(
+          screen.getByRole("textbox", { name: "Success message" }),
+        ).toHaveValue("Thanks!");
       });
     });
 
     describe("with read-only permissions", () => {
       it("should show action settings button", async () => {
-        await setup({ action: getAction(), canEdit: false });
+        await setup({ action: getAction(), canWrite: false });
         const button = screen.getByRole("button", { name: "Action settings" });
         expect(button).toBeInTheDocument();
       });
 
       it("should not allow editing success message", async () => {
-        await setup({ canEdit: false });
+        await setup({ canWrite: false });
 
         userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
