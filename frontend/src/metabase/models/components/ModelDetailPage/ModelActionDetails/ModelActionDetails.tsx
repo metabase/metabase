@@ -57,7 +57,7 @@ function ModelActionDetails({
 }: Props) {
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const canWrite = model.canWrite() && hasActionsEnabled;
+  const canWrite = model.canWriteActions();
   const hasImplicitActions = actions.some(action => action.type === "implicit");
 
   const actionsSorted = useMemo(
