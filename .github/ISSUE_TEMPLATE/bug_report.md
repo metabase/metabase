@@ -7,8 +7,8 @@ assignees: ''
 
 ---
 **Read this before creating a bug report**
-- in case any of the sections is incomplete, we might close the bug report as we won't be able to reproduce it
-- have you checked if the bug has already been reported? as we close duplicate reports, please search on the issue tracker if the problem has been reported before
+- if any of the sections are incomplete, we might close the bug report since we won't be able to reproduce it
+- have you checked if the bug has already been reported? As we close duplicate reports, please search on the issue tracker if the problem has been reported before
 - use as many screenshots or videos as possible to describe what you're seeing, all visual representations speak for themselves
 
 **Describe the bug**
