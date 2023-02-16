@@ -9,6 +9,16 @@ export const ActionTitle = styled.h4`
   color: ${color("text-dark")};
 `;
 
+export const ActionRoot = styled(Link)`
+  cursor: ${props => (props.to ? "pointer" : "default")};
+
+  &:hover {
+    ${ActionTitle} {
+      color: ${props => props.to && color("brand")};
+    }
+  }
+`;
+
 export const ActionSubtitle = styled.span`
   display: block;
   font-size: 0.75rem;
@@ -26,7 +36,7 @@ export const ActionSubtitlePart = styled.span`
   }
 `;
 
-export const Card = styled.div`
+export const ActionCard = styled.div`
   display: block;
   position: relative;
 
@@ -38,14 +48,14 @@ export const Card = styled.div`
   background-color: ${color("text-dark")};
 `;
 
-export const CodeBlock = styled.pre`
+export const ActionCodeBlock = styled.pre`
   font-family: Monaco, monospace;
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;
 `;
 
-export const EditorLink = styled(Button)`
+export const ActionRunButton = styled(Button)`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -53,11 +63,6 @@ export const EditorLink = styled(Button)`
   background-color: ${color("bg-white")};
   color: ${color("text-dark")};
 `;
-
-EditorLink.defaultProps = {
-  as: Link,
-  onlyIcon: true,
-};
 
 export const ImplicitActionCardContentRoot = styled.div`
   display: flex;

@@ -1,29 +1,27 @@
-import React from "react";
+import React, { useCallback, MouseEvent } from "react";
 import { t } from "ttag";
-
+import Link from "metabase/core/components/Link";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
-
-import { isNotNull } from "metabase/core/utils/types";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {
-  ActionTitle,
+  ActionCard,
+  ActionCodeBlock,
+  ActionRoot,
+  ActionRunButton,
   ActionSubtitle,
-  Card,
-  CodeBlock,
-  EditorLink,
+  ActionSubtitlePart,
+  ActionTitle,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
-  ActionSubtitlePart,
 } from "./ModelActionListItem.styled";
 
 interface Props {
   action: WritebackAction;
-  editorUrl: string;
-  canWrite: boolean;
+  actionUrl: string;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
-  return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
+  return <ActionCodeBlock>{action.dataset_query.native.query}</ActionCodeBlock>;
 }
 
 function ImplicitActionCardContent() {
@@ -35,39 +33,41 @@ function ImplicitActionCardContent() {
   );
 }
 
-function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
-  const hasEditorLink = action.type !== "implicit";
+function ModelActionListItem({ action, actionUrl }: Props) {
+  const isQueryAction = action.type === "query";
 
-  const renderCardContent = () =>
-    action.type === "query" ? (
-      <QueryActionCardContent action={action} />
-    ) : action.type === "implicit" ? (
-      <ImplicitActionCardContent />
-    ) : null;
-
-  const subtitleParts = [
-    action.public_uuid && t`Public Action`,
-    // Remove this optional chaining after removed all the existing actions without creators
-    action.creator?.common_name && t`Created by ${action.creator.common_name}`,
-  ].filter(isNotNull);
+  const handleRunClick = useCallback((event: MouseEvent) => {
+    event.stopPropagation();
+  }, []);
 
   return (
-    <>
+    <ActionRoot to={isQueryAction ? actionUrl : ""}>
       <ActionTitle>{action.name}</ActionTitle>
-      {subtitleParts.length > 0 && (
-        <ActionSubtitle>
-          {subtitleParts.map((subtitlePart, index) => (
-            <ActionSubtitlePart key={index}>{subtitlePart}</ActionSubtitlePart>
-          ))}
-        </ActionSubtitle>
-      )}
-      <Card>
-        {renderCardContent()}
-        {hasEditorLink && (
-          <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
+      <ActionSubtitle>
+        {action.public_uuid && (
+          <ActionSubtitlePart>{t`Public Action`}</ActionSubtitlePart>
         )}
-      </Card>
-    </>
+        {action.creator && (
+          <ActionSubtitlePart>
+            {t`Created by ${action.creator.common_name}`}
+          </ActionSubtitlePart>
+        )}
+      </ActionSubtitle>
+      <ActionCard>
+        {action.type === "query" ? (
+          <QueryActionCardContent action={action} />
+        ) : action.type === "implicit" ? (
+          <ImplicitActionCardContent />
+        ) : null}
+        <ActionRunButton
+          as={Link}
+          to=""
+          icon="play"
+          onlyIcon
+          onClick={handleRunClick}
+        />
+      </ActionCard>
+    </ActionRoot>
   );
 }
 
