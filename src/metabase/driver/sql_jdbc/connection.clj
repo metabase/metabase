@@ -164,11 +164,11 @@
 
 (defonce ^:private ^{:doc "A table (map of maps) of our currently open connection pools, keyed by the Database `:id` and connection-type.
                            `connection-type` is either `::read` or `::write`."}
-  database-id+connection-type->connection-pool
+  database-id->connection-type->connection-pool
   (atom {}))
 
 (defonce ^:private ^{:doc "A table (map of maps) of DB details hash values, keyed by Database `:id` and connection-type."}
-  database-id+connection-type->jdbc-spec-hash
+  database-id->connection-type->jdbc-spec-hash
   (atom {}))
 
 (s/defn ^:private jdbc-spec-hash
@@ -187,14 +187,14 @@
   [database-id connection-type pool-spec-or-nil database]
   {:pre [(integer? database-id)]}
   (let [[old-id->pool] (if pool-spec-or-nil
-                         (swap-vals! database-id+connection-type->connection-pool update database-id assoc connection-type pool-spec-or-nil)
-                         (swap-vals! database-id+connection-type->connection-pool update database-id dissoc connection-type))]
+                         (swap-vals! database-id->connection-type->connection-pool update database-id assoc connection-type pool-spec-or-nil)
+                         (swap-vals! database-id->connection-type->connection-pool update database-id dissoc connection-type))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get-in old-id->pool [database-id connection-type])]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
         (destroy-pool! database-id connection-type old-pool-spec))))
   ;; update the db details hash cache with the new hash value
-  (swap! database-id+connection-type->jdbc-spec-hash update database-id assoc connection-type (jdbc-spec-hash database connection-type))
+  (swap! database-id->connection-type->jdbc-spec-hash update database-id assoc connection-type (jdbc-spec-hash database connection-type))
   nil)
 
 (defn- invalidate-pool-for-db+connection-type!
@@ -237,10 +237,10 @@
                                     :type        qp.error-type/invalid-query
                                     :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get-in @database-id+connection-type->connection-pool [db-id connection-type])]
+                        (when-let [details (get-in @database-id->connection-type->connection-pool [db-id connection-type])]
                           (cond
                             ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get-in @database-id+connection-type->jdbc-spec-hash [db-id connection-type])
+                            (let [curr-hash (get-in @database-id->connection-type->jdbc-spec-hash [db-id connection-type])
                                   new-hash  (jdbc-spec-hash db connection-type)]
                               (when (and (some? curr-hash) (not= curr-hash new-hash))
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
@@ -269,7 +269,7 @@
        ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
        ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
        ;; sure only one thread will be creating a pool at a given instant.
-       (locking database-id+connection-type->connection-pool
+       (locking database-id->connection-type->connection-pool
          (or
           ;; check if another thread created the pool while we were waiting to acquire the lock
           (get-fn database-id false)
