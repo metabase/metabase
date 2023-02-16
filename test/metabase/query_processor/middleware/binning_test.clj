@@ -177,4 +177,3 @@
         (mt/with-native-query-testing-context query
           (is (= [[-30.00M -60.00M 1]]
                  (mt/rows (qp/process-query query)))))))))
-"^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver))(?:-test)?(?:(?:\\.)|(?:$))).*"
