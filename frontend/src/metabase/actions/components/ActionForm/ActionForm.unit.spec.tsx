@@ -59,6 +59,7 @@ const setup = ({
     <ActionForm
       initialValues={initialValues}
       parameters={parameters}
+      isEditable
       submitTitle="Save"
       formSettings={formSettings}
       setFormSettings={isSettings ? setFormSettings : undefined}
@@ -612,7 +613,7 @@ describe("Actions > ActionForm", () => {
       });
 
       // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByText("number"));
 
       await waitFor(() => {
@@ -642,7 +643,7 @@ describe("Actions > ActionForm", () => {
       });
 
       // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByText("long text"));
 
       await waitFor(() => {
@@ -671,7 +672,7 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByText("date"));
 
       await waitFor(() => {
@@ -699,7 +700,7 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByText("category"));
 
       await waitFor(() => {
@@ -726,7 +727,7 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByRole("switch"));
 
       await waitFor(() => {

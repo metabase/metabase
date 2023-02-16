@@ -30,6 +30,11 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
     ${focusOutlineStyle("brand")}
   `};
 
+  &:disabled {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
   ${props =>
     props.hasError &&
     css`

@@ -40,6 +40,7 @@ import { getForm, getFormValidationSchema } from "./utils";
 export interface ActionFormComponentProps {
   parameters: WritebackParameter[] | Parameter[];
   initialValues?: ActionFormInitialValues;
+  isEditable?: boolean;
   onClose?: () => void;
   onSubmit?: (
     params: ParametersForActionExecution,
@@ -54,6 +55,7 @@ export interface ActionFormComponentProps {
 export const ActionForm = ({
   parameters,
   initialValues = {},
+  isEditable,
   onClose,
   onSubmit,
   submitTitle,
@@ -130,6 +132,7 @@ export const ActionForm = ({
                     <Draggable
                       key={`draggable-${field.name}`}
                       draggableId={field.name}
+                      isDragDisabled={!isEditable}
                       index={index}
                     >
                       {(provided: DraggableProvided) => (
@@ -139,20 +142,23 @@ export const ActionForm = ({
                           {...provided.dragHandleProps}
                           isSettings={isSettings}
                         >
-                          <SettingsContainer>
-                            <Icon name="grabber2" size={14} />
-                          </SettingsContainer>
-
+                          {isEditable && (
+                            <SettingsContainer>
+                              <Icon name="grabber2" size={14} />
+                            </SettingsContainer>
+                          )}
                           <InputContainer>
                             <FormFieldWidget
                               key={field.name}
                               formField={field}
                             />
                           </InputContainer>
-                          <FieldSettingsButtons
-                            fieldSettings={formSettings.fields[field.name]}
-                            onChange={handleChangeFieldSettings}
-                          />
+                          {isEditable && (
+                            <FieldSettingsButtons
+                              fieldSettings={formSettings.fields[field.name]}
+                              onChange={handleChangeFieldSettings}
+                            />
+                          )}
                         </FormFieldContainer>
                       )}
                     </Draggable>
