@@ -25,7 +25,7 @@ frontend_sources: &frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
-  - "frontend/test/!(__support__|__runner__)/**"
+  - "frontend/test/!(__support__/e2e|__runner__/*cypress*|metabase/scenarios|snapshot-creators|metabase-visual)/**"
   - "frontend/**.unit.*"
   - "jest.config.js"
 
