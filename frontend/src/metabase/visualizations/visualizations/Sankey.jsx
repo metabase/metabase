@@ -32,8 +32,8 @@ export default class Sankey extends Component {
   }
 
   static checkRenderable(series, settings) {
-    const start = settings["graph.start"];
-    const destinations = settings["graph.destinations"];
+    const start = settings["sankey.start"];
+    const destinations = settings["sankey.destinations"];
     for (let i = 0; i < destinations.length; i++) {
       if (destinations[i] === start[0]) {
         throw new Error(t`Start can't be a destination.`);
@@ -50,16 +50,16 @@ export default class Sankey extends Component {
       ]) => cols,
       hidden: true,
     }),
-    "graph.start": {
+    "sankey.start": {
       section: t`Data`,
       title: t`Starting Point`,
       widget: "fields",
       isValid: (series, vizSettings) =>
         series.some(({ card, data }) =>
-          columnsAreValid(card.visualization_settings["graph.start"], data),
+          columnsAreValid(card.visualization_settings["sankey.start"], data),
         ),
       getDefault: (series, vizSettings) =>
-        preserveExistingColumnsOrder(vizSettings["graph.start"] ?? [], [
+        preserveExistingColumnsOrder(vizSettings["sankey.start"] ?? [], [
           getDefaultColumns(series).dimensions[0],
         ]),
       persistDefault: true,
@@ -71,24 +71,24 @@ export default class Sankey extends Component {
           showColumnSetting: false,
         };
       },
-      writeDependencies: ["graph.metrics"],
+      writeDependencies: ["sankey.metrics"],
       dashboard: false,
       useRawSeries: true,
     },
-    "graph.destinations": {
+    "sankey.destinations": {
       section: t`Data`,
       title: t`Destination(s)`,
       widget: "fields",
       isValid: (series, vizSettings) =>
         series.some(({ card, data }) =>
           columnsAreValid(
-            card.visualization_settings["graph.destinations"],
+            card.visualization_settings["sankey.destinations"],
             data,
           ),
         ),
       getDefault: (series, vizSettings) => {
         return preserveExistingColumnsOrder(
-          vizSettings["graph.destinations"] ?? [],
+          vizSettings["sankey.destinations"] ?? [],
           [
             getDefaultColumns(series).metrics.slice(1),
             getDefaultColumns(series).dimensions.slice(1),
@@ -105,20 +105,20 @@ export default class Sankey extends Component {
           showColumnSetting: false,
         };
       },
-      writeDependencies: ["graph.metrics"],
+      writeDependencies: ["sankey.metrics"],
       dashboard: false,
       useRawSeries: true,
     },
-    "graph.metrics": {
+    "sankey.metrics": {
       section: t`Data`,
       title: t`Value`,
       widget: "fields",
       isValid: (series, vizSettings) =>
         series.some(({ card, data }) =>
           columnsAreValid(
-            card.visualization_settings["graph.metrics"],
+            card.visualization_settings["sankey.metrics"],
             data,
-            vizSettings["graph._metric_filter"],
+            vizSettings["sankey._metric_filter"],
           ),
         ),
       getDefault: (series, vizSettings) => [
@@ -127,7 +127,7 @@ export default class Sankey extends Component {
       persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
         const options = data.cols
-          .filter(vizSettings["graph._metric_filter"])
+          .filter(vizSettings["sankey._metric_filter"])
           .map(getOptionFromColumn);
         return {
           options,
@@ -135,7 +135,7 @@ export default class Sankey extends Component {
           showColumnSetting: false,
         };
       },
-      writeDependencies: ["graph.start", "graph.destinations"],
+      writeDependencies: ["sankey.start", "sankey.destinations"],
       dashboard: false,
       useRawSeries: true,
     },
@@ -196,9 +196,9 @@ export default class Sankey extends Component {
       className,
     } = this.props;
 
-    const start = settings["graph.start"];
-    const destinations = settings["graph.destinations"];
-    const metrics = settings["graph.metrics"];
+    const start = settings["sankey.start"];
+    const destinations = settings["sankey.destinations"];
+    const metrics = settings["sankey.metrics"];
 
     const width = this.props.width;
     const height = this.props.height - PADDING_BOTTOM;
