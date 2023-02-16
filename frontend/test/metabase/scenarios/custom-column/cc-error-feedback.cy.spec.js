@@ -21,4 +21,13 @@ describe("scenarios > question > custom column > error feedback", () => {
 
     cy.contains(/^Unknown Field: abcdef/i);
   });
+
+  it("should fail on expression validation errors", () => {
+    enterCustomColumnDetails({
+      formula: "SUBSTRING('foo', 0, 1)",
+      name: "BadSubstring",
+    });
+
+    cy.contains(/positive integer/i);
+  });
 });
