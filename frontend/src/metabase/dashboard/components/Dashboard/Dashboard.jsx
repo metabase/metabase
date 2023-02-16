@@ -13,6 +13,8 @@ import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/param
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
+import { SIDEBAR_NAME } from "../../constants";
+
 import {
   CardsContainer,
   DashboardStyled,
@@ -87,6 +89,7 @@ class Dashboard extends Component {
       name: PropTypes.string,
       props: PropTypes.object,
     }).isRequired,
+    toggleSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
   };
@@ -198,6 +201,16 @@ class Dashboard extends Component {
 
   onSharingClick = () => {
     this.props.setSharing(true);
+  };
+
+  onAddQuestion = () => {
+    if (this.props.sidebar.name !== SIDEBAR_NAME.addQuestion) {
+      return () => {
+        this.setEditing(true);
+        this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
+      };
+    }
+    return undefined;
   };
 
   render() {
@@ -314,6 +327,7 @@ class Dashboard extends Component {
                   ) : (
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}
+                      addQuestion={this.onAddQuestion}
                     />
                   )}
                 </CardsContainer>
