@@ -2,6 +2,7 @@
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
@@ -92,12 +93,7 @@
 
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the expressions to the projected names created
-  by the nested query."
-  {})
-
-(def ^:dynamic ^:private *join-aliases*
-  "The mapping from field names introduced by $lookup operations
-  to the corresponding MBQL join alias."
+  by the nested query or breakout."
   {})
 
 (defn- find-mapped-field-name [[_ field-id params :as field]]
@@ -105,12 +101,13 @@
       (some (fn [[e n]]
               (when (and (vector? e)
                          (= (subvec e 0 2) [:field field-id])
-                         (= (:join-alias (e 2)) (:join-alias params)))
+                         (= (:join-alias (e 2)) (:join-alias params))
+                         (= (::join-local (e 2)) (::join-local params)))
                 n))
             *field-mappings*)))
 
-(defn- find-join-alias [join-alias]
-  (get *join-aliases* join-alias))
+(defn- get-join-alias [join-alias]
+  (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
   (driver/dbms-version :mongo (qp.store/database)))
@@ -217,13 +214,12 @@
     (str field "~~~" (name unit))))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [temporal-unit] ::add/keys [desired-alias]} :as field]]
-  (or desired-alias
-      (cond-> (if (integer? id-or-name)
-                (or (find-mapped-field-name field)
-                    (->lvalue (qp.store/field id-or-name)))
-                (name id-or-name))
-        temporal-unit (with-lvalue-temporal-bucketing temporal-unit))))
+  [[_ id-or-name {:keys [temporal-unit]} :as field]]
+  (cond-> (if (integer? id-or-name)
+            (or (find-mapped-field-name field)
+                (->lvalue (qp.store/field id-or-name)))
+            (name id-or-name))
+    (and false temporal-unit) (with-lvalue-temporal-bucketing temporal-unit)))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -341,7 +337,7 @@
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias]} :as field]]
-  (let [join-field (find-join-alias join-alias)]
+  (let [join-field (get-join-alias join-alias)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
@@ -839,12 +835,17 @@
   (or (-> join :source-query :collection)
       (-> join find-source-table-id qp.store/table :name)))
 
+(defn- localize-join-alias [expr alias]
+  (mbql.u/replace expr
+    [:field id-or-name (m :guard (every-pred map? #(= (:join-alias %) alias)))]
+    [:field id-or-name (set/rename-keys m {:join-alias ::join-local})]))
+
 (declare ^:private mbql->native-rec)
 
-(defn- handle-join [{:keys [join-aliases] :as pipeline-ctx}
-                    {:keys [alias condition source-query strategy] :as join}]
+(defn- handle-join [pipeline-ctx
+                    {:keys [alias condition fields source-query strategy] :as join}]
   (let [result-fields (mapcat #(% source-query) [:fields :breakout :aggregation])
-        {:keys [projections] pipeline :query join-aliases' :join-aliases
+        {:keys [projections] pipeline :query
          :or {projections [] pipeline []}}
         (when source-query
           (if-let [native (:native source-query)]
@@ -865,21 +866,20 @@
                      own-fields)
         let-map (into {} (map (juxt :alias :rvalue)) mapping)
         context-map (into {} (map (juxt :field #(str \$ (:alias %)))) mapping)
-        lookup-as (name (gensym (str "join_alias_" alias "_")))]
-    (binding [*field-mappings* (merge *field-mappings* field-mappings context-map)
-              *join-aliases* (merge join-aliases join-aliases')]
+        lookup-as (get-join-alias alias)]
+    (binding [*field-mappings* (merge *field-mappings* field-mappings context-map)]
       (let [pipeline (cond-> pipeline
-                       condition (conj {$match (compile-filter condition)}))
-            stages [{$lookup {:from (find-source-collection join)
-                              :let let-map
-                              :pipeline pipeline
-                              :as lookup-as}}
-                    {$unwind {:path (str \$ lookup-as)
-                              :preserveNullAndEmptyArrays (= strategy :left-join)}}]]
+                       condition (conj {$match (compile-filter (localize-join-alias condition alias))}))
+            stages (cond-> [{$lookup {:from (find-source-collection join)
+                                      :let let-map
+                                      :pipeline pipeline
+                                      :as lookup-as}}
+                            {$unwind {:path (str \$ lookup-as)
+                                      :preserveNullAndEmptyArrays (= strategy :left-join)}}]
+                     fields (conj))]
         (-> pipeline-ctx
             (update :projections into projections)
-            (update :query into stages)
-            (assoc :join-aliases (merge *join-aliases* {alias lookup-as})))))))
+            (update :query into stages))))))
 
 (defn- handle-joins [{:keys [joins]} pipeline-ctx]
   (reduce handle-join pipeline-ctx joins))
@@ -935,6 +935,10 @@
     (recur arg)
     ag))
 
+(defn- field-alias [field]
+  (or (get-in field [2 ::add/desired-alias])
+      (->lvalue field)))
+
 (s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
                                                                   s/Any             "source")]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
@@ -942,7 +946,7 @@
   [breakout-fields aggregations]
   (concat
    (for [field-or-expr breakout-fields]
-     [(->lvalue field-or-expr) (format "$_id.%s" (->lvalue field-or-expr))])
+     [(field-alias field-or-expr) (format "$_id.%s" (->lvalue field-or-expr))])
    (for [ag aggregations
          :let [ag-name (annotate/aggregation-name ag)]]
      [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
@@ -1210,7 +1214,7 @@
   (if-not (seq fields)
     pipeline-ctx
     (let [new-projections (for [field (remove-parent-fields fields)]
-                            [(->lvalue field) (->rvalue field)])]
+                            [(field-alias field) (->rvalue field)])]
       (-> pipeline-ctx
           (assoc :projections (map first new-projections))
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
@@ -1242,11 +1246,10 @@
 
 (defn- add-aggregation-pipeline
   ([inner-query]
-   (add-aggregation-pipeline inner-query {:projections [], :query [], :join-aliases {}}))
+   (add-aggregation-pipeline inner-query {:projections [], :query []}))
   ([inner-query pipeline-ctx]
-   (reduce (fn [{:keys [join-aliases] :as pipeline-ctx} f]
-             (binding [*join-aliases* join-aliases]
-               (f inner-query pipeline-ctx)))
+   (reduce (fn [pipeline-ctx f]
+             (f inner-query pipeline-ctx))
            pipeline-ctx
            [handle-joins
             handle-filter
@@ -1257,8 +1260,7 @@
             handle-page])))
 
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections
-                                                    :query Pipeline
-                                                    :join-aliases {s/Str s/Str}}
+                                                    :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
   (add-aggregation-pipeline inner-query))
@@ -1331,6 +1333,5 @@
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
         (-> compiled
-            (dissoc :join-aliases)
             (assoc :collection source-table-name
                    :mbql?      true))))))
