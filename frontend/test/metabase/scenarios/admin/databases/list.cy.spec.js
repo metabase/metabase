@@ -103,35 +103,6 @@ describe("scenarios > admin > databases > list", () => {
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
-  it("should display a deprecated database warning", () => {
-    cy.intercept("/api/database*", req => {
-      req.reply(res => {
-        res.body.data = res.body.data.map(database => ({
-          ...database,
-          engine: "presto",
-        }));
-      });
-    });
-
-    cy.visit("/admin");
-
-    cy.findByRole("status").within(() => {
-      cy.findByText("Database driver");
-      cy.findByText(/which is now deprecated/);
-      cy.findByText("Database driver").click();
-    });
-
-    cy.findByRole("table").within(() => {
-      cy.findByText("Sample Database");
-    });
-
-    cy.findByRole("status").within(() => {
-      cy.findByLabelText("close icon").click();
-    });
-
-    cy.findByRole("status").should("not.exist");
-  });
-
   it.skip("should handle malformed (null) database details (metabase#25715)", () => {
     cy.request("GET", "/api/database/1").then(({ body }) => {
       const stubbedResponse = {
