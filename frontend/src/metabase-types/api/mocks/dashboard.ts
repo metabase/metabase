@@ -79,23 +79,3 @@ export const createMockDashboardCardWithVirtualCard = (
   },
   ...opts,
 });
-
-export const createMockDashboardCardWithVirtualCard = (
-  opts?: Partial<DashboardOrderedCard>,
-): DashboardOrderedCard => ({
-  ...createMockDashboardOrderedCard(),
-  card: {
-    query_average_duration: null,
-  } as Card,
-  card_id: null,
-  visualization_settings: {
-    virtual_card: {
-      archived: false,
-      dataset_query: {},
-      display: "text",
-      name: "",
-      visualization_settings: {},
-    } as VirtualCard,
-  },
-  ...opts,
-});

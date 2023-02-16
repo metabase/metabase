@@ -6,6 +6,7 @@ export type LinkEntity = {
   database_id?: number;
   model: SearchModelType;
   name: string;
+  display_name?: string;
   description?: string;
   display?: CardDisplayType;
 };
