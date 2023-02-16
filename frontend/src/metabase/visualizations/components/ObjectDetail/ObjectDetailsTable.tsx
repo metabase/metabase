@@ -122,7 +122,7 @@ export function DetailsTable({
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
   const { cols: columns } = data;
-  const columnSettings = settings["detail.columns"];
+  const columnSettings = settings["table.columns"];
 
   const { cols, row } = useMemo(() => {
     if (!columnSettings) {

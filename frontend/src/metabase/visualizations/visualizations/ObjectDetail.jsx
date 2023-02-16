@@ -25,20 +25,20 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    "detail.columns": {
+    "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
       widget: ChartSettingOrderedSimple,
       getHidden: () => false,
       isValid: ([{ card, data }], _vizSettings, extra = {}) =>
-        // If "detail.columns" happened to be an empty array,
+        // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["detail.columns"].length !== 0 &&
+        card.visualization_settings["table.columns"].length !== 0 &&
         (extra.isQueryRunning ||
           _.all(
-            card.visualization_settings["detail.columns"],
+            card.visualization_settings["table.columns"],
             columnSetting =>
               !columnSettings.enabled ||
               findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
@@ -84,10 +84,10 @@ const ObjectDetailProperties = {
     },
     "detail.columns_visibility": {
       hidden: true,
-      writeSettingId: "detail.columns",
-      readDependencies: ["detail.columns"],
+      writeSettingId: "table.columns",
+      readDependencies: ["table.columns"],
       widget: ChartSettingColumnEditor,
-      getValue: (_series, vizSettings) => vizSettings["detail.columns"],
+      getValue: (_series, vizSettings) => vizSettings["table.columns"],
       getProps: (
         [
           {
