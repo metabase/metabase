@@ -481,7 +481,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
   "Add a `Card` or `Action` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings row col size_x size_y], :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings (s/maybe [dashboard-card/ParamMapping])
    row                su/IntGreaterThanOrEqualToZero
