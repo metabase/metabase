@@ -9,6 +9,7 @@ import { addUndo } from "metabase/redux/undo";
 
 import { ActionsApi, PublicApi } from "metabase/services";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { getSuccessMessage } from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -84,7 +85,7 @@ function getActionExecutionMessage(action: WritebackAction, result: any) {
   if (hasDataFromExplicitAction(result)) {
     return t`Success! The action returned: ${JSON.stringify(result)}`;
   }
-  return t`${action.name} was run successfully`;
+  return getSuccessMessage(action);
 }
 
 export const executeRowAction = async ({

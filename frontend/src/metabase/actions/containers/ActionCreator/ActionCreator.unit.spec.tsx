@@ -1,6 +1,6 @@
 import React from "react";
 import nock from "nock";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import {
   renderWithProviders,
@@ -282,14 +282,13 @@ describe("ActionCreator", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
 
-        const messageBox = screen.getByRole("textbox", {
-          name: "Success message",
-        });
-        expect(messageBox).toHaveValue("Thanks for your submission.");
-
-        await waitFor(() => expect(messageBox).toBeEnabled());
-        userEvent.type(messageBox, `${specialChars.selectAll}Thanks!`);
-        expect(messageBox).toHaveValue("Thanks!");
+        userEvent.type(
+          screen.getByRole("textbox", { name: "Success message" }),
+          `Thanks!`,
+        );
+        expect(
+          screen.getByRole("textbox", { name: "Success message" }),
+        ).toHaveValue("Thanks!");
       });
     });
 

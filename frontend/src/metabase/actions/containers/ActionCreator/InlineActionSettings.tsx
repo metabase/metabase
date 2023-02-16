@@ -158,6 +158,7 @@ const InlineActionSettings = ({
             <TextArea
               id={`${id}-message`}
               value={formSettings.successMessage ?? ""}
+              placeholder={t`Action ran successfully`}
               fullWidth
               disabled={!isEditable}
               onChange={handleSuccessMessageChange}
