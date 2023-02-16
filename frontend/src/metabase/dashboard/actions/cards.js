@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { t } from "ttag";
 import { createAction } from "metabase/lib/redux";
 import { measureText } from "metabase/lib/measure-text";
 
@@ -96,6 +96,30 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
+export const addLinkDashCardToDashboard = function ({ dashId }) {
+  const DEFAULT_HEIGHT = 1;
+  const DEFAULT_WIDTH = 3;
+
+  const virtualLinkCard = {
+    ...createCard(),
+    display: "link",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualLinkCard,
+    size_x: DEFAULT_WIDTH,
+    size_y: DEFAULT_HEIGHT,
+    visualization_settings: {
+      virtual_card: virtualLinkCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
 const estimateCardSize = (displayType, action, buttonLabel) => {
   const BASE_HEIGHT = 3;
   const HEIGHT_PER_FIELD = 1.5;
@@ -137,10 +161,10 @@ export const addActionToDashboard =
       archived: false,
     };
 
-    const buttonLabel = action.name ?? action.id;
+    const buttonLabel = action.name ?? action.id ?? t`Click Me`;
 
     const dashcardOverrides = {
-      action,
+      action: action.id ? action : null,
       action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,

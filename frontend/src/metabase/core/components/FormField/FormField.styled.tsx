@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import React from "react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { FieldAlignment, FieldOrientation } from "./types";
@@ -90,3 +91,13 @@ export const FieldRoot = styled.div<FieldRootProps>`
     }
   }
 `;
+
+export const FieldLabelWithContainer = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => (
+  <FieldLabelContainer>
+    <FieldLabel hasError={false}>{children}</FieldLabel>
+  </FieldLabelContainer>
+);

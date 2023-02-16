@@ -1,4 +1,7 @@
 import { restore, setupSMTP } from "__support__/e2e/helpers";
+import { WEBMAIL_CONFIG } from "__support__/e2e/cypress_data";
+
+const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("scenarios > admin > settings > email settings", () => {
   beforeEach(() => {
@@ -9,7 +12,7 @@ describe("scenarios > admin > settings > email settings", () => {
   it("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
     cy.findByLabelText("SMTP Host").type("localhost").blur();
-    cy.findByLabelText("SMTP Port").type("25").blur();
+    cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
     cy.findByLabelText("SMTP Username").type("admin").blur();
     cy.findByLabelText("SMTP Password").type("admin").blur();
     cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
@@ -23,7 +26,7 @@ describe("scenarios > admin > settings > email settings", () => {
 
     // This part was added as a repro for metabase#17615
     cy.findByDisplayValue("localhost");
-    cy.findByDisplayValue("25");
+    cy.findByDisplayValue(SMTP_PORT);
     cy.findAllByDisplayValue("admin");
     cy.findByDisplayValue("mailer@metabase.test");
     cy.findByDisplayValue("Sender Name");
@@ -56,10 +59,13 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").click();
       cy.findByText("Sent!");
-      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-        const emailBody = body[0].text;
-        expect(emailBody).to.include("Your Metabase emails are working");
-      });
+
+      cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
+        ({ body }) => {
+          const emailBody = body[0].text;
+          expect(emailBody).to.include("Your Metabase emails are working");
+        },
+      );
     },
   );
 
@@ -96,7 +102,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("SMTP Host")
       .type("foo") // Invalid SMTP host
       .blur();
-    cy.findByLabelText("SMTP Port").type("25").blur();
+    cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
     cy.findByLabelText("SMTP Username").type("admin").blur();
     cy.findByLabelText("SMTP Password").type("admin").blur();
     cy.findByLabelText("From Address").type("mailer@metabase.test").blur();

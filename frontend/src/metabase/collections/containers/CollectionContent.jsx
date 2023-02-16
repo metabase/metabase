@@ -283,6 +283,7 @@ function CollectionContent({
                       </div>
                       <BulkActions
                         selected={selected}
+                        collection={collection}
                         onSelectAll={handleSelectAll}
                         onSelectNone={clear}
                         onArchive={handleBulkArchive}

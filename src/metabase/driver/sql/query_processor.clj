@@ -182,7 +182,7 @@
 
 (defn- format-compiled
   [_compiled [honeysql-expr]]
-  (sql/format-expr honeysql-expr {:inline true}))
+  (sql/format-expr honeysql-expr {:nested true}))
 
 (sql/register-fn! ::compiled #'format-compiled)
 
@@ -333,28 +333,29 @@
   This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
   adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
   from [[driver/db-start-of-week]]."
-  ([driver day-of-week]
-   (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
+  ([driver day-of-week-honeysql-expr]
+   (adjust-day-of-week driver day-of-week-honeysql-expr (driver.common/start-of-week-offset driver)))
 
-  ([driver day-of-week offset]
-   (adjust-day-of-week driver day-of-week offset hx/mod))
+  ([driver day-of-week-honeysql-expr offset]
+   (adjust-day-of-week driver day-of-week-honeysql-expr offset hx/mod))
 
   ([driver
-    day-of-week
+    day-of-week-honeysql-expr
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
    (cond
-     (zero? offset) day-of-week
-     (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
-     :else          (hx/call :case
-                             (hx/call :=
-                                      (mod-fn (hx/+ day-of-week offset) (inline-num 7))
-                                      (inline-num 0))
-                             (inline-num 7)
-                             :else
-                             (mod-fn
-                              (hx/+ day-of-week offset)
-                              (inline-num 7))))))
+     (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
+     (zero? offset)   day-of-week-honeysql-expr
+     (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
+     :else            (hx/call :case
+                               (hx/call :=
+                                        (mod-fn (hx/+ day-of-week-honeysql-expr offset) (inline-num 7))
+                                        (inline-num 0))
+                               (inline-num 7)
+                               :else
+                               (mod-fn
+                                (hx/+ day-of-week-honeysql-expr offset)
+                                (inline-num 7))))))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -374,13 +375,13 @@
   `:milliseconds`.
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
-  {:arglists '([driver seconds-or-milliseconds expr]), :added "0.35.0"}
+  {:arglists '([driver seconds-or-milliseconds honeysql-expr]), :added "0.35.0"}
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
 (defmulti cast-temporal-string
   "Cast a string representing "
-  {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
+  {:arglists '([driver coercion-strategy honeysql-expr]), :added "0.38.0"}
   (fn [driver coercion-strategy _] [(driver/dispatch-on-initialized-driver driver) coercion-strategy])
   :hierarchy #'driver/hierarchy)
 
@@ -1176,7 +1177,8 @@
         2 [table-alias]))]
    (->honeysql driver condition)])
 
-(def ^:private join-strategy->merge-fn
+(def ^:private ^{:deprecated "0.46.0"} join-strategy->merge-fn
+  "Deprecated. Only for Honey SQL 1."
   {:left-join  sql.helpers/left-join
    :right-join sql.helpers/right-join
    ;; don't use [[sql.helpers/inner-join]] because Honey SQL 1 doesn't understand `:inner-join`. But `;join` does the
@@ -1184,13 +1186,34 @@
    :inner-join sql.helpers/join
    :full-join  sql.helpers/full-join})
 
-(defmethod apply-top-level-clause [:sql :joins]
-  [driver _ honeysql-form {:keys [joins]}]
+(defn- apply-joins-honey-sql-1
+  {:deprecated "0.46.0"}
+  [driver honeysql-form joins]
   (reduce
    (fn [honeysql-form {:keys [strategy], :as join}]
+     #_{:clj-kondo/ignore [:deprecated-var]}
      (apply (join-strategy->merge-fn strategy) honeysql-form (join->honeysql driver join)))
    honeysql-form
    joins))
+
+(defn- apply-joins-honey-sql-2
+  "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).
+  See [[metabase.query-processor-test.explicit-joins-test/join-order-test]]."
+  [driver honeysql-form joins]
+  (letfn [(append-joins [join-by]
+            (into (vec join-by)
+                  (mapcat (fn [{:keys [strategy], :as join}]
+                            [strategy (join->honeysql driver join)]))
+                  joins))]
+    (update honeysql-form :join-by append-joins)))
+
+(defmethod apply-top-level-clause [:sql :joins]
+  [driver _ honeysql-form {:keys [joins]}]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [f (case (long hx/*honey-sql-version*)
+            1 apply-joins-honey-sql-1
+            2 apply-joins-honey-sql-2)]
+    (f driver honeysql-form joins)))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------

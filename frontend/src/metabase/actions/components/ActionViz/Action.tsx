@@ -11,11 +11,12 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
 
+import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
@@ -23,14 +24,14 @@ import {
   setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
-import { ActionParameterOptions } from "./ActionOptions";
-import { StyledButton } from "./ActionButton.styled";
+import ActionButtonView from "./ActionButtonView";
 
 export interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
+  isEditingDashcard: boolean;
 }
 
 export function ActionComponent({
@@ -38,9 +39,9 @@ export function ActionComponent({
   dashboard,
   dispatch,
   isSettings,
-  isEditing,
   settings,
   parameterValues,
+  isEditingDashcard,
 }: ActionProps) {
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
@@ -92,38 +93,44 @@ export function ActionComponent({
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
-  const showParameterMapper = isEditing && !isSettings;
-
   return (
-    <>
-      {showParameterMapper && (
-        <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
-      )}
-      <ActionVizForm
-        onSubmit={onSubmit}
-        dashcard={dashcard}
-        dashboard={dashboard}
-        settings={settings}
-        isSettings={isSettings}
-        missingParameters={missingParameters}
-        dashcardParamValues={dashcardParamValues}
-        action={dashcard.action as WritebackQueryAction}
-        shouldDisplayButton={shouldDisplayButton}
-      />
-    </>
+    <ActionVizForm
+      onSubmit={onSubmit}
+      dashcard={dashcard}
+      dashboard={dashboard}
+      settings={settings}
+      isSettings={isSettings}
+      missingParameters={missingParameters}
+      dashcardParamValues={dashcardParamValues}
+      action={dashcard.action as WritebackQueryAction}
+      shouldDisplayButton={shouldDisplayButton}
+      isEditingDashcard={isEditingDashcard}
+    />
   );
 }
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
-export default function Action(props: ActionProps) {
+function mapStateToProps(state: State, props: ActionProps) {
+  return {
+    isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
+  };
+}
+
+export function ActionFn(props: ActionProps) {
   if (!props.dashcard?.action) {
     return (
-      <StyledButton>
-        <strong>{t`Assign an action`}</strong>
-      </StyledButton>
+      <ActionButtonView
+        disabled
+        icon="bolt"
+        tooltip={t`No action assigned`}
+        settings={props.settings}
+        focus={props.isEditingDashcard}
+      />
     );
   }
 
   return <ConnectedActionComponent {...props} />;
 }
+
+export default connect(mapStateToProps)(ActionFn);

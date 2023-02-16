@@ -36,6 +36,7 @@ import {
 interface OwnProps {
   action?: WritebackAction;
   formSettings: ActionFormSettings;
+  isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClose: () => void;
 }
@@ -83,6 +84,7 @@ const mapDispatchToProps: DispatchProps = {
 const InlineActionSettings = ({
   action,
   formSettings,
+  isEditable,
   siteUrl,
   isAdmin,
   isPublicSharingEnabled,
@@ -156,7 +158,9 @@ const InlineActionSettings = ({
             <TextArea
               id={`${id}-message`}
               value={formSettings.successMessage ?? ""}
+              placeholder={t`Action ran successfully`}
               fullWidth
+              disabled={!isEditable}
               onChange={handleSuccessMessageChange}
             />
           </FormField>

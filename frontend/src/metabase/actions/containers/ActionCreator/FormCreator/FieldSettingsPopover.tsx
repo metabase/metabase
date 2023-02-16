@@ -36,6 +36,7 @@ export function FieldSettingsPopover({
           name="gear"
           size={14}
           tooltip={t`Change field settings`}
+          aria-label={t`Field settings`}
         />
       }
       maxWidth={400}

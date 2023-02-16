@@ -12,6 +12,7 @@ import {
 } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import Metadata from "metabase-lib/metadata/Metadata";
 
 import DashCardActionButton from "./DashCardActionButton";
@@ -20,6 +21,7 @@ import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
 
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
+import ActionSettingsButton from "./ActionSettingsButton";
 
 interface Props {
   series: Series;
@@ -106,6 +108,16 @@ function DashCardActionButtons({
           key="add-series-button"
           series={series}
           onClick={onAddSeries}
+        />,
+      );
+    }
+
+    if (dashcard && isActionDashCard(dashcard)) {
+      buttons.push(
+        <ActionSettingsButton
+          key="action-settings-button"
+          dashboard={dashboard}
+          dashcard={dashcard}
         />,
       );
     }
