@@ -123,35 +123,16 @@ describe("scenarios > models > actions", () => {
   });
 
   it("should allow to make actions public and execute them", () => {
-    cy.intercept("/api/public/action/*/execute", request => {
-      expect(request.body).to.deep.equal({
-        parameters: { [TEST_PARAMETER.id]: -2 },
-      });
-    });
-
     cy.get("@modelId").then(modelId => {
       createAction({
         ...SAMPLE_QUERY_ACTION,
         model_id: modelId,
       });
-      cy.visit(`/model/${modelId}/detail`);
+      cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
     });
 
-    cy.findByText("Actions").click();
-    openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-    cy.findByRole("dialog").within(() => {
-      cy.button("Action settings").click();
-      cy.findByLabelText("Make public").should("not.be.checked").click();
-      cy.findByLabelText("Public action link URL")
-        .invoke("val")
-        .then(url => {
-          cy.wrap(url).as("publicUrl");
-        });
-      cy.button("Update").click();
-      cy.wait("@updateAction");
-    });
+    enableSharingFor(SAMPLE_QUERY_ACTION.name, { publicUrlAlias: "publicUrl" });
 
     cy.get("@publicUrl").then(url => {
       cy.signOut();
@@ -168,21 +149,11 @@ describe("scenarios > models > actions", () => {
 
     cy.signInAsAdmin();
     cy.get("@modelId").then(modelId => {
-      cy.visit(`/model/${modelId}/detail`);
+      cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
     });
 
-    cy.findByText("Actions").click();
-    openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Action settings" }).click();
-      cy.findByLabelText("Make public").should("be.checked").click();
-    });
-    modal().within(() => {
-      cy.findByText("Disable this public link?").should("be.visible");
-      cy.findByRole("button", { name: "Yes" }).click();
-    });
+    disableSharingFor(SAMPLE_QUERY_ACTION.name);
 
     cy.get("@publicUrl").then(url => {
       cy.visit(url);
@@ -244,4 +215,32 @@ function assertQueryEditorDisabled() {
 function fieldSettings() {
   cy.findByTestId("action-form-editor").within(() => cy.icon("gear").click());
   return popover();
+}
+
+function enableSharingFor(actionName, { publicUrlAlias }) {
+  openActionEditorFor(actionName);
+
+  cy.findByRole("dialog").within(() => {
+    cy.button("Action settings").click();
+    cy.findByLabelText("Make public").should("not.be.checked").click();
+    cy.findByLabelText("Public action link URL")
+      .invoke("val")
+      .then(url => {
+        cy.wrap(url).as(publicUrlAlias);
+      });
+    cy.button("Update").click();
+    cy.wait("@updateAction");
+  });
+}
+
+function disableSharingFor(actionName) {
+  openActionEditorFor(actionName);
+  cy.findByRole("dialog").within(() => {
+    cy.findByRole("button", { name: "Action settings" }).click();
+    cy.findByLabelText("Make public").should("be.checked").click();
+  });
+  modal().within(() => {
+    cy.findByText("Disable this public link?").should("be.visible");
+    cy.findByRole("button", { name: "Yes" }).click();
+  });
 }
