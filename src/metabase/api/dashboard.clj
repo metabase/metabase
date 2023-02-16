@@ -694,10 +694,7 @@
                               ;; Attempt to get the field clause from the model metadata corresponding to the field.
                               ;; This is the common case for native queries in which mappings from original columns
                               ;; have been performed using model metadata.
-                              (some
-                               (fn [{:keys [id field_ref]}]
-                                 (when (= field-clause field_ref) id))
-                               result_metadata))]
+                              (:id (qp.util/field->field-info field-clause result_metadata)))]
              :when field-id]
          field-id)))
 
