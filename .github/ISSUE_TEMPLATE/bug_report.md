@@ -15,10 +15,10 @@ assignees: ''
 A clear and concise description of what the bug is.
 
 **Logs**
-Please include javascript console (open the browser dev tools and check the "console" tab) and server logs (Metabase logs that you can get from settings->admin->troubleshooting->logs) around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+Please include JavaScript console logs (open the browser dev tools and check the "console" tab) as well as the server logs (Metabase logs that you can get from Settings -> Admin -> Troubleshooting -> Logs) around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
 
 **To Reproduce**
-Steps to reproduce the behavior (if you can use the sample dataset to reproduce this bug, we will be able to find the issue faster):
+Steps to reproduce the behavior (if you can reproduce the bug using the Sample Database, we will find the issue faster):
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
