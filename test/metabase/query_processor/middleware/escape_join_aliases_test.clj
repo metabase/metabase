@@ -614,44 +614,73 @@
                      :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}})))))
 
 (deftest ^:parallel deduplicate-condition-test
-  ;; When ambiguous, a `:field` inside a join condition should be interpreted as referring to a join in the source query
-  ;; rather than a join inside the join.
-  (is (= {:query {:source-query {:source-table 1
-                                 :joins        [{:source-table 2
-                                                 :alias        "Products"
-                                                 :condition    [:=
-                                                                [:field 4 nil]
-                                                                [:field 5 {:join-alias "Products"}]]}]}
-                  :joins        [{:source-query {:source-table 3
-                                                 :joins        [{:source-table 4
-                                                                 :alias        "Products_2"
-                                                                 :condition    [:=
-                                                                                [:field 4 nil]
-                                                                                [:field 5 {:join-alias "Products_2"}]]}]}
-                                  :alias        "Q2"
-                                  :condition    [:=
-                                                 [:field 6 {:join-alias "Products", :temporal-unit :month}]
-                                                 [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
-          :info  {:alias/escaped->original {"Products_2" "Products"}}}
-         (driver/with-driver :h2
-           (escape/escape-join-aliases
-            {:query {:source-query {:source-table 1
-                                    :joins        [{:source-table 2
-                                                    :alias        "Products"
-                                                    :condition    [:=
-                                                                   [:field 4 nil]
-                                                                   [:field 5 {:join-alias "Products"}]]}]}
-                     :joins        [{:source-query {:source-table 3
-                                                    :joins        [{:source-table 4
-                                                                    :alias        "Products"
-                                                                    :condition    [:=
-                                                                                   [:field 4 nil]
-                                                                                   [:field 5 {:join-alias "Products"}]]}]}
-                                     :alias        "Q2"
-                                     :condition    [:=
-                                                    ;; this field is the ambiguous one.
-                                                    [:field 6 {:join-alias "Products", :temporal-unit :month}]
-                                                    [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}})))))
+  (testing "Ambiguous aliases inside join `:condition`s"
+    (testing "Prefer parent => source-query => join over join inside current join"
+      (is (= {:query {:source-query {:source-table 1
+                                     :joins        [{:source-table 2
+                                                     :alias        "Products"
+                                                     :condition    [:=
+                                                                    [:field 4 nil]
+                                                                    [:field 5 {:join-alias "Products"}]]}]}
+                      :joins        [{:source-query {:source-table 3
+                                                     :joins        [{:source-table 4
+                                                                     :alias        "Products_2"
+                                                                     :condition    [:=
+                                                                                    [:field 4 nil]
+                                                                                    [:field 5 {:join-alias "Products_2"}]]}]}
+                                      :alias        "Q2"
+                                      :condition    [:=
+                                                     ;; condition should
+                                                     [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                     [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+              :info  {:alias/escaped->original {"Products_2" "Products"}}}
+             (driver/with-driver :h2
+               (escape/escape-join-aliases
+                {:query {:source-query {:source-table 1
+                                        :joins        [{:source-table 2
+                                                        :alias        "Products"
+                                                        :condition    [:=
+                                                                       [:field 4 nil]
+                                                                       [:field 5 {:join-alias "Products"}]]}]}
+                         :joins        [{:source-query {:source-table 3
+                                                        :joins        [{:source-table 4
+                                                                        :alias        "Products"
+                                                                        :condition    [:=
+                                                                                       [:field 4 nil]
+                                                                                       [:field 5 {:join-alias "Products"}]]}]}
+                                         :alias        "Q2"
+                                         :condition    [:=
+                                                        ;; this field is the ambiguous one.
+                                                        [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                        [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}})))))
+    (testing "Prefer current join join over parent => source-query => join"
+      (is (= {:query {:source-query {:source-table 1
+                                     :joins        [{:source-table 2
+                                                     :alias        "Products"
+                                                     :condition    [:=
+                                                                    [:field 4 nil]
+                                                                    [:field 5 {:join-alias "Products"}]]}]}
+                      :joins        [{:source-table 3
+                                      :joins        [{:source-table 4
+                                                      :alias        "Products_2"
+                                                      :condition    [:=
+                                                                     [:field 4 nil]
+                                                                     [:field 5 {:join-alias "Products_2"}]]}]}]}
+              :info  {:alias/escaped->original {"Products_2" "Products"}}}
+             (driver/with-driver :h2
+               (escape/escape-join-aliases
+                {:query {:source-query {:source-table 1
+                                        :joins        [{:source-table 2
+                                                        :alias        "Products"
+                                                        :condition    [:=
+                                                                       [:field 4 nil]
+                                                                       [:field 5 {:join-alias "Products"}]]}]}
+                         :joins        [{:source-table 3
+                                         :joins        [{:source-table 4
+                                                         :alias        "Products"
+                                                         :condition    [:=
+                                                                        [:field 4 nil]
+                                                                        [:field 5 {:join-alias "Products"}]]}]}]}})))))))
 
 (deftest ^:parallel escape-aliases-even-with-no-joins-at-current-level-test
   (testing "We should still escape stuff with `:join-alias` even if there are no joins at the current level.")
