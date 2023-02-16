@@ -46,7 +46,7 @@ function ImplicitActionContextProvider({
   children,
 }: ImplicitActionContextProviderProps) {
   const [formSettings, setFormSettings] = useState(
-    cleanFormSettings(initialAction.visualization_settings),
+    getDefaultFormSettings(initialAction.visualization_settings),
   );
 
   const handleFormSettingsChange = useCallback(
@@ -58,7 +58,7 @@ function ImplicitActionContextProvider({
 
   const canSave = useMemo(() => {
     return !_.isEqual(
-      formSettings,
+      cleanFormSettings(formSettings),
       cleanFormSettings(initialAction?.visualization_settings),
     );
   }, [formSettings, initialAction?.visualization_settings]);

@@ -6,8 +6,8 @@ import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 
 import Actions, {
-  CreateQueryActionParams,
-  UpdateQueryActionParams,
+  CreateActionParams,
+  UpdateActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -52,8 +52,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onCreateAction: (params: CreateQueryActionParams) => void;
-  onUpdateAction: (params: UpdateQueryActionParams) => void;
+  onCreateAction: (params: CreateActionParams) => void;
+  onUpdateAction: (params: UpdateActionParams) => void;
 }
 
 export type ActionCreatorProps = OwnProps;
@@ -104,7 +104,7 @@ function ActionCreator({
     await onCreateAction({
       ...action,
       ...values,
-      type: "query",
+      visualization_settings: formSettings,
     } as WritebackQueryAction);
 
     // Sync the editor state with data from save modal form
@@ -115,9 +115,12 @@ function ActionCreator({
   };
 
   const handleUpdate = () => {
-    // Only query action update is supported now
-    if (isSavedAction(action) && action.type === "query") {
-      onUpdateAction({ ...action, model_id: model.id() });
+    if (isSavedAction(action)) {
+      onUpdateAction({
+        ...action,
+        model_id: model.id(),
+        visualization_settings: formSettings,
+      });
     }
   };
 

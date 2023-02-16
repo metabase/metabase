@@ -58,6 +58,7 @@ function QueryActionContextProvider({
     return {
       ...initialAction,
       ...action,
+      type: "query",
     };
   }, [initialAction, question, formSettings]);
 
