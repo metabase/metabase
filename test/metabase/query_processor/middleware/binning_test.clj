@@ -146,15 +146,19 @@
   (mt/with-temp Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-    (is (= [[1 22]
-            [2 59]
-            [3 13]
-            [4 6]]
-         (->> (mt/run-mbql-query nil
-                {:source-table (str "card__" card-id)
-                 :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
-                 :aggregation  [[:count]]})
-              (mt/formatted-rows [int int]))))))
+    (let [query (mt/mbql-query nil
+                               {:source-table (str "card__" card-id)
+                                #_#_:fields [[:field "PRICE" {:base-type :type/Float}]]
+                                :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
+                                :aggregation  [[:count]]})]
+      (mt/with-native-query-testing-context
+        (is (= [[1 22]
+                [2 59]
+                [3 13]
+                [4 6]]
+               (->> query
+                    (qp/process-query)
+                    (mt/formatted-rows [int int]))))))))
 
 (mt/defdataset single-row
   [["t" [{:field-name    "lat"

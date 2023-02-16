@@ -13,6 +13,7 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -195,8 +196,9 @@
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (qp.test-util/with-everything-store
-                           (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
+                         (binding [hx/*honey-sql-version* 2]
+                           (qp.test-util/with-everything-store
+                             (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params)))))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -350,9 +352,10 @@
   "Expand parameters inside a top-level native `query`. Not recursive. "
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
-    (qp.test-util/with-everything-store
-      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
-        (assoc query :native inner')))))
+    (binding [hx/*honey-sql-version* 2]
+      (qp.test-util/with-everything-store
+        (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
+          (assoc query :native inner'))))))
 
 (defn- expand* [query]
   (-> (expand** (mbql.normalize/normalize query))

@@ -334,7 +334,7 @@
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
-  (let [[sql & params] (sql/format honeysql-form :quoting :ansi)]
+  (let [[sql & params] (sql/format honeysql-form {:dialect :ansi, :quoted true, :quoted-snake false})]
     {:query  sql
      :params (seq params)}))
 
@@ -356,8 +356,8 @@
                     [:source.LONGITUDE :LONGITUDE]
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
-           :where  [:= [:raw "\"source\".\"BIRD.ID\""] 1]
-           :limit  10})
+           :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
+           :limit  [:inline 10]})
          (qp/compile
           {:database (mt/id)
            :type     :query
@@ -377,7 +377,7 @@
            :where  [:and
                     [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
                     [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  10})
+           :limit  [:inline 10]})
          (qp/compile
           (mt/mbql-query venues
             {:source-query {:source-table $$venues}
@@ -434,7 +434,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
-             :limit  10})
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -451,8 +451,8 @@
                       [:source.LONGITUDE :LONGITUDE]
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
-             :where  [:> :source.sender_id 3]
-             :limit  10})
+             :where  [:> :source.sender_id [:inline 3]]
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
