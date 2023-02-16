@@ -86,8 +86,10 @@
      (let [parts        (partition 2 specs)]
        `(do
           ~@(mapcat (fn [[sym path]]
-                      (let [conv-sym (vary-meta (symbol (str "->" (name sym)))
-                                                assoc :private true)]
+                      (let [in-sym  (vary-meta (symbol (str "->" (name sym)))
+                                               assoc :private true)
+                            out-sym (vary-meta (symbol (str (name sym) "->"))
+                                               assoc :private true)]
                         [;; Getter
                          `(clojure.core/defn
                             ~(vary-meta sym assoc :export true)
@@ -96,7 +98,7 @@
                             (get-in obj# ~path))
 
                          ;; Incoming converter for the replacement value.
-                         `(def ~conv-sym
+                         `(def ~in-sym
                             ~(macros/case
                                :cljs (macros/case
                                        :cljs `(-> ~schema
@@ -110,16 +112,20 @@
                                         assoc :export true)
                             ~(str "Updater for `" path "`.")
                             [obj# new-value#]
-                            (assoc-in obj# ~path (~conv-sym new-value#)))
+                            (assoc-in obj# ~path (~in-sym new-value#)))
 
-                         ;; JS conversion
+                         ;; JS converter
+                         (macros/case :cljs
+                           `(def ~out-sym
+                              (metabase.domain-entities.converters/outgoing
+                                (metabase.domain-entities.malli/schema-for-path ~schema ~path))))
+
+                         ;; JS-returning getter
                          (macros/case :cljs
                            `(clojure.core/defn
                               ~(vary-meta (symbol (str (name sym) "-js"))
-                                          assoc :export true) #_#_:- ~schema
+                                          assoc :export true)
                               ~(str "Fetches `" path "` and converts it to plain JS.")
-                              [obj# #_#_:- ~schema]
-                              ((metabase.domain-entities.converters/outgoing
-                                 (metabase.domain-entities.malli/schema-for-path ~schema ~path))
-                               (get-in obj# ~path))))]))
+                              [obj#]
+                              (~out-sym (~sym obj#))))]))
                     parts)))))
