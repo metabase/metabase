@@ -39,13 +39,15 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti connection-type+details->spec
-  "TODO: write docstring"
+  "Given a Database `details-map` and a `connection-type`, return a JDBC connection spec. Driver authors should implement
+   this method if they need to support multiple connection types. If you only need to support a single connection type,
+   you can just implement [[connection-details->spec]] instead."
   {:arglists '([driver connection-type details-map])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod connection-type+details->spec :default
-  ;; For most connections, the connection-type doesn't matter and we can use the same connection details.
+(defmethod connection-type+details->spec ::read
+  ;; For most drivers, the connection-type doesn't matter. We can use the same connection details.
   [driver _connection-type details-map]
   (connection-details->spec driver details-map))
 
@@ -163,7 +165,7 @@
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A table (map of maps) of our currently open connection pools, keyed by the Database `:id` and connection-type.
-                           `connection-type` is either `::read` or `::write`."}
+                           `connection-type` is either `::r` or `::rw`."}
   database-id->connection-type->connection-pool
   (atom {}))
 
@@ -207,7 +209,7 @@
   `database` has been updated, so lets shut down the connection pools (if they exist) under the assumption that the
   connection details have changed."
   [database]
-  (doseq [connection-type [::read ::write]]
+  (doseq [connection-type [::r ::rw]]
     (invalidate-pool-for-db+connection-type! database connection-type)))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id connection-type]
@@ -289,7 +291,7 @@
 
 (defn db->pooled-connection-spec
   [db-or-id-or-spec]
-  (db+connection-type->pooled-connection-spec db-or-id-or-spec ::write))
+  (db+connection-type->pooled-connection-spec db-or-id-or-spec ::r))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

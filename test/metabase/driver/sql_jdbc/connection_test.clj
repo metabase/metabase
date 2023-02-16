@@ -111,7 +111,7 @@
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
       (let [db                       (mt/db)
-            connection-type          ::sql-jdbc.conn/write
+            connection-type          ::sql-jdbc.conn/r
             hash-change-called-times (atom 0)
             hash-change-fn           (fn [db-id _connection-type]
                                        (is (= (u/the-id db) db-id))
@@ -176,6 +176,6 @@
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
                                                                                (:details db))))
             "Secrets not loaded for db connections")
-        (is (= (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/write)
-               (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/write))
+        (is (= (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/r)
+               (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/r))
             "Same db produced different hashes due to secrets")))))
