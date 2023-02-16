@@ -1,16 +1,19 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
+import { getSetting } from "metabase/selectors/settings";
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { CardApi, DashboardApi } from "metabase/services";
+import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { RevokeIconWrapper } from "./PublicLinksListing.styled";
 
 export default class PublicLinksListing extends Component {
   constructor(props) {
@@ -74,13 +77,17 @@ export default class PublicLinksListing extends Component {
                 list.map(link => (
                   <tr key={link.id}>
                     <td>
-                      <Link
-                        to={getUrl(link)}
-                        onClick={() => this.trackEvent("Entity Link Clicked")}
-                        className="text-wrap"
-                      >
-                        {link.name}
-                      </Link>
+                      {getUrl ? (
+                        <Link
+                          to={getUrl(link)}
+                          onClick={() => this.trackEvent("Entity Link Clicked")}
+                          className="text-wrap"
+                        >
+                          {link.name}
+                        </Link>
+                      ) : (
+                        link.name
+                      )}
                     </td>
                     {getPublicUrl && (
                       <td>
@@ -103,10 +110,12 @@ export default class PublicLinksListing extends Component {
                             this.trackEvent("Revoked link");
                           }}
                         >
-                          <Icon
+                          <RevokeIconWrapper
                             name="close"
-                            className="text-light text-medium-hover cursor-pointer"
-                          />
+                            aria-label={t`Revoke link`}
+                          >
+                            <Icon name="close" />
+                          </RevokeIconWrapper>
                         </Confirm>
                       </td>
                     )}
@@ -140,6 +149,27 @@ export const PublicLinksQuestionListing = () => (
     getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
+);
+
+const mapStateToProps = state => ({
+  siteUrl: getSetting(state, "site-url"),
+});
+
+export const PublicLinksActionListing = connect(mapStateToProps)(
+  function PublicLinksActionListing({ siteUrl }) {
+    return (
+      <PublicLinksListing
+        load={ActionsApi.listPublic}
+        revoke={ActionsApi.deletePublicLink}
+        type={t`Public Action Listing`}
+        getUrl={action => Urls.action({ id: action.model_id }, action.id)}
+        getPublicUrl={({ public_uuid }) =>
+          Urls.publicAction(siteUrl, public_uuid)
+        }
+        noLinksMessage={t`No actions have been publicly shared yet.`}
+      />
+    );
+  },
 );
 
 export const EmbeddedDashboardListing = () => (

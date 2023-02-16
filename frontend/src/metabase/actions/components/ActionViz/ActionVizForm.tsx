@@ -29,6 +29,7 @@ interface ActionFormProps {
   dashcardParamValues: ParametersForActionExecution;
   action: WritebackQueryAction;
   shouldDisplayButton: boolean;
+  isEditingDashcard: boolean;
 }
 
 function ActionVizForm({
@@ -41,6 +42,7 @@ function ActionVizForm({
   dashcardParamValues,
   action,
   shouldDisplayButton,
+  isEditingDashcard,
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
@@ -72,6 +74,7 @@ function ActionVizForm({
           onClick={onClick}
           settings={settings}
           isFullHeight={!isSettings}
+          focus={isEditingDashcard}
         />
         {showModal && (
           <ActionParametersInputModal

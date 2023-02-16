@@ -405,6 +405,7 @@
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
+  metabase.domain-entities.malli/defn                                                  schema.core/defn
   metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.mongo.util/with-mongo-connection                                     clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
@@ -703,14 +704,13 @@
   ;;           "snowflake"
   ;;           "sparksql"
   ;;           "sqlite"
-  ;;           "sqlserver"
-  ;;           "vertica"]
+  ;;           "sqlserver"]
   ;;          [:? "-test"]
   ;;          [:or #"\." #"$"]]]
   ;;   ".*"))
   ;;
   ;; Please keep this form updated when you change the generated regex! <3
-  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver)|(?:vertica))(?:-test)?(?:(?:\\.)|(?:$))).*"
+  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver))(?:-test)?(?:(?:\\.)|(?:$))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns

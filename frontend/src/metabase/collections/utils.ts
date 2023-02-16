@@ -66,6 +66,33 @@ export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
 }
 
+export function isItemCollection(item: CollectionItem) {
+  return item.model === "collection";
+}
+
+export function canPinItem(item: CollectionItem, collection: Collection) {
+  return collection.can_write && item.setPinned != null;
+}
+
+export function canPreviewItem(item: CollectionItem, collection: Collection) {
+  return collection.can_write && isItemPinned(item) && isItemQuestion(item);
+}
+
+export function canMoveItem(item: CollectionItem, collection: Collection) {
+  return (
+    collection.can_write &&
+    item.setCollection != null &&
+    !(isItemCollection(item) && isPersonalCollection(item))
+  );
+}
+
+export function canArchiveItem(item: CollectionItem, collection: Collection) {
+  return (
+    collection.can_write &&
+    !(isItemCollection(item) && isPersonalCollection(item))
+  );
+}
+
 export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }

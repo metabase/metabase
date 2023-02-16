@@ -156,7 +156,11 @@
                   (mt/with-actions-disabled
                     (is (= "Actions are not enabled."
                            (:cause
-                            (mt/user-http-request :crowberto :post 400 "action" initial-action)))))))
+                            (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
+                (testing "a plain card instead of a model"
+                  (mt/with-temp Card [{plain-card-id :id}]
+                    (is (= "Actions must be made with models, not cards."
+                           (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                     action-path    (str "action/" (:id created-action))]
                 (testing "Create"
@@ -265,6 +269,22 @@
 (defn- shared-action-opts []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
+
+(deftest fetch-public-actions-test
+  (testing "GET /api/action/public"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [action-opts (assoc (shared-action-opts) :name "Test action")]
+        (mt/with-actions [{:keys [action-id model-id]} action-opts]
+          (testing "Test that it requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "action/public"))))
+          (testing "Test that superusers can fetch a list of publicly-accessible actions"
+            (is (= [{:name "Test action" :id action-id :public_uuid (:public_uuid action-opts) :model_id model-id}]
+                   (filter #(= (:id %) action-id) (mt/user-http-request :crowberto :get 200 "action/public"))))))
+        (testing "We cannot fetch an archived action"
+          (mt/with-actions [{} (assoc action-opts :archived true)]
+            (is (= []
+                   (mt/user-http-request :crowberto :get 200 "action/public")))))))))
 
 (deftest share-action-test
   (testing "POST /api/action/:id/public_link"
