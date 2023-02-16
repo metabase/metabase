@@ -1,7 +1,24 @@
-import type { WritebackAction } from "metabase-types/api";
+import type { CardId, WritebackActionId } from "metabase-types/api";
+import { modelDetail } from "./models";
 
-export function action(action: WritebackAction) {
-  return `/model/${action.model_id}/detail/actions/${action.id}`;
+type ParentModelProps = {
+  id: CardId;
+  name?: string;
+};
+
+export function newAction(parentModel: ParentModelProps) {
+  const model = { ...parentModel, dataset: true };
+  const baseUrl = modelDetail(model, "actions");
+  return `${baseUrl}/new`;
+}
+
+export function action(
+  parentModel: ParentModelProps,
+  actionId: WritebackActionId,
+) {
+  const model = { ...parentModel, dataset: true };
+  const baseUrl = modelDetail(model, "actions");
+  return `${baseUrl}/${actionId}`;
 }
 
 export function publicAction(siteUrl: string, uuid: string) {

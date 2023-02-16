@@ -7,3 +7,11 @@ export function enableActionsForDB(dbId = SAMPLE_DB_ID) {
     },
   });
 }
+
+/**
+ *
+ * @param {import("metabase/entities/actions/actions").CreateQueryActionParams} actionDetails
+ */
+export function createAction(actionDetails) {
+  return cy.request("POST", "/api/action", actionDetails);
+}

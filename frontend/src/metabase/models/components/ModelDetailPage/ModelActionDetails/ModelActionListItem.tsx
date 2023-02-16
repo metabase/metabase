@@ -10,7 +10,7 @@ import {
   ActionSubtitle,
   Card,
   CodeBlock,
-  EditButton,
+  EditorLink,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
   ActionSubtitlePart,
@@ -18,7 +18,8 @@ import {
 
 interface Props {
   action: WritebackAction;
-  onEdit?: () => void;
+  editorUrl: string;
+  canWrite: boolean;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -34,8 +35,8 @@ function ImplicitActionCardContent() {
   );
 }
 
-function ModelActionListItem({ action, onEdit }: Props) {
-  const canEdit = action.type !== "implicit" && onEdit;
+function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
+  const hasEditorLink = action.type !== "implicit";
 
   const renderCardContent = () =>
     action.type === "query" ? (
@@ -62,7 +63,9 @@ function ModelActionListItem({ action, onEdit }: Props) {
       )}
       <Card>
         {renderCardContent()}
-        {canEdit && <EditButton onClick={onEdit} />}
+        {hasEditorLink && (
+          <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
+        )}
       </Card>
     </>
   );
