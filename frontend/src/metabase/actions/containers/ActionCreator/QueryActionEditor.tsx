@@ -6,9 +6,11 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 function QueryActionEditor({
   query,
+  isEditable,
   onChangeQuestionQuery,
 }: {
   query: NativeQuery;
+  isEditable: boolean;
   onChangeQuestionQuery: (query: NativeQuery) => void;
 }) {
   return (
@@ -22,7 +24,7 @@ function QueryActionEditor({
         isNativeEditorOpen
         hasParametersList={false}
         resizable={false}
-        readOnly={false}
+        readOnly={!isEditable}
         requireWriteback
       />
     </>

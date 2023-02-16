@@ -3,17 +3,23 @@ import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import {
-  getIcon,
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  getIcon,
+  queryIcon,
 } from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
+import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
+import { WritebackQueryAction } from "metabase-types/api";
 import {
   createMockActionParameter,
+  createMockCard,
+  createMockDatabase,
   createMockQueryAction,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -22,40 +28,34 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import type { WritebackQueryAction } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-
 import ActionCreator from "./ActionCreator";
-
-function getDatabaseObject(database: Database) {
-  return {
-    ...database.getPlainObject(),
-    tables: database.tables.map(getTableObject),
-  };
-}
-
-function getTableObject(table: Table) {
-  return {
-    ...table.getPlainObject(),
-    schema: table.schema_name,
-  };
-}
 
 type SetupOpts = {
   action?: WritebackQueryAction;
+  canWrite?: boolean;
+  hasActionsEnabled?: boolean;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
 };
 
 async function setup({
   action,
-  isAdmin,
-  isPublicSharingEnabled,
+  canWrite = true,
+  hasActionsEnabled = true,
+  isAdmin = false,
+  isPublicSharingEnabled = false,
 }: SetupOpts = {}) {
   const scope = nock(location.origin);
+  const model = createMockCard({
+    dataset: true,
+    can_write: canWrite,
+  });
+  const database = createMockDatabase({
+    settings: { "database-enable-actions": hasActionsEnabled },
+  });
 
-  setupDatabasesEndpoints(scope, [getDatabaseObject(SAMPLE_DATABASE)]);
+  setupDatabasesEndpoints(scope, [database]);
+  setupCardsEndpoints(scope, [model]);
 
   if (action) {
     scope.get(`/api/action/${action.id}`).reply(200, action);
@@ -65,18 +65,20 @@ async function setup({
       .reply(200, { uuid: "mock-uuid" });
   }
 
-  renderWithProviders(<ActionCreator actionId={action?.id} />, {
-    withSampleDatabase: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({
-        is_superuser: isAdmin,
+  renderWithProviders(
+    <ActionCreator actionId={action?.id} modelId={model.id} />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+        }),
+        settings: createMockSettingsState({
+          "enable-public-sharing": isPublicSharingEnabled,
+          "site-url": SITE_URL,
+        }),
       }),
-      settings: createMockSettingsState({
-        "enable-public-sharing": isPublicSharingEnabled,
-        "site-url": SITE_URL,
-      }),
-    }),
-  });
+    },
+  );
 
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
@@ -126,7 +128,7 @@ describe("ActionCreator", () => {
       getIcon("reference", "button").click();
 
       expect(screen.getByText("Data Reference")).toBeInTheDocument();
-      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+      expect(screen.getByText("Database")).toBeInTheDocument();
     });
 
     it("should show action settings button", async () => {
@@ -147,7 +149,7 @@ describe("ActionCreator", () => {
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Update" }),
+        await screen.findByRole("button", { name: "Update" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Create" }),
@@ -164,6 +166,42 @@ describe("ActionCreator", () => {
       await setupEditing({ action });
 
       expect(screen.getByText("FooBar")).toBeInTheDocument();
+    });
+
+    it("blocks editing if the user doesn't have write permissions for the collection", async () => {
+      const action = createMockQueryAction({
+        parameters: [createMockActionParameter({ name: "FooBar" })],
+      });
+      await setupEditing({ action, canWrite: false });
+
+      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update" }),
+      ).not.toBeInTheDocument();
+
+      screen.getByLabelText("Action settings").click();
+
+      expect(screen.getByLabelText("Success message")).toBeDisabled();
+    });
+
+    it("blocks editing if actions are disabled for the database", async () => {
+      const action = createMockQueryAction({
+        parameters: [createMockActionParameter({ name: "FooBar" })],
+      });
+      await setupEditing({ action, hasActionsEnabled: false });
+
+      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update" }),
+      ).not.toBeInTheDocument();
+
+      screen.getByLabelText("Action settings").click();
+
+      expect(screen.getByLabelText("Success message")).toBeDisabled();
     });
 
     describe("admin users and has public sharing enabled", () => {
@@ -278,7 +316,6 @@ describe("ActionCreator", () => {
 
       it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
         await setupEditing({
-          isAdmin: false,
           isPublicSharingEnabled: true,
         });
 

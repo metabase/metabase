@@ -5,9 +5,9 @@ import userEvent from "@testing-library/user-event";
 
 import {
   fireEvent,
-  renderWithProviders,
   getIcon,
   queryIcon,
+  renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
@@ -22,8 +22,12 @@ import {
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
+
 import Models from "metabase/entities/questions";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import ActionCreator from "metabase/actions/containers/ActionCreatorRoute";
 
 import type {
   Card,
@@ -36,25 +40,25 @@ import {
   createMockCollection,
   createMockDatabase,
   createMockField,
-  createMockTable,
-  createMockUser,
   createMockImplicitCUDActions,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
+  createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
 import {
-  getStructuredModel as _getStructuredModel,
   getNativeModel as _getNativeModel,
-  getSavedStructuredQuestion,
   getSavedNativeQuestion,
-  StructuredSavedCard,
+  getSavedStructuredQuestion,
+  getStructuredModel as _getStructuredModel,
   NativeSavedCard,
+  StructuredSavedCard,
 } from "metabase-lib/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -218,7 +222,18 @@ async function setup({
       <IndexRedirect to="usage" />
       <Route path="usage" component={ModelDetailPage} />
       <Route path="schema" component={ModelDetailPage} />
-      <Route path="actions" component={ModelDetailPage} />
+      <Route path="actions" component={ModelDetailPage}>
+        <ModalRoute
+          path="new"
+          modal={ActionCreator}
+          modalProps={{ enableTransition: false }}
+        />
+        <ModalRoute
+          path=":actionId"
+          modal={ActionCreator}
+          modalProps={{ enableTransition: false }}
+        />
+      </Route>
       <Redirect from="*" to="usage" />
     </Route>,
     { withRouter: true, initialRoute },
@@ -421,6 +436,19 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Actions")).not.toBeInTheDocument();
         });
 
+        it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+
+          await setup({
+            model: model,
+            actions: [action],
+            hasActionsEnabled: false,
+          });
+
+          expect(screen.getByText("Actions")).toBeInTheDocument();
+        });
+
         it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
           const { baseUrl, history } = await setup({
             model: getModel(),
@@ -437,6 +465,23 @@ describe("ModelDetailPage", () => {
           );
         });
 
+        it("does not redirect to another tab if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+
+          await setup({
+            model,
+            actions: [action],
+            hasActionsEnabled: false,
+            tab: "actions",
+          });
+
+          expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
+        });
+
         it("shows empty state if there are no actions", async () => {
           await setupActions({ model: getModel(), actions: [] });
           expect(
@@ -447,9 +492,30 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
+        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+
+          await setup({
+            model,
+            actions: [action],
+            tab: "actions",
+            hasActionsEnabled: false,
+          });
+
+          expect(
+            screen.getByRole("list", { name: /Action list/i }),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(
+              `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
+            ),
+          ).toBeInTheDocument();
+        });
+
         it("allows to create a new query action from the empty state", async () => {
           await setupActions({ model: getModel(), actions: [] });
-          userEvent.click(screen.getByRole("button", { name: "New action" }));
+          userEvent.click(screen.getByRole("link", { name: "New action" }));
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
 
@@ -500,7 +566,7 @@ describe("ModelDetailPage", () => {
             actions: [createMockQueryAction({ model_id: model.id() })],
           });
 
-          userEvent.click(screen.getByRole("button", { name: "New action" }));
+          userEvent.click(screen.getByRole("link", { name: "New action" }));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
