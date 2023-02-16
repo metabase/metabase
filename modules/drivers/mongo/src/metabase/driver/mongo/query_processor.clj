@@ -93,7 +93,7 @@
 
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the expressions to the projected names created
-  by the nested query or breakout."
+  by the nested query."
   {})
 
 (defn- find-mapped-field-name [[_ field-id params :as field]]
@@ -208,18 +208,12 @@
   [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
 
-(defn- with-lvalue-temporal-bucketing [field unit]
-  (if (= unit :default)
-    field
-    (str field "~~~" (name unit))))
-
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [temporal-unit]} :as field]]
-  (cond-> (if (integer? id-or-name)
-            (or (find-mapped-field-name field)
-                (->lvalue (qp.store/field id-or-name)))
-            (name id-or-name))
-    (and false temporal-unit) (with-lvalue-temporal-bucketing temporal-unit)))
+  [[_ id-or-name _props :as field]]
+  (if (integer? id-or-name)
+    (or (find-mapped-field-name field)
+        (->lvalue (qp.store/field id-or-name)))
+    (name id-or-name)))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -1259,8 +1253,7 @@
             handle-limit
             handle-page])))
 
-(s/defn ^:private generate-aggregation-pipeline :- {:projections Projections
-                                                    :query Pipeline}
+(s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
   (add-aggregation-pipeline inner-query))
@@ -1332,6 +1325,6 @@
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
-        (-> compiled
-            (assoc :collection source-table-name
-                   :mbql?      true))))))
+        (assoc compiled
+               :collection source-table-name
+               :mbql?      true)))))
