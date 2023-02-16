@@ -10,7 +10,7 @@ Parameters are pieces of information that are passed between Metabase and your w
 
 ## Types of parameters
 
-Parameters can be signed or unsigned:
+Parameters can be signed or unsigned.
 
 **Signed parameters**, such as filter names and values, must be added to your server code.
 - [Editable parameters](#adding-a-filter-widget-to-a-signed-embed)
@@ -162,6 +162,8 @@ You can preview appearance settings from your question or dashboard's [embedded 
 ## Maximum request size
 
 The maximum length of a signed embedding URL (including all parameters) is the value of your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
+
+If your signed embedding URL exceeds the maximum header size, you'll see a log message like `URI too long`. You can update the environment variable to accept larger headers. If you're using a proxy server, you may need to set a corresponding property on the server as well.
 
 ## Further reading
 
