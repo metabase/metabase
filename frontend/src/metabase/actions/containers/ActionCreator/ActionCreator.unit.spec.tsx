@@ -27,7 +27,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { Card, WritebackQueryAction } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -49,30 +49,23 @@ function getTableObject(table: Table) {
 
 type SetupOpts = {
   action?: WritebackQueryAction;
-  canEdit?: boolean;
+  model?: Card;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
 };
 
 async function setup({
   action,
-  canEdit = true,
+  model = createMockCard({ dataset: true, can_write: true }),
   isAdmin,
   isPublicSharingEnabled,
 }: SetupOpts = {}) {
   const scope = nock(location.origin);
 
   setupDatabasesEndpoints(scope, [getDatabaseObject(SAMPLE_DATABASE)]);
+  setupCardsEndpoints(scope, [createMockCard(model)]);
 
   if (action) {
-    setupCardsEndpoints(scope, [
-      createMockCard({
-        id: action.model_id,
-        dataset: true,
-        can_write: canEdit,
-      }),
-    ]);
-
     scope.get(`/api/action/${action.id}`).reply(200, action);
     scope.delete(`/api/action/${action.id}/public_link`).reply(204);
     scope
@@ -80,18 +73,21 @@ async function setup({
       .reply(200, { uuid: "mock-uuid" });
   }
 
-  renderWithProviders(<ActionCreator actionId={action?.id} />, {
-    withSampleDatabase: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({
-        is_superuser: isAdmin,
+  renderWithProviders(
+    <ActionCreator actionId={action?.id} modelId={model.id} />,
+    {
+      withSampleDatabase: true,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+        }),
+        settings: createMockSettingsState({
+          "enable-public-sharing": isPublicSharingEnabled,
+          "site-url": SITE_URL,
+        }),
       }),
-      settings: createMockSettingsState({
-        "enable-public-sharing": isPublicSharingEnabled,
-        "site-url": SITE_URL,
-      }),
-    }),
-  });
+    },
+  );
 
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
@@ -185,7 +181,10 @@ describe("ActionCreator", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      await setupEditing({ action, isAdmin: false, canEdit: false });
+      const model = createMockCard({
+        can_write: false,
+      });
+      await setupEditing({ action, model, isAdmin: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();

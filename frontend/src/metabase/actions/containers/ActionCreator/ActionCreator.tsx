@@ -97,7 +97,6 @@ function resolveQuestion(
 function ActionCreator({
   action,
   model,
-  modelId,
   databaseId,
   metadata,
   onCreateAction,
@@ -138,7 +137,7 @@ function ActionCreator({
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: modelId as number });
+      onUpdateAction({ ...action, model_id: model.id() });
       onClose?.();
     }
   };
@@ -196,7 +195,7 @@ function ActionCreator({
             initialValues={{
               name: question.displayName() ?? "",
               description: question.description(),
-              model_id: modelId,
+              model_id: model.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
