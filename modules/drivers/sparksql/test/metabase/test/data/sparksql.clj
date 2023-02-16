@@ -2,12 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
+   [honey.sql :as sql]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -61,13 +59,23 @@
    (when (= context :db)
      {:db (ddl.i/format-name driver database-name)})))
 
-(defmethod ddl/insert-rows-ddl-statements :sparksql
+(defprotocol ^:private Inline
+  (^:private ->inline [this]))
+
+(extend-protocol Inline
+  nil
+  (->inline [_] nil)
+
+  Object
+  (->inline [obj]
+    [:raw (unprepare/unprepare-value :sparksql obj)]))
+
+(defmethod ddl/insert-rows-honeysql-form :sparksql
   [driver table-identifier row-or-rows]
-  [(unprepare/unprepare driver
-     (binding [hformat/*subquery?* false]
-       (hsql/format (ddl/insert-rows-honeysql-form driver table-identifier row-or-rows)
-         :quoting             (sql.qp/quote-style driver)
-         :allow-dashed-names? false)))])
+  (let [rows (u/one-or-many row-or-rows)
+        rows (for [row rows]
+               (update-vals row ->inline))]
+    ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier rows)))
 
 (defmethod load-data/do-insert! :sparksql
   [driver spec table-identifier row-or-rows]

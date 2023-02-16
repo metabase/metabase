@@ -1237,8 +1237,8 @@
 (defmethod apply-top-level-clause [:sql :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
-      (sql.helpers/limit items)
-      (sql.helpers/offset (* items (dec page)))))
+      (sql.helpers/limit (inline-num items))
+      (sql.helpers/offset (inline-num (* items (dec page))))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
