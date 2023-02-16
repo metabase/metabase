@@ -51,7 +51,7 @@ function ClickBehaviorSidebar({
     return { type: "actionMenu" };
   }, [clickBehavior]);
 
-  if (isTableDisplay(dashcard) && !hasSelectedColumn) {
+  if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
     return (
       <TableClickBehaviorView

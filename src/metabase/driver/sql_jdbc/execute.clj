@@ -348,7 +348,16 @@
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
-  (doto (prepared-statement driver conn sql params)
+  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
+  (doto (try
+          (prepared-statement driver conn sql params)
+          (catch Throwable e
+            (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
+                            {:driver driver
+                             :type   qp.error-type/driver
+                             :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                             :params params}
+                            e))))
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]

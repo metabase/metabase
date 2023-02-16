@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
@@ -858,12 +859,13 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getTriggerClasses() {
-    if (this.props.triggerClasses) {
-      return this.props.triggerClasses;
+    const { readOnly, triggerClasses, renderAsSelect } = this.props;
+    if (triggerClasses) {
+      return cx(triggerClasses, { disabled: readOnly });
     }
-    return this.props.renderAsSelect
-      ? "border-medium bg-white block no-decoration"
-      : "flex align-center";
+    return renderAsSelect
+      ? cx("border-medium bg-white block no-decoration", { disabled: readOnly })
+      : cx("flex align-center", { disabled: readOnly });
   }
 
   handleSavedQuestionPickerClose = () => {
