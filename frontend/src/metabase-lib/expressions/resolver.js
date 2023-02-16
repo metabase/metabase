@@ -151,9 +151,9 @@ export function resolve(expression, type = "expression", fn = undefined) {
         expression.node,
       );
     }
-    if (typeof validator === "function") {
-      const validationError = validator.apply(null, operands);
-      if (typeof validationError === "string") {
+    if (validator) {
+      const validationError = validator(...operands);
+      if (validationError) {
         throw new ResolverError(validationError, expression.node);
       }
     }
