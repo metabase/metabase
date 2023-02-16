@@ -214,11 +214,9 @@ function maybeGetModelId(
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
-    loadingAndErrorWrapper: false,
   }),
   Questions.load({
     id: maybeGetModelId,
-    loadingAndErrorWrapper: false,
     entityAlias: "model",
   }),
   Database.loadList(),
