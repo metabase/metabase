@@ -135,51 +135,51 @@
 (defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
 
 (defmethod sql.qp/date [:sqlite :second]
-  [driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:%M:%S" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:%M:%S" expr)))
 
 (defmethod sql.qp/date [:sqlite :second-of-minute]
-  [driver _ expr]
-  (h2x/->integer (strftime "%S" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%S" expr)))
 
 (defmethod sql.qp/date [:sqlite :minute]
-  [driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:%M" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:%M" expr)))
 
 (defmethod sql.qp/date [:sqlite :minute-of-hour]
-  [driver _ expr]
-  (h2x/->integer (strftime "%M" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%M" expr)))
 
 (defmethod sql.qp/date [:sqlite :hour]
-  [driver _ expr]
-  (->datetime (strftime "%Y-%m-%d %H:00" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:00" expr)))
 
 (defmethod sql.qp/date [:sqlite :hour-of-day]
-  [driver _ expr]
-  (h2x/->integer (strftime "%H" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%H" expr)))
 
 (defmethod sql.qp/date [:sqlite :day]
-  [driver _ expr]
-  (->date (sql.qp/->honeysql driver expr)))
+  [_driver _ expr]
+  (->date expr))
 
 ;; SQLite day of week (%w) is Sunday = 0 <-> Saturday = 6. We want 1 - 7 so add 1
 (defmethod sql.qp/date [:sqlite :day-of-week]
-  [driver _ expr]
-  (sql.qp/adjust-day-of-week :sqlite (h2x/->integer (h2x/inc (strftime "%w" (sql.qp/->honeysql driver expr))))))
+  [_driver _ expr]
+  (sql.qp/adjust-day-of-week :sqlite (h2x/->integer (h2x/inc (strftime "%w" expr)))))
 
 (defmethod sql.qp/date [:sqlite :day-of-month]
-  [driver _ expr]
-  (h2x/->integer (strftime "%d" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%d" expr)))
 
 (defmethod sql.qp/date [:sqlite :day-of-year]
-  [driver _ expr]
-  (h2x/->integer (strftime "%j" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%j" expr)))
 
 (defmethod sql.qp/date [:sqlite :week]
   [_ _ expr]
   (let [week-extract-fn (fn [expr]
                           ;; Move back 6 days, then forward to the next Sunday
-                          (->date (sql.qp/->honeysql :sqlite expr)
+                          (->date expr
                                   (h2x/literal "-6 days")
                                   (h2x/literal "weekday 0")))]
     (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
@@ -193,12 +193,12 @@
                    :type   qp.error-type/invalid-query})))
 
 (defmethod sql.qp/date [:sqlite :month]
-  [driver _ expr]
-  (->date (sql.qp/->honeysql driver expr) (h2x/literal "start of month")))
+  [_driver _ expr]
+  (->date expr (h2x/literal "start of month")))
 
 (defmethod sql.qp/date [:sqlite :month-of-year]
-  [driver _ expr]
-  (h2x/->integer (strftime "%m" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%m" expr)))
 
 ;;    DATE(DATE(%s, 'start of month'), '-' || ((STRFTIME('%m', %s) - 1) % 3) || ' months')
 ;; -> DATE(DATE('2015-11-16', 'start of month'), '-' || ((STRFTIME('%m', '2015-11-16') - 1) % 3) || ' months')
@@ -207,30 +207,29 @@
 ;; -> DATE('2015-11-01', '-1 months')
 ;; -> '2015-10-01'
 (defmethod sql.qp/date [:sqlite :quarter]
-  [driver _ expr]
-  (let [v (sql.qp/->honeysql driver expr)]
-    (->date
-     (->date v (h2x/literal "start of month"))
-     [:||
-      (h2x/literal "-")
-      (h2x/mod (h2x/dec (strftime "%m" v))
-               3)
-      (h2x/literal " months")])))
+  [_driver _ expr]
+  (->date
+    (->date expr (h2x/literal "start of month"))
+    [:||
+     (h2x/literal "-")
+     (h2x/mod (h2x/dec (strftime "%m" expr))
+              3)
+     (h2x/literal " months")]))
 
 ;; q = (m + 2) / 3
 (defmethod sql.qp/date [:sqlite :quarter-of-year]
-  [driver _ expr]
-  (h2x// (h2x/+ (strftime "%m" (sql.qp/->honeysql driver expr))
+  [_driver _ expr]
+  (h2x// (h2x/+ (strftime "%m" expr)
                 2)
          3))
 
 (defmethod sql.qp/date [:sqlite :year]
-  [driver _ expr]
-  (->date (sql.qp/->honeysql driver expr) (h2x/literal "start of year")))
+  [_driver _ expr]
+  (->date expr (h2x/literal "start of year")))
 
 (defmethod sql.qp/date [:sqlite :year-of-era]
-  [driver _ expr]
-  (h2x/->integer (strftime "%Y" (sql.qp/->honeysql driver expr))))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%Y" expr)))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
   [_driver hsql-form amount unit]
