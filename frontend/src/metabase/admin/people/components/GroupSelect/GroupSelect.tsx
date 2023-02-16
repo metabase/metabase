@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/core/utils/types";
 import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -22,6 +23,29 @@ type GroupSelectProps = {
   isCurrentUser?: boolean;
   emptyListMessage?: string;
 };
+
+function getSections(groups: UserGroupsType) {
+  const adminGroup = groups.find(isAdminGroup);
+  const defaultGroup = groups.find(isDefaultGroup);
+  const topGroups = [defaultGroup, adminGroup].filter(g => g != null);
+  const groupsExceptDefaultAndAdmin = groups.filter(
+    g => !isAdminGroup(g) && !isDefaultGroup(g),
+  );
+
+  if (topGroups.length === 0) {
+    return [{ items: groupsExceptDefaultAndAdmin }];
+  }
+
+  return [
+    { items: topGroups },
+    groupsExceptDefaultAndAdmin.length > 0
+      ? {
+          items: groupsExceptDefaultAndAdmin as any,
+          name: t`Groups`,
+        }
+      : null,
+  ].filter(isNotNull);
+}
 
 export const GroupSelect = ({
   groups,
@@ -47,25 +71,7 @@ export const GroupSelect = ({
     );
   }
 
-  const adminGroup = groups.find(isAdminGroup);
-  const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter(g => g != null);
-  const groupsExceptDefaultAndAdmin = groups.filter(
-    g => !isAdminGroup(g) && !isDefaultGroup(g),
-  );
-
-  const sections =
-    topGroups.length > 0
-      ? [
-          { items: topGroups },
-          groupsExceptDefaultAndAdmin.length > 0
-            ? {
-                items: groupsExceptDefaultAndAdmin,
-                name: t`Groups`,
-              }
-            : null,
-        ].filter(_ => _)
-      : [{ items: groupsExceptDefaultAndAdmin }];
+  const sections = getSections(groups);
 
   return (
     <Select
