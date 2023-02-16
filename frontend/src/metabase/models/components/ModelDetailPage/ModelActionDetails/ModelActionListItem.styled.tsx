@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 
 export const ActionTitle = styled.h4`
@@ -44,7 +45,7 @@ export const CodeBlock = styled.pre`
   margin: 0;
 `;
 
-export const EditButton = styled(Button)`
+export const EditorLink = styled(Button)`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -53,8 +54,8 @@ export const EditButton = styled(Button)`
   color: ${color("text-dark")};
 `;
 
-EditButton.defaultProps = {
-  icon: "pencil",
+EditorLink.defaultProps = {
+  as: Link,
   onlyIcon: true,
 };
 

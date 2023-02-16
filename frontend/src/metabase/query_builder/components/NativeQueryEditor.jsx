@@ -110,7 +110,7 @@ class NativeQueryEditor extends Component {
   };
 
   componentDidUpdate(prevProps) {
-    const { query } = this.props;
+    const { query, readOnly } = this.props;
     if (!query || !this._editor) {
       return;
     }
@@ -138,7 +138,7 @@ class NativeQueryEditor extends Component {
 
     const editorElement = this.editor.current;
 
-    if (query.hasWritePermission()) {
+    if (query.hasWritePermission() && !readOnly) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
     } else {
