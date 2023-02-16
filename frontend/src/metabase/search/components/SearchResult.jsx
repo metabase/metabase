@@ -11,6 +11,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import {
   IconWrapper,
+  ResultButton,
   ResultLink,
   Title,
   TitleWrapper,
@@ -99,12 +100,15 @@ export default function SearchResult({
   const active = isItemActive(result);
   const loading = isItemLoading(result);
 
+  // we want to remove link behavior if we have an onClick handler
+  const ResultContainer = onClick ? ResultButton : ResultLink;
+
   return (
-    <ResultLink
+    <ResultContainer
       isSelected={isSelected}
       active={active}
       compact={compact}
-      to={!onClick ? result.getUrl() : ""}
+      to={!onClick ? result.getUrl() : undefined}
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
@@ -131,7 +135,7 @@ export default function SearchResult({
         {loading && <ResultSpinner size={24} borderWidth={3} />}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
-    </ResultLink>
+    </ResultContainer>
   );
 }
 
