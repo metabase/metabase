@@ -1296,7 +1296,7 @@
                                                     :limit       2})}]
           (let [card-tag (str "#" (u/the-id card))
                 query    (mt/native-query
-                           {:query         (format "SELECT * FROM {{%s}} AS x" card-tag)
+                           {:query         (format "SELECT * FROM {{%s}} x" card-tag)
                             :template-tags {card-tag
                                             {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
                                              :name         card-tag
