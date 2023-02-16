@@ -5,9 +5,9 @@ import userEvent from "@testing-library/user-event";
 
 import {
   fireEvent,
-  renderWithProviders,
   getIcon,
   queryIcon,
+  renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
@@ -40,25 +40,25 @@ import {
   createMockCollection,
   createMockDatabase,
   createMockField,
-  createMockTable,
-  createMockUser,
   createMockImplicitCUDActions,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
+  createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
 import {
-  getStructuredModel as _getStructuredModel,
   getNativeModel as _getNativeModel,
-  getSavedStructuredQuestion,
   getSavedNativeQuestion,
-  StructuredSavedCard,
+  getSavedStructuredQuestion,
+  getStructuredModel as _getStructuredModel,
   NativeSavedCard,
+  StructuredSavedCard,
 } from "metabase-lib/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -436,6 +436,18 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Actions")).not.toBeInTheDocument();
         });
 
+        it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+
+          await setup({
+            model: model,
+            actions: [createMockQueryAction({ model_id: model.id() })],
+            hasActionsEnabled: false,
+          });
+
+          expect(screen.getByText("Actions")).toBeInTheDocument();
+        });
+
         it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
           const { baseUrl, history } = await setup({
             model: getModel(),
@@ -447,6 +459,22 @@ describe("ModelDetailPage", () => {
             `${baseUrl}/usage`,
           );
           expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
+        });
+
+        it("does not redirect to another tab if actions are disabled for the model's database but there are existing actions", async () => {
+          const model = getModel();
+
+          await setup({
+            model,
+            actions: [createMockQueryAction({ model_id: model.id() })],
+            hasActionsEnabled: false,
+            tab: "actions",
+          });
+
+          expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
             "aria-selected",
             "true",
           );
