@@ -71,9 +71,16 @@ const MappingRow = ({
     switch (whatToDoAboutGroups) {
       case "clear":
         return () =>
-          groups.forEach(id => PermissionsApi.clearGroupMembership({ id }));
+          Promise.all(
+            groups.map(
+              async id => await PermissionsApi.clearGroupMembership({ id }),
+            ),
+          );
       case "delete":
-        return () => groups.forEach(id => PermissionsApi.deleteGroup({ id }));
+        return () =>
+          Promise.all(
+            groups.map(async id => await PermissionsApi.deleteGroup({ id })),
+          );
       default:
         return () => null;
     }

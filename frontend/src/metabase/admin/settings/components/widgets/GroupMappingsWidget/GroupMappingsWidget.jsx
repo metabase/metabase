@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -28,6 +28,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState(null);
+  const [lastDeletedTime, setLastDeletedTime] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -45,7 +46,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     }
 
     fetchData();
-  }, [mappingSetting]);
+  }, [mappingSetting, lastDeletedTime]);
 
   const handleShowAddRow = () => {
     setShowAddRow(true);
@@ -102,26 +103,17 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       key: mappingSetting,
       value: mappingsMinusDeletedMapping,
     }).then(
-      () => {
+      async () => {
         props.onChangeSetting(mappingSetting, mappingsMinusDeletedMapping);
-        setMappings(mappingsMinusDeletedMapping);
 
-        onSuccess && onSuccess();
+        onSuccess && (await onSuccess());
 
-        updateGroupsAfterDeletingMapping(groupIdsToDelete);
+        setLastDeletedTime(Date.now());
 
         setSaveError(null);
       },
       e => setSaveError(e),
     );
-  };
-
-  const updateGroupsAfterDeletingMapping = groupIdsToDelete => {
-    const groupsToKeep = groups.filter(
-      group => isAdminGroup(group) || !groupIdsToDelete.includes(group.id),
-    );
-
-    setGroups(groupsToKeep);
   };
 
   return (
