@@ -9,10 +9,13 @@ import type {
   BaseDashboardOrderedCard,
   Card,
   FieldSettings,
+  FieldSettingsMap,
   ParameterId,
+  ParametersForActionExecution,
 } from "metabase-types/api";
 
 import { slugify } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
@@ -220,3 +223,16 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
+
+export function setNumericValues(
+  params: ParametersForActionExecution,
+  fieldSettings: FieldSettingsMap,
+) {
+  Object.entries(params).forEach(([key, value]) => {
+    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
+      params[key] = Number(value) ?? null;
+    }
+  });
+
+  return params;
+}
