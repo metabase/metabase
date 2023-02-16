@@ -1,5 +1,5 @@
 import Knex from "knex";
-import { TESTING_DB_CONFIG } from "./cypress_data";
+import { WRITABLE_DB_CONFIG } from "./cypress_data";
 import * as testTables from "./test_tables";
 
 const dbClients = {};
@@ -31,7 +31,7 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
   }
 }
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
-  const dbClient = getDbClient(TESTING_DB_CONFIG[type]);
+  const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
 
   // eslint-disable-next-line import/namespace
   return testTables?.[table]?.(dbClient);
