@@ -63,11 +63,6 @@ You can set multiple default values for a filter by separating the `key=value` p
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 ```
 
-> Whenever you're passing a parameter directly to the `src` attribute:
-- Parameter _names_ are lowercase.
-- Parameter _values_ are case-sensitive (they must match your data).
-- Spaces should be replaced by underscores.
-
 ## Hiding filter widgets from a signed embed
 
 If you have a lot of editable parameters (resulting in a lot of filter widgets), you can hide them from your signed embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
@@ -94,9 +89,12 @@ You can also simultaneously assign a parameter a default value _and_ hide its fi
 your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 ```
 
-> Whenever you're passing a parameter directly to the `src` attribute:
+## Unsigned parameter syntax
+
+Whenever you're adding a parameter to the embedding URL in your iframe's `src` attribute, note that:
+
 - Parameter _names_ are lowercase.
-- Parameter _values_ are case-sensitive (they must match your data).
+- Parameter _values_ are case-sensitive (the values must match your data).
 - Spaces should be replaced by underscores.
 
 ## Restricting data in a signed embed
