@@ -54,7 +54,10 @@ function ActionParametersInputForm({
   const [prefetchValues, setPrefetchValues] =
     useState<ParametersForActionExecution>({});
 
-  const shouldPrefetch = useMemo(() => shouldPrefetchValues(action), [action]);
+  const shouldPrefetch = useMemo(
+    () => shouldPrefetchValues(action) && dashboard && dashcard,
+    [action, dashboard, dashcard],
+  );
 
   const prefetchEndpoint =
     getDashboardType(dashboard?.id) === "public"

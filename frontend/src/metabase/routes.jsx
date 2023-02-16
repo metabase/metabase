@@ -87,7 +87,6 @@ import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
-import ActionRunModal from "metabase/actions/containers/ActionRunModal";
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
@@ -253,7 +252,6 @@ export const getRoutes = store => (
               modal={ActionCreatorModal}
               modalProps={{ wide: true, enableTransition: false }}
             />
-            <ModalRoute path=":actionId/run" modal={ActionRunModal} />
             <ModalRoute
               path=":actionId"
               modal={ActionCreatorModal}

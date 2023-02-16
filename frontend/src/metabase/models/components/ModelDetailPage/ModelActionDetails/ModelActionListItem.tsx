@@ -1,6 +1,8 @@
-import React, { useCallback, MouseEvent } from "react";
+import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ActionRunModal from "metabase/actions/containers/ActionRunModal";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {
@@ -15,10 +17,13 @@ import {
   ImplicitActionMessage,
 } from "./ModelActionListItem.styled";
 
-interface Props {
+interface ItemProps {
   action: WritebackAction;
   actionUrl: string;
-  runActionUrl: string;
+}
+
+interface ModalProps {
+  onClose?: () => void;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -34,12 +39,8 @@ function ImplicitActionCardContent() {
   );
 }
 
-function ModelActionListItem({ action, actionUrl, runActionUrl }: Props) {
+function ModelActionListItem({ action, actionUrl }: ItemProps) {
   const isQueryAction = action.type === "query";
-
-  const handleRunClick = useCallback((event: MouseEvent) => {
-    event.stopPropagation();
-  }, []);
 
   return (
     <ActionRoot to={isQueryAction ? actionUrl : ""}>
@@ -60,13 +61,13 @@ function ModelActionListItem({ action, actionUrl, runActionUrl }: Props) {
         ) : action.type === "implicit" ? (
           <ImplicitActionCardContent />
         ) : null}
-        <ActionRunButton
-          as={Link}
-          to={runActionUrl}
-          icon="play"
-          onlyIcon
-          onClick={handleRunClick}
-        />
+        <ModalWithTrigger
+          triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
+        >
+          {({ onClose }: ModalProps) => (
+            <ActionRunModal actionId={action.id} onClose={onClose} />
+          )}
+        </ModalWithTrigger>
       </ActionCard>
     </ActionRoot>
   );

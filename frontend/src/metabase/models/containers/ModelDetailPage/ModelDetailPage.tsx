@@ -110,7 +110,7 @@ function ModelDetailPage({
   const tab = useMemo(() => {
     const pathname = location.pathname;
 
-    if (pathname.endsWith("new") || pathname.endsWith("run")) {
+    if (pathname.endsWith("/actions/new")) {
       return "actions";
     }
 

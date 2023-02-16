@@ -79,15 +79,10 @@ function ModelActionDetails({
     (action: WritebackAction) => {
       const card = model.card() as Card;
       const actionUrl = Urls.action(card, action.id);
-      const runActionUrl = Urls.runAction(card, action.id);
 
       return (
         <li key={action.id} aria-label={action.name}>
-          <ModelActionListItem
-            action={action}
-            actionUrl={actionUrl}
-            runActionUrl={runActionUrl}
-          />
+          <ModelActionListItem action={action} actionUrl={actionUrl} />
         </li>
       );
     },

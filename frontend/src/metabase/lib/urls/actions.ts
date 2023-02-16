@@ -12,14 +12,6 @@ export function newAction(parentModel: ParentModelProps) {
   return `${baseUrl}/new`;
 }
 
-export function runAction(
-  parentModal: ParentModelProps,
-  actionId: WritebackActionId,
-) {
-  const baseUrl = action(parentModal, actionId);
-  return `${baseUrl}/run`;
-}
-
 export function action(
   parentModel: ParentModelProps,
   actionId: WritebackActionId,
