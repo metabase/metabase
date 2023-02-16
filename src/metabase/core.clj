@@ -26,7 +26,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db])
+  (:import
+   (java.lang.management ManagementFactory)))
+
 
 (set! *warn-on-reflection* true)
 
@@ -134,7 +137,9 @@
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
-  (log/info (trs "Metabase Initialization COMPLETE")))
+  (log/info (trs "Metabase Initialization COMPLETE"))
+  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))]
+    (log/infof "Startup completed in %f" (float (/ (- (System/currentTimeMillis) start-time) 1000)))))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
@@ -156,6 +161,7 @@
     (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
+      (println "JOINING")
       (.join (server/instance)))
     (catch Throwable e
       (log/error e (trs "Metabase Initialization FAILED"))

@@ -464,7 +464,8 @@
                 com.github.seancorfield/depstar {:mvn/version "2.1.303"}
                 metabase/build.common           {:local/root "bin/common"}
                 metabase/buid-mb                {:local/root "bin/build-mb"}}
-   :ns-default build}
+   :ns-default build
+   :jvm-opts   ["-Dclojure.compiler.direct-linking=true"]}
 
 ;;; Other misc convenience aliases
 
@@ -472,7 +473,9 @@
   :profile
   {:main-opts ["-m" "metabase.core" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
-               "-XX:+PrintGC"]}
+               ;; -XX:+PrintGC is deprecated
+               "-Xlog:gc"
+               "-Dclojure.compiler.direct-linking=false"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
