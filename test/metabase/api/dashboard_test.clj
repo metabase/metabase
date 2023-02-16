@@ -2035,7 +2035,7 @@
                                                   :card_id      question-id
                                                   :dashboard_id (:id dashboard)}]]
           (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
-            (is (= {:values          ["Doohickey"
+            (is (=? {:values          ["Doohickey"
                                       "Gadget"
                                       "Gizmo"
                                       "Widget"]
