@@ -5,10 +5,15 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 
+import type { DashboardOrderedCard } from "metabase-types/api";
 import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
 import type { LinkCardSettings } from "./types";
+
+type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
+  link: LinkCardSettings;
+};
 
 const linkDashcard = createMockDashboardCardWithVirtualCard({
   visualization_settings: {
@@ -83,9 +88,7 @@ const setup = (options?: Partial<LinkVizProps>) => {
       dashcard={linkDashcard}
       isEditing={true}
       onUpdateVisualizationSettings={changeSpy}
-      settings={
-        linkDashcard.visualization_settings as unknown as LinkCardSettings
-      }
+      settings={linkDashcard.visualization_settings as LinkCardVizSettings}
       {...options}
     />,
   );
@@ -130,7 +133,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: emptyLinkDashcard,
         settings:
-          emptyLinkDashcard.visualization_settings as unknown as LinkCardSettings,
+          emptyLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
       expect(screen.queryByLabelText("link icon")).not.toBeInTheDocument();
@@ -146,7 +149,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: questionLinkDashcard,
         settings:
-          questionLinkDashcard.visualization_settings as unknown as LinkCardSettings,
+          questionLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
       expect(screen.getByLabelText("pie icon")).toBeInTheDocument();
@@ -158,7 +161,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: tableLinkDashcard,
         settings:
-          tableLinkDashcard.visualization_settings as unknown as LinkCardSettings,
+          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
       expect(screen.getByLabelText("database icon")).toBeInTheDocument();
@@ -181,7 +184,7 @@ describe("LinkViz", () => {
         isEditing: true,
         dashcard: searchingDashcard,
         settings:
-          searchingDashcard.visualization_settings as unknown as LinkCardSettings,
+          searchingDashcard.visualization_settings as LinkCardVizSettings,
       });
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
@@ -208,7 +211,7 @@ describe("LinkViz", () => {
         isEditing: true,
         dashcard: searchingDashcard,
         settings:
-          searchingDashcard.visualization_settings as unknown as LinkCardSettings,
+          searchingDashcard.visualization_settings as LinkCardVizSettings,
       });
 
       const searchInput = screen.getByPlaceholderText("https://example.com");

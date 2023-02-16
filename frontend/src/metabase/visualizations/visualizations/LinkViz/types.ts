@@ -12,8 +12,6 @@ export type LinkEntity = {
 };
 
 export interface LinkCardSettings {
-  link: {
-    url?: string;
-    entity?: LinkEntity;
-  };
+  url?: string;
+  entity?: LinkEntity;
 }

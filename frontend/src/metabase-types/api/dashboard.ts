@@ -4,6 +4,7 @@ import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
+import { LinkCardSettings } from "metabase/visualizations/visualizations/LinkViz/types";
 import { ActionDashboardCard } from "./actions";
 
 import type { Card, CardId } from "./card";
@@ -43,6 +44,7 @@ export type BaseDashboardOrderedCard = {
   visualization_settings?: {
     [key: string]: unknown;
     virtual_card?: VirtualCard;
+    link?: LinkCardSettings;
   };
   justAdded?: boolean;
   created_at: string;

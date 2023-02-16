@@ -36,9 +36,11 @@ export interface LinkVizProps {
   dashcard: DashboardOrderedCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<LinkCardSettings>,
+    newSettings: Partial<DashboardOrderedCard["visualization_settings"]>,
   ) => void;
-  settings: LinkCardSettings;
+  settings: DashboardOrderedCard["visualization_settings"] & {
+    link: LinkCardSettings;
+  };
 }
 
 function LinkViz({
