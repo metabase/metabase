@@ -24,7 +24,7 @@ interface ModelLoaderProps {
 
 type ActionCreatorRouteProps = OwnProps & ModelLoaderProps;
 
-function ActionCreatorRoute({
+function ActionCreatorModal({
   model,
   params,
   onClose,
@@ -49,4 +49,4 @@ function getModelId(state: State, props: OwnProps) {
 export default Models.load({
   id: getModelId,
   entityAlias: "model",
-})(ActionCreatorRoute);
+})(ActionCreatorModal);

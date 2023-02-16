@@ -18,6 +18,7 @@ import {
 interface Props {
   action: WritebackAction;
   actionUrl: string;
+  runActionUrl: string;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -33,7 +34,7 @@ function ImplicitActionCardContent() {
   );
 }
 
-function ModelActionListItem({ action, actionUrl }: Props) {
+function ModelActionListItem({ action, actionUrl, runActionUrl }: Props) {
   const isQueryAction = action.type === "query";
 
   const handleRunClick = useCallback((event: MouseEvent) => {
@@ -61,7 +62,7 @@ function ModelActionListItem({ action, actionUrl }: Props) {
         ) : null}
         <ActionRunButton
           as={Link}
-          to=""
+          to={runActionUrl}
           icon="play"
           onlyIcon
           onClick={handleRunClick}

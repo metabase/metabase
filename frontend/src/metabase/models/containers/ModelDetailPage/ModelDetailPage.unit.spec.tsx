@@ -27,7 +27,7 @@ import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import ActionCreator from "metabase/actions/containers/ActionCreatorRoute";
+import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 
 import type {
   Card,
