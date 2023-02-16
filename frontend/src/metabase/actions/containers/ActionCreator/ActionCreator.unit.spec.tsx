@@ -166,7 +166,7 @@ describe("ActionCreator", () => {
       expect(screen.getByText("FooBar")).toBeInTheDocument();
     });
 
-    it("blocks editing if a user doesn't have editing permissions", async () => {
+    it("blocks editing if the user doesn't have write permissions for the collection", async () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
@@ -174,6 +174,29 @@ describe("ActionCreator", () => {
         can_write: false,
       });
       await setupEditing({ action, model, isAdmin: false });
+
+      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update" }),
+      ).not.toBeInTheDocument();
+
+      screen.getByLabelText("Action settings").click();
+
+      expect(screen.getByLabelText("Success message")).toBeDisabled();
+    });
+
+    it("blocks editing if actions are disabled for the database", async () => {
+      const action = createMockQueryAction({
+        parameters: [createMockActionParameter({ name: "FooBar" })],
+      });
+      const database = createMockDatabase({
+        settings: {
+          "database-enable-actions": false,
+        },
+      });
+      await setupEditing({ action, database, isAdmin: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();
