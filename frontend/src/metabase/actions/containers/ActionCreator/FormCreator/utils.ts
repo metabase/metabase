@@ -30,9 +30,13 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     if (action.kind === "row/update") {
       return t`Update`;
     }
+
+    if (action.kind === "row/create") {
+      return t`Save`;
+    }
   }
 
-  return t`Save`;
+  return t`Run`;
 };
 
 export const reorderFields = (

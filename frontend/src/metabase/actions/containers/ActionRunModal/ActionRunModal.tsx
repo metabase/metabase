@@ -1,12 +1,15 @@
 import React from "react";
 import * as Urls from "metabase/lib/urls";
 import Actions from "metabase/entities/actions";
+import ModalContent from "metabase/components/ModalContent";
 import { WritebackAction } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import { getFormTitle } from "../../utils";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 
 interface OwnProps {
   params: RouterParams;
+  onClose?: () => void;
 }
 
 interface RouterParams {
@@ -19,12 +22,17 @@ interface ActionLoaderProps {
 
 type ActionRunModalProps = OwnProps & ActionLoaderProps;
 
-const ActionRunModal = ({ action }: ActionRunModalProps) => {
+const ActionRunModal = ({ action, onClose }: ActionRunModalProps) => {
+  const title = getFormTitle(action);
+
   return (
-    <ActionParametersInputForm
-      action={action}
-      onSubmit={() => Promise.reject()}
-    />
+    <ModalContent title={title} onClose={onClose}>
+      <ActionParametersInputForm
+        action={action}
+        onCancel={onClose}
+        onSubmit={() => Promise.reject()}
+      />
+    </ModalContent>
   );
 };
 
