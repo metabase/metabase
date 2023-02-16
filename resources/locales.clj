@@ -23,7 +23,6 @@
    "es"
    "ja"
    "cs"
-   "ar"
    "bg"},
  :packages ["metabase"],
  :bundle "metabase.Messages"}

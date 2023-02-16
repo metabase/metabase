@@ -33,7 +33,7 @@
 
 (set! *warn-on-reflection* true)
 
-(println "COMPILER OPTIOSN" *compiler-options*)
+(println "COMPILER OPTIONS" *compiler-options*)
 
 (comment
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
@@ -163,7 +163,6 @@
     (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
-      (println "JOINING")
       (.join (server/instance)))
     (catch Throwable e
       (log/error e (trs "Metabase Initialization FAILED"))
