@@ -17,8 +17,8 @@ import {
   LoginItemInfo,
 } from "./LoginHistory.styled";
 
-const LoginHistoryItem = item => (
-  <Card py={1} px="20px" my={2} key={item.timestamp}>
+const LoginHistoryItem = ({ item }) => (
+  <Card py={1} px="20px" my={2}>
     <LoginItemContent>
       <div>
         <Label mb="0">
@@ -40,7 +40,11 @@ const LoginHistoryItem = item => (
 const LoginHistoryGroup = (items, date) => (
   <LoginGroup key={date}>
     <Label>{date}</Label>
-    <div>{items.map(LoginHistoryItem)}</div>
+    <div>
+      {items.map(item => (
+        <LoginHistoryItem key={item.timestamp} item={item} />
+      ))}
+    </div>
   </LoginGroup>
 );
 
