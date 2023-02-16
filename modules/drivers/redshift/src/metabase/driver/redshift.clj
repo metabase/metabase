@@ -132,20 +132,16 @@
 
 ;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
 ;; connection read-only, because that seems to be causing problems for people
-(defmethod sql-jdbc.execute/connection-with-timezone :redshift
-  [driver database ^String timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+(defmethod sql-jdbc.execute/do-with-connection-with-time-zone :redshift
+  [driver database ^String timezone-id f]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+    (sql-jdbc.execute/set-best-transaction-level! driver conn)
+    (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
     (try
-      (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
-      (try
-        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-        (catch Throwable e
-          (log/debug e (trs "Error setting default holdability for connection"))))
-      conn
+      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (.close ^Connection conn)
-        (throw e)))))
+        (log/debug e (trs "Error setting default holdability for connection"))))
+    (f conn)))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
   (.prepareStatement conn

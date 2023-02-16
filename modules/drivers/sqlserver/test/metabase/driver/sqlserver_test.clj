@@ -190,26 +190,28 @@
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
       ;; QP pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things
       ;; are working we need to add to in from of the query we're trying to check
-      (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db)))]
-        (.setAutoCommit conn false)
-        (try
-          (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]
-                                  ["CREATE TABLE temp (d DATETIME2);"]
-                                  ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"]
-                                  ["SET LANGUAGE Italian;"]]]
-            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
-              (.execute stmt)))
-          (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                             :from   [:temp]}
-                                 :quoting :ansi, :allow-dashed-names? true)]
-            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
-                        rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
-              (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
-                (is (= [#t "2019-02-01"]
-                       (row-thunk))))))
-          ;; rollback transaction so `temp` table gets discarded
-          (finally
-            (.rollback conn)))))))
+      (sql-jdbc.execute/do-with-connection-with-time-zone
+       :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported)
+       (fn [^java.sql.Connection conn]
+         (.setAutoCommit conn false)
+         (try
+           (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]
+                                   ["CREATE TABLE temp (d DATETIME2);"]
+                                   ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"]
+                                   ["SET LANGUAGE Italian;"]]]
+             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
+               (.execute stmt)))
+           (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                              :from   [:temp]}
+                                             :quoting :ansi, :allow-dashed-names? true)]
+             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                         rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+               (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                 (is (= [#t "2019-02-01"]
+                        (row-thunk))))))
+           ;; rollback transaction so `temp` table gets discarded
+           (finally
+             (.rollback conn))))))))
 
 (deftest unprepare-test
   (mt/test-driver :sqlserver
@@ -232,13 +234,15 @@
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-              (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
-                          stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
-                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
-                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
-                  (is (= [expected]
-                         (row-thunk))
-                      (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
+              (sql-jdbc.execute/do-with-connection-with-time-zone
+               :sqlserver (mt/db) nil
+               (fn [^java.sql.Connection conn]
+                 (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
+                             rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                   (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                     (is (= [expected]
+                            (row-thunk))
+                         (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))))
 
 (defn- pretty-sql [s]
   (str/replace s #"\"" ""))

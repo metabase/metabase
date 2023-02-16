@@ -657,13 +657,12 @@
   ^PrestoConnection [^C3P0ProxyConnection pooled-conn]
   (.unwrap pooled-conn PrestoConnection))
 
-(defmethod sql-jdbc.execute/connection-with-timezone :presto-jdbc
-  [driver database ^String timezone-id]
+(defmethod sql-jdbc.execute/do-with-connection-with-time-zone :presto-jdbc
+  [driver database ^String timezone-id f]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
-  ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request.
-  (let [conn            (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))
-        underlying-conn (pooled-conn->presto-conn conn)]
-    (try
+  ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request (i.e. the `:presto` driver)
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+    (let [underlying-conn (pooled-conn->presto-conn conn)]
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       (when-not (str/blank? timezone-id)
         ;; set session time zone if defined
@@ -673,10 +672,7 @@
         (catch Throwable e
           (log/debug e (trs "Error setting connection to read-only"))))
       ;; as with statement and prepared-statement, cannot set holdability on the connection level
-      conn
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+      (f conn))))
 
 (defn- date-time->substitution [ts-str]
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))

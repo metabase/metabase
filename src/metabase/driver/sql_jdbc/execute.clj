@@ -38,29 +38,45 @@
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti connection-with-timezone
-  "Fetch a Connection for a `database` with session time zone set to `timezone-id` (if supported by the driver.) The
-  default implementation:
+(defmulti do-with-connection-with-time-zone
+  "Fetch a [[java.sql.Connection]] from a `driver`/`database`, presumably using a `DataSource` returned
+  by [[datasource]] and a [[with-open]] form, and invoke
 
-  1. Calls util fn `datasource` to get a c3p0 connection pool DataSource
-  2. Calls `.getConnection()` the normal way
-  3. Executes [[set-timezone-sql]] if implemented by the driver.
+    (f connection)
 
-  `timezone-id` will be `nil` if a `report-timezone` Setting is not currently set; don't change the session time zone
-  if this is the case.
+  The default implementation is basically
 
-  For drivers that support session timezones, the default implementation and [[set-timezone-sql]] should be considered
-  deprecated in favor of implementing `connection-with-timezone` directly. This way you can set the session timezone
-  in the most efficient manner, e.g. only setting it if needed (if there's an easy way for you to check this), or by
-  setting it as a parameter of the connection itself (the default connection pools are automatically flushed when
-  `report-timezone-id` changes).
+    (with-open [conn (.getConnection (datasource driver database))]
+      (set-best-transaction-level! driver conn)
+      (set-time-zone-if-supported! driver conn timezone-id)
+      (.setReadOnly conn true)
+      (.setAutoCommit conn false)
+      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+      (f conn))
 
-  Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
-  connections read-only (*after* setting timezone, if needed)."
-  {:added    "0.35.0"
-   :arglists '(^java.sql.Connection [driver database ^String timezone-id])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+  There are two usual ways to set the session timezone if your driver supports them:
+
+  1. Specifying the session timezone based on the value of [[metabase.driver/report-timezone]] as a JDBC connection
+     parameter in the JDBC connection spec returned by [[metabase.driver.sql-jdbc.connection/connection-details->spec]].
+     If the spec returned by this method changes, connection pools associated with it will be flushed automatically.
+     This is the preferred way to set session timezones; if you set them this way, you DO NOT need to implement this
+     method unless you need to do something special with regards to setting the transaction level.
+
+  2. Setting the session timezone manually on the [[java.sql.Connection]] returned by [[datasource]] based on the
+     value of `timezone-id`.
+
+    2a. The default implementation will do this for you by executing SQL if you implement
+        [[set-timezone-sql]].
+
+    2b. You can implement this method, [[do-with-connection-with-time-zone]], yourself and set the timezone however you
+        wish. Only set it if `timezone-id` is not `nil`!
+
+   Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
+   connections read-only (*after* setting timezone, if needed)."
+  {:added    "0.46.0"
+   :arglists '([driver database ^String timezone-id f])}
+   driver/dispatch-on-initialized-driver
+   :hierarchy #'driver/hierarchy)
 
 (defmulti set-parameter
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
@@ -70,6 +86,10 @@
   (fn [driver _ _ object]
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
+
+;; TODO -- maybe like [[do-with-connection-with-time-zone]] we should replace [[prepared-statment]] and [[statement]]
+;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
+;; things in a `try-catch` and call `.close`
 
 (defmulti ^PreparedStatement prepared-statement
   "Create a PreparedStatement with `sql` query, and set any `params`. You shouldn't need to override the default
@@ -146,7 +166,7 @@
   {:added "0.40.0"}
   ^DataSource [driver database]
   (let [ds (datasource database)]
-    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool driver (u/the-id database) ds)
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id database) ds)
     ds))
 
 (defn set-time-zone-if-supported!
@@ -191,33 +211,29 @@
         (seq more)
         (recur more)))))
 
-(defmethod connection-with-timezone :sql-jdbc
-  [driver database ^String timezone-id]
-  (let [conn (.getConnection (datasource-with-diagnostic-info! driver database))]
+(defmethod do-with-connection-with-time-zone :sql-jdbc
+  [driver database ^String timezone-id f]
+  (with-open [^Connection conn (if-let [old-method-impl (get-method connection-with-timezone driver)]
+                                 ;; TODO -- maybe log a deprecation warning here.
+                                 (old-method-impl driver database timezone-id)
+                                 (.getConnection (datasource-with-diagnostic-info! driver database)))]
+    (set-best-transaction-level! driver conn)
+    (set-time-zone-if-supported! driver conn timezone-id)
     (try
-      (set-best-transaction-level! driver conn)
-      (set-time-zone-if-supported! driver conn timezone-id)
-      (try
-        ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
-        ;; to be a hint to the driver to enable database optimizations
-        ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
-        (.setReadOnly conn true)
-        (catch Throwable e
-          (log/debug e (trs "Error setting connection to read-only"))))
-      (try
-        ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
-        ;; entire realized result set
-        (.setAutoCommit conn false)
-        (catch Throwable e
-          (log/debug e (trs "Error setting connection to autoCommit false"))))
-      (try
-        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-        (catch Throwable e
-          (log/debug e (trs "Error setting default holdability for connection"))))
-      conn
+      (.setReadOnly conn true)
       (catch Throwable e
-        (.close conn)
-        (throw e)))))
+        (log/debug e (trs "Error setting connection to read-only"))))
+    (try
+      ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
+      ;; entire realized result set
+      (.setAutoCommit conn false)
+      (catch Throwable e
+        (log/debug e (trs "Error setting connection to autoCommit false"))))
+    (try
+      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+      (catch Throwable e
+        (log/debug e (trs "Error setting default holdability for connection"))))
+    (f conn)))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place
@@ -497,27 +513,48 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
-               ^ResultSet rs (try
-                               (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                               (catch Throwable e
-                                 (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                 {:driver driver
-                                                  :sql    (str/split-lines (mdb.query/format-sql sql driver))
-                                                  :params params
-                                                  :type   qp.error-type/invalid-query}
-                                                 e))))]
-     (let [rsmeta           (.getMetaData rs)
-           results-metadata {:cols (column-metadata driver rsmeta)}]
-       (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
+   (do-with-connection-with-time-zone
+    driver
+    (qp.store/database)
+    (qp.timezone/report-timezone-id-if-supported)
+    (fn [^Connection conn]
+      (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
+                  ^ResultSet rs (try
+                                  (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                  (catch Throwable e
+                                    (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                    {:driver driver
+                                                     :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                     :params params
+                                                     :type   qp.error-type/invalid-query}
+                                                    e))))]
+        (let [rsmeta           (.getMetaData rs)
+              results-metadata {:cols (column-metadata driver rsmeta)}]
+          (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Convenience Imports from Old Impl                                        |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.execute.old
-  ;; interface (set-parameter is imported as well at the top of the namespace)
-  set-timezone-sql])
+  connection-with-timezone])
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Actions Stuff                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/execute-write-query! :sql-jdbc
+  [driver {{sql :query, :keys [params]} :native}]
+  {:pre [(string? sql)]}
+  (try
+    (let [{:keys [details]} (qp.store/database)
+          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
+      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
+      (with-open [conn (jdbc/get-connection jdbc-spec)
+                  stmt (statement-or-prepared-statement driver conn sql params nil)]
+        {:rows-affected (if (instance? PreparedStatement stmt)
+                          (.executeUpdate ^PreparedStatement stmt)
+                          (.executeUpdate stmt sql))}))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
+                      {:sql sql, :params params, :type qp.error-type/invalid-query}
+                      e)))))
