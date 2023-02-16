@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="JWT-based authentication" %}
 
-You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
+You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. If the user doesn't exist, Metabase will create it on the fly.
 
 ## Authentication flows
 
