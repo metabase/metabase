@@ -7,7 +7,7 @@ import type { Card } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";
-import { buildQuestion } from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";

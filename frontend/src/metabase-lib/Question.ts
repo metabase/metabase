@@ -848,7 +848,7 @@ class QuestionInner {
     return buildQuestion(Q.with_collection_id(this.inner(), collectionId));
   }
 
-  id(): number | undefined {
+  id(): number {
     return Q.card_id(this.inner()) || undefined;
   }
 
@@ -1124,7 +1124,7 @@ class QuestionInner {
   }
 
   // TODO: Fix incorrect Flow signature
-  parameters(): ParameterObject[] | undefined {
+  parameters(): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
       this.metadata(),

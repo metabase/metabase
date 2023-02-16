@@ -7,7 +7,7 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { buildQuestion } from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,

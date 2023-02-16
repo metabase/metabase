@@ -6,7 +6,7 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Metadata from "metabase-lib/metadata/Metadata";
-import { buildQuestion } from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 
 export interface PinnedQuestionLoaderProps {
   id: number;

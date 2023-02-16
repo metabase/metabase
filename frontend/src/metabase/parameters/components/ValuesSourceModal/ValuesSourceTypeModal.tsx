@@ -29,7 +29,7 @@ import {
   ParameterValue,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { buildQuestion } from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";

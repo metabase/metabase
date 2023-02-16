@@ -23,7 +23,7 @@ import {
   ValuesSourceConfig,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { buildQuestion } from "metabase-lib/Question";
+import Question, { buildQuestion } from "metabase-lib/Question";
 import {
   getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,

@@ -6,7 +6,7 @@
 import { Table } from "./Table";
 import { ISO8601Time } from ".";
 
-export type atabaseId = number;
+export type DatabaseId = number;
 
 export type DatabaseType = string; // "h2" | "postgres" | etc
 

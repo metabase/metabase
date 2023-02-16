@@ -12,6 +12,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
+import { TableId } from "metabase-types/types/Table";
 import { buildQuestion } from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -134,6 +135,12 @@ export function getComposedModel(
   const question = getStructuredModel(card).composeDataset();
   const query = question.query() as StructuredQuery;
 
-  const metadata = (question.metadata().table[query.sourceTableId()] = ORDERS);
-  return buildQuestion({ ...question.inner(), metadata });
+  const metadata = (question.metadata().tables[
+    query.sourceTableId() as TableId
+  ] = ORDERS);
+  return buildQuestion({
+    card: question.card(),
+    metadata,
+    parameterValues: question.parameterValues(),
+  });
 }
