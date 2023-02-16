@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.log :as log]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
