@@ -28,7 +28,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState(null);
-  const [lastDeletedTime, setLastDeletedTime] = useState(null);
+  const [lastDeletedMappingTime, setLastDeletedMappingTime] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -46,7 +46,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     }
 
     fetchData();
-  }, [mappingSetting, lastDeletedTime]);
+  }, [mappingSetting, lastDeletedMappingTime]);
 
   const handleShowAddRow = () => {
     setShowAddRow(true);
@@ -108,7 +108,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
         onSuccess && (await onSuccess());
 
-        setLastDeletedTime(Date.now());
+        setLastDeletedMappingTime(Date.now());
 
         setSaveError(null);
       },
