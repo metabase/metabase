@@ -156,18 +156,18 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->
-               (->> {:where [:and
-                             (when exclude-archived?
-                               [:= :archived false])
-                             [:= :namespace namespace]
-                             (collection/visible-collection-ids->honeysql-filter-clause
-                              :id
-                              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}
-                    (db/select Collection)
-                    (map collection/personal-collection-with-ui-details))
+               (db/select Collection
+                 {:where [:and
+                          (when exclude-archived?
+                            [:= :archived false])
+                          [:= :namespace namespace]
+                          (collection/visible-collection-ids->honeysql-filter-clause
+                           :id
+                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                exclude-other-user-collections?
-               remove-other-users-personal-collections)]
-    (collection/collections->tree coll-type-ids colls)))
+               remove-other-users-personal-collections)
+        colls-with-details (map collection/personal-collection-with-ui-details colls)]
+    (collection/collections->tree coll-type-ids colls-with-details)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
