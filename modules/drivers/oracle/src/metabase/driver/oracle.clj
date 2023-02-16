@@ -293,10 +293,11 @@
   [driver [_ & args]]
   (transduce
    (map (partial sql.qp/->honeysql driver))
-   (fn [x y]
-     (if x
-       [:concat x y]
-       y))
+   (completing
+    (fn [x y]
+      (if x
+        [:concat x y]
+        y)))
    ;; concat will always have at least two args
    nil
    args))
