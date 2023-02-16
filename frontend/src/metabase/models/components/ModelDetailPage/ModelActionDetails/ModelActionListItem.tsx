@@ -79,7 +79,7 @@ function ModelActionListItem({
       icon: "archive",
       action: handleArchive,
     },
-  ].filter(isNotNull);
+  ].filter(Boolean);
 
   const subtitleParts = [
     action.public_uuid && t`Public Action`,
