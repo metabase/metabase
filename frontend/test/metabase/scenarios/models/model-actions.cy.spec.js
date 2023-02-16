@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   restore,
+  createAction,
 } from "__support__/e2e/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -129,7 +130,7 @@ describe("scenarios > models > actions", () => {
     });
 
     cy.get("@modelId").then(modelId => {
-      cy.request("POST", "/api/action", {
+      createAction({
         ...SAMPLE_QUERY_ACTION,
         model_id: modelId,
       });
