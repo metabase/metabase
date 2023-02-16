@@ -214,8 +214,11 @@
 (defmethod do-with-connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id f]
   (with-open [^Connection conn (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
-                                 ;; TODO -- maybe log a deprecation warning here.
-                                 (old-method-impl driver database timezone-id)
+                                 (do
+                                   (log/warn (trs "{0} is deprecated in Metabase 0.46.0. Implement {1} instead."
+                                                  `connection-with-timezone
+                                                  `do-with-connection-with-timezone))
+                                   (old-method-impl driver database timezone-id))
                                  (.getConnection (datasource-with-diagnostic-info! driver database)))]
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn timezone-id)
