@@ -1,16 +1,11 @@
 import React from "react";
-import type { Location } from "history";
-
 import * as Urls from "metabase/lib/urls";
 import Models from "metabase/entities/questions";
-
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
 import ActionCreator from "../ActionCreator";
 
 interface OwnProps {
-  location: Location;
   params: {
     slug: string;
     actionId?: string;

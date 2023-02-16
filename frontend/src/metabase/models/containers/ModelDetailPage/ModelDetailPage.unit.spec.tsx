@@ -27,7 +27,7 @@ import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 
 import type {
   Card,
@@ -225,12 +225,12 @@ async function setup({
       <Route path="actions" component={ModelDetailPage}>
         <ModalRoute
           path="new"
-          modal={ActionCreator}
+          modal={ActionCreatorModal}
           modalProps={{ enableTransition: false }}
         />
         <ModalRoute
           path=":actionId"
-          modal={ActionCreator}
+          modal={ActionCreatorModal}
           modalProps={{ enableTransition: false }}
         />
       </Route>
