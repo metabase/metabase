@@ -264,7 +264,12 @@ const renderIcon = ({ icon, status }) => {
   if ([`idle`, `resolved`, `rejected`].includes(status)) {
     return (
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={20} />
+        <Icon
+          data-testid="download-button"
+          title={t`Download this data`}
+          name={icon}
+          size={20}
+        />
       </Tooltip>
     );
   } else if (status === "pending") {

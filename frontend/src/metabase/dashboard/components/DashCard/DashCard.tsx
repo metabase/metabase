@@ -103,6 +103,7 @@ interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  isPublic?: boolean;
 
   headerIcon?: IconProps;
 
@@ -132,6 +133,7 @@ function DashCard({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
+  isPublic = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
@@ -316,6 +318,7 @@ function DashCard({
   return (
     <ErrorBoundary>
       <DashCardRoot
+        data-testid="dashcard"
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         isNightMode={isNightMode}
@@ -349,6 +352,7 @@ function DashCard({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
+          isPublic={isPublic}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={changeCardAndRunHandler}

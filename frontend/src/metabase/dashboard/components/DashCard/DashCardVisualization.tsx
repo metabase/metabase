@@ -72,6 +72,7 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  isPublic?: boolean;
 
   error?: { message?: string; icon?: IconProps["name"] };
   headerIcon?: IconProps;
@@ -110,6 +111,7 @@ function DashCardVisualization({
   isSlow,
   isPreviewing,
   isEmbed,
+  isPublic,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -178,15 +180,16 @@ function DashCardVisualization({
   const renderActionButtons = useCallback(() => {
     const mainSeries = series[0];
 
-    // isEmbed
-    if (
-      isEditing ||
-      (!isEmbed &&
-        !QueryDownloadWidget.shouldRender({
+    const shouldShowDownloadWidget =
+      isEmbed ||
+      (!isPublic &&
+        !isEditing &&
+        QueryDownloadWidget.shouldRender({
           result: mainSeries,
           isResultDirty: false,
-        }))
-    ) {
+        }));
+
+    if (!shouldShowDownloadWidget) {
       return null;
     }
 
@@ -199,20 +202,12 @@ function DashCardVisualization({
         params={parameterValuesBySlug}
         dashcardId={dashcard.id}
         token={isEmbed ? dashcard.dashboard_id : undefined}
-        icon="download"
+        icon="ellipsis"
         // Can be removed once QueryDownloadWidget is converted to Typescript
         visualizationSettings={undefined}
       />
     );
-  }, [
-    series,
-    isEditing,
-    isEmbed,
-    dashcard.card,
-    dashcard.id,
-    dashcard.dashboard_id,
-    parameterValuesBySlug,
-  ]);
+  }, [series, isEmbed, isPublic, isEditing, dashcard, parameterValuesBySlug]);
 
   return (
     <WrappedVisualization

@@ -11,6 +11,8 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
+  downloadAndAssert,
+  assertSheetRowsCount,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -533,6 +535,22 @@ describe("scenarios > dashboard", () => {
     appbar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow downloading card data", () => {
+    visitDashboard(1);
+    cy.findByTestId("dashcard").within(() => {
+      cy.icon("ellipsis").should("not.be.visible");
+      cy.findByTestId("legend-caption").realHover();
+    });
+
+    downloadAndAssert({ fileType: "xlsx", questionId: 1 }, sheet => {
+      expect(sheet["A1"].v).to.eq("ID");
+      expect(sheet["A2"].v).to.eq(1);
+      expect(sheet["A3"].v).to.eq(2);
+
+      assertSheetRowsCount(18760)(sheet);
+    });
   });
 });
 

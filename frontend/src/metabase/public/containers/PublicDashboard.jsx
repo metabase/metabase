@@ -135,6 +135,7 @@ class PublicDashboard extends Component {
           {() => (
             <DashboardGrid
               {...this.props}
+              isPublic
               className="spread"
               mode={PublicMode}
               metadata={this.props.metadata}
