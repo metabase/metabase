@@ -123,29 +123,57 @@ describe("scenarios > models > actions", () => {
   });
 
   it("should allow to make actions public and execute them", () => {
+    const IMPLICIT_ACTION_NAME = "Update order";
+
     cy.get("@modelId").then(modelId => {
       createAction({
         ...SAMPLE_QUERY_ACTION,
+        model_id: modelId,
+      });
+      createAction({
+        type: "implicit",
+        kind: "row/update",
+        name: IMPLICIT_ACTION_NAME,
         model_id: modelId,
       });
       cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
     });
 
-    enableSharingFor(SAMPLE_QUERY_ACTION.name, { publicUrlAlias: "publicUrl" });
-
-    cy.get("@publicUrl").then(url => {
-      cy.signOut();
-      cy.visit(url);
+    enableSharingFor(SAMPLE_QUERY_ACTION.name, {
+      publicUrlAlias: "queryActionPublicUrl",
+    });
+    enableSharingFor(IMPLICIT_ACTION_NAME, {
+      publicUrlAlias: "implicitActionPublicUrl",
     });
 
-    cy.findByLabelText(TEST_PARAMETER.name).type("-2");
-    cy.findByRole("button", { name: "Submit" }).click();
-    cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
-      "be.visible",
-    );
-    cy.findByRole("form").should("not.exist");
-    cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    cy.signOut();
+
+    cy.get("@queryActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByLabelText(TEST_PARAMETER.name).type("-2");
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+        "be.visible",
+      );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    });
+
+    cy.get("@implicitActionPublicUrl").then(url => {
+      cy.visit(url);
+
+      // Order 1 has quantity 2 by default, so we're not actually mutating data
+      cy.findByLabelText(/^id/i).type("1");
+      cy.findByLabelText(/quantity/i).type("2");
+
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
+        "be.visible",
+      );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    });
 
     cy.signInAsAdmin();
     cy.get("@modelId").then(modelId => {
@@ -154,8 +182,16 @@ describe("scenarios > models > actions", () => {
     });
 
     disableSharingFor(SAMPLE_QUERY_ACTION.name);
+    disableSharingFor(IMPLICIT_ACTION_NAME);
 
-    cy.get("@publicUrl").then(url => {
+    cy.get("@queryActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+      cy.findByText("An error occurred.").should("be.visible");
+    });
+
+    cy.get("@implicitActionPublicUrl").then(url => {
       cy.visit(url);
       cy.findByRole("form").should("not.exist");
       cy.findByRole("button", { name: "Submit" }).should("not.exist");
@@ -228,8 +264,7 @@ function enableSharingFor(actionName, { publicUrlAlias }) {
       .then(url => {
         cy.wrap(url).as(publicUrlAlias);
       });
-    cy.button("Update").click();
-    cy.wait("@updateAction");
+    cy.button("Cancel").click();
   });
 }
 
@@ -242,5 +277,8 @@ function disableSharingFor(actionName) {
   modal().within(() => {
     cy.findByText("Disable this public link?").should("be.visible");
     cy.findByRole("button", { name: "Yes" }).click();
+  });
+  cy.findByRole("dialog").within(() => {
+    cy.button("Cancel").click();
   });
 }
