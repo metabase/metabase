@@ -14,11 +14,12 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
+import { Card, Database, WritebackQueryAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
+  createMockDatabase,
   createMockQueryAction,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -27,42 +28,31 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import type { Card, WritebackQueryAction } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-
 import ActionCreator from "./ActionCreator";
-
-function getDatabaseObject(database: Database) {
-  return {
-    ...database.getPlainObject(),
-    tables: database.tables.map(getTableObject),
-  };
-}
-
-function getTableObject(table: Table) {
-  return {
-    ...table.getPlainObject(),
-    schema: table.schema_name,
-  };
-}
 
 type SetupOpts = {
   action?: WritebackQueryAction;
   model?: Card;
+  database?: Database;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
 };
 
 async function setup({
   action,
-  model = createMockCard({ dataset: true, can_write: true }),
+  model = createMockCard({
+    dataset: true,
+    can_write: true,
+  }),
+  database = createMockDatabase({
+    settings: { "database-enable-actions": true },
+  }),
   isAdmin,
   isPublicSharingEnabled,
 }: SetupOpts = {}) {
   const scope = nock(location.origin);
 
-  setupDatabasesEndpoints(scope, [getDatabaseObject(SAMPLE_DATABASE)]);
+  setupDatabasesEndpoints(scope, [database]);
   setupCardsEndpoints(scope, [createMockCard(model)]);
 
   if (action) {
@@ -76,7 +66,6 @@ async function setup({
   renderWithProviders(
     <ActionCreator actionId={action?.id} modelId={model.id} />,
     {
-      withSampleDatabase: true,
       storeInitialState: createMockState({
         currentUser: createMockUser({
           is_superuser: isAdmin,
@@ -137,7 +126,7 @@ describe("ActionCreator", () => {
       getIcon("reference", "button").click();
 
       expect(screen.getByText("Data Reference")).toBeInTheDocument();
-      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+      expect(screen.getByText("Database")).toBeInTheDocument();
     });
 
     it("should show action settings button", async () => {
