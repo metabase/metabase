@@ -2,6 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import EmptyState from "metabase/components/EmptyState";
 import { Container } from "./DashboardEmptyState.styled";
 
@@ -17,9 +19,17 @@ const DashboardEmptyState = ({ isNightMode, addQuestion }) => (
     <EmptyState
       illustrationElement={questionCircle}
       title={t`This dashboard is looking empty.`}
-      message={t`Add a question to start making it useful!`}
-      action={t`Add a question`}
-      onActionClick={addQuestion}
+      message={
+        <>
+          <Button onlyText onClick={addQuestion}>
+            {t`Add a saved question`}
+          </Button>
+          {t`, or `}
+          <Link to="/question/new" className="text-bold text-brand">
+            {t`ask a new one`}
+          </Link>
+        </>
+      }
     />
   </Container>
 );

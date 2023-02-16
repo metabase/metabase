@@ -204,13 +204,8 @@ class Dashboard extends Component {
   };
 
   onAddQuestion = () => {
-    if (this.props.sidebar.name !== SIDEBAR_NAME.addQuestion) {
-      return () => {
-        this.setEditing(true);
-        this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
-      };
-    }
-    return undefined;
+    this.setEditing(true);
+    this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
   render() {
