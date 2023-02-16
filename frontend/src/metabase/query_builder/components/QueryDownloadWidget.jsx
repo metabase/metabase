@@ -14,8 +14,6 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import DownloadButton from "metabase/components/DownloadButton";
 import Tooltip from "metabase/core/components/Tooltip";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ModalContent from "metabase/components/ModalContent";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -140,12 +138,7 @@ const QueryDownloadWidget = ({
                   ) : null}
                 </WidgetFormat>
               ))}
-              <ModalWithTrigger
-                triggerElement={<DownloadButton>PNG</DownloadButton>}
-                fit
-              >
-                <DownloadPNGModal />
-              </ModalWithTrigger>
+              <DownloadPNGButton />
             </div>
           </WidgetRoot>
         );
@@ -154,19 +147,28 @@ const QueryDownloadWidget = ({
   );
 };
 
-function DownloadPNGModal() {
+function DownloadPNGButton() {
+  const [clicked, setClicked] = useState(false);
   useEffect(() => {
     html2canvas(document.querySelector(".dc-chart")).then(canvas => {
-      console.log(canvas);
-      console.log("we be go?");
-      document.getElementById("png-canvas").appendChild(canvas);
+      const button = document.getElementById("png-download");
+      const title = document.querySelector(
+        'div[data-testid="qb-header"] span',
+      ).innerText;
+      button.download = `${title}-${new Date(Date.now()).toLocaleString(
+        "en",
+      )}.png`; // TODO - update with question name
+      button.href = canvas.toDataURL();
+      if (clicked) {
+        button.click();
+      }
     });
-  }, []);
+  }, [clicked]);
 
   return (
-    <ModalContent title="Download PNG">
-      <div id="png-canvas"></div>
-    </ModalContent>
+    <DownloadButton onClick={() => setClicked(true)}>
+      <a id="png-download">PNG</a>
+    </DownloadButton>
   );
 }
 
