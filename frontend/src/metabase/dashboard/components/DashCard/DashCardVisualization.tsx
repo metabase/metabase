@@ -11,12 +11,16 @@ import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
+  VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
@@ -121,12 +125,19 @@ function DashCardVisualization({
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       if (isVirtualDashCard(dashcard)) {
-        const isTextCard =
-          dashcard?.visualization_settings?.virtual_card?.display === "text";
+        const virtualDashcardType = getVirtualCardType(
+          dashcard,
+        ) as VirtualCardDisplay;
+        const placeholderText = {
+          link: t`Link`,
+          action: t`Action Button`,
+          text: t`Text Card`,
+        }[virtualDashcardType];
+
         return (
           <VirtualDashCardOverlayRoot>
             <VirtualDashCardOverlayText>
-              {isTextCard ? t`Text card` : t`Action button`}
+              {placeholderText}
             </VirtualDashCardOverlayText>
           </VirtualDashCardOverlayRoot>
         );
