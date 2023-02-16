@@ -167,7 +167,6 @@
   database-id+connection-type->connection-pool
   (atom {}))
 
-;; TODO: this might need a connection-type too? or maybe it can be 1:1 with the database
 (defonce ^:private ^{:doc "A table (map of maps) of DB details hash values, keyed by Database `:id` and connection-type."}
   database-id+connection-type->jdbc-spec-hash
   (atom {}))
