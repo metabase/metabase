@@ -26,6 +26,7 @@ import {
   ActionsHeader,
   ActionMenu,
   ActionList,
+  ActionAlert,
 } from "./ModelActionDetails.styled";
 
 interface OwnProps {
@@ -54,7 +55,9 @@ function ModelActionDetails({
   actions,
   handleEnableImplicitActions,
 }: Props) {
-  const canWrite = model.canWrite();
+  const database = model.database();
+  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const canWrite = model.canWriteActions();
   const hasImplicitActions = actions.some(action => action.type === "implicit");
 
   const actionsSorted = useMemo(
@@ -103,6 +106,11 @@ function ModelActionDetails({
             />
           )}
         </ActionsHeader>
+      )}
+      {database && !hasActionsEnabled && (
+        <ActionAlert icon="warning" variant="error">
+          {t`Running Actions is not enabled for database ${database.displayName()}`}
+        </ActionAlert>
       )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>

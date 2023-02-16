@@ -22,8 +22,9 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
@@ -40,7 +41,7 @@ import CreateActionForm, {
 
 interface OwnProps {
   actionId?: WritebackActionId;
-  modelId?: number;
+  modelId: number;
   databaseId?: number;
   onClose?: () => void;
 }
@@ -50,10 +51,11 @@ interface ActionLoaderProps {
 }
 
 interface ModelLoaderProps {
-  model?: Card;
+  modelCard: Card;
 }
 
 interface StateProps {
+  model: Question;
   metadata: Metadata;
 }
 
@@ -70,7 +72,8 @@ type Props = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
+  model: new Question(modelCard, getMetadata(state)),
   metadata: getMetadata(state),
 });
 
@@ -94,7 +97,6 @@ function resolveQuestion(
 function ActionCreator({
   action,
   model,
-  modelId,
   databaseId,
   metadata,
   onCreateAction,
@@ -113,7 +115,7 @@ function ActionCreator({
 
   const query = question.query() as NativeQuery;
   const isNew = !action && !question.isSaved();
-  const isEditable = isNew || Boolean(model?.can_write);
+  const isEditable = model.canWriteActions();
 
   useEffect(() => {
     setQuestion(resolveQuestion(action, { metadata, databaseId }));
@@ -135,7 +137,7 @@ function ActionCreator({
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: modelId as number });
+      onUpdateAction({ ...action, model_id: model.id() });
       onClose?.();
     }
   };
@@ -193,7 +195,7 @@ function ActionCreator({
             initialValues={{
               name: question.displayName() ?? "",
               description: question.description(),
-              model_id: modelId,
+              model_id: model.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
@@ -204,20 +206,13 @@ function ActionCreator({
   );
 }
 
-function maybeGetModelId(
-  state: State,
-  { action }: OwnProps & ActionLoaderProps,
-) {
-  return action?.model_id;
-}
-
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
   }),
   Questions.load({
-    id: maybeGetModelId,
-    entityAlias: "model",
+    id: (state: State, props: OwnProps) => props.modelId,
+    entityAlias: "modelCard",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

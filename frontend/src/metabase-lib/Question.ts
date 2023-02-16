@@ -468,6 +468,12 @@ class QuestionInner {
     return this._card && this._card.can_write;
   }
 
+  canWriteActions(): boolean {
+    const database = this.database();
+    const hasActionsEnabled = database != null && database.hasActionsEnabled();
+    return this.canWrite() && hasActionsEnabled;
+  }
+
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
