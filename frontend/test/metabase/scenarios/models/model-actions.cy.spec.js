@@ -65,12 +65,15 @@ const SAMPLE_QUERY_ACTION = {
   },
 };
 
-describe("scenarios > models > actions", () => {
-  beforeEach(() => {
-    restore("postgres-12");
-    cy.signInAsAdmin();
+describe(
+  "scenarios > models > actions",
+  { tags: ["@external", "@actions"] },
+  () => {
+    beforeEach(() => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
 
-    enableActionsForDB(PG_DB_ID);
+      enableActionsForDB(PG_DB_ID);
 
     cy.createQuestion(SAMPLE_ORDERS_MODEL, {
       wrapId: true,
@@ -239,9 +242,6 @@ describe("scenarios > models > actions", () => {
       cy.visit(url);
       cy.findByRole("form").should("not.exist");
       cy.findByRole("button", { name: "Submit" }).should("not.exist");
-      cy.findByText("An error occurred.").should("be.visible");
-    });
-  });
 
   it("should respect permissions", () => {
     cy.get("@modelId").then(modelId => {
@@ -272,11 +272,57 @@ describe("scenarios > models > actions", () => {
         cy.icon("gear").should("not.exist");
       });
 
-      cy.findByLabelText("Action settings").click();
-      cy.findByLabelText("Success message").should("be.disabled");
+      cy.findByText("Actions").click();
+      openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("button", { name: "Action settings" }).click();
+        cy.findByLabelText("Make public").should("be.checked").click();
+      });
+      modal().within(() => {
+        cy.findByText("Disable this public link?").should("be.visible");
+        cy.findByRole("button", { name: "Yes" }).click();
+      });
+
+      cy.get("@publicUrl").then(url => {
+        cy.visit(url);
+        cy.findByRole("form").should("not.exist");
+        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.findByText("An error occurred.").should("be.visible");
+      });
     });
-  });
-});
+
+    it("should respect permissions", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.request("POST", "/api/action", {
+          ...SAMPLE_QUERY_ACTION,
+          model_id: modelId,
+        });
+        cy.signIn("readonly");
+        cy.visit(`/model/${modelId}/detail/actions`);
+        cy.wait("@getModel");
+      });
+
+      openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+        cy.button("Save").should("not.exist");
+        cy.button("Update").should("not.exist");
+
+        assertQueryEditorDisabled();
+
+        cy.findByRole("form").within(() => {
+          cy.icon("gear").should("not.exist");
+        });
+
+        cy.findByLabelText("Action settings").click();
+        cy.findByLabelText("Success message").should("be.disabled");
+      });
+    });
+  },
+);
 
 function runActionFor(actionName) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
