@@ -6,11 +6,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 
+import { isImplicitAction } from "metabase/actions/utils";
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import { isImplicitAction } from "metabase/actions/utils";
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import {
   ActionsList,
@@ -122,7 +122,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <ActionCreator
+        <ActionCreatorModal
           modelId={model.id}
           databaseId={model.database_id}
           actionId={editingActionId}

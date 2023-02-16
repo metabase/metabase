@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
@@ -653,6 +654,10 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
+                                       ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
+                                       ;; include the `:join-alias`) but this test is also testing that we detect this
+                                       ;; situation and handle it appropriately.
+                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
@@ -876,3 +881,33 @@
                       ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
+
+(deftest ^:parallel join-order-test
+  (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
+      ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
+      ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
+      (when (or (not (isa? driver/hierarchy driver/*driver* :sql))
+                (= (sql.qp/honey-sql-version driver/*driver*) 2))
+        (mt/dataset sample-dataset
+          (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
+                                                              [:left-join :inner-join]]
+                  :let [query (mt/mbql-query people
+                                {:joins    [{:source-table $$orders
+                                             :alias        "Orders"
+                                             :condition    [:= $id &Orders.orders.user_id]
+                                             :strategy     first-join-strategy}
+                                            {:source-table $$products
+                                             :alias        "Products"
+                                             :condition    [:= &Orders.orders.product_id &Products.products.id]
+                                             :strategy     second-join-strategy}]
+                                 :fields   [$id &Orders.orders.id &Products.products.id]
+                                 :order-by [[:asc $id]
+                                            [:asc &Orders.orders.id]
+                                            [:asc &Products.products.id]]
+                                 :limit    1})]]
+            (testing (format "%s before %s" first-join-strategy second-join-strategy)
+              (mt/with-native-query-testing-context query
+                (is (= [[1 1 14]]
+                       (mt/formatted-rows [int int int]
+                         (qp/process-query query))))))))))))
