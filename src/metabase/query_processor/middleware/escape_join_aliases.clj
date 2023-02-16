@@ -59,7 +59,8 @@
   3. `:joins` inside of other joins
 
   e.g. when duplicate aliases exist, a join with alias `X` from the source query should 'shadow' a join with the alias
-  `X` inside another join."
+  `X` inside another join. Important! This includes join conditions! So that means we need to merge in the
+  `::original->escaped` map from the parent level into the maps in its `:joins` as well."
   [query]
   (mbql.u/replace query
     (m :guard (every-pred map? ::original->escaped))
@@ -78,7 +79,13 @@
                                                              (cons
                                                               source-query-original->escaped-map
                                                               joins-original->escaped-maps)))]
-      (assoc m' ::original->escaped merged-original->escaped))))
+      ;; now merge in the `merged-original->escaped` map into our immediate joins, so they are available in the
+      ;; conditions.
+      (cond-> (assoc m' ::original->escaped merged-original->escaped)
+        (seq (:joins m')) (update :joins (fn [joins]
+                                           (mapv (fn [join]
+                                                   (update join ::original->escaped merge merged-original->escaped))
+                                                 joins)))))))
 
 (defn- add-escaped-join-aliases-to-fields
   "Walk the query and add an `::join-alias` to all `:field` clauses."

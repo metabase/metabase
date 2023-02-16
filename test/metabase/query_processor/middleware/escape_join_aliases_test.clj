@@ -142,7 +142,7 @@
     #'escape/merge-original->escaped-maps
     {:source-query              {:source-table              1
                                  :joins                     [{:source-table              2
-                                                              ::escape/original->escaped {}
+                                                              ::escape/original->escaped {"Products" "Products"}
                                                               :alias                     "Products"
                                                               ::escape/alias             "Products"
                                                               :condition                 [:=
@@ -152,7 +152,7 @@
                                  :breakout                  [[:field 6 {:join-alias "Products", :temporal-unit :month}]]}
      :joins                     [{:source-query              {:source-table              3
                                                               :joins                     [{:source-table              4
-                                                                                           ::escape/original->escaped {}
+                                                                                           ::escape/original->escaped {"Products" "Products_2"}
                                                                                            :alias                     "Products"
                                                                                            ::escape/alias             "Products_2"
                                                                                            :condition                 [:=
@@ -160,8 +160,9 @@
                                                                                                                        [:field 5 {:join-alias "Products"}]]
                                                                                            :fields                    :all}]
                                                               ::escape/original->escaped {"Products" "Products_2"}
-                                                              :breakout                  [[:field 6 {:join-alias "Products", :temporal-unit :month}]]}
-                                  ::escape/original->escaped {"Products" "Products_2"}
+                                                              :breakout                  [[:field 6 {:join-alias    "Products"
+                                                                                                     :temporal-unit :month}]]}
+                                  ::escape/original->escaped {"Products" "Products", "Q2" "Q2"}
                                   :alias                     "Q2"
                                   ::escape/alias             "Q2"
                                   :condition                 [:=
@@ -173,7 +174,7 @@
     #'escape/add-escaped-join-aliases-to-fields
     {:source-query              {:source-table              1
                                  :joins                     [{:source-table              2
-                                                              ::escape/original->escaped {}
+                                                              ::escape/original->escaped {"Products" "Products"}
                                                               :alias                     "Products"
                                                               ::escape/alias             "Products"
                                                               :condition                 [:=
@@ -186,7 +187,7 @@
                                                                         :temporal-unit      :month}]]}
      :joins                     [{:source-query              {:source-table              3
                                                               :joins                     [{:source-table              4
-                                                                                           ::escape/original->escaped {}
+                                                                                           ::escape/original->escaped {"Products" "Products_2"}
                                                                                            :alias                     "Products"
                                                                                            ::escape/alias             "Products_2"
                                                                                            :condition                 [:=
@@ -198,7 +199,7 @@
                                                               :breakout                  [[:field 6 {:join-alias         "Products"
                                                                                                      ::escape/join-alias "Products_2"
                                                                                                      :temporal-unit      :month}]]}
-                                  ::escape/original->escaped {"Products" "Products_2"}
+                                  ::escape/original->escaped {"Products" "Products", "Q2" "Q2"}
                                   :alias                     "Q2"
                                   ::escape/alias             "Q2"
                                   :condition                 [:=
@@ -278,7 +279,7 @@
                                                              :joins                     [{:source-table              2
                                                                                           :alias                     "Products_Long_Identifier"
                                                                                           ::escape/alias             "Pro_acce5f27"
-                                                                                          ::escape/original->escaped {}
+                                                                                          ::escape/original->escaped {"Products_Long_Identifier" "Pro_acce5f27"}
                                                                                           :condition                 [:=
                                                                                                                       [:field 4 nil]
                                                                                                                       [:field 5 {:join-alias "Products_Long_Identifier"}]]}]
@@ -292,7 +293,7 @@
                                                              :joins                     [{:source-table              2
                                                                                           :alias                     "Products_Long_Identifier"
                                                                                           ::escape/alias             "Pro_acce5f27"
-                                                                                          ::escape/original->escaped {}
+                                                                                          ::escape/original->escaped {"Products_Long_Identifier" "Pro_acce5f27"}
                                                                                           :condition                 [:=
                                                                                                                       [:field 4 nil]
                                                                                                                       [:field 5 {:join-alias         "Products_Long_Identifier"
@@ -312,6 +313,155 @@
                                                                   [:field 4 nil]
                                                                   [:field 5 {:join-alias "Pro_acce5f27"}]]}]}}
      :order-by     [[:asc [:field 6 {:join-alias "Pro_acce5f27", :temporal-unit :month}]]]})))
+
+(deftest ^:parallel steps-test-3
+  (test-steps
+   (ordered-map/ordered-map
+    :init
+    {:source-query {:source-table 1
+                    :joins        [{:source-table 2
+                                    :alias        "Products"
+                                    :condition    [:=
+                                                   [:field 4 nil]
+                                                   [:field 5 {:join-alias "Products"}]]}]}
+     :joins        [{:source-query {:source-table 3
+                                    :joins        [{:source-table 4
+                                                    :alias        "Products"
+                                                    :condition    [:=
+                                                                   [:field 4 nil]
+                                                                   [:field 5 {:join-alias "Products"}]]}]}
+                     :alias        "Q2"
+                     :condition    [:=
+                                    [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                    [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+
+    #'add-escaped-aliases-h2
+    {:source-query {:source-table 1
+                    :joins        [{:source-table  2
+                                    :alias         "Products"
+                                    ::escape/alias "Products"
+                                    :condition     [:=
+                                                    [:field 4 nil]
+                                                    [:field 5 {:join-alias "Products"}]]}]}
+     :joins        [{:source-query  {:source-table 3
+                                     :joins        [{:source-table  4
+                                                     :alias         "Products"
+                                                     ::escape/alias "Products_2"
+                                                     :condition     [:=
+                                                                     [:field 4 nil]
+                                                                     [:field 5 {:join-alias "Products"}]]}]}
+                     :alias         "Q2"
+                     ::escape/alias "Q2"
+                     :condition     [:=
+                                     [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                     [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+
+    #'escape/add-original->escaped-alias-maps
+    {:source-query              {:source-table              1
+                                 ::escape/original->escaped {"Products" "Products"}
+                                 :joins                     [{:source-table              2
+                                                              ::escape/original->escaped {}
+                                                              :alias                     "Products"
+                                                              ::escape/alias             "Products"
+                                                              :condition                 [:=
+                                                                                          [:field 4 nil]
+                                                                                          [:field 5 {:join-alias "Products"}]]}]}
+     ::escape/original->escaped {"Q2" "Q2"}
+     :joins                     [{:source-query              {:source-table              3
+                                                              ::escape/original->escaped {"Products" "Products_2"}
+                                                              :joins                     [{:source-table              4
+                                                                                           ::escape/original->escaped {}
+                                                                                           :alias                     "Products"
+                                                                                           ::escape/alias             "Products_2"
+                                                                                           :condition                 [:=
+                                                                                                                       [:field 4 nil]
+                                                                                                                       [:field 5 {:join-alias "Products"}]]}]}
+                                  ::escape/original->escaped {}
+                                  :alias                     "Q2"
+                                  ::escape/alias             "Q2"
+                                  :condition                 [:=
+                                                              [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                              [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+
+    #'escape/merge-original->escaped-maps
+    {:source-query              {:source-table              1
+                                 ::escape/original->escaped {"Products" "Products"}
+                                 :joins                     [{:source-table              2
+                                                              ::escape/original->escaped {"Products" "Products"}
+                                                              :alias                     "Products"
+                                                              ::escape/alias             "Products"
+                                                              :condition                 [:=
+                                                                                          [:field 4 nil]
+                                                                                          [:field 5 {:join-alias "Products"}]]}]}
+     ::escape/original->escaped {"Q2" "Q2", "Products" "Products"}
+     :joins                     [{:source-query              {:source-table              3
+                                                              ::escape/original->escaped {"Products" "Products_2"}
+                                                              :joins                     [{:source-table              4
+                                                                                           ::escape/original->escaped {"Products" "Products_2"}
+                                                                                           :alias                     "Products"
+                                                                                           ::escape/alias             "Products_2"
+                                                                                           :condition                 [:=
+                                                                                                                       [:field 4 nil]
+                                                                                                                       [:field 5 {:join-alias "Products"}]]}]}
+                                  ::escape/original->escaped {"Q2" "Q2", "Products" "Products"}
+                                  :alias                     "Q2"
+                                  ::escape/alias             "Q2"
+                                  :condition                 [:=
+                                                              [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                              [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+
+    #'escape/add-escaped-join-aliases-to-fields
+    {:source-query              {:source-table              1
+                                 ::escape/original->escaped {"Products" "Products"}
+                                 :joins                     [{:source-table              2
+                                                              ::escape/original->escaped {"Products" "Products"}
+                                                              :alias                     "Products"
+                                                              ::escape/alias             "Products"
+                                                              :condition                 [:=
+                                                                                          [:field 4 nil]
+                                                                                          [:field 5 {:join-alias         "Products"
+                                                                                                     ::escape/join-alias "Products"}]]}]}
+     ::escape/original->escaped {"Q2" "Q2", "Products" "Products"}
+     :joins                     [{:source-query              {:source-table              3
+                                                              ::escape/original->escaped {"Products" "Products_2"}
+                                                              :joins                     [{:source-table              4
+                                                                                           ::escape/original->escaped {"Products" "Products_2"}
+                                                                                           :alias                     "Products"
+                                                                                           ::escape/alias             "Products_2"
+                                                                                           :condition                 [:=
+                                                                                                                       [:field 4 nil]
+                                                                                                                       [:field 5 {:join-alias         "Products"
+                                                                                                                                  ::escape/join-alias "Products_2"}]]}]}
+                                  ::escape/original->escaped {"Q2" "Q2", "Products" "Products"}
+                                  :alias                     "Q2"
+                                  ::escape/alias             "Q2"
+                                  :condition                 [:=
+                                                              [:field 6 {:join-alias         "Products"
+                                                                         ::escape/join-alias "Products"
+                                                                         :temporal-unit      :month}]
+                                                              [:field 6 {:join-alias         "Q2"
+                                                                         ::escape/join-alias "Q2"
+                                                                         :temporal-unit      :month}]]}]}
+
+    #'escape/replace-original-aliases-with-escaped-aliases
+    {:source-query {:source-table 1
+                    :joins        [{:source-table 2
+                                    :alias        "Products"
+                                    :condition    [:=
+                                                   [:field 4 nil]
+                                                   [:field 5 {:join-alias "Products"}]]}]}
+     :joins        [{:source-query {:source-table 3
+                                    :joins        [{:source-table 4
+                                                    :alias        "Products_2"
+                                                    :condition    [:=
+                                                                   [:field 4 nil]
+                                                                   [:field 5 {:join-alias "Products_2"}]]}]}
+                     :alias        "Q2"
+                     :condition    [:=
+                                    [:field 6 {:join-alias    "Products"
+                                               :temporal-unit :month}]
+                                    [:field 6 {:join-alias    "Q2"
+                                               :temporal-unit :month}]]}]})))
 
 
 ;;; these are e2e tests
@@ -462,6 +612,46 @@
                                                     [:field 6 {:temporal-unit :month}]
                                                     [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]
                      :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}})))))
+
+(deftest ^:parallel deduplicate-condition-test
+  ;; When ambiguous, a `:field` inside a join condition should be interpreted as referring to a join in the source query
+  ;; rather than a join inside the join.
+  (is (= {:query {:source-query {:source-table 1
+                                 :joins        [{:source-table 2
+                                                 :alias        "Products"
+                                                 :condition    [:=
+                                                                [:field 4 nil]
+                                                                [:field 5 {:join-alias "Products"}]]}]}
+                  :joins        [{:source-query {:source-table 3
+                                                 :joins        [{:source-table 4
+                                                                 :alias        "Products_2"
+                                                                 :condition    [:=
+                                                                                [:field 4 nil]
+                                                                                [:field 5 {:join-alias "Products_2"}]]}]}
+                                  :alias        "Q2"
+                                  :condition    [:=
+                                                 [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                 [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
+          :info  {:alias/escaped->original {"Products_2" "Products"}}}
+         (driver/with-driver :h2
+           (escape/escape-join-aliases
+            {:query {:source-query {:source-table 1
+                                    :joins        [{:source-table 2
+                                                    :alias        "Products"
+                                                    :condition    [:=
+                                                                   [:field 4 nil]
+                                                                   [:field 5 {:join-alias "Products"}]]}]}
+                     :joins        [{:source-query {:source-table 3
+                                                    :joins        [{:source-table 4
+                                                                    :alias        "Products"
+                                                                    :condition    [:=
+                                                                                   [:field 4 nil]
+                                                                                   [:field 5 {:join-alias "Products"}]]}]}
+                                     :alias        "Q2"
+                                     :condition    [:=
+                                                    ;; this field is the ambiguous one.
+                                                    [:field 6 {:join-alias "Products", :temporal-unit :month}]
+                                                    [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}})))))
 
 (deftest ^:parallel escape-aliases-even-with-no-joins-at-current-level-test
   (testing "We should still escape stuff with `:join-alias` even if there are no joins at the current level.")
