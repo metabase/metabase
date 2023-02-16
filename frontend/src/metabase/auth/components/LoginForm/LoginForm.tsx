@@ -72,7 +72,11 @@ const LoginForm = ({
           placeholder={t`Shhh...`}
         />
         {!hasSessionCookies && (
-          <FormCheckBox name="remember" title={t`Remember me`} />
+          <FormCheckBox
+            style={{ justifyContent: "start" }}
+            name="remember"
+            title={t`Remember me`}
+          />
         )}
         <FormSubmitButton title={t`Sign in`} primary fullWidth />
         <FormErrorMessage />
