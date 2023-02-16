@@ -7,19 +7,19 @@ import type { Location, LocationDescriptor } from "history";
 import { useMount } from "react-use";
 import * as Urls from "metabase/lib/urls";
 
+import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
-import type { Card, Collection } from "metabase-types/api";
+import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
@@ -32,9 +32,11 @@ type OwnProps = {
     slug: string;
     tab?: string;
   };
+  children: React.ReactNode;
 };
 
 type ModelEntityLoaderProps = {
+  actions: WritebackAction[];
   modelCard: Card;
 };
 
@@ -84,7 +86,9 @@ const FALLBACK_TAB = "usage";
 
 function ModelDetailPage({
   model,
+  actions,
   location,
+  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
@@ -93,9 +97,10 @@ function ModelDetailPage({
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
-  const database = model.database()?.getPlainObject();
-  const hasActionsEnabled =
-    database != null && checkDatabaseActionsEnabled(database);
+  const database = model.database();
+  const hasActions = actions.length > 0;
+  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const hasActionsTab = hasActions || hasActionsEnabled;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -103,7 +108,13 @@ function ModelDetailPage({
   );
 
   const tab = useMemo(() => {
-    const [tab] = location.pathname.split("/").reverse();
+    const pathname = location.pathname;
+
+    if (pathname.endsWith("/actions/new")) {
+      return "actions";
+    }
+
+    const [tab] = pathname.split("/").reverse();
     return tab ?? FALLBACK_TAB;
   }, [location.pathname]);
 
@@ -119,11 +130,11 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    if (tab === "actions" && !hasActionsEnabled) {
+    if (tab === "actions" && !hasActionsTab) {
       const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
       onChangeLocation(nextUrl);
     }
-  }, [model, tab, hasActionsEnabled, onChangeLocation]);
+  }, [model, tab, hasActionsTab, onChangeLocation]);
 
   const handleNameChange = useCallback(
     name => {
@@ -158,15 +169,19 @@ function ModelDetailPage({
   );
 
   return (
-    <ModelDetailPageView
-      model={model}
-      mainTable={mainTable}
-      tab={tab}
-      hasActionsTab={hasActionsEnabled}
-      onChangeName={handleNameChange}
-      onChangeDescription={handleDescriptionChange}
-      onChangeCollection={handleCollectionChange}
-    />
+    <>
+      <ModelDetailPageView
+        model={model}
+        mainTable={mainTable}
+        tab={tab}
+        hasActionsTab={hasActionsTab}
+        onChangeName={handleNameChange}
+        onChangeDescription={handleDescriptionChange}
+        onChangeCollection={handleCollectionChange}
+      />
+      {/* Required for rendering child `ModalRoute` elements */}
+      {children}
+    </>
   );
 }
 
@@ -188,6 +203,11 @@ function getPageTitle({ modelCard }: Props) {
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
   Databases.load({ id: getModelDatabaseId }),
+  Actions.loadList({
+    query: (state: State, props: OwnProps) => ({
+      "model-id": getModelId(state, props),
+    }),
+  }),
   connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
     mapStateToProps,
     mapDispatchToProps,

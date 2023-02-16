@@ -16,6 +16,7 @@ import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
+  getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
@@ -105,6 +106,7 @@ function DashCardCardParameterMapper({
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
+  const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
@@ -176,7 +178,12 @@ function DashCardCardParameterMapper({
     }
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
-  const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
+  const mappingInfoText =
+    {
+      text: t`You can connect widgets to {{variables}} in text cards.`,
+      link: t`You cannot connect variables to link cards.`,
+      action: t`Open this card's action settings to connect variables`,
+    }[virtualCardType] ?? "";
 
   return (
     <Container>

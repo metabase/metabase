@@ -44,7 +44,7 @@ Then select Java 11 in the menu.
 
 ### Running on M1 Apple computers
 
-If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS (v16.15.0) has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
+If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
 
 ```
 /usr/sbin/softwareupdate --install-rosetta (root permission not required)

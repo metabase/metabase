@@ -1,8 +1,62 @@
-import { restore, modal, enableActionsForDB } from "__support__/e2e/helpers";
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import {
+  restore,
+  modal,
+  enableActionsForDB,
+  createAction,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const DEFAULT_ACTION_DETAILS = {
+  database_id: SAMPLE_DB_ID,
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    native: {
+      query: "UPDATE orders SET quantity = 0 WHERE id = {{order_id}}",
+      "template-tags": {
+        order_id: {
+          "display-name": "Order ID",
+          id: "fake-uuid",
+          name: "order_id",
+          type: "text",
+        },
+      },
+    },
+    type: "native",
+  },
+  name: "Reset order quantity",
+  description: "Set order quantity to 0",
+  type: "query",
+  parameters: [
+    {
+      id: "fake-uuid",
+      hasVariableTemplateTagTarget: true,
+      name: "Order ID",
+      slug: "order_id",
+      type: "string/=",
+      target: ["variable", ["template-tag", "fake-uuid"]],
+    },
+  ],
+  visualization_settings: {
+    fields: {
+      "fake-uuid": {
+        id: "fake-uuid",
+        fieldType: "string",
+        inputType: "string",
+        hidden: false,
+        order: 999,
+        required: true,
+        name: "",
+        title: "",
+        placeholder: "",
+        description: "",
+      },
+    },
+    type: "button",
+  },
+};
 
 describe("scenarios > admin > settings > public sharing", () => {
   beforeEach(() => {
@@ -142,6 +196,7 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.get("@modelId").then(modelId => {
       createAction({
+        ...DEFAULT_ACTION_DETAILS,
         name: expectedActionName,
         model_id: modelId,
       }).then(({ body }) => {
@@ -170,7 +225,17 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.findByText(expectedActionName).should("not.have.attr", "href");
+    cy.then(function () {
+      cy.findByText(expectedActionName).click();
+      cy.url().should(
+        "eq",
+        `${location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
+      );
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(expectedActionName).should("be.visible");
+      });
+      cy.visit("/admin/settings/public-sharing");
+    });
 
     cy.button("Revoke link").click();
     modal().within(() => {
@@ -182,62 +247,3 @@ describe("scenarios > admin > settings > public sharing", () => {
     );
   });
 });
-
-/**
- *
- * @param {import("metabase/entities/actions/actions").CreateQueryActionParams} actionDetails
- */
-function createAction(actionDetails) {
-  const defaultActionDetails = {
-    database_id: SAMPLE_DB_ID,
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "UPDATE orders SET quantity = 0 WHERE id = {{order_id}}",
-        "template-tags": {
-          order_id: {
-            "display-name": "Order ID",
-            id: "fake-uuid",
-            name: "order_id",
-            type: "text",
-          },
-        },
-      },
-      type: "native",
-    },
-    name: "Reset order quantity",
-    description: "Set order quantity to 0",
-    type: "query",
-    parameters: [
-      {
-        id: "fake-uuid",
-        hasVariableTemplateTagTarget: true,
-        name: "Order ID",
-        slug: "order_id",
-        type: "string/=",
-        target: ["variable", ["template-tag", "fake-uuid"]],
-      },
-    ],
-    visualization_settings: {
-      fields: {
-        "fake-uuid": {
-          id: "fake-uuid",
-          fieldType: "string",
-          inputType: "string",
-          hidden: false,
-          order: 999,
-          required: true,
-          name: "",
-          title: "",
-          placeholder: "",
-          description: "",
-        },
-      },
-      type: "button",
-    },
-  };
-  return cy.request("POST", "/api/action", {
-    ...defaultActionDetails,
-    ...actionDetails,
-  });
-}
