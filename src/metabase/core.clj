@@ -33,6 +33,8 @@
 
 (set! *warn-on-reflection* true)
 
+(println "COMPILER OPTIOSN" *compiler-options*)
+
 (comment
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
   metabase.driver.h2/keep-me

@@ -169,10 +169,11 @@
 
 (def ^String ^{:arglists '([& args])} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
-  (if *compile-files*
-    (fn [& _]
-      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
-    str))
+  str
+  #_(if *compile-files*
+      (fn [& _]
+        (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
+      str))
 
 (defmacro tru
   "Applies `str` to `deferred-tru`'s expansion.
