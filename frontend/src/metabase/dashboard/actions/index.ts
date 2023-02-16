@@ -8,6 +8,3 @@ export * from "./save";
 export * from "./sharing";
 export * from "./ui";
 export * from "./actions";
-export { getActionExecutionMessage } from "metabase/actions/utils";
-export { getImplicitActionExecutionMessage } from "metabase/actions/utils";
-export { hasDataFromExplicitAction } from "metabase/actions/utils";

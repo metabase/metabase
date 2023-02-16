@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type {
   ActionDashboardCard,
   ActionFormSettings,
@@ -12,6 +13,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { slugify } from "metabase/lib/formatting";
 
 import { TYPE } from "metabase-lib/types/constants";
@@ -245,4 +247,11 @@ export function getActionExecutionMessage(
     return t`Success! The action returned: ${JSON.stringify(result)}`;
   }
   return getSuccessMessage(action);
+}
+
+export function getActionErrorMessage(error: unknown) {
+  return (
+    getResponseErrorMessage(error) ??
+    t`Something went wrong while executing the action`
+  );
 }

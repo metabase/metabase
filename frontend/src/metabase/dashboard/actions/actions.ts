@@ -1,10 +1,10 @@
-import { t } from "ttag";
-
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi, PublicApi } from "metabase/services";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getActionExecutionMessage } from "metabase/actions/utils";
+import {
+  getActionErrorMessage,
+  getActionExecutionMessage,
+} from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -87,10 +87,8 @@ export const executeRowAction = async ({
     }
 
     return { success: true, message };
-  } catch (err) {
-    const message =
-      getResponseErrorMessage(err) ??
-      t`Something went wrong while executing the action`;
+  } catch (error) {
+    const message = getActionErrorMessage(error);
 
     if (shouldToast) {
       dispatch(
