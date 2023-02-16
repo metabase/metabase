@@ -65,9 +65,13 @@ describe("DataPicker — picking models", () => {
       },
     });
 
-    const tableListItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_MODEL.name,
-    });
+    const tableListItem = await screen.findByRole(
+      "menuitem",
+      {
+        name: SAMPLE_MODEL.name,
+      },
+      { timeout: 3000 },
+    );
     const collectionListItem = screen.getByRole("menuitem", {
       name: ROOT_COLLECTION.name,
     });

@@ -27,8 +27,8 @@ interface Props {
 
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
-
   const hasParameters = action.parameters.length > 0;
+  const successMessage = getSuccessMessage(action);
 
   const handleSubmit = useCallback(
     async (values: ParametersForActionExecution) => {
@@ -49,11 +49,7 @@ function PublicAction({ action, publicId, onError }: Props) {
   });
 
   if (isSubmitted) {
-    return (
-      <FormResultMessage>
-        {getSuccessMessage(action.visualization_settings)}
-      </FormResultMessage>
-    );
+    return <FormResultMessage>{successMessage}</FormResultMessage>;
   }
 
   if (!hasParameters) {
