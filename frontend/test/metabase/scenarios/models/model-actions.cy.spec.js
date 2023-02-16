@@ -142,7 +142,6 @@ describe("scenarios > models > actions", () => {
 
     cy.findByRole("dialog").within(() => {
       cy.button("Action settings").click();
-      cy.findByLabelText("Success message").clear().type("Thanks!");
       cy.findByLabelText("Make public").should("not.be.checked").click();
       cy.findByLabelText("Public action link URL")
         .invoke("val")
@@ -160,7 +159,9 @@ describe("scenarios > models > actions", () => {
 
     cy.findByLabelText(TEST_PARAMETER.name).type("-2");
     cy.findByRole("button", { name: "Submit" }).click();
-    cy.findByText("Thanks!").should("be.visible");
+    cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+      "be.visible",
+    );
     cy.findByRole("form").should("not.exist");
     cy.findByRole("button", { name: "Submit" }).should("not.exist");
 
