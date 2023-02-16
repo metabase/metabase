@@ -82,8 +82,8 @@
         (b/compile-clj {:basis      basis
                         :src-dirs   paths
                         :class-dir  class-dir
-                        :ns-compile ns-decls})
-        (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
+                        :ns-compile ns-decls
+                        :compile-opts {:direct-linking true}})))))
 
 (defn copy-resources! [edition basis]
   (u/step "Copy resources"
@@ -95,9 +95,9 @@
 (defn create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir class-dir
-                     :uber-file uberjar-filename
-                     :basis     basis})
+      (depstar/uber (assoc {:class-dir class-dir
+                            :uber-file uberjar-filename
+                            :basis     basis} :compile-opts {:direct-linking true}))
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries
