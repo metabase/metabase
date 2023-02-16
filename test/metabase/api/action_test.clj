@@ -280,7 +280,11 @@
                    (mt/user-http-request :rasta :get 403 "action/public"))))
           (testing "Test that superusers can fetch a list of publicly-accessible actions"
             (is (= [{:name "Test action" :id action-id :public_uuid (:public_uuid action-opts) :model_id model-id}]
-                   (filter #(= (:id %) action-id) (mt/user-http-request :crowberto :get 200 "action/public"))))))))))
+                   (filter #(= (:id %) action-id) (mt/user-http-request :crowberto :get 200 "action/public"))))))
+        (testing "We cannot fetch an archived action"
+          (mt/with-actions [{} (assoc action-opts :archived true)]
+            (is (= []
+                   (mt/user-http-request :crowberto :get 200 "action/public")))))))))
 
 (deftest share-action-test
   (testing "POST /api/action/:id/public_link"

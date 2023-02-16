@@ -18,9 +18,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-export const checkDatabaseSupportsActions = (database: Database) =>
-  database.features.includes("actions");
-
 export const checkDatabaseActionsEnabled = (database: Database) =>
   !!database.settings?.["database-enable-actions"];
 
@@ -94,14 +91,15 @@ export const getDefaultFormSettings = (
   description: "",
   fields: {},
   confirmMessage: "",
-  successMessage: getSuccessMessage(overrides),
+  successMessage: "",
   ...overrides,
 });
 
-export const getSuccessMessage = (
-  formSettings: Partial<ActionFormSettings> = {},
-) => {
-  return formSettings.successMessage ?? t`Thanks for your submission.`;
+export const getSuccessMessage = (action: WritebackAction) => {
+  return (
+    action.visualization_settings?.successMessage ||
+    t`${action.name} ran successfully`
+  );
 };
 
 export const getDefaultFieldSettings = (

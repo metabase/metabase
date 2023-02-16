@@ -14,11 +14,13 @@ import { FormCreatorWrapper } from "./FormCreator.styled";
 
 function FormCreator({
   params,
+  isEditable,
   formSettings: passedFormSettings,
   onChange,
   onExampleClick,
 }: {
   params: Parameter[];
+  isEditable: boolean;
   formSettings?: ActionFormSettings;
   onChange: (formSettings: ActionFormSettings) => void;
   onExampleClick: () => void;
@@ -55,6 +57,7 @@ function FormCreator({
     <FormCreatorWrapper>
       <ActionForm
         parameters={sortedParams}
+        isEditable={isEditable}
         onClose={_.noop}
         onSubmit={_.noop}
         formSettings={formSettings}
