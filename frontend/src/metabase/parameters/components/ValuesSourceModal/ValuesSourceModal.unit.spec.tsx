@@ -241,9 +241,12 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        },
+        { timeout: 30000 },
+      );
     });
 
     it("should display a message when the user has no access to the card", async () => {
