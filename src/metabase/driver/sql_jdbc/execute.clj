@@ -199,6 +199,9 @@
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
       (try
+        ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
+        ;; to be a hint to the driver to enable database optimizations
+        ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
         (.setReadOnly conn true)
         (catch Throwable e
           (log/debug e (trs "Error setting connection to read-only"))))
