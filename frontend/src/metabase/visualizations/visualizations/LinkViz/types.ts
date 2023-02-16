@@ -2,6 +2,7 @@ import { SearchModelType, CardDisplayType } from "metabase-types/api";
 
 export type LinkEntity = {
   id: number;
+  db_id?: number;
   database_id?: number;
   model: SearchModelType;
   name: string;

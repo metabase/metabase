@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
-import CoreButton from "metabase/core/components/Button";
 
 export const DisplayLinkCardWrapper = styled.div`
   padding: 0.5rem;
@@ -53,18 +52,4 @@ export const SearchResultsContainer = styled.div`
   border-radius: 6px;
   box-shadow: 0 7px 20px ${color("shadow")};
   pointer-events: all;
-`;
-
-export const EntityEditContainer = styled.div`
-  pointer-events: all;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-`;
-
-export const Button = styled(CoreButton)`
-  &:hover {
-    color: ${alpha("brand", 0.8)};
-  }
 `;

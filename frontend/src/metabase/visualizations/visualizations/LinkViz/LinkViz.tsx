@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { usePrevious } from "react-use";
+
 import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
@@ -26,8 +28,6 @@ import {
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
-  EntityEditContainer,
-  Button,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -53,6 +53,7 @@ function LinkViz({
 
   const isNew = !!dashcard?.justAdded;
   const [autoFocus, setAutoFocus] = useState(isNew);
+  const previousUrl = usePrevious(url);
 
   const handleLinkChange = (newLink: string) =>
     onUpdateVisualizationSettings({ link: { url: newLink } });
@@ -62,8 +63,7 @@ function LinkViz({
       link: {
         entity: {
           id: entity.id,
-          database_id:
-            entity.model === "table" ? entity.database_id : undefined,
+          db_id: entity.model === "table" ? entity.database_id : undefined,
           name: entity.name,
           model: entity.model,
           description: entity.description,
@@ -76,9 +76,17 @@ function LinkViz({
   const [inputIsFocused, { turnOn: onFocusInput, turnOff: onBlurInput }] =
     useToggle();
 
+  useEffect(() => {
+    // if the url was auto-filled from the entity, focus the input
+    if (previousUrl === undefined && !!url) {
+      setAutoFocus(true);
+    }
+  }, [previousUrl, url]);
+
   if (entity) {
     const wrappedEntity = Search.wrapEntity({
       ...entity,
+      database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,
       collection: {},
     });
@@ -86,17 +94,7 @@ function LinkViz({
     if (isEditing) {
       return (
         <EditLinkCardWrapper>
-          <EntityEditContainer>
-            <Button
-              onClick={() => {
-                handleLinkChange(entity.name);
-                setAutoFocus(true);
-              }}
-              onlyText
-            >
-              <EntityDisplay entity={wrappedEntity} showDescription={false} />
-            </Button>
-          </EntityEditContainer>
+          <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
     }
