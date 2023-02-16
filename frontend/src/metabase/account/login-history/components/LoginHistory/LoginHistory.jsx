@@ -37,8 +37,8 @@ const LoginHistoryItem = ({ item }) => (
   </Card>
 );
 
-const LoginHistoryGroup = (items, date) => (
-  <LoginGroup key={date}>
+const LoginHistoryGroup = ({ items, date }) => (
+  <LoginGroup>
     <Label>{date}</Label>
     <div>
       {items.map(item => (
@@ -73,7 +73,13 @@ function LoginHistoryList({ loginHistory }) {
     );
   }
 
-  return <div>{_.map(groups, LoginHistoryGroup)}</div>;
+  return (
+    <div>
+      {_.map(groups, (items, date) => (
+        <LoginHistoryGroup items={items} date={date} key={date} />
+      ))}
+    </div>
+  );
 }
 
 export default LoginHistoryList;
