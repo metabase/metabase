@@ -9,7 +9,14 @@ import _ from "underscore";
 import { sankey, sankeyLinkHorizontal } from "d3-sankey";
 import chroma from "chroma-js";
 
-import { SANKEY_DATA_SETTINGS } from "../lib/settings/graph";
+import {
+  columnsAreValid,
+  preserveExistingColumnsOrder,
+} from "metabase/visualizations/lib/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getDefaultColumns } from "../lib/settings/graph";
 
 const PADDING_BOTTOM = 10;
 
@@ -34,12 +41,108 @@ export default class Sankey extends Component {
     }
   }
 
-  state = {
-    mounted: false,
+  static settings = {
+    ...columnSettings({
+      getColumns: ([
+        {
+          data: { cols },
+        },
+      ]) => cols,
+      hidden: true,
+    }),
+    "graph.start": {
+      section: t`Data`,
+      title: t`Starting Point`,
+      widget: "fields",
+      isValid: (series, vizSettings) =>
+        series.some(({ card, data }) =>
+          columnsAreValid(card.visualization_settings["graph.start"], data),
+        ),
+      getDefault: (series, vizSettings) =>
+        preserveExistingColumnsOrder(vizSettings["graph.start"] ?? [], [
+          getDefaultColumns(series).dimensions[0],
+        ]),
+      persistDefault: true,
+      getProps: ([{ card, data }], vizSettings) => {
+        const options = data.cols.map(getOptionFromColumn);
+        return {
+          options,
+          columns: data.cols,
+          showColumnSetting: false,
+        };
+      },
+      writeDependencies: ["graph.metrics"],
+      dashboard: false,
+      useRawSeries: true,
+    },
+    "graph.destinations": {
+      section: t`Data`,
+      title: t`Destination(s)`,
+      widget: "fields",
+      isValid: (series, vizSettings) =>
+        series.some(({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.destinations"],
+            data,
+          ),
+        ),
+      getDefault: (series, vizSettings) => {
+        return preserveExistingColumnsOrder(
+          vizSettings["graph.destinations"] ?? [],
+          [
+            getDefaultColumns(series).metrics.slice(1),
+            getDefaultColumns(series).dimensions.slice(1),
+          ].flat(),
+        );
+      },
+      persistDefault: true,
+      getProps: ([{ card, data }], vizSettings) => {
+        const options = data.cols.map(getOptionFromColumn);
+        return {
+          options,
+          addAnother: t`Add Destination...`,
+          columns: data.cols,
+          showColumnSetting: false,
+        };
+      },
+      writeDependencies: ["graph.metrics"],
+      dashboard: false,
+      useRawSeries: true,
+    },
+    "graph.metrics": {
+      section: t`Data`,
+      title: t`Value`,
+      widget: "fields",
+      isValid: (series, vizSettings) =>
+        series.some(({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
+        ),
+      getDefault: (series, vizSettings) => [
+        getDefaultColumns(series).metrics[0],
+      ],
+      persistDefault: true,
+      getProps: ([{ card, data }], vizSettings) => {
+        const options = data.cols
+          .filter(vizSettings["graph._metric_filter"])
+          .map(getOptionFromColumn);
+        return {
+          options,
+          columns: data.cols,
+          showColumnSetting: false,
+        };
+      },
+      writeDependencies: ["graph.start", "graph.destinations"],
+      dashboard: false,
+      useRawSeries: true,
+    },
   };
 
-  static settings = {
-    ...SANKEY_DATA_SETTINGS,
+  state = {
+    mounted: false,
   };
 
   componentDidMount() {
