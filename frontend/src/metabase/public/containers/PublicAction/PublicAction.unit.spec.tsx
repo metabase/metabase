@@ -146,7 +146,7 @@ describe("PublicAction", () => {
     userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     expect(
-      await screen.findByText("Thanks for your submission."),
+      await screen.findByText(`${TEST_ACTION.name} ran successfully`),
     ).toBeInTheDocument();
     expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
@@ -175,7 +175,7 @@ describe("PublicAction", () => {
     });
 
     expect(
-      await screen.findByText("Thanks for your submission."),
+      await screen.findByText(`${TEST_ACTION.name} ran successfully`),
     ).toBeInTheDocument();
     expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
