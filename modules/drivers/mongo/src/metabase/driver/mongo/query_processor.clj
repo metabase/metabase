@@ -946,7 +946,7 @@
   [breakout-fields aggregations]
   (concat
    (for [field-or-expr breakout-fields]
-     [(field-alias field-or-expr) (format "$_id.%s" (->lvalue field-or-expr))])
+     [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag aggregations
          :let [ag-name (annotate/aggregation-name ag)]]
      [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
@@ -1109,7 +1109,7 @@
       m
       (mbql.u/match-one field-clause
         [:field (field-id :guard integer?) _]
-        (str/split (->lvalue field-clause) #"\.")
+        (str/split (field-alias field-clause) #"\.")
 
         [:field (field-name :guard string?) _]
         [field-name]
