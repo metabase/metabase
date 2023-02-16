@@ -3,9 +3,11 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honeysql.format :as hformat]
+   [clojure.test :refer :all]
+   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.models :refer [Database Table]]
@@ -17,6 +19,7 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
@@ -24,19 +27,17 @@
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
-;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases;
-;; We'll create a unique schema (the same as a "User" in Oracle-land) for each test run and use that to keep
-;; tests from clobbering over one another; we'll also qualify the names of tables to include their DB name
+;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases; we'll qualify the names of tables to
+;; include their DB name
 ;;
 ;; e.g.
 ;; H2 Tests                   | Oracle Tests
 ;; ---------------------------+------------------------------------------------
-;; PUBLIC.VENUES.ID           | CAM_195.test_data_venues.id
-;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
-;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.timestamp
-(defonce ^:private session-schema-number (rand-int 200))
-(defonce           session-schema        (str "CAM_" session-schema-number))
-(defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
+;; PUBLIC.VENUES.ID           | mb_test.test_data_venues.id
+;; PUBLIC.CHECKINS.USER_ID    | mb_test.test_data_checkins.user_id
+;; PUBLIC.INCIDENTS.TIMESTAMP | mb_test.sad_toucan_incidents.timestamp
+(defonce           session-schema   "mb_test")
+(defonce ^:private session-password "password")
 ;; Session password is only used when creating session user, not anywhere else
 
 (defn- connection-details []
@@ -178,23 +179,81 @@
 ;; SELECT * FROM dual;
 ;;
 ;; So this custom HoneySQL type below generates the correct DDL statement
+
+(defn- format-insert-all [_fn [rows]]
+  (let [rows-sql-args (mapv sql/format rows)
+        sqls          (map first rows-sql-args)
+        args          (mapcat rest rows-sql-args)]
+    (into [(format
+            "INSERT ALL %s SELECT * FROM dual"
+            (str/join " " sqls))]
+          args)))
+
+(sql/register-fn! ::insert-all #'format-insert-all)
+
+;;; normal Honey SQL `:into` doesn't seem to work with our `identifier` type, so define a custom version here that does.
+(defn- format-into [_fn identifier]
+  {:pre [(h2x/identifier? identifier)]}
+  (let [[sql & args] (sql/format-expr identifier)]
+    (into [(str "INTO " sql)] args)))
+
+(sql/register-clause! ::into #'format-into :into)
+
+(defn- row->into [table-identifier row-map]
+  (let [cols (vec (keys row-map))]
+    {::into   table-identifier
+     :columns (mapv (fn [col]
+                      (h2x/identifier :field col))
+                    cols)
+     :values  [(mapv (fn [col]
+                       (let [v (get row-map col)]
+                         (if (number? v)
+                           [:inline v]
+                           v)))
+                     cols)]}))
+
 (defmethod ddl/insert-rows-honeysql-form :oracle
-  [driver table-identifier row-or-rows]
-  (reify hformat/ToSql
-    (to-sql [_]
-      (format
-       "INSERT ALL %s SELECT * FROM dual"
-       (str/join
-        " "
-        (for [row (u/one-or-many row-or-rows)]
-          (str/replace
-           (hformat/to-sql
-            ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier row))
-           #"INSERT INTO"
-           "INTO")))))))
+  [_driver table-identifier row-or-rows]
+  [::insert-all (mapv (partial row->into table-identifier)
+                      (u/one-or-many row-or-rows))])
+
+;;; see also [[metabase.driver.oracle-test/insert-rows-ddl-test]]
+(deftest ^:parallel insert-all-test
+  (let [rows [{:name "Plato Yeshua", :t #t "2014-04-01T08:30", :password 1}
+              {:name "Felipinho Asklepios", :t #t "2014-12-05T15:15", :password 2}]
+        hsql (ddl/insert-rows-honeysql-form :oracle (h2x/identifier :table "my_db" "my_table") rows)]
+    (is (= [::insert-all
+            [{::into   (h2x/identifier :table "my_db" "my_table")
+              :columns [(h2x/identifier :field :name)
+                        (h2x/identifier :field :t)
+                        (h2x/identifier :field :password)]
+              :values  [["Plato Yeshua" #t "2014-04-01T08:30" [:inline 1]]]}
+             {::into   (h2x/identifier :table "my_db" "my_table")
+              :columns [(h2x/identifier :field :name)
+                        (h2x/identifier :field :t)
+                        (h2x/identifier :field :password)]
+              :values  [["Felipinho Asklepios" #t "2014-12-05T15:15" [:inline 2]]]}]]
+           hsql))
+    (is (= [["INSERT"
+             "  ALL INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\")"
+             "VALUES"
+             "  (?, ?, 1) INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\")"
+             "VALUES"
+             "  (?, ?, 2)"
+             "SELECT"
+             "  *"
+             "FROM"
+             "  dual"]
+            "Plato Yeshua"
+            #t "2014-04-01T08:30"
+            "Felipinho Asklepios"
+            #t "2014-12-05T15:15"]
+           (-> (sql/format-expr hsql)
+               (update 0 mdb.query/format-sql :oracle)
+               (update 0 str/split-lines))))))
 
 (defn- dbspec [& _]
-  (let [conn-details  (connection-details)]
+  (let [conn-details (connection-details)]
     (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
 
 (defn- non-session-schemas
@@ -253,3 +312,33 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Decimal}))))
+
+
+(defn x []
+  (let [sql (str/join [;; "-- Metabase"
+                       ;; "SELECT"
+                       ;; "  *"
+                       ;; "FROM"
+                       ;; "  ("
+                       "    SELECT"
+                       "      \"source\".\"substring125463\" AS \"substring125463\""
+                       "    FROM"
+                       "      ("
+                       "        SELECT"
+                       "          \"CAM_85\".\"test_data_categories\".\"id\" AS \"id\","
+                       "          \"CAM_85\".\"test_data_categories\".\"name\" AS \"name\","
+                       "          SUBSTR(\"CAM_85\".\"test_data_categories\".\"name\", 1, 1234) AS \"substring125463\""
+                       "        FROM"
+                       "          \"CAM_85\".\"test_data_categories\""
+                       "      ) \"source\""
+                       ;; "  )"
+                       ;; "WHERE"
+                       ;; "  rownum <= 10000"
+                       ])]
+    (with-open [conn (clojure.java.jdbc/get-connection (metabase.driver.sql-jdbc.connection/connection-details->spec
+                                                        :oracle
+                                                        (metabase.test.data.oracle/connection-details)))
+                stmt (.createStatement conn)]
+      (when (.execute stmt sql)
+        (with-open [rset (.getResultSet stmt)]
+          (vec (resultset-seq rset)))))))
