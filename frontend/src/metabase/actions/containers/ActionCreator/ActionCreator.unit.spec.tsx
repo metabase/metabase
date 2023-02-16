@@ -15,7 +15,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { Card, Database, WritebackQueryAction } from "metabase-types/api";
+import { WritebackQueryAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
@@ -32,28 +32,30 @@ import ActionCreator from "./ActionCreator";
 
 type SetupOpts = {
   action?: WritebackQueryAction;
-  model?: Card;
-  database?: Database;
+  canWrite?: boolean;
+  hasActionsEnabled?: boolean;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
 };
 
 async function setup({
   action,
-  model = createMockCard({
-    dataset: true,
-    can_write: true,
-  }),
-  database = createMockDatabase({
-    settings: { "database-enable-actions": true },
-  }),
-  isAdmin,
-  isPublicSharingEnabled,
+  canWrite = true,
+  hasActionsEnabled = true,
+  isAdmin = false,
+  isPublicSharingEnabled = false,
 }: SetupOpts = {}) {
   const scope = nock(location.origin);
+  const model = createMockCard({
+    dataset: true,
+    can_write: canWrite,
+  });
+  const database = createMockDatabase({
+    settings: { "database-enable-actions": hasActionsEnabled },
+  });
 
   setupDatabasesEndpoints(scope, [database]);
-  setupCardsEndpoints(scope, [createMockCard(model)]);
+  setupCardsEndpoints(scope, [model]);
 
   if (action) {
     scope.get(`/api/action/${action.id}`).reply(200, action);
@@ -170,10 +172,7 @@ describe("ActionCreator", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      const model = createMockCard({
-        can_write: false,
-      });
-      await setupEditing({ action, model, isAdmin: false });
+      await setupEditing({ action, canWrite: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();
@@ -191,12 +190,7 @@ describe("ActionCreator", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      const database = createMockDatabase({
-        settings: {
-          "database-enable-actions": false,
-        },
-      });
-      await setupEditing({ action, database, isAdmin: false });
+      await setupEditing({ action, hasActionsEnabled: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
       expect(queryIcon("grabber2")).not.toBeInTheDocument();
@@ -322,7 +316,6 @@ describe("ActionCreator", () => {
 
       it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
         await setupEditing({
-          isAdmin: false,
           isPublicSharingEnabled: true,
         });
 
