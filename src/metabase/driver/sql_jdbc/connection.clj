@@ -38,6 +38,16 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti connection-type+details->spec
+  "TODO: write docstring"
+  {:arglists '([driver connection-type details-map])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod connection-type+details->spec :default
+  ;; For most connections, the connection-type doesn't matter and we can use the same connection details.
+  [driver _connection-type details-map]
+  (connection-details->spec driver details-map))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Creating Connection Pools                                            |
@@ -134,83 +144,87 @@
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
-  [{:keys [id details], driver :engine, :as database}]
-  {:pre [(map? database)]}
+  [{:keys [id details], driver :engine, :as database} connection-type]
+  {:pre [(map? database) (keyword? connection-type)]}
   (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        spec                (connection-details->spec driver details-with-tunnel)
+        spec                (connection-type+details->spec driver connection-type details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
       (connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
-(defn- destroy-pool! [database-id pool-spec]
-  (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
+(defn- destroy-pool! [database-id connection-type pool-spec]
+  (log/debug (u/format-color 'red (trs "Closing old {0} connection pool for database {1} ..." connection-type database-id)))
   (connection-pool/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
-(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
-  database-id->connection-pool
+(defonce ^:private ^{:doc "A table (map of maps) of our currently open connection pools, keyed by the Database `:id` and connection-type.
+                           `connection-type` is either `::read` or `::write`."}
+  database-id+connection-type->connection-pool
   (atom {}))
 
-(defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
-  database-id->jdbc-spec-hash
+;; TODO: this might need a connection-type too? or maybe it can be 1:1 with the database
+(defonce ^:private ^{:doc "A table (map of maps) of DB details hash values, keyed by Database `:id` and connection-type."}
+  database-id+connection-type->jdbc-spec-hash
   (atom {}))
 
 (s/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
+  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)
+   connection-type                                 :- s/Keyword]
   (when (some? database)
-    (hash (connection-details->spec driver details))))
+    (hash (connection-type+details->spec driver connection-type details))))
 
 (defn- set-pool!
   "Atomically update the current connection pool for Database `database` with `database-id`. Use this function instead
   of modifying database-id->connection-pool` directly because it properly closes down old pools in a thread-safe way,
-  ensuring no more than one pool is ever open for a single database. Also modifies the [[database-id->jdbc-spec-hash]]
+  ensuring no more than one pool is ever open for a single database and connection type. Also modifies the [[database-id->jdbc-spec-hash]]
   map with the hash value of the given DB's details map."
-  [database-id pool-spec-or-nil database]
+  [database-id connection-type pool-spec-or-nil database]
   {:pre [(integer? database-id)]}
   (let [[old-id->pool] (if pool-spec-or-nil
-                         (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)
-                         (swap-vals! database-id->connection-pool dissoc database-id))]
+                         (swap-vals! database-id+connection-type->connection-pool update database-id assoc connection-type pool-spec-or-nil)
+                         (swap-vals! database-id+connection-type->connection-pool update database-id dissoc connection-type))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
-    (when-let [old-pool-spec (get old-id->pool database-id)]
+    (when-let [old-pool-spec (get-in old-id->pool [database-id connection-type])]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
-        (destroy-pool! database-id old-pool-spec))))
+        (destroy-pool! database-id connection-type old-pool-spec))))
   ;; update the db details hash cache with the new hash value
-  (swap! database-id->jdbc-spec-hash assoc database-id (jdbc-spec-hash database))
+  (swap! database-id+connection-type->jdbc-spec-hash update database-id assoc connection-type (jdbc-spec-hash database connection-type))
   nil)
 
-(defn invalidate-pool-for-db!
+(defn- invalidate-pool-for-db+connection-type!
   "Invalidates the connection pool for the given database by closing it and removing it from the cache."
-  [database]
-  (set-pool! (u/the-id database) nil nil))
+  [database connection-type]
+  (set-pool! (u/the-id database) connection-type nil nil))
 
 (defn notify-database-updated
   "Default implementation of [[driver/notify-database-updated]] for JDBC SQL drivers. We are being informed that a
-  `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
+  `database` has been updated, so lets shut down the connection pools (if they exist) under the assumption that the
   connection details have changed."
   [database]
-  (invalidate-pool-for-db! database))
+  (doseq [connection-type [::read ::write]]
+    (invalidate-pool-for-db+connection-type! database connection-type)))
 
-(defn- log-ssh-tunnel-reconnect-msg! [db-id]
-  (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
-                                      db-id)))
+(defn- log-ssh-tunnel-reconnect-msg! [db-id connection-type]
+  (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking {1} pool invalid to reopen it"
+                                      db-id connection-type)))
   nil)
 
-(defn- log-jdbc-spec-hash-change-msg! [db-id]
-  (log/warn (u/format-color 'yellow (trs "Hash of database {0} details changed; marking pool invalid to reopen it"
-                                          db-id)))
+(defn- log-jdbc-spec-hash-change-msg! [db-id connection-type]
+  (log/warn (u/format-color 'yellow (trs "Hash of database {0} details changed; marking {1} pool invalid to reopen it"
+                                          db-id connection-type)))
   nil)
 
-(defn db->pooled-connection-spec
+(defn db+connection-type->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
-  don't create multiple ones for the same DB."
-  [db-or-id-or-spec]
+  don't create multiple ones for the same DB and connection type."
+  [db-or-id-or-spec connection-type]
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
@@ -224,19 +238,19 @@
                                     :type        qp.error-type/invalid-query
                                     :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get @database-id->connection-pool db-id)]
+                        (when-let [details (get-in @database-id+connection-type->connection-pool [db-id connection-type])]
                           (cond
                             ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
-                                  new-hash  (jdbc-spec-hash db)]
+                            (let [curr-hash (get-in @database-id+connection-type->jdbc-spec-hash [db-id connection-type])
+                                  new-hash  (jdbc-spec-hash db connection-type)]
                               (when (and (some? curr-hash) (not= curr-hash new-hash))
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
                                 (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
-                                                    jdbc-spec-hash))))
+                                                    (jdbc-spec-hash connection-type)))))
                             (if log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id)
+                              (log-jdbc-spec-hash-change-msg! db-id connection-type)
                               nil)
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
@@ -247,7 +261,7 @@
 
                             :else ; tunnel in use, and not open; invalid
                             (if log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)
+                              (log-ssh-tunnel-reconnect-msg! db-id connection-type)
                               nil))))]
       (or
        ;; we have an existing pool for this database, so use it
@@ -256,13 +270,13 @@
        ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
        ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
        ;; sure only one thread will be creating a pool at a given instant.
-       (locking database-id->connection-pool
+       (locking database-id+connection-type->connection-pool
          (or
           ;; check if another thread created the pool while we were waiting to acquire the lock
           (get-fn database-id false)
           ;; create a new pool and add it to our cache, then return it
-          (u/prog1 (create-pool! db)
-            (set-pool! database-id <> db))))))
+          (u/prog1 (create-pool! db connection-type)
+            (set-pool! database-id connection-type <> db))))))
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)
@@ -273,6 +287,10 @@
     (throw (ex-info (tru "Not a valid Database/Database ID/JDBC spec")
                     ;; don't log the actual spec lest we accidentally expose credentials
                     {:input (class db-or-id-or-spec)}))))
+
+(defn db->pooled-connection-spec
+  [db-or-id-or-spec]
+  (db+connection-type->pooled-connection-spec db-or-id-or-spec ::write))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

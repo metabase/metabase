@@ -43,27 +43,27 @@
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
             connection-details {:db "mem:connection_test"}
             spec               (mdb.spec/spec :h2 connection-details)]
-        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
-                                                    (original-destroy id destroyed-spec)
+        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id connection-type destroyed-spec]
+                                                    (original-destroy id connection-type destroyed-spec)
                                                     (reset! destroyed? true))]
           (jdbc/with-db-connection [_conn spec]
-            (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
+            (jdbc/execute! spec ["CREATE TABLE IF NOT EXISTS birds (name varchar)"])
             (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
             (mt/with-temp Database [database {:engine :h2, :details connection-details}]
               (testing "database id is not in our connection map initially"
                 ;; deref'ing a var to get the atom. looks weird
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
+                (is (empty? (get @@#'sql-jdbc.conn/database-id+connection-type->connection-pool
+                                 (u/id database)))))
               (testing "when getting a pooled connection it is now in our connection map"
                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
                   (is (seq birds))
-                  (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                 (u/id database)))))
+                  (is (seq (get @@#'sql-jdbc.conn/database-id+connection-type->connection-pool
+                                (u/id database))))))
               (testing "and is no longer in our connection map after cleanup"
-                (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
+                (#'sql-jdbc.conn/set-pool! (u/id database) ::sql-jdbc.conn/write nil nil)
+                (is (empty? (get @@#'sql-jdbc.conn/database-id+connection-type->connection-pool
+                                 (u/id database)))))
               (testing "the pool has been destroyed"
                 (is @destroyed?)))))))))
 
@@ -111,17 +111,18 @@
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
       (let [db                       (mt/db)
+            connection-type          ::sql-jdbc.conn/write
             hash-change-called-times (atom 0)
-            hash-change-fn           (fn [db-id]
+            hash-change-fn           (fn [db-id _connection-type]
                                        (is (= (u/the-id db) db-id))
                                        (swap! hash-change-called-times inc)
                                        nil)]
         (try
-          (sql-jdbc.conn/invalidate-pool-for-db! db)
+          (@#'sql-jdbc.conn/invalidate-pool-for-db+connection-type! db connection-type)
           ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
-            (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
-                  db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
+            (let [pool-spec-1 (sql-jdbc.conn/db+connection-type->pooled-connection-spec db connection-type)
+                  db-hash-1   (get-in @@#'sql-jdbc.conn/database-id+connection-type->jdbc-spec-hash [(u/the-id db) connection-type])]
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
@@ -129,13 +130,13 @@
               (testing "changing DB details results in hash value changing and connection being invalidated"
                 (let [db-perturbed (perturb-db-details db)]
                   (testing "The calculated hash should be different"
-                    (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
-                              (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
+                    (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db connection-type)
+                              (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed connection-type))))
                   (db/update! Database (mt/id) :details (:details db-perturbed))
                   (let [ ;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
-                        pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
-                        db-hash-2    (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
+                        pool-spec-2  (sql-jdbc.conn/db+connection-type->pooled-connection-spec db-perturbed connection-type)
+                        db-hash-2    (get-in @@#'sql-jdbc.conn/database-id+connection-type->jdbc-spec-hash [(u/the-id db) connection-type])]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
@@ -175,6 +176,6 @@
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
                                                                                (:details db))))
             "Secrets not loaded for db connections")
-        (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
-               (#'sql-jdbc.conn/jdbc-spec-hash db))
+        (is (= (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/write)
+               (#'sql-jdbc.conn/jdbc-spec-hash db ::sql-jdbc.conn/write))
             "Same db produced different hashes due to secrets")))))
