@@ -7,8 +7,8 @@
 (set! *warn-on-reflection* true)
 
 (defmulti connection-with-timezone
-  "Deprecated in Metabase 44. Implement [[do-with-connection-with-timezone]] instead. This method will be removed in or
-  after Metabase 47."
+  "Deprecated in Metabase 46. Implement [[metabase.driver.sql-jdbc.execute/do-with-connection-with-timezone]] instead.
+  This method will be removed in or after Metabase 49."
   {:added      "0.35.0"
    :deprecated "0.46.0"
    :arglists   '(^java.sql.Connection [driver database ^String timezone-id])}
