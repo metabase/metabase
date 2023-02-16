@@ -105,7 +105,39 @@
                (->> (mt/user-http-request :crowberto :get 200 "collection")
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
+                    sort))))
+
+      (testing "...or we are *admins* but exclude other user's collections"
+        (is (= ["Crowberto Corv's Personal Collection"]
+               (->> (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)
+                    (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
+                    (map :name)
                     sort)))))
+
+    (testing "You should only see your collection and public collections"
+      (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
+            crowberto-root (db/select-one Collection :personal_owner_id admin-user-id)]
+        (mt/with-temp* [Collection [collection]
+                        Collection [{collection-id :id} {:name "Collection with Items"}]
+                        Collection [_ {:name            "subcollection"
+                                       :location        (format "/%d/" collection-id)
+                                       :authority_level "official"}]
+                        Collection [_ {:name     "Crowberto's Child Collection"
+                                       :location (collection/location-path crowberto-root)}]]
+          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
+                crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+            (is (= (into (set (map :name (db/select Collection))) public-collections)
+                   crowbertos))
+            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                   crowbertos-with-excludes))
+            (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+            (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
+                   luckys))
+            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))
+            ))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
@@ -117,16 +149,16 @@
 
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection [collection-1  {:name "Collection 1"}]
-                        Collection [_             {:name "Collection 2"}]]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
-          (is (= ["Collection 1"
-                  "Rasta Toucan's Personal Collection"]
-                 (->> (mt/user-http-request :rasta :get 200 "collection")
-                      (filter (fn [{collection-name :name}]
-                                (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
-                                    (str/includes? collection-name "Personal Collection"))))
-                      (map :name)))))))
+       (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                       Collection [_ {:name "Collection 2"}]]
+         (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+         (is (= ["Collection 1"
+                 "Rasta Toucan's Personal Collection"]
+                (->> (mt/user-http-request :rasta :get 200 "collection")
+                     (filter (fn [{collection-name :name}]
+                               (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                   (str/includes? collection-name "Personal Collection"))))
+                     (map :name)))))))
 
     (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
                     Collection [_ {:name "Regular Collection"}]]

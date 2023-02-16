@@ -45,17 +45,54 @@
 
 (declare root-collection)
 
+(defn- remove-other-users-personal-collections
+  "Remove from the provided collections any that are personal and belong to another user.
+   Will work in a single pass if collections are already ordered such that root (location = /)
+   collections appear before children, but will catch any mis-ordered entries and
+   do a final pass on those if needed."
+  ([user-id collections]
+   (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
+          keep-roots     #{user-id}
+          skip-roots     #{}
+          res            []
+          indeterminates []]
+     (if c
+       (if (= "/" location)
+         (if (or (nil? personal_owner_id) (= user-id personal_owner_id))
+           (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
+           (recur r keep-roots (conj skip-roots id) res indeterminates))
+         (let [[_ root] (str/split location #"/")
+               root (parse-long root)]
+           (cond
+             (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
+             (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
+             :else (recur r keep-roots skip-roots res (conj indeterminates c)))))
+       (->> indeterminates
+            (filter
+             (fn [{:keys [location]}]
+               (let [[_ root] (str/split location #"/")]
+                 (keep-roots (parse-long root)))))
+            (into res)))))
+  ([collections]
+   (remove-other-users-personal-collections (:id @api/*current-user*) collections)))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
-  `?archived=true`."
-  [archived namespace]
+  `?archived=true`.
+
+  By default, admin users will see all collections. To hide other user's collections pass in\n
+  `?exclude-other-user-collections=true`.
+  "
+  [archived exclude-other-user-collections namespace]
   {archived  (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
-  (let [archived? (Boolean/parseBoolean archived)]
+  (let [archived? (Boolean/parseBoolean archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
@@ -64,7 +101,11 @@
                          :id
                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
              :order-by [[:%lower.name :asc]]}) collections
-      ;; include Root Collection at beginning or results if archived isn't `true`
+          ;; Remove other users' personal collections
+          (if exclude-other-user-collections?
+            (remove-other-users-personal-collections collections)
+            collections)
+          ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
         (let [root (root-collection namespace)]
@@ -101,26 +142,32 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived namespace]
+  [exclude-archived exclude-other-user-collections namespace]
   {exclude-archived (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
    namespace        (s/maybe su/NonBlankString)}
-  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
                                :card    #{}}
                               (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
-        colls         (db/select Collection
-                        {:where [:and
-                                 (when exclude-archived
-                                   [:= :archived false])
-                                 [:= :namespace namespace]
-                                 (collection/visible-collection-ids->honeysql-filter-clause
-                                  :id
-                                  (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-        colls         (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls)))
+        colls (cond->
+               (db/select Collection
+                 {:where [:and
+                          (when exclude-archived?
+                            [:= :archived false])
+                          [:= :namespace namespace]
+                          (collection/visible-collection-ids->honeysql-filter-clause
+                           :id
+                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+               exclude-other-user-collections?
+               remove-other-users-personal-collections)
+        colls-with-details (map collection/personal-collection-with-ui-details colls)]
+    (collection/collections->tree coll-type-ids colls-with-details)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
