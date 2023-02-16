@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ActionRunModal from "metabase/actions/containers/ActionRunModal";
+import ActionRunModal from "metabase/actions/containers/ActionExecuteModal";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {

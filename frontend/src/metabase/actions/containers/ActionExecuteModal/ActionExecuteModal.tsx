@@ -24,9 +24,13 @@ interface ActionLoaderProps {
   action: WritebackAction;
 }
 
-type ActionRunModalProps = OwnProps & ActionLoaderProps;
+type ActionExecuteModalProps = OwnProps & ActionLoaderProps;
 
-const ActionRunModal = ({ action, onSubmit, onClose }: ActionRunModalProps) => {
+const ActionExecuteModal = ({
+  action,
+  onSubmit,
+  onClose,
+}: ActionExecuteModalProps) => {
   const title = getFormTitle(action);
 
   const handleSubmit = useCallback(
@@ -57,4 +61,4 @@ export default _.compose(
     id: (state: State, props: OwnProps) => props.actionId,
   }),
   connect(null, mapDispatchToProps),
-)(ActionRunModal);
+)(ActionExecuteModal);
