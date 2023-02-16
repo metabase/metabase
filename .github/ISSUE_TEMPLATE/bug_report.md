@@ -6,15 +6,19 @@ labels: ".Needs Triage, Type:Bug"
 assignees: ''
 
 ---
+**Read this before creating a bug report**
+- in case any of the sections is incomplete, we might close the bug report as we won't be able to reproduce it
+- have you checked if the bug has already been reported? as we close duplicate reports, please search on the issue tracker if the problem has been reported before
+- use as many screenshots or videos as possible to describe what you're seeing, all visual representations speak for themselves
 
 **Describe the bug**
 A clear and concise description of what the bug is.
 
 **Logs**
-Please include javascript console and server logs around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+Please include javascript console (open the browser dev tools and check the "console" tab) and server logs (Metabase logs that you can get from settings->admin->troubleshooting->logs) around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
 
 **To Reproduce**
-Steps to reproduce the behavior:
+Steps to reproduce the behavior (if you can use the sample dataset to reproduce this bug, we will be able to find the issue faster):
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
@@ -23,12 +27,12 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Screenshots/videos**
+If applicable, add screenshots/videos to help explain your problem.
 
 **Information about your Metabase Installation:**
 
-You can get this information by going to Admin -> Troubleshooting.
+You can get this information by going to Admin -> Troubleshooting, or simply post the JSON you see in that page.
 
 - Your browser and the version: (e.g., Chrome 52.1, Firefox 48.0, Safari 11.1, …)
 - Your operating system: (e.g., OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
