@@ -58,6 +58,13 @@
      (action/select-actions [model] :model_id model-id :archived false)
      :creator)))
 
+(api/defendpoint GET "/public"
+  "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
+  []
+  (validation/check-has-application-permission :setting)
+  (validation/check-public-sharing-enabled)
+  (db/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+
 (api/defendpoint GET "/:action-id"
   [action-id]
   (-> (action/select-action :id action-id :archived false)

@@ -172,3 +172,8 @@ export const QA_DB_CONFIG = {
     },
   },
 };
+
+export const WEBMAIL_CONFIG = {
+  WEB_PORT: 1080,
+  SMTP_PORT: 1025,
+};

@@ -468,7 +468,7 @@
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-XX:+PrintGC"]}
 
-  ;; get the H2 shell with clojure -X:h2
+  ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
    :exec-fn     dev.h2-shell/shell

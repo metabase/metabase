@@ -33,9 +33,8 @@ export const BookmarkApi = {
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
-  create: POST("/api/mt/gtap"),
-  update: PUT("/api/mt/gtap/:id"),
   attributes: GET("/api/mt/user/attributes"),
+  validate: POST("/api/mt/gtap/validate"),
 };
 
 export const StoreApi = {
@@ -505,4 +504,5 @@ export const ActionsApi = {
   execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
   createPublicLink: POST("/api/action/:id/public_link"),
   deletePublicLink: DELETE("/api/action/:id/public_link"),
+  listPublic: GET("/api/action/public"),
 };
