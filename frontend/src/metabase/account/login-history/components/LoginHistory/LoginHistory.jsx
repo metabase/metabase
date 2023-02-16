@@ -30,7 +30,7 @@ const LoginHistoryItem = ({ item }) => (
         </Text>
       </div>
       <LoginItemInfo>
-        {item.active && <LoginActiveLabel pr={2}>Active</LoginActiveLabel>}
+        {item.active && <LoginActiveLabel pr={2}>{t`Active`}</LoginActiveLabel>}
         <Label>{item.time}</Label>
       </LoginItemInfo>
     </LoginItemContent>
