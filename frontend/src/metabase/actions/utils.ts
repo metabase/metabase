@@ -1,14 +1,15 @@
 import { t } from "ttag";
 import type {
-  ActionFormSettings,
-  Database,
-  Parameter,
-  WritebackAction,
   ActionDashboardCard,
+  ActionFormSettings,
   BaseDashboardOrderedCard,
   Card,
+  Database,
   FieldSettings,
+  Parameter,
   ParameterId,
+  ImplicitQueryAction,
+  WritebackAction,
 } from "metabase-types/api";
 
 import { slugify } from "metabase/lib/formatting";
@@ -211,3 +212,37 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
+
+function hasDataFromExplicitAction(result: any) {
+  const isInsert = result["created-row"];
+  const isUpdate =
+    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isDelete = result["rows-deleted"]?.[0] > 0;
+  return !isInsert && !isUpdate && !isDelete;
+}
+
+function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+  if (action.kind === "row/create") {
+    return t`Successfully saved`;
+  }
+  if (action.kind === "row/update") {
+    return t`Successfully updated`;
+  }
+  if (action.kind === "row/delete") {
+    return t`Successfully deleted`;
+  }
+  return t`Successfully ran the action`;
+}
+
+export function getActionExecutionMessage(
+  action: WritebackAction,
+  result: any,
+) {
+  if (action.type === "implicit") {
+    return getImplicitActionExecutionMessage(action);
+  }
+  if (hasDataFromExplicitAction(result)) {
+    return t`Success! The action returned: ${JSON.stringify(result)}`;
+  }
+  return getSuccessMessage(action);
+}
