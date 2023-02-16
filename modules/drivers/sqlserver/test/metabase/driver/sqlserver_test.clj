@@ -190,7 +190,7 @@
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
       ;; QP pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things
       ;; are working we need to add to in from of the query we're trying to check
-      (sql-jdbc.execute/do-with-connection-with-time-zone
+      (sql-jdbc.execute/do-with-connection-with-timezone
        :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported)
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
@@ -234,7 +234,7 @@
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-              (sql-jdbc.execute/do-with-connection-with-time-zone
+              (sql-jdbc.execute/do-with-connection-with-timezone
                :sqlserver (mt/db) nil
                (fn [^java.sql.Connection conn]
                  (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)

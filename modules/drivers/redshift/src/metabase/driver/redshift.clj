@@ -132,7 +132,7 @@
 
 ;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
 ;; connection read-only, because that seems to be causing problems for people
-(defmethod sql-jdbc.execute/do-with-connection-with-time-zone :redshift
+(defmethod sql-jdbc.execute/do-with-connection-with-timezone :redshift
   [driver database ^String timezone-id f]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (sql-jdbc.execute/set-best-transaction-level! driver conn)

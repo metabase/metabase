@@ -38,7 +38,7 @@
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti do-with-connection-with-time-zone
+(defmulti do-with-connection-with-timezone
   "Fetch a [[java.sql.Connection]] from a `driver`/`database`, presumably using a `DataSource` returned
   by [[datasource]] and a [[with-open]] form, and invoke
 
@@ -68,7 +68,7 @@
     2a. The default implementation will do this for you by executing SQL if you implement
         [[set-timezone-sql]].
 
-    2b. You can implement this method, [[do-with-connection-with-time-zone]], yourself and set the timezone however you
+    2b. You can implement this method, [[do-with-connection-with-timezone]], yourself and set the timezone however you
         wish. Only set it if `timezone-id` is not `nil`!
 
    Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
@@ -87,7 +87,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-time-zone]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-timezone]] we should replace [[prepared-statment]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close`
 
@@ -171,7 +171,7 @@
 
 (defn set-time-zone-if-supported!
   "Execute `set-timezone-sql`, if implemented by driver, to set the session time zone. This way of setting the time zone
-  should be considered deprecated in favor of implementing `connection-with-time-zone` directly."
+  should be considered deprecated in favor of implementing `connection-with-timezone` directly."
   {:deprecated "0.35.0"}
   [driver ^Connection conn ^String timezone-id]
   (when timezone-id
@@ -211,9 +211,9 @@
         (seq more)
         (recur more)))))
 
-(defmethod do-with-connection-with-time-zone :sql-jdbc
+(defmethod do-with-connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id f]
-  (with-open [^Connection conn (if-let [old-method-impl (get-method connection-with-timezone driver)]
+  (with-open [^Connection conn (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
                                  ;; TODO -- maybe log a deprecation warning here.
                                  (old-method-impl driver database timezone-id)
                                  (.getConnection (datasource-with-diagnostic-info! driver database)))]
@@ -513,7 +513,7 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (do-with-connection-with-time-zone
+   (do-with-connection-with-timezone
     driver
     (qp.store/database)
     (qp.timezone/report-timezone-id-if-supported)
@@ -531,11 +531,6 @@
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
           (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(p/import-vars
- [sql-jdbc.execute.old
-  connection-with-timezone])
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -558,3 +553,15 @@
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type qp.error-type/invalid-query}
                       e)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Convenience Imports from Old Impl                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(p/import-vars
+ [sql-jdbc.execute.old
+  connection-with-timezone
+  set-timezone-sql
+  read-column])

@@ -167,7 +167,7 @@
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
 ;; 3.  SparkSQL doesn't support making connections read-only
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
-(defmethod sql-jdbc.execute/do-with-connection-with-time-zone :sparksql
+(defmethod sql-jdbc.execute/do-with-connection-with-timezone :sparksql
   [driver database _timezone-id f]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)

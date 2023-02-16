@@ -409,7 +409,7 @@
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
 ;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
 ;; the default impl is setting the transaction isolation level
-(defmethod sql-jdbc.execute/do-with-connection-with-time-zone :sqlite
+(defmethod sql-jdbc.execute/do-with-connection-with-timezone :sqlite
   [driver database _timezone-id f]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (sql-jdbc.execute/set-best-transaction-level! driver conn)

@@ -20,7 +20,7 @@ title: Driver interface changelog
 ## Metabase 0.46.0
 
 - `metabase.driver.sql-jdbc.execute/connection-with-timezone` has been marked deprecated and is scheduled for removal
-  in Metabase 0.49.0. The new method `metabase.driver.sql-jdbc.execute/do-with-connection-with-time-zone` replaces it.
+  in Metabase 0.49.0. The new method `metabase.driver.sql-jdbc.execute/do-with-connection-with-timezone` replaces it.
   Migration to the new method is straightforward. See PR [#22166](https://github.com/metabase/metabase/pull/22166) for
   more information.
 

@@ -731,12 +731,16 @@
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (testing "It should be possible to return money column results (#3754)"
-        (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
-                    stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                    rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
-          (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
-            (is (= [1000.00M]
-                   (row-thunk))))))
+        (sql-jdbc.execute/do-with-connection-with-timezone
+         :postgres
+         (mt/db)
+         nil
+         (fn [conn]
+           (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
+                       rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
+             (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
+               (is (= [1000.00M]
+                      (row-thunk))))))))
 
       (do-with-money-test-db
        (fn []

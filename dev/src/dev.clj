@@ -142,12 +142,16 @@
     (try
       (driver/with-driver driver
         (letfn [(thunk []
-                  (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported driver (mt/db)))
-                              stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
-                              rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-                    (let [rsmeta (.getMetaData rs)]
-                      {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
-                       :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))]
+                  (sql-jdbc.execute/do-with-connection-with-timezone
+                   driver
+                   (mt/db)
+                   (qp.timezone/report-timezone-id-if-supported)
+                   (fn [conn]
+                     (with-open [stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
+                                 rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+                       (let [rsmeta (.getMetaData rs)]
+                         {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
+                          :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))))]
           (if dataset
             (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
             (thunk))))
