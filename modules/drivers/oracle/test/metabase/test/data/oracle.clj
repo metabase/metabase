@@ -312,33 +312,3 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Decimal}))))
-
-
-(defn x []
-  (let [sql (str/join [;; "-- Metabase"
-                       ;; "SELECT"
-                       ;; "  *"
-                       ;; "FROM"
-                       ;; "  ("
-                       "    SELECT"
-                       "      \"source\".\"substring125463\" AS \"substring125463\""
-                       "    FROM"
-                       "      ("
-                       "        SELECT"
-                       "          \"CAM_85\".\"test_data_categories\".\"id\" AS \"id\","
-                       "          \"CAM_85\".\"test_data_categories\".\"name\" AS \"name\","
-                       "          SUBSTR(\"CAM_85\".\"test_data_categories\".\"name\", 1, 1234) AS \"substring125463\""
-                       "        FROM"
-                       "          \"CAM_85\".\"test_data_categories\""
-                       "      ) \"source\""
-                       ;; "  )"
-                       ;; "WHERE"
-                       ;; "  rownum <= 10000"
-                       ])]
-    (with-open [conn (clojure.java.jdbc/get-connection (metabase.driver.sql-jdbc.connection/connection-details->spec
-                                                        :oracle
-                                                        (metabase.test.data.oracle/connection-details)))
-                stmt (.createStatement conn)]
-      (when (.execute stmt sql)
-        (with-open [rset (.getResultSet stmt)]
-          (vec (resultset-seq rset)))))))
