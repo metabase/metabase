@@ -748,7 +748,7 @@
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
                     :else                    (case (long hx/*honey-sql-version*)
-                                               1 0.0 field-alias
+                                               1 0.0
                                                2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
