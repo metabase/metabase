@@ -30,7 +30,6 @@
   (:import
    (java.lang.management ManagementFactory)))
 
-
 (set! *warn-on-reflection* true)
 
 (println "COMPILER OPTIONS" *compiler-options*)
