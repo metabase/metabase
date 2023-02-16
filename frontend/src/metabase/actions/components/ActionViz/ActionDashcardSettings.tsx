@@ -13,6 +13,7 @@ import Button from "metabase/core/components/Button";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import EmptyState from "metabase/components/EmptyState";
+import Link from "metabase/core/components/Link";
 import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
 
 import {
@@ -22,6 +23,7 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
+  ExplainerText,
 } from "./ActionDashcardSettings.styled";
 
 const mapDispatchToProps = {
@@ -50,6 +52,8 @@ export function ActionDashcardSettings({
     setActionForDashcard(dashcard, newAction);
   };
 
+  const hasParameters = !!action?.parameters?.length;
+
   return (
     <ActionSettingsWrapper>
       <ActionSettingsLeft>
@@ -59,7 +63,22 @@ export function ActionDashcardSettings({
       <ActionSettingsRight>
         {action ? (
           <>
-            <ActionSettingsHeader>{action.name}</ActionSettingsHeader>
+            {hasParameters && (
+              <>
+                <ActionSettingsHeader>
+                  {t`Where should the values for '${action.name}' come from?`}
+                </ActionSettingsHeader>
+                <ExplainerText>
+                  {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
+                  <Link
+                    to="/https://www.metabase.com/learn/dashboards/linking-filters" /* FIXME */
+                    className="text-brand ml1"
+                  >
+                    {t`Learn more.`}
+                  </Link>
+                </ExplainerText>
+              </>
+            )}
             <ParameterMapperContainer>
               <ConnectedActionParameterMappingForm
                 dashcard={dashcard}

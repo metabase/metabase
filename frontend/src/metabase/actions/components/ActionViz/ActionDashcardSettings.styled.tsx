@@ -14,6 +14,7 @@ export const ActionSettingsHeader = styled.h2`
   font-size: 1.25rem;
   padding-bottom: ${space(1)};
   padding-left: ${space(3)};
+  padding-right: ${space(3)};
 `;
 
 // make strolling nicer by fading out the top and bottom of the column
@@ -51,6 +52,7 @@ export const ActionSettingsLeft = styled.div`
 `;
 
 export const ActionSettingsRight = styled.div`
+  max-width: 30rem;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -76,4 +78,11 @@ export const ModalActions = styled.div`
   gap: 1rem;
   padding: 1rem;
   border-top: 1px solid ${color("border")};
+`;
+
+export const ExplainerText = styled.p`
+  margin-left: ${space(3)};
+  margin-right: ${space(3)};
+
+  color: ${color("text-medium")};
 `;
