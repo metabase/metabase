@@ -113,7 +113,7 @@
 (defmethod sql-jdbc.sync/fallback-metadata-query :sqlite
   [driver schema table]
   (sql.qp/format-honeysql driver {:select [:*]
-                                  :from   [(sql.qp/->honeysql driver (h2x/identifier :table schema table))]
+                                  :from   [[(h2x/identifier :table schema table)]]
                                   :limit  1}))
 
 ;; register the SQLite concatenation operator `||` with HoneySQL as `sqlite-concat`
