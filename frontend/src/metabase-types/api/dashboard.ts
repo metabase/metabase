@@ -4,10 +4,10 @@ import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
-import { LinkCardSettings } from "metabase/visualizations/visualizations/LinkViz/types";
-import { ActionDashboardCard } from "./actions";
 
-import type { Card, CardId } from "./card";
+import { ActionDashboardCard } from "./actions";
+import type { SearchModelType } from "./search";
+import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
 
 export type DashboardId = number;
@@ -74,3 +74,19 @@ export type DashCardDataMap = Record<
   DashCardId,
   Record<CardId, Dataset | undefined>
 >;
+
+export type LinkEntity = {
+  id: number;
+  db_id?: number;
+  database_id?: number;
+  model: SearchModelType;
+  name: string;
+  display_name?: string;
+  description?: string;
+  display?: CardDisplayType;
+};
+
+export interface LinkCardSettings {
+  url?: string;
+  entity?: LinkEntity;
+}

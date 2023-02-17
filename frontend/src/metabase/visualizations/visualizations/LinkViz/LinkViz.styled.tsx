@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
 
 export const DisplayLinkCardWrapper = styled.div`
   padding: 0.5rem;
@@ -45,11 +46,15 @@ export const SearchResultsContainer = styled.div`
   background-color: ${color("bg-white")};
   line-height: 24px;
 
-  box-shadow: 0 20px 20px ${color("shadow")};
   max-height: 400px;
 
   border: 1px solid ${color("border")};
   border-radius: 6px;
   box-shadow: 0 7px 20px ${color("shadow")};
   pointer-events: all;
+`;
+
+export const BrandIconWithHorizontalMargin = styled(Icon)`
+  color: ${color("brand")};
+  margin: 0 0.5rem;
 `;

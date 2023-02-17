@@ -7,27 +7,27 @@ import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
 
-import type { DashboardOrderedCard } from "metabase-types/api";
+import type {
+  DashboardOrderedCard,
+  LinkEntity,
+  LinkCardSettings,
+} from "metabase-types/api";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
 
 import { isEmpty } from "metabase/lib/validate";
-import { color } from "metabase/lib/colors";
 
 import { EntityDisplay } from "./EntityDisplay";
-
 import { settings } from "./LinkVizSettings";
-
-import type { LinkEntity, LinkCardSettings } from "./types";
 
 import {
   EditLinkCardWrapper,
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
+  BrandIconWithHorizontalMargin,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -129,7 +129,7 @@ function LinkViz({
             fullWidth
             value={url ?? ""}
             autoFocus={autoFocus}
-            placeholder={t`https://example.com`}
+            placeholder={"https://example.com"}
             onChange={e => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
             onBlur={onBlurInput}
@@ -145,8 +145,8 @@ function LinkViz({
 
   return (
     <DisplayLinkCardWrapper>
-      <CardLink to={url ? url : ""} target="_blank" rel="noreferrer">
-        <Icon name={urlIcon} ml={1} mr={1} color={color("brand")} />
+      <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
+        <BrandIconWithHorizontalMargin name={urlIcon} />
         <Ellipsified>{!isEmpty(url) ? url : t`Choose a link`}</Ellipsified>
       </CardLink>
     </DisplayLinkCardWrapper>

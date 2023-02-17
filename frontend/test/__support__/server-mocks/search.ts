@@ -5,14 +5,22 @@ import type {
   Collection,
   Table,
   Database,
+  SearchModelType,
 } from "metabase-types/api";
 
-type SearchItem = Card | Dashboard | Collection | Table | Database;
+type SearchItem =
+  | Card
+  | Dashboard
+  | Collection
+  | Table
+  | (Database & {
+      collection: Record<string, any>;
+    });
 
 export function setupSearchEndpoints(
   scope: Scope,
   items: SearchItem[],
-  models: string[] = [],
+  models: SearchModelType[] = [],
 ) {
   scope.get(/\/api\/search+/).reply(200, {
     available_models: [

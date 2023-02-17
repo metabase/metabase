@@ -5,11 +5,16 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 
-import type { DashboardOrderedCard } from "metabase-types/api";
-import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
+import type {
+  DashboardOrderedCard,
+  LinkCardSettings,
+} from "metabase-types/api";
+import {
+  createMockDashboardCardWithVirtualCard,
+  createMockCard,
+} from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
-import type { LinkCardSettings } from "./types";
 
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;
@@ -79,6 +84,16 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
     },
   },
 });
+
+const searchCardItem = {
+  model: "card",
+  collection: {},
+  ...createMockCard({
+    name: "Question Uno",
+    id: 1,
+    display: "pie",
+  }),
+};
 
 const setup = (options?: Partial<LinkVizProps>) => {
   const changeSpy = jest.fn();
@@ -170,15 +185,7 @@ describe("LinkViz", () => {
 
     it("should be able to search for questions", async () => {
       const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [
-        {
-          name: "Question Uno",
-          id: 1,
-          display: "pie",
-          model: "card",
-          collection: {},
-        },
-      ] as any);
+      setupSearchEndpoints(scope, [searchCardItem]);
 
       setup({
         isEditing: true,
@@ -197,15 +204,7 @@ describe("LinkViz", () => {
 
     it("clicking a search item should update the entity", async () => {
       const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [
-        {
-          name: "Question Uno",
-          id: 1,
-          display: "pie",
-          model: "card",
-          collection: {},
-        },
-      ] as any);
+      setupSearchEndpoints(scope, [searchCardItem]);
 
       const { changeSpy } = setup({
         isEditing: true,
@@ -221,12 +220,12 @@ describe("LinkViz", () => {
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
-          entity: {
+          entity: expect.objectContaining({
             id: 1,
             name: "Question Uno",
             model: "card",
             display: "pie",
-          },
+          }),
         },
       });
     });

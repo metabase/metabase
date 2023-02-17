@@ -45,13 +45,14 @@ export const Title = styled("h3")`
   margin-bottom: 4px;
   color: ${props => color(props.active ? "text-dark" : "text-medium")};
 `;
+
 export const ResultButton = styled.button`
   ${props => resultStyles(props)}
   padding-right: 0.5rem;
   text-align: left;
   cursor: pointer;
   &:hover {
-    h3 {
+    ${Title} {
       color: ${color("brand")};
     }
   }

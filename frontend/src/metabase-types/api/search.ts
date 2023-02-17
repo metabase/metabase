@@ -1,7 +1,7 @@
 export type SearchModelType =
-  | "dashboard"
   | "card"
-  | "dataset"
   | "collection"
-  | "table"
-  | "database";
+  | "dashboard"
+  | "database"
+  | "dataset"
+  | "table";
