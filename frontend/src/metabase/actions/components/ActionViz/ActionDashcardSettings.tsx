@@ -71,7 +71,7 @@ export function ActionDashcardSettings({
                 <ExplainerText>
                   {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
                   <Link
-                    to="/https://www.metabase.com/learn/dashboards/linking-filters" /* FIXME */
+                    to="https://www.metabase.com/docs/actions/custom"
                     className="text-brand ml1"
                   >
                     {t`Learn more.`}
