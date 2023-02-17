@@ -245,10 +245,10 @@ describe("scenarios > models > actions", () => {
 });
 
 function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
-  cy.findByRole("listitem", { name: actionName }).within(() => {
-    const icon = isReadOnly ? "eye" : "pencil";
-    cy.icon(icon).click();
-  });
+  openActionMenuFor(actionName);
+  popover()
+    .findByText(isReadOnly ? "View" : "Edit")
+    .click();
 }
 
 function openActionMenuFor(actionName) {
