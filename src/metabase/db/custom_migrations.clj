@@ -4,6 +4,8 @@
   (:import [liquibase.change.custom CustomTaskChange CustomTaskRollback]
            liquibase.exception.ValidationErrors))
 
+(set! *warn-on-reflection* true)
+
 (defmacro def-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
   similar to the bodies of multi-arity Clojure functions.
