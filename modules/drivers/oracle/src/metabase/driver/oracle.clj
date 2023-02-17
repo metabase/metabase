@@ -347,7 +347,7 @@
     :year    (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ym-interval :year   amount))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
-  [driver _unit field-or-value]
+  [_driver _unit field-or-value]
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
          (num-to-ds-interval :second field-or-value)))
 
