@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   restore,
+  createAction,
 } from "__support__/e2e/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -79,7 +80,7 @@ describe("scenarios > models > actions", () => {
     cy.intercept("PUT", "/api/action/*").as("updateAction");
   });
 
-  it("should allow to view, create and edit model actions", () => {
+  it("should allow to view, create, edit, and archive model actions", () => {
     cy.get("@modelId").then(id => {
       cy.visit(`/model/${id}/detail`);
       cy.wait("@getModel");
@@ -119,71 +120,88 @@ describe("scenarios > models > actions", () => {
         "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
       )
       .should("be.visible");
+
+    openActionMenuFor("Delete Order");
+    popover().findByText("Archive").click();
+
+    modal().within(() => {
+      cy.findByText("Archive Delete Order?").should("be.visible");
+      cy.findByRole("button", { name: "Archive" }).click();
+    });
+
+    cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
   });
 
   it("should allow to make actions public and execute them", () => {
-    cy.intercept("/api/public/action/*/execute", request => {
-      expect(request.body).to.deep.equal({
-        parameters: { [TEST_PARAMETER.id]: -2 },
-      });
-    });
+    const IMPLICIT_ACTION_NAME = "Update order";
 
     cy.get("@modelId").then(modelId => {
-      cy.request("POST", "/api/action", {
+      createAction({
         ...SAMPLE_QUERY_ACTION,
         model_id: modelId,
       });
-      cy.visit(`/model/${modelId}/detail`);
+      createAction({
+        type: "implicit",
+        kind: "row/update",
+        name: IMPLICIT_ACTION_NAME,
+        model_id: modelId,
+      });
+      cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
     });
 
-    cy.findByText("Actions").click();
-    openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-    cy.findByRole("dialog").within(() => {
-      cy.button("Action settings").click();
-      cy.findByLabelText("Make public").should("not.be.checked").click();
-      cy.findByLabelText("Public action link URL")
-        .invoke("val")
-        .then(url => {
-          cy.wrap(url).as("publicUrl");
-        });
-      cy.button("Update").click();
-      cy.wait("@updateAction");
+    enableSharingFor(SAMPLE_QUERY_ACTION.name, {
+      publicUrlAlias: "queryActionPublicUrl",
+    });
+    enableSharingFor(IMPLICIT_ACTION_NAME, {
+      publicUrlAlias: "implicitActionPublicUrl",
     });
 
-    cy.get("@publicUrl").then(url => {
-      cy.signOut();
+    cy.signOut();
+
+    cy.get("@queryActionPublicUrl").then(url => {
       cy.visit(url);
+      cy.findByLabelText(TEST_PARAMETER.name).type("-2");
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+        "be.visible",
+      );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
     });
 
-    cy.findByLabelText(TEST_PARAMETER.name).type("-2");
-    cy.findByRole("button", { name: "Submit" }).click();
-    cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
-      "be.visible",
-    );
-    cy.findByRole("form").should("not.exist");
-    cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    cy.get("@implicitActionPublicUrl").then(url => {
+      cy.visit(url);
+
+      // Order 1 has quantity 2 by default, so we're not actually mutating data
+      cy.findByLabelText(/^id/i).type("1");
+      cy.findByLabelText(/quantity/i).type("2");
+
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
+        "be.visible",
+      );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    });
 
     cy.signInAsAdmin();
     cy.get("@modelId").then(modelId => {
-      cy.visit(`/model/${modelId}/detail`);
+      cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
     });
 
-    cy.findByText("Actions").click();
-    openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+    disableSharingFor(SAMPLE_QUERY_ACTION.name);
+    disableSharingFor(IMPLICIT_ACTION_NAME);
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Action settings" }).click();
-      cy.findByLabelText("Make public").should("be.checked").click();
-    });
-    modal().within(() => {
-      cy.findByText("Disable this public link?").should("be.visible");
-      cy.findByRole("button", { name: "Yes" }).click();
+    cy.get("@queryActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+      cy.findByText("An error occurred.").should("be.visible");
     });
 
-    cy.get("@publicUrl").then(url => {
+    cy.get("@implicitActionPublicUrl").then(url => {
       cy.visit(url);
       cy.findByRole("form").should("not.exist");
       cy.findByRole("button", { name: "Submit" }).should("not.exist");
@@ -200,6 +218,10 @@ describe("scenarios > models > actions", () => {
       cy.signIn("readonly");
       cy.visit(`/model/${modelId}/detail/actions`);
       cy.wait("@getModel");
+    });
+
+    cy.findByRole("listitem", { name: SAMPLE_QUERY_ACTION.name }).within(() => {
+      cy.icon("ellipsis").should("not.exist");
     });
 
     openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
@@ -229,6 +251,12 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
   });
 }
 
+function openActionMenuFor(actionName) {
+  cy.findByRole("listitem", { name: actionName }).within(() => {
+    cy.icon("ellipsis").click();
+  });
+}
+
 function fillQuery(query) {
   cy.get(".ace_content").type(query, { parseSpecialCharSequences: false });
 }
@@ -243,4 +271,34 @@ function assertQueryEditorDisabled() {
 function fieldSettings() {
   cy.findByTestId("action-form-editor").within(() => cy.icon("gear").click());
   return popover();
+}
+
+function enableSharingFor(actionName, { publicUrlAlias }) {
+  openActionEditorFor(actionName);
+
+  cy.findByRole("dialog").within(() => {
+    cy.button("Action settings").click();
+    cy.findByLabelText("Make public").should("not.be.checked").click();
+    cy.findByLabelText("Public action link URL")
+      .invoke("val")
+      .then(url => {
+        cy.wrap(url).as(publicUrlAlias);
+      });
+    cy.button("Cancel").click();
+  });
+}
+
+function disableSharingFor(actionName) {
+  openActionEditorFor(actionName);
+  cy.findByRole("dialog").within(() => {
+    cy.findByRole("button", { name: "Action settings" }).click();
+    cy.findByLabelText("Make public").should("be.checked").click();
+  });
+  modal().within(() => {
+    cy.findByText("Disable this public link?").should("be.visible");
+    cy.findByRole("button", { name: "Yes" }).click();
+  });
+  cy.findByRole("dialog").within(() => {
+    cy.button("Cancel").click();
+  });
 }

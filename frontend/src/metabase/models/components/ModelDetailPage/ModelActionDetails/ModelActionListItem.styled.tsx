@@ -1,17 +1,19 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-export const ActionTitle = styled(Link)`
+export const ActionHeader = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+`;
+
+export const ActionTitle = styled.h4`
   font-size: 1rem;
   font-weight: 700;
   color: ${color("text-dark")};
-  cursor: ${props => (props.to ? "pointer" : "unset")};
-
-  &:hover {
-    color: ${props => props.to && color("brand")};
-  }
 `;
 
 export const ActionSubtitle = styled.span`
@@ -31,7 +33,18 @@ export const ActionSubtitlePart = styled.span`
   }
 `;
 
-export const ActionCard = styled.div`
+export const MenuIcon = styled(Icon)`
+  color: ${color("text-dark")};
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+MenuIcon.defaultProps = { size: 14 };
+
+export const Card = styled.div`
   display: block;
   position: relative;
 
@@ -43,14 +56,14 @@ export const ActionCard = styled.div`
   background-color: ${color("text-dark")};
 `;
 
-export const ActionCodeBlock = styled.pre`
+export const CodeBlock = styled.pre`
   font-family: Monaco, monospace;
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;
 `;
 
-export const ActionRunButton = styled(Button)`
+export const EditorLink = styled(Button)`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -58,6 +71,11 @@ export const ActionRunButton = styled(Button)`
   background-color: ${color("bg-white")};
   color: ${color("text-dark")};
 `;
+
+EditorLink.defaultProps = {
+  as: Link,
+  onlyIcon: true,
+};
 
 export const ImplicitActionCardContentRoot = styled.div`
   display: flex;

@@ -1,76 +1,122 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import Link from "metabase/core/components/Link";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
+
+import EntityMenu from "metabase/components/EntityMenu";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
+
+import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
+
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
-import StackedInsightIcon from "./StackedInsightIcon";
+
+import { isNotNull } from "metabase/core/utils/types";
 import {
-  ActionCard,
-  ActionCodeBlock,
-  ActionRunButton,
+  ActionHeader,
+  ActionTitle,
   ActionSubtitle,
   ActionSubtitlePart,
-  ActionTitle,
+  Card,
+  CodeBlock,
+  EditorLink,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
+  MenuIcon,
 } from "./ModelActionListItem.styled";
 
-interface ItemProps {
+interface Props {
   action: WritebackAction;
-  actionUrl: string;
-}
-
-interface ModalProps {
-  onClose?: () => void;
+  editorUrl: string;
+  canWrite: boolean;
+  onArchive?: () => void;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
-  return <ActionCodeBlock>{action.dataset_query.native.query}</ActionCodeBlock>;
+  return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
 }
 
 function ImplicitActionCardContent() {
   return (
     <ImplicitActionCardContentRoot>
-      <StackedInsightIcon />
+      <ImplicitActionIcon size={32} />
       <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
     </ImplicitActionCardContentRoot>
   );
 }
 
-function ModelActionListItem({ action, actionUrl }: ItemProps) {
-  const isQueryAction = action.type === "query";
+function ModelActionListItem({
+  action,
+  editorUrl,
+  canWrite,
+  onArchive,
+}: Props) {
+  const isImplicitAction = action.type === "implicit";
+
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
+
+  const handleArchive = useCallback(() => {
+    if (!onArchive) {
+      return;
+    }
+    askConfirmation({
+      title: t`Archive ${action.name}?`,
+      confirmButtonText: t`Archive`,
+      onConfirm: onArchive,
+    });
+  }, [action, askConfirmation, onArchive]);
+
+  const renderCardContent = () =>
+    action.type === "query" ? (
+      <QueryActionCardContent action={action} />
+    ) : action.type === "implicit" ? (
+      <ImplicitActionCardContent />
+    ) : null;
+
+  const canArchive = onArchive && !isImplicitAction;
+
+  const menuItems = [
+    canArchive && {
+      title: t`Archive`,
+      icon: "archive",
+      action: handleArchive,
+    },
+  ].filter(Boolean);
+
+  const subtitleParts = [
+    action.public_uuid && t`Public Action`,
+    // Remove this optional chaining after removed all the existing actions without creators
+    action.creator?.common_name && t`Created by ${action.creator.common_name}`,
+  ].filter(isNotNull);
+
+  const hasMenu = menuItems.length > 0;
 
   return (
-    <div>
-      <ActionTitle to={isQueryAction ? actionUrl : ""}>
-        {action.name}
-      </ActionTitle>
-      <ActionSubtitle>
-        {action.public_uuid && (
-          <ActionSubtitlePart>{t`Public Action`}</ActionSubtitlePart>
-        )}
-        {action.creator && (
-          <ActionSubtitlePart>
-            {t`Created by ${action.creator.common_name}`}
-          </ActionSubtitlePart>
-        )}
-      </ActionSubtitle>
-      <ActionCard>
-        {action.type === "query" ? (
-          <QueryActionCardContent action={action} />
-        ) : action.type === "implicit" ? (
-          <ImplicitActionCardContent />
-        ) : null}
-        <ModalWithTrigger
-          triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
-        >
-          {({ onClose }: ModalProps) => (
-            <ActionExecuteModal actionId={action.id} onClose={onClose} />
+    <>
+      <ActionHeader>
+        <div>
+          <ActionTitle>{action.name}</ActionTitle>
+          {subtitleParts.length > 0 && (
+            <ActionSubtitle>
+              {subtitleParts.map((subtitlePart, index) => (
+                <ActionSubtitlePart key={index}>
+                  {subtitlePart}
+                </ActionSubtitlePart>
+              ))}
+            </ActionSubtitle>
           )}
-        </ModalWithTrigger>
-      </ActionCard>
-    </div>
+        </div>
+        {hasMenu && (
+          <EntityMenu
+            items={menuItems}
+            trigger={<MenuIcon name="ellipsis" />}
+          />
+        )}
+      </ActionHeader>
+      <Card>
+        {renderCardContent()}
+        <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
+      </Card>
+      {confirmationModal}
+    </>
   );
 }
 

@@ -64,6 +64,9 @@ export const reorderFields = (
 };
 
 export const hasNewParams = (
-  params: Parameter[],
+  parameters: Parameter[],
   formSettings: ActionFormSettings,
-) => !!params.find(param => !formSettings.fields[param.id]);
+) => {
+  const fieldIds = Object.keys(formSettings.fields || {});
+  return parameters.some(parameter => !fieldIds.includes(parameter.id));
+};

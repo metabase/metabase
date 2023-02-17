@@ -1,20 +1,21 @@
 import { t } from "ttag";
-
 import type {
-  ActionDashboardCard,
   ActionFormSettings,
+  Database,
+  Parameter,
+  WritebackAction,
+  WritebackActionBase,
+  ActionDashboardCard,
   BaseDashboardOrderedCard,
   Card,
-  Database,
   FieldSettings,
-  Parameter,
+  FieldSettingsMap,
   ParameterId,
-  ImplicitQueryAction,
-  WritebackAction,
+  ParametersForActionExecution,
 } from "metabase-types/api";
 
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { slugify } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
@@ -80,8 +81,10 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
-    const aOrder = formSettings.fields[a.id]?.order ?? 0;
-    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+    const fields = formSettings.fields || {};
+
+    const aOrder = fields[a.id]?.order ?? 0;
+    const bOrder = fields[b.id]?.order ?? 0;
 
     return aOrder - bOrder;
   };
@@ -202,6 +205,12 @@ export const getInputType = (param: Parameter, field?: Field) => {
   return "string";
 };
 
+export function isSavedAction(
+  action?: Partial<WritebackActionBase>,
+): action is WritebackAction {
+  return action != null && action.id != null;
+}
+
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
@@ -215,43 +224,15 @@ export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
 
-function hasDataFromExplicitAction(result: any) {
-  const isInsert = result["created-row"];
-  const isUpdate =
-    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
-  const isDelete = result["rows-deleted"]?.[0] > 0;
-  return !isInsert && !isUpdate && !isDelete;
-}
-
-function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
-  if (action.kind === "row/create") {
-    return t`Successfully saved`;
-  }
-  if (action.kind === "row/update") {
-    return t`Successfully updated`;
-  }
-  if (action.kind === "row/delete") {
-    return t`Successfully deleted`;
-  }
-  return t`Successfully ran the action`;
-}
-
-export function getActionExecutionMessage(
-  action: WritebackAction,
-  result: any,
+export function setNumericValues(
+  params: ParametersForActionExecution,
+  fieldSettings: FieldSettingsMap,
 ) {
-  if (action.type === "implicit") {
-    return getImplicitActionExecutionMessage(action);
-  }
-  if (hasDataFromExplicitAction(result)) {
-    return t`Success! The action returned: ${JSON.stringify(result)}`;
-  }
-  return getSuccessMessage(action);
-}
+  Object.entries(params).forEach(([key, value]) => {
+    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
+      params[key] = Number(value) ?? null;
+    }
+  });
 
-export function getActionErrorMessage(error: unknown) {
-  return (
-    getResponseErrorMessage(error) ??
-    t`Something went wrong while executing the action`
-  );
+  return params;
 }

@@ -27,7 +27,7 @@ import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 
 import type {
   Card,
@@ -43,6 +43,7 @@ import {
   createMockImplicitCUDActions,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockImplicitQueryAction,
   createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -225,12 +226,12 @@ async function setup({
       <Route path="actions" component={ModelDetailPage}>
         <ModalRoute
           path="new"
-          modal={ActionCreatorModal}
+          modal={ActionCreator}
           modalProps={{ enableTransition: false }}
         />
         <ModalRoute
           path=":actionId"
-          modal={ActionCreatorModal}
+          modal={ActionCreator}
           modalProps={{ enableTransition: false }}
         />
       </Route>
@@ -576,7 +577,8 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          userEvent.click(screen.getByText(action.name));
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          userEvent.click(within(listItem).getByLabelText("pencil icon"));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
@@ -657,6 +659,42 @@ describe("ModelDetailPage", () => {
             screen.queryByTestId("new-action-menu"),
           ).not.toBeInTheDocument();
         });
+
+        it("allows to archive a query action", async () => {
+          const updateActionSpy = jest.spyOn(ActionsApi, "update");
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
+          userEvent.click(screen.getByText("Archive"));
+
+          const modal = screen.getByRole("dialog");
+          userEvent.click(
+            within(modal).getByRole("button", { name: "Archive" }),
+          );
+
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          expect(updateActionSpy).toHaveBeenCalledWith({
+            id: action.id,
+            archived: true,
+          });
+        });
+
+        it("doesn't allow to archive an implicit action", async () => {
+          const model = getModel();
+          const action = createMockImplicitQueryAction({
+            model_id: model.id(),
+          });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          const menuButton = within(listItem).queryByLabelText("ellipsis icon");
+
+          expect(menuButton).not.toBeInTheDocument();
+          expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        });
       });
 
       describe("read-only permissions", () => {
@@ -701,6 +739,27 @@ describe("ModelDetailPage", () => {
           expect(
             screen.queryByTestId("new-action-menu"),
           ).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow to edit actions", async () => {
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          const editButton = within(listItem).queryByLabelText("pencil icon");
+
+          expect(editButton).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow to archive actions", async () => {
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          const menuButton = within(listItem).queryByLabelText("ellipsis icon");
+
+          expect(menuButton).not.toBeInTheDocument();
+          expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
     });

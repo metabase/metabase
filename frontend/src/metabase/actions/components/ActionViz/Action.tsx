@@ -14,14 +14,16 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
+import {
+  generateFieldSettingsFromParameters,
+  setNumericValues,
+} from "metabase/actions/utils";
 
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
-  setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
