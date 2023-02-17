@@ -362,7 +362,12 @@
   statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
   [[metabase.util.honeysql-extensions]]; like `:ansi`, but uppercases the result).
 
-    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)"
+    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
+
+  IMPORTANT NOTE! For drivers using Honey SQL 2, this actually corresponds to the Honey SQL `:dialect` option, so this
+  method name is a bit of a misnomer!
+
+  TODO -- we should update this method name to better reflect its usage in Honey SQL 2."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1399,7 +1404,8 @@
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
-  (binding [hx/*honey-sql-version* (honey-sql-version driver)]
+  (binding [driver/*driver*        driver
+            hx/*honey-sql-version* (honey-sql-version driver)]
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)
