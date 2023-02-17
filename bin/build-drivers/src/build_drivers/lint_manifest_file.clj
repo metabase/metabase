@@ -51,11 +51,8 @@
 
 (s/def ::connection-properties (s/coll-of ::connection-property))
 
-(s/def ::connection-properties-include-tunnel-config boolean?)
-
 (s/def ::single-driver (s/keys :req-un [::name ::lazy-load]
-                                   :opt-un [::parent ::display-name ::abstract ::connection-properties
-                                            ::connection-properties-include-tunnel-config]))
+                               :opt-un [::parent ::display-name ::abstract ::connection-properties]))
 
 (s/def ::driver (s/or :single-driver ::single-driver :multiple-drivers (s/coll-of ::single-driver)))
 

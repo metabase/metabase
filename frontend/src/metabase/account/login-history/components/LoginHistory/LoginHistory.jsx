@@ -17,7 +17,7 @@ import {
   LoginItemInfo,
 } from "./LoginHistory.styled";
 
-const LoginHistoryItem = item => (
+const LoginHistoryItem = ({ item }) => (
   <Card py={1} px="20px" my={2}>
     <LoginItemContent>
       <div>
@@ -30,17 +30,21 @@ const LoginHistoryItem = item => (
         </Text>
       </div>
       <LoginItemInfo>
-        {item.active && <LoginActiveLabel pr={2}>Active</LoginActiveLabel>}
+        {item.active && <LoginActiveLabel pr={2}>{t`Active`}</LoginActiveLabel>}
         <Label>{item.time}</Label>
       </LoginItemInfo>
     </LoginItemContent>
   </Card>
 );
 
-const LoginHistoryGroup = (items, date) => (
+const LoginHistoryGroup = ({ items, date }) => (
   <LoginGroup>
     <Label>{date}</Label>
-    <div>{items.map(LoginHistoryItem)}</div>
+    <div>
+      {items.map(item => (
+        <LoginHistoryItem key={item.timestamp} item={item} />
+      ))}
+    </div>
   </LoginGroup>
 );
 
@@ -69,7 +73,13 @@ function LoginHistoryList({ loginHistory }) {
     );
   }
 
-  return <div>{_.map(groups, LoginHistoryGroup)}</div>;
+  return (
+    <div>
+      {_.map(groups, (items, date) => (
+        <LoginHistoryGroup items={items} date={date} key={date} />
+      ))}
+    </div>
+  );
 }
 
 export default LoginHistoryList;
