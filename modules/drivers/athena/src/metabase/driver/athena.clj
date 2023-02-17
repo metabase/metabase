@@ -323,31 +323,50 @@
 
 (defn- table-columns [driver ^DatabaseMetaData metadata ^String db-name-or-nil ^String schema ^String table-name]
   (with-open [rset (.getColumns metadata db-name-or-nil schema table-name nil)]
-    (loop [acc #{}]
+    (loop [acc #{}, i 0]
       (if-not (.next rset)
         acc
-        (let [column-name   (str/trim (.getString rset "COL_NAME"))
-              database-type (str/trim (.getString rset "DATA_TYPE"))
+        (let [column-name   (str/trim (.getString rset "COLUMN_NAME"))
+              database-type (str/trim (.getString rset "TYPE_NAME"))
               base-type     (database-type->base-type-or-warn driver database-type)
               column        (when (valid-column? column-name database-type)
                               (merge {:name              column-name
                                       :database-type     database-type
                                       :base-type         base-type
-                                      :database-position (.getLong rset "ORDINAL_POSITION")}
+                                      :database-position i}
                                      (when-let [comment (not-empty (.getString rset "REMARKS"))]
                                        {:field-comment comment})))
               acc           (cond-> acc
-                              column (conj column))]
-          (recur acc))))))
+                              column (conj column))
+              i             (cond-> i
+                              column inc)]
+          (recur acc i))))))
 
 (defn- table-has-nested-fields? [columns]
   (some #(= (:database-type %) "struct")
         columns))
 
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
-  (into #{}
-        (map athena.schema-parser/parse-schema)
-        (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (with-open [conn (jdbc/get-connection jdbc-spec)
+                stmt (.createStatement conn)]
+      (when (.execute stmt (format "DESCRIBE `%s`.`%s`;" schema table-name))
+        (with-open [rset (.getResultSet stmt)]
+          (loop [acc #{}, i 0]
+            (if-not (.next rset)
+              acc
+              (let [column-name   (str/trim (.getString rset "col_name"))
+                    database-type (str/trim (.getString rset "data_type"))
+                    column        (when (valid-column? column-name database-type)
+                                    (athena.schema-parser/parse-schema
+                                     {:name              column-name
+                                      :type              database-type
+                                      :database-position i}))
+                    acc           (cond-> acc
+                                    column (conj column))
+                    i             (cond-> i
+                                    column inc)]
+                (recur acc i)))))))))
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
