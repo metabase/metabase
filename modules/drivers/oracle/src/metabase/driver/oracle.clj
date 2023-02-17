@@ -470,7 +470,7 @@
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
   [_ bool]
-  (if bool 1 0))
+  [:inline (if bool 1 0)])
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]

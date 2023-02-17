@@ -10,6 +10,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database Table]]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -20,10 +21,16 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -199,7 +206,7 @@
 
 (sql/register-clause! ::into #'format-into :into)
 
-(defn- row->into [table-identifier row-map]
+(defn- row->into [driver table-identifier row-map]
   (let [cols (vec (keys row-map))]
     {::into   table-identifier
      :columns (mapv (fn [col]
@@ -207,39 +214,39 @@
                     cols)
      :values  [(mapv (fn [col]
                        (let [v (get row-map col)]
-                         (if (number? v)
-                           [:inline v]
-                           v)))
+                         (sql.qp/->honeysql driver v)))
                      cols)]}))
 
 (defmethod ddl/insert-rows-honeysql-form :oracle
-  [_driver table-identifier row-or-rows]
-  [::insert-all (mapv (partial row->into table-identifier)
+  [driver table-identifier row-or-rows]
+  [::insert-all (mapv (partial row->into driver table-identifier)
                       (u/one-or-many row-or-rows))])
 
 ;;; see also [[metabase.driver.oracle-test/insert-rows-ddl-test]]
 (deftest ^:parallel insert-all-test
-  (let [rows [{:name "Plato Yeshua", :t #t "2014-04-01T08:30", :password 1}
-              {:name "Felipinho Asklepios", :t #t "2014-12-05T15:15", :password 2}]
+  (let [rows [{:name "Plato Yeshua", :t #t "2014-04-01T08:30", :password 1, :active true}
+              {:name "Felipinho Asklepios", :t #t "2014-12-05T15:15", :password 2, :active false}]
         hsql (ddl/insert-rows-honeysql-form :oracle (h2x/identifier :table "my_db" "my_table") rows)]
     (is (= [::insert-all
             [{::into   (h2x/identifier :table "my_db" "my_table")
-              :columns [(h2x/identifier :field :name)
-                        (h2x/identifier :field :t)
-                        (h2x/identifier :field :password)]
-              :values  [["Plato Yeshua" #t "2014-04-01T08:30" [:inline 1]]]}
+              :columns [(h2x/identifier :field "name")
+                        (h2x/identifier :field "t")
+                        (h2x/identifier :field "password")
+                        (h2x/identifier :field "active")]
+              :values  [["Plato Yeshua" #t "2014-04-01T08:30" [:inline 1] [:inline 1]]]}
              {::into   (h2x/identifier :table "my_db" "my_table")
-              :columns [(h2x/identifier :field :name)
-                        (h2x/identifier :field :t)
-                        (h2x/identifier :field :password)]
-              :values  [["Felipinho Asklepios" #t "2014-12-05T15:15" [:inline 2]]]}]]
+              :columns [(h2x/identifier :field "name")
+                        (h2x/identifier :field "t")
+                        (h2x/identifier :field "password")
+                        (h2x/identifier :field "active")]
+              :values  [["Felipinho Asklepios" #t "2014-12-05T15:15" [:inline 2] [:inline 0]]]}]]
            hsql))
     (is (= [["INSERT"
-             "  ALL INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\")"
+             "  ALL INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\", \"active\")"
              "VALUES"
-             "  (?, ?, 1) INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\")"
+             "  (?, ?, 1, 1) INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\", \"active\")"
              "VALUES"
-             "  (?, ?, 2)"
+             "  (?, ?, 2, 0)"
              "SELECT"
              "  *"
              "FROM"
