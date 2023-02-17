@@ -117,6 +117,18 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
+(deftest fetch-perms-graph-v2-test
+  (testing "GET /api/permissions/graph-v2"
+    (testing "make sure we can fetch the perms graph from the API"
+      (mt/with-temp Database [{db-id :id}]
+        (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph-v2")]
+          (is (partial= {:groups {(u/the-id (perms-group/admin))
+                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                        graph)))))
+
+    (testing "make sure a non-admin cannot fetch the perms graph from the API"
+      (mt/user-http-request :rasta :get 403 "permissions/graph-v2"))))
+
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
@@ -128,7 +140,10 @@
                      [:groups (u/the-id group) (mt/id) :data :schemas]
                      {"PUBLIC" {db-id :all}}))
           (is (= {db-id :all}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
@@ -139,7 +154,10 @@
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]
@@ -150,8 +168,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:data {:native :write}, :query {:schemas :all}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
 
     (testing "permissions for new db with no tables"
       (mt/with-temp* [PermissionsGroup [group]
@@ -161,8 +181,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:query {:schemas :all}, :data {:native :write}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"

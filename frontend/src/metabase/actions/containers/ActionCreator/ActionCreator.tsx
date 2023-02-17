@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
@@ -11,36 +10,70 @@ import Actions, {
   UpdateQueryActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { createQuestionFromAction } from "metabase/actions/selectors";
-
 import type {
-  WritebackQueryAction,
   ActionFormSettings,
-  WritebackAction,
+  Card,
+  DatabaseId,
+  WritebackActionId,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import { getDefaultFormSettings } from "../../utils";
-import { newQuestion, convertQuestionToAction } from "./utils";
+import {
+  newQuestion,
+  convertActionToQuestion,
+  convertQuestionToAction,
+} from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
 
-const mapStateToProps = (
-  state: State,
-  { action }: { action: WritebackQueryAction },
-) => ({
-  action,
-  question: action ? createQuestionFromAction(state, action) : undefined,
+interface OwnProps {
+  actionId?: WritebackActionId;
+  modelId: number;
+  databaseId?: number;
+  onClose?: () => void;
+}
+
+interface ActionLoaderProps {
+  action?: WritebackQueryAction;
+}
+
+interface ModelLoaderProps {
+  modelCard: Card;
+}
+
+interface StateProps {
+  model: Question;
+  metadata: Metadata;
+}
+
+interface DispatchProps {
+  onCreateAction: (params: CreateQueryActionParams) => void;
+  onUpdateAction: (params: UpdateQueryActionParams) => void;
+}
+
+export type ActionCreatorProps = OwnProps;
+
+type Props = OwnProps &
+  ActionLoaderProps &
+  ModelLoaderProps &
+  StateProps &
+  DispatchProps;
+
+const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
+  model: new Question(modelCard, getMetadata(state)),
   metadata: getMetadata(state),
 });
 
@@ -52,46 +85,40 @@ const mapDispatchToProps = {
 const EXAMPLE_QUERY =
   "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
 
-interface OwnProps {
-  modelId?: number;
-  databaseId?: number;
-  onClose?: () => void;
+function resolveQuestion(
+  action: WritebackQueryAction | undefined,
+  { metadata, databaseId }: { metadata: Metadata; databaseId?: DatabaseId },
+) {
+  return action
+    ? convertActionToQuestion(action, metadata)
+    : newQuestion(metadata, databaseId);
 }
 
-interface StateProps {
-  action?: WritebackAction;
-  question?: Question;
-  metadata: Metadata;
-}
-
-interface DispatchProps {
-  onCreateAction: (params: CreateQueryActionParams) => void;
-  onUpdateAction: (params: UpdateQueryActionParams) => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
-type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
-
-function ActionCreatorComponent({
+function ActionCreator({
   action,
-  question: passedQuestion,
-  metadata,
-  modelId,
+  model,
   databaseId,
+  metadata,
   onCreateAction,
   onUpdateAction,
   onClose,
-}: ActionCreatorProps) {
+}: Props) {
   const [question, setQuestion] = useState(
-    passedQuestion ?? newQuestion(metadata, databaseId),
+    resolveQuestion(action, { metadata, databaseId }),
   );
+
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     getDefaultFormSettings(action?.visualization_settings),
   );
+
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  const query = question.query() as NativeQuery;
+  const isNew = !action && !question.isSaved();
+  const isEditable = model.canWriteActions();
+
   useEffect(() => {
-    setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
+    setQuestion(resolveQuestion(action, { metadata, databaseId }));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
   }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -105,29 +132,12 @@ function ActionCreatorComponent({
     [setQuestion],
   );
 
-  const defaultModelId: number | undefined = useMemo(() => {
-    if (modelId) {
-      return modelId;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const modelQueryParam = params.get("model-id");
-    return modelId ? Number(modelQueryParam) : undefined;
-  }, [modelId]);
-
-  if (!question || !metadata) {
-    return null;
-  }
-
-  const query = question.query() as NativeQuery;
-
-  const isNew = !action && !question.isSaved();
-
   const handleClickSave = () => {
     if (isNew) {
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: defaultModelId as number });
+      onUpdateAction({ ...action, model_id: model.id() });
       onClose?.();
     }
   };
@@ -157,10 +167,15 @@ function ActionCreatorComponent({
     );
   };
 
+  if (!question || !metadata) {
+    return null;
+  }
+
   return (
     <>
       <ActionCreatorView
         isNew={isNew}
+        isEditable={isEditable}
         canSave={query.isEmpty()}
         action={action}
         question={question}
@@ -180,7 +195,7 @@ function ActionCreatorComponent({
             initialValues={{
               name: question.displayName() ?? "",
               description: question.description(),
-              model_id: defaultModelId,
+              model_id: model.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
@@ -193,9 +208,12 @@ function ActionCreatorComponent({
 
 export default _.compose(
   Actions.load({
-    id: (state: State, props: { actionId?: number }) => props.actionId,
-    loadingAndErrorWrapper: false,
+    id: (state: State, props: OwnProps) => props.actionId,
+  }),
+  Questions.load({
+    id: (state: State, props: OwnProps) => props.modelId,
+    entityAlias: "modelCard",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(ActionCreatorComponent);
+)(ActionCreator);

@@ -64,11 +64,8 @@
     metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/read-column                        {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq                    {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.sync.interface/syncable-schemas                     {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
@@ -745,14 +742,13 @@
   ;;           "snowflake"
   ;;           "sparksql"
   ;;           "sqlite"
-  ;;           "sqlserver"
-  ;;           "vertica"]
+  ;;           "sqlserver"]
   ;;          [:? "-test"]
   ;;          [:or #"\." #"$"]]]
   ;;   ".*"))
   ;;
   ;; Please keep this form updated when you change the generated regex! <3
-  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver)|(?:vertica))(?:-test)?(?:(?:\\.)|(?:$))).*"
+  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver))(?:-test)?(?:(?:\\.)|(?:$))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns

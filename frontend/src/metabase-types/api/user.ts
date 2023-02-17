@@ -1,5 +1,7 @@
 export type UserId = number;
 
+export type UserAttribute = string;
+
 export interface BaseUser {
   id: UserId;
   first_name: string | null;
@@ -19,7 +21,7 @@ export interface BaseUser {
 
 export interface User extends BaseUser {
   google_auth: boolean;
-  login_attributes: string[] | null;
+  login_attributes: UserAttribute[] | null;
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;

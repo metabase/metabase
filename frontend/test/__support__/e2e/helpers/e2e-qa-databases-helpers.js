@@ -3,6 +3,8 @@ import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_DB_CREDENTIALS,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
   QA_DB_CONFIG,
 } from "__support__/e2e/cypress_data";
 
@@ -15,30 +17,38 @@ export function addMongoDatabase(name = "QA Mongo4") {
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
 
-export function addPostgresDatabase(name = "QA Postgres12") {
+export function addPostgresDatabase(name = "QA Postgres12", writable = false) {
   // https://hub.docker.com/layers/metabase/qa-databases/postgres-sample-12/images/sha256-80bbef27dc52552d6dc64b52796ba356d7541e7bba172740336d7b8a64859cf8
-  addQADatabase("postgres", name, QA_POSTGRES_PORT);
+  addQADatabase("postgres", name, QA_POSTGRES_PORT, writable);
 }
 
-export function addMySQLDatabase(name = "QA MySQL8") {
+export function addMySQLDatabase(name = "QA MySQL8", writable = false) {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
-  addQADatabase("mysql", name, QA_MYSQL_PORT);
+  addQADatabase("mysql", name, QA_MYSQL_PORT, writable);
 }
 
-function addQADatabase(engine, db_display_name, port) {
+function addQADatabase(engine, db_display_name, port, enable_actions = false) {
   const PASS_KEY = engine === "mongo" ? "pass" : "password";
   const AUTH_DB = engine === "mongo" ? "admin" : null;
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
+
+  const db_name = enable_actions
+    ? WRITABLE_DB_CONFIG[engine].connection.database
+    : QA_DB_CREDENTIALS.database;
+
+  const credentials = enable_actions
+    ? WRITABLE_DB_CONFIG[engine].connection
+    : QA_DB_CREDENTIALS;
 
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
   cy.request("POST", "/api/database", {
     engine: engine,
     name: db_display_name,
     details: {
-      dbname: QA_DB_CREDENTIALS.database,
-      host: QA_DB_CREDENTIALS.host,
+      dbname: db_name,
+      host: credentials.host,
       port: port,
-      user: QA_DB_CREDENTIALS.user,
+      user: credentials.user,
       [PASS_KEY]: QA_DB_CREDENTIALS.password, // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
       authdb: AUTH_DB,
       "additional-options": OPTIONS,
@@ -61,13 +71,25 @@ function addQADatabase(engine, db_display_name, port) {
         schedule_type: "hourly",
       },
     },
-  }).then(({ status, body }) => {
-    expect(status).to.equal(200);
-    cy.wrap(body.id).as(`${engine}ID`);
-  });
+  })
+    .then(({ status, body }) => {
+      expect(status).to.equal(200);
+      cy.wrap(body.id).as(`${engine}ID`);
+    })
+    .then(dbId => {
+      // Make sure we have all the metadata because we'll need to use it in tests
+      assertOnDatabaseMetadata(engine);
 
-  // Make sure we have all the metadata because we'll need to use it in tests
-  assertOnDatabaseMetadata(engine);
+      // it's important that we don't enable actions until sync is complete
+      if (dbId && enable_actions) {
+        cy.log(`**-- Enabling actions --**`);
+        cy.request("PUT", `/api/database/${dbId}`, {
+          settings: { "database-enable-actions": true },
+        }).then(({ status }) => {
+          expect(status).to.equal(200);
+        });
+      }
+    });
 }
 
 function assertOnDatabaseMetadata(engine) {
@@ -95,6 +117,47 @@ function recursiveCheck(id, i = 0) {
   });
 }
 
+export const setupWritableDB = (type = "postgres") => {
+  const connectionConfig = {
+    postgres: {
+      client: "pg",
+      connection: {
+        ...QA_DB_CREDENTIALS,
+        port: QA_POSTGRES_PORT,
+      },
+    },
+    mysql: {
+      client: "mysql2",
+      connection: {
+        ...QA_DB_CREDENTIALS,
+        user: "root",
+        port: QA_MYSQL_PORT,
+      },
+    },
+  };
+
+  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+
+  const dbCheckQuery = {
+    postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
+    mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
+  };
+
+  // we need to initially connect to the db we know exists to create the writable_db
+  cy.task("connectAndQueryDB", {
+    connectionConfig: connectionConfig[type],
+    query: dbCheckQuery[type],
+  }).then(results => {
+    if (!results.rows.length) {
+      cy.log(`**-- Adding ${type} DB for actions --**`);
+      cy.task("connectAndQueryDB", {
+        connectionConfig: connectionConfig[type],
+        query: `CREATE DATABASE ${dbName};`,
+      });
+    }
+  });
+};
+
 export function queryQADB(query, type = "postgres") {
   return cy.task("connectAndQueryDB", {
     connectionConfig: QA_DB_CONFIG[type],
@@ -102,8 +165,19 @@ export function queryQADB(query, type = "postgres") {
   });
 }
 
+export function queryWritableDB(query, type = "postgres") {
+  return cy.task("connectAndQueryDB", {
+    connectionConfig: WRITABLE_DB_CONFIG[type],
+    query,
+  });
+}
+
+export function resetTestTable({ type, table }) {
+  cy.task("resetTable", { type, table });
+}
+
 // will this work for multiple schemas?
-export function getTableId({ databaseId = 2, name }) {
+export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {

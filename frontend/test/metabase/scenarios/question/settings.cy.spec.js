@@ -149,7 +149,7 @@ describe("scenarios > question > settings", () => {
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
       cy.get("body").click("bottomRight");
 
-      findColumnAtIndex("Products → Category", 6);
+      findColumnAtIndex("Products → Category", 5);
 
       // We need to do some additional checks. Please see:
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
