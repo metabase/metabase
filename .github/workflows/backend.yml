@@ -77,10 +77,6 @@ jobs:
         /work/modules/drivers/sparksql/test
         /work/modules/drivers/vertica/src
         /work/modules/drivers/vertica/test
-        /work/modules/drivers/presto-common/src
-        /work/modules/drivers/presto-common/test
-        /work/modules/drivers/presto/src
-        /work/modules/drivers/presto/test
         /work/modules/drivers/mongo/src
         /work/modules/drivers/mongo/test
         /work/modules/drivers/oracle/src
