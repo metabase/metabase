@@ -137,9 +137,11 @@
   (let [schema (when (next table-components) (first table-components))
         table (last table-components)]
     (jdbc/with-db-metadata [md db-spec]
-      (->> (.getPrimaryKeys md nil schema table)
-           jdbc/metadata-result
-           (mapv :column_name)))))
+      (with-open [rset (.getPrimaryKeys md nil schema table)]
+        (loop [acc []]
+          (if-not (.next rset)
+            acc
+            (recur (conj acc (.getString rset "COLUMN_NAME")))))))))
 
 ;;; MySQL returns the generated ID (of which cannot be more than one)
 ;;; as insert_id. If this is not null, we determine the name of the

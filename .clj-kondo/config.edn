@@ -81,18 +81,19 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf       {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn          {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr           {:message "Use clojure.tools.logging instead of clojure.core/pr"}
-   clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
-   clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
-   honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
-   honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
-   java-time/with-clock      {:message "Use mt/with-clock"}
-   toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
-   toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
+  {clojure.core/print                {:message "Use clojure.tools.logging instead of clojure.core/print"}
+   clojure.core/println              {:message "Use clojure.tools.logging instead of clojure.core/println"}
+   clojure.core/printf               {:message "Use clojure.tools.logging instead of clojure.core/printf"}
+   clojure.core/prn                  {:message "Use clojure.tools.logging instead of clojure.core/prn"}
+   clojure.core/pr                   {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+   clojure.java.jdbc/metadata-result {:message "Don't use this, too slow since it fetches a bunch of keys we don't use and people keep forgetting to use with-open. Just use low-level JDBC directly."}
+   clojure.string/lower-case         {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+   clojure.string/upper-case         {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   honeysql.core/call                {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
+   honeysql.core/raw                 {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
+   java-time/with-clock              {:message "Use mt/with-clock"}
+   toucan.db/query                   {:message "Use mdb.query/query instead of toucan.db/query"}
+   toucan.db/reducible-query         {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
   :discouraged-namespace
   {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}

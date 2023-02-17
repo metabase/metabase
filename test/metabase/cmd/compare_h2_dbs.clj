@@ -43,10 +43,16 @@
   "Return a sorted collection of all non-system table names."
   [spec]
   (jdbc/with-db-metadata [metadata spec]
-    (let [result (jdbc/metadata-result
-                  (.getTables metadata nil "PUBLIC" nil
-                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
-      (sort (remove ignored-table-names (map :table_name result))))))
+    (with-open [rset (.getTables metadata nil "PUBLIC" nil
+                                 (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
+      (loop [acc []]
+        (if-not (.next rset)
+          (sort acc)
+          (let [table-name (.getString rset "TABLE_NAME")
+                acc (cond-> acc
+                      (not (contains? ignored-table-names table-name))
+                      (conj table-name))]
+            (recur acc)))))))
 
 (defmulti ^:private normalize-value
   class)
