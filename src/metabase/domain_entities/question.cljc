@@ -174,7 +174,7 @@
   [:map
    [:card Card]
    [:metadata :any]
-   [:parameter-values ParameterValues]])
+   [:parameter-values {:js/prop "parameterValues"} ParameterValues]])
 
 (de/defn ^:export without-name-and-id :- Question
   "Removes the ID, name and description fields."

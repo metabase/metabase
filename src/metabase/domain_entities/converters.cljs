@@ -66,8 +66,7 @@
                                                (let [[key-s val-s] (mc/children schema)
                                                      keydec (mc/decoder key-s js-transformer)
                                                      valdec (mc/decoder val-s js-transformer)]
-                                                 #(decode-map-of keydec valdec %)))}
-                }
+                                                 #(decode-map-of keydec valdec %)))}}
      :encoders {:keyword           name
                 'keyword?          name
                 :qualified-keyword #(str (namespace %) "/" (name %))
@@ -87,6 +86,10 @@
 (defn incoming
   "Returns a function for converting a JS value into CLJS data structures, based on a schema."
   [schema]
+  ;; TODO This should be a mc/coercer that decodes and then validates, throwing if it doesn't match.
+  ;; However, enabling that now breaks loads of tests that pass input data with lots of holes. The JS
+  ;; tests (as opposed to TS) are particularly bad for this.
+  ;; Don't forget the nested `mc/decoder` calls elsewhere in this file!
   (mc/decoder schema js-transformer))
 
 (defn outgoing
