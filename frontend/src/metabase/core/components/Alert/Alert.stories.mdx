@@ -1,0 +1,56 @@
+import { Canvas, Meta, Story } from "@storybook/addon-docs";
+import Alert from "./Alert";
+
+<Meta title="Core/Alert" component={Alert} />
+
+# Alert
+
+<Alert icon="info">Heads up, you're about to use an Alert component</Alert>
+
+Use alerts when you need to communicate important contextual information to a user
+that is about to perform a task.
+
+## Variations
+
+### Info
+
+<Canvas>
+  <Story name="Default">
+    <Alert icon="key">
+      It helps to have your API key avaliable for this next part
+    </Alert>
+  </Story>
+</Canvas>
+
+Use the info variant when there is information that could be helpful but isn’t critical
+or blocking to the user trying to perform the task.
+
+### Error
+
+<Canvas>
+  <Story name="Error">
+    <Alert icon="info" variant="error">
+      Hey anything?
+    </Alert>
+  </Story>
+</Canvas>
+
+Use an error alert when the user may be negatively affected or blocked by something, especially if they cannot change that fact from where they are.
+
+## Design reference
+
+### Visual style
+
+Alerts are meant to be noticed regardless of variant and should include a relevant icon as part of the content to help with quick parsing.
+
+### Behavior
+
+Alerts are not dismiss able. If you’re looking for a notification someone can dismiss, try a Toast.
+
+## Dos and Don'ts
+
+Check back later
+
+### Writing considerations
+
+As always, be sure to use Metabase product voice when writing copy for an alert.
