@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import { isAdminGroup } from "metabase/lib/groups";
+import _ from "underscore";
 
+import { isAdminGroup } from "metabase/lib/groups";
 import { PermissionsApi } from "metabase/services";
 import Tooltip from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -40,6 +41,13 @@ const MappingRow = ({
   onDeleteMapping,
 }: MappingRowProps) => {
   const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
+
+  // Mappings may receive group ids even from the back-end
+  // if the groups themselves have been deleted.
+  // Let's ensure this row works with the ones that exist.
+  const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter(id =>
+    _.findWhere(groups, { id: id }),
+  );
 
   const handleShowDeleteMappingModal = () => {
     setShowDeleteMappingModal(true);
@@ -100,18 +108,18 @@ const MappingRow = ({
     }
   };
 
-  const firstGroupIdInMapping = groups.find(
-    group => group.id === selectedGroupIds[0],
+  const firstGroupInMapping = groups.find(
+    group => group.id === selectedGroupIdsFromGroupsThatExist[0],
   );
 
   const isMappingLinkedOnlyToAdminGroup =
     groups.length > 0 &&
-    selectedGroupIds.length === 1 &&
-    // firstGroupIdInMapping &&
-    isAdminGroup(firstGroupIdInMapping);
+    selectedGroupIdsFromGroupsThatExist.length === 1 &&
+    isAdminGroup(firstGroupInMapping);
 
   const shouldUseDeleteMappingModal =
-    selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;
+    selectedGroupIdsFromGroupsThatExist.length > 0 &&
+    !isMappingLinkedOnlyToAdminGroup;
 
   const onDelete = shouldUseDeleteMappingModal
     ? () => handleShowDeleteMappingModal()
@@ -124,7 +132,7 @@ const MappingRow = ({
         <td>
           <Selectbox
             groups={groups}
-            selectedGroupIds={selectedGroupIds}
+            selectedGroupIds={selectedGroupIdsFromGroupsThatExist}
             onGroupChange={onChange}
           />
         </td>

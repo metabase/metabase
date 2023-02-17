@@ -26,7 +26,7 @@ const groupIsMappable = group => !isDefaultGroup(group);
 
 function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [groups, setGroups] = useState(null);
+  const [groups, setGroups] = useState([]);
   const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState({});
   const [lastDeletedMappingTime, setLastDeletedMappingTime] = useState(null);
@@ -163,16 +163,18 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                   <td>&nbsp;</td>
                 </tr>
               )}
-              {Object.entries(mappings).map(([name, selectedGroupIds]) => (
-                <MappingRow
-                  key={name}
-                  name={name}
-                  groups={groups || []}
-                  selectedGroupIds={selectedGroupIds}
-                  onChange={handleChangeMapping(name)}
-                  onDeleteMapping={handleDeleteMapping}
-                />
-              ))}
+              {Object.entries(mappings).map(([name, selectedGroupIds]) => {
+                return groups.length > 0 ? (
+                  <MappingRow
+                    key={name}
+                    name={name}
+                    groups={groups}
+                    selectedGroupIds={selectedGroupIds}
+                    onChange={handleChangeMapping(name)}
+                    onDeleteMapping={handleDeleteMapping}
+                  />
+                ) : null;
+              })}
             </AdminContentTable>
           </div>
         </div>
