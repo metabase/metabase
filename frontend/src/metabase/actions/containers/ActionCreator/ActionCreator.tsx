@@ -37,6 +37,7 @@ interface OwnProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;
+  onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
@@ -80,6 +81,7 @@ function ActionCreator({
   model,
   onCreateAction,
   onUpdateAction,
+  onSubmit,
   onClose,
 }: Props) {
   const {
@@ -102,26 +104,30 @@ function ActionCreator({
       return; // only query action creation is supported now
     }
 
-    await onCreateAction({
+    const reduxAction = await onCreateAction({
       ...action,
       ...values,
       visualization_settings: formSettings,
     } as WritebackQueryAction);
+    const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
     handleActionChange(values);
 
     setShowSaveModal(false);
+    onSubmit?.(createdAction);
     onClose?.();
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (isSavedAction(action)) {
-      onUpdateAction({
+      const reduxAction = await onUpdateAction({
         ...action,
         model_id: model.id(),
         visualization_settings: formSettings,
       });
+      const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      onSubmit?.(updatedAction);
     }
   };
 
