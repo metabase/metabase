@@ -25,6 +25,7 @@ export interface WritebackActionBase {
   description: string | null;
   parameters: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
+  archived: boolean;
   creator_id: UserId;
   creator: UserInfo;
   updated_at: string;
