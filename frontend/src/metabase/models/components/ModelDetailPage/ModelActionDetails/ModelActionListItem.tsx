@@ -66,7 +66,7 @@ function ModelActionListItem({
     () => [
       {
         title: canWrite ? t`Edit` : t`View`,
-        icon: canWrite ? `pencil` : `eye`,
+        icon: canWrite ? "pencil" : "eye",
         link: actionUrl,
       },
       canArchive && {

@@ -26,6 +26,10 @@ interface ActionLoaderProps {
 
 type ActionExecuteModalProps = OwnProps & ActionLoaderProps;
 
+const mapDispatchToProps = {
+  onSubmit: executeAction,
+};
+
 const ActionExecuteModal = ({
   action,
   onSubmit,
@@ -40,7 +44,6 @@ const ActionExecuteModal = ({
     },
     [action, onSubmit],
   );
-
   return (
     <ModalContent title={title} onClose={onClose}>
       <ActionParametersInputForm
@@ -51,10 +54,6 @@ const ActionExecuteModal = ({
       />
     </ModalContent>
   );
-};
-
-const mapDispatchToProps = {
-  onSubmit: executeAction,
 };
 
 export default _.compose(
