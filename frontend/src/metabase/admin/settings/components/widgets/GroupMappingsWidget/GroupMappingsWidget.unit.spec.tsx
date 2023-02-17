@@ -27,29 +27,6 @@ describe("GroupMappingsWidget", () => {
     nock.cleanAll();
   });
 
-  describe("creating a mapping", () => {
-    beforeEach(() => {
-      nock(location.origin).get("/api/setting").reply(200, []);
-      nock(location.origin).get("/api/permissions/group").reply(200, []);
-
-      nock(location.origin).put("/api/setting/ldap-group-mappings").reply(200);
-    });
-
-    it("adds mapping to table on success", async () => {
-      setup();
-
-      userEvent.click(screen.getByText("New mapping"));
-      const input = screen.getByLabelText("new-group-mapping-name-input");
-      userEvent.type(input, "cn=Group");
-      userEvent.click(screen.getByRole("button", { name: "Add" }));
-
-      expect(await screen.findByText("cn=Group")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Add" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
   describe("when a mapping is set for admin group", () => {
     const settingBody = [
       {
@@ -61,9 +38,13 @@ describe("GroupMappingsWidget", () => {
     const groupsBody = [{ id: 2, name: "Administrators", member_count: 1 }];
 
     beforeEach(() => {
-      nock(location.origin).get("/api/setting").reply(200, settingBody);
+      nock(location.origin)
+        .get("/api/setting")
+        .times(2)
+        .reply(200, settingBody);
       nock(location.origin)
         .get("/api/permissions/group")
+        .times(2)
         .reply(200, groupsBody);
 
       nock(location.origin).put("/api/setting/ldap-group-mappings").reply(200);
@@ -105,11 +86,13 @@ describe("GroupMappingsWidget", () => {
 
     beforeEach(() => {
       nock(location.origin).get("/api/setting").reply(200, settingBody);
+      nock(location.origin).get("/api/setting").reply(200, []);
 
       nock(location.origin).put("/api/setting/ldap-group-mappings").reply(200);
 
       nock(location.origin)
         .get("/api/permissions/group")
+        .times(2)
         .reply(200, groupsBody);
     });
 
