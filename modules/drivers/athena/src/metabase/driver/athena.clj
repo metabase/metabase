@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [honeysql.format :as hformat]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -305,68 +304,86 @@
                             database-type))
           :type/*)))
 
-(defn- run-query
-  "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
-   Such as prepare statement"
-  [database query]
-  (log/infof "Running Athena query : '%s'..." query)
-  (try
-    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
-    (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+(defn- reducible-fields-from-metadata
+  [^DatabaseMetaData metadata ^String db-name-or-nil ^String schema ^String table-name]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (with-open [rset (.getColumns metadata db-name-or-nil schema table-name nil)]
+        (loop [acc init]
+          (if-not (.next rset)
+            acc
+            (recur (rf acc (merge {:name          (str/trim (.getString rset "COLUMN_NAME"))
+                                   :database-type (str/trim (.getString rset "TYPE_NAME"))}
+                                  (when-let [remarks (.getString rset "REMARKS")]
+                                    (when (not (str/blank? remarks))
+                                      {:field-comment remarks})))))))))))
 
-(defn- describe-database->clj
-  "Workaround for wrong getColumnCount response by the driver (huh?)"
-  [column-metadata]
-  {:name (str/trim (:col_name column-metadata))
-   :type (str/trim (:data_type column-metadata))})
+(defn- add-database-position-xform []
+  (map-indexed (fn [i field]
+                 (assoc field :database-position i))))
 
-(defn- remove-invalid-columns
-  "Returns a transducer."
-  []
-  (comp (remove #(= (:col_name %) ""))
-        (remove #(= (:col_name %) nil))
-        (remove #(= (:data_type %) nil))
-        (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
-        (distinct)                                     ; driver can return twice the partitioning fields
-        (map describe-database->clj)))
+(defn- fields-from-metadata-xform [driver]
+  (comp (map (fn [{:keys [database-type], :as field}]
+               (assoc field :base-type (database-type->base-type-or-warn driver database-type))))
+        (add-database-position-xform)))
 
-(defn- describe-table-fields-with-nested-fields [database schema table-name]
+(defn- reducible-fields-from-query
+  [database schema table-name]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))
+                  stmt (doto (.createStatement conn)
+                         (.execute (format "DESCRIBE `%s`.`%s`;" schema table-name)))
+                  rset (.getResultSet stmt)]
+        (loop [acc init]
+          (if-not (.next rset)
+            acc
+            (recur (rf acc {:name          (str/trim (.getString rset "COL_NAME"))
+                            :database-type (str/trim (.getString rset "DATA_TYPE"))}))))))))
+
+(defn- fields-from-query-xform [driver]
+  (comp
+   ;; remove invalid columns (empty/blank name or type)
+   (filter :name)
+   (filter :database-type)
+   ;; remove comment
+   (remove #(str/starts-with? (:name %) "#"))
+   ;; driver can return twice the partitioning fields
+   (distinct)
+   (add-database-position-xform)
+   (map (fn [field]
+          (athena.schema-parser/parse-schema driver (set/rename-keys field {:database-type :type}))))))
+
+(defn- describe-table-fields-with-nested-fields [driver reducible-fields]
   (into #{}
-        (comp (remove-invalid-columns)
-              (map-indexed (fn [i column-metadata]
-                             (assoc column-metadata :database-position i)))
-              (map athena.schema-parser/parse-schema))
-        (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
+        (fields-from-query-xform driver)
+        reducible-fields))
 
-(defn- describe-table-fields-without-nested-fields [driver columns]
-  (set
-   (for [[idx {database-type :type_name
-               column-name   :column_name
-               remarks       :remarks}] (m/indexed columns)]
-     (merge
-      {:name              column-name
-       :database-type     database-type
-       :base-type         (database-type->base-type-or-warn driver database-type)
-       :database-position idx}
-      (when (not (str/blank? remarks))
-        {:field-comment remarks})))))
+(defn- describe-table-fields-without-nested-fields [driver reducible-fields]
+  (into #{}
+        (fields-from-metadata-xform driver)
+        reducible-fields))
 
 ;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
 
 (defn- table-has-nested-fields? [columns]
-  (some #(= "struct" (:type_name %)) columns))
+  (some (fn [{:keys [database-type]}]
+          (= database-type "struct"))
+        columns))
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
   (try
-    (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
-      (let [columns (jdbc/metadata-result rs)]
-        (if (table-has-nested-fields? columns)
-          (describe-table-fields-with-nested-fields database schema table-name)
-          (describe-table-fields-without-nested-fields driver columns))))
+    (let [columns (describe-table-fields-without-nested-fields
+                   driver
+                   (reducible-fields-from-metadata metadata db-name-or-nil schema table-name))]
+      (if (table-has-nested-fields? columns)
+        (describe-table-fields-with-nested-fields
+         driver
+         (reducible-fields-from-query database schema table-name))
+        columns))
     (catch Throwable e
       (log/error e (trs "Error retreiving fields for DB {0}.{1}" schema table-name))
       (throw e))))
@@ -382,21 +399,40 @@
                      (catch Throwable _
                        (set nil))))))
 
-(defn- get-tables
+(defn- reducible-schemas [^DatabaseMetaData metadata]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (with-open [rset (.getSchemas metadata)]
+        (loop [acc init]
+          (if-not (.next rset)
+            acc
+            (recur (rf acc {:catalog (.getString rset "TABLE_CATALOG")
+                            :schema  (.getString rset "TABLE_SCHEM")}))))))))
+
+(defn- reducible-tables
   "Athena can query EXTERNAL and MANAGED tables."
-  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
-  ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["EXTERNAL_TABLE"
-                                                 "EXTERNAL TABLE"
-                                                 "EXTERNAL"
-                                                 "TABLE"
-                                                 "VIEW"
-                                                 "VIRTUAL_VIEW"
-                                                 "FOREIGN TABLE"
-                                                 "MATERIALIZED VIEW"
-                                                 "MANAGED_TABLE"]))]
-    (vec (jdbc/metadata-result rs))))
+  [^DatabaseMetaData metadata ^String db-name-or-nil ^String schema-or-nil]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      ;; tablePattern "%" = match all tables
+      (with-open [rset (.getTables metadata db-name-or-nil schema-or-nil "%"
+                                   (into-array String ["EXTERNAL_TABLE"
+                                                       "EXTERNAL TABLE"
+                                                       "EXTERNAL"
+                                                       "TABLE"
+                                                       "VIEW"
+                                                       "VIRTUAL_VIEW"
+                                                       "FOREIGN TABLE"
+                                                       "MATERIALIZED VIEW"
+                                                       "MANAGED_TABLE"]))]
+        (loop [acc init]
+          (if-not (.next rset)
+            acc
+            (recur (rf acc (merge {:name    (.getString rset "TABLE_NAME")
+                                   :schema  (.getString rset "TABLE_SCHEM")}
+                                  (when-let [remarks (.getString rset "REMARKS")]
+                                    (when-not (str/blank? remarks)
+                                      {:description remarks})))))))))))
 
 (defn- fast-active-tables
   "Required because we're calling our own custom private get-tables method to support Athena.
@@ -409,20 +445,24 @@
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
   ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
-  (with-open [rs (.getSchemas metadata)]
-    ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
-    ;; at least for stuff we create with the test data extensions?? :thinking_face:
-    (let [all-schemas (set (cond->> (jdbc/metadata-result rs)
-                             catalog (filter #(= (:table_catalog %) catalog))
-                             schema  (filter #(= (:table_schem %) schema))))
-          schemas     (set/difference all-schemas (sql-jdbc.sync/excluded-schemas driver))]
-      (set (for [schema schemas
-                 table  (get-tables metadata (:table_schem schema) (:table_catalog schema))]
-             (let [remarks (:remarks table)]
-               {:name        (:table_name table)
-                :schema      (:table_schem schema)
-                :description (when-not (str/blank? remarks)
-                               remarks)}))))))
+  ;;
+  ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
+  ;; at least for stuff we create with the test data extensions?? :thinking_face:
+  (into #{}
+        (comp (filter (if schema
+                        (fn [info]
+                          (= (:schema info) schema))
+                        (constantly true)))
+              (filter (if catalog
+                        (fn [info]
+                          (= (:catalog info) catalog))
+                        (constantly true)))
+              (remove (let [excluded-schemas (sql-jdbc.sync/excluded-schemas driver)]
+                        (fn [info]
+                          (contains? excluded-schemas (:schema info)))))
+              (mapcat (fn [{:keys [catalog schema]}]
+                        (reducible-tables metadata catalog schema))))
+        (reducible-schemas metadata)))
 
 ;; You may want to exclude a specific database - this can be done here
 ; (defmethod sql-jdbc.sync/excluded-schemas :athena [_]

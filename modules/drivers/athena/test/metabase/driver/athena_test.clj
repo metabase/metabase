@@ -1,5 +1,6 @@
 (ns metabase.driver.athena-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [honeysql.format :as hformat]
    [metabase.driver :as driver]
@@ -12,30 +13,42 @@
    [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private nested-schema
-  [{:col_name "key", :data_type "int"}
-   {:col_name "data", :data_type "struct<name:string>"}])
+  [{:name "key", :database-type "int"}
+   {:name "data", :database-type "struct<name:string>"}])
 
 (def ^:private flat-schema-columns
-  [{:column_name "id", :type_name  "string"}
-   {:column_name "ts", :type_name "string"}])
+  [{:name "id", :database-type  "string"}
+   {:name "ts", :database-type "string"}])
 
-(deftest sync-test
+(deftest ^:parallel sync-test
   (testing "sync with nested fields"
-    (with-redefs [athena/run-query (constantly nested-schema)]
-      (is (= #{{:name              "key"
-                :base-type         :type/Integer
-                :database-type     "int"
-                :database-position 0}
-               {:name              "data"
-                :base-type         :type/Dictionary
-                :database-type     "struct"
-                :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
-                :database-position 1}}
-             (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
+    (is (= #{{:name              "key"
+              :base-type         :type/Integer
+              :database-type     "int"
+              :database-position 0}
+             {:name              "data"
+              :base-type         :type/Dictionary
+              :database-type     "struct"
+              :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}}
+              :database-position 1}}
+           (#'athena/describe-table-fields-with-nested-fields :athena nested-schema))))
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
            (#'athena/describe-table-fields-without-nested-fields :athena flat-schema-columns)))))
+
+(deftest describe-table-fields-without-nested-fields-test
+  (driver/with-driver :athena
+    (is (= #{{:name "id",          :base-type :type/Integer, :database-type "integer", :database-position 0}
+             {:name "name",        :base-type :type/Text,    :database-type "string",  :database-position 1}
+             {:name "category_id", :base-type :type/Integer, :database-type "integer", :database-position 2}
+             {:name "latitude",    :base-type :type/Float,   :database-type "double",  :database-position 3}
+             {:name "longitude",   :base-type :type/Float,   :database-type "double",  :database-position 4}
+             {:name "price",       :base-type :type/Integer, :database-type "integer", :database-position 5}}
+           (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+             (#'athena/describe-table-fields-without-nested-fields
+              :athena
+              (#'athena/reducible-fields-from-metadata metadata nil "test_data" "venues")))))))
 
 (deftest describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena
@@ -45,7 +58,9 @@
              {:name "latitude",    :base-type :type/Float,   :database-type "double", :database-position 3}
              {:name "longitude",   :base-type :type/Float,   :database-type "double", :database-position 4}
              {:name "price",       :base-type :type/Integer, :database-type "int",    :database-position 5}}
-           (#'athena/describe-table-fields-with-nested-fields (mt/db) "test_data" "venues")))))
+           (#'athena/describe-table-fields-with-nested-fields
+            :athena
+            (#'athena/reducible-fields-from-query (mt/db) "test_data" "venues"))))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
