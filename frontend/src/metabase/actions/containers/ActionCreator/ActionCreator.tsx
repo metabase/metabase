@@ -15,6 +15,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   Card,
+  CardId,
+  DatabaseId,
   WritebackActionId,
   WritebackAction,
   WritebackQueryAction,
@@ -33,8 +35,8 @@ import CreateActionForm, {
 
 interface OwnProps {
   actionId?: WritebackActionId;
-  modelId: number;
-  databaseId?: number;
+  modelId?: CardId;
+  databaseId?: DatabaseId;
   onClose?: () => void;
 }
 
@@ -93,7 +95,7 @@ function ActionCreator({
 
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  const isEditable = model.canWriteActions();
+  const isEditable = isNew || model.canWriteActions();
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -196,8 +198,9 @@ export default _.compose(
     entityAlias: "initialAction",
   }),
   Questions.load({
-    id: (state: State, props: OwnProps) => props.modelId,
+    id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "modelCard",
+    loadingAndErrorWrapper: false,
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
