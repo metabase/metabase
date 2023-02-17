@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ActionRunModal from "metabase/actions/containers/ActionExecuteModal";
+import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {
@@ -66,7 +66,7 @@ function ModelActionListItem({ action, actionUrl }: ItemProps) {
           triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
         >
           {({ onClose }: ModalProps) => (
-            <ActionRunModal actionId={action.id} onClose={onClose} />
+            <ActionExecuteModal actionId={action.id} onClose={onClose} />
           )}
         </ModalWithTrigger>
       </ActionCard>
