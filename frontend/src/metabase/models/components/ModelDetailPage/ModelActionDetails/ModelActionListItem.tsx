@@ -8,7 +8,6 @@ import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionCard,
   ActionCodeBlock,
-  ActionRoot,
   ActionRunButton,
   ActionSubtitle,
   ActionSubtitlePart,
@@ -43,8 +42,10 @@ function ModelActionListItem({ action, actionUrl }: ItemProps) {
   const isQueryAction = action.type === "query";
 
   return (
-    <ActionRoot to={isQueryAction ? actionUrl : ""}>
-      <ActionTitle>{action.name}</ActionTitle>
+    <div>
+      <ActionTitle to={isQueryAction ? actionUrl : ""}>
+        {action.name}
+      </ActionTitle>
       <ActionSubtitle>
         {action.public_uuid && (
           <ActionSubtitlePart>{t`Public Action`}</ActionSubtitlePart>
@@ -69,7 +70,7 @@ function ModelActionListItem({ action, actionUrl }: ItemProps) {
           )}
         </ModalWithTrigger>
       </ActionCard>
-    </ActionRoot>
+    </div>
   );
 }
 

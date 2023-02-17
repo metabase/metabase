@@ -3,19 +3,14 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 
-export const ActionTitle = styled.h4`
+export const ActionTitle = styled(Link)`
   font-size: 1rem;
   font-weight: 700;
   color: ${color("text-dark")};
-`;
-
-export const ActionRoot = styled(Link)`
-  cursor: ${props => (props.to ? "pointer" : "default")};
+  cursor: ${props => (props.to ? "pointer" : "unset")};
 
   &:hover {
-    ${ActionTitle} {
-      color: ${props => props.to && color("brand")};
-    }
+    color: ${props => props.to && color("brand")};
   }
 `;
 
