@@ -6,6 +6,7 @@ import Tether from "tether";
 
 import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import { isCypressActive } from "metabase/env";
 
 import "./Popover.css";
 
@@ -87,6 +88,10 @@ export default class Popover extends Component {
   };
 
   _getPopoverElement(isOpen) {
+    // 3s is an overkill for Cypress, but let's start with it and dial it down
+    // if we see that the flakes don't appear anymore
+    const resizeTimer = isCypressActive ? 3000 : 100;
+
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
@@ -96,7 +101,7 @@ export default class Popover extends Component {
         if (this.state.width !== width || this.state.height !== height) {
           this.setState({ width, height });
         }
-      }, 100);
+      }, resizeTimer);
     }
     return this._popoverElement;
   }
