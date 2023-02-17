@@ -41,6 +41,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import { CardDownloadWidget } from "./DashCardVisualization.styled";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -194,8 +195,7 @@ function DashCardVisualization({
     }
 
     return (
-      <QueryDownloadWidget
-        className="m1 text-brand-hover text-light"
+      <CardDownloadWidget
         classNameClose="hover-child hover-child--smooth"
         card={dashcard.card}
         result={mainSeries}
@@ -203,8 +203,7 @@ function DashCardVisualization({
         dashcardId={dashcard.id}
         token={isEmbed ? dashcard.dashboard_id : undefined}
         icon="ellipsis"
-        // Can be removed once QueryDownloadWidget is converted to Typescript
-        visualizationSettings={undefined}
+        iconSize={17}
       />
     );
   }, [series, isEmbed, isPublic, isEditing, dashcard, parameterValuesBySlug]);
