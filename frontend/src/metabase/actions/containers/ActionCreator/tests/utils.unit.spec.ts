@@ -12,7 +12,7 @@ import {
   removeOrphanSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
-} from "./utils";
+} from "../utils";
 
 const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
   getUnsavedNativeQuestion({
