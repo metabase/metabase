@@ -24,30 +24,38 @@ import MappingRow from "./MappingRow";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
+const loadGroupsAndMappings = async mappingSetting => {
+  const [settings, groupsIncludingDefaultGroup] = await Promise.all([
+    SettingsApi.list(),
+    PermissionsApi.groups(),
+  ]);
+
+  const setting = _.findWhere(settings, {
+    key: mappingSetting,
+  });
+
+  return {
+    groups: groupsIncludingDefaultGroup.filter(groupIsMappable),
+    mappings: setting?.value || {},
+  };
+};
+
 function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [groups, setGroups] = useState([]);
   const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState({});
-  const [lastDeletedMappingTime, setLastDeletedMappingTime] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
-      const [settings, groupsIncludingDefaultGroup] = await Promise.all([
-        SettingsApi.list(),
-        PermissionsApi.groups(),
-      ]);
+      const { groups, mappings } = await loadGroupsAndMappings(mappingSetting);
 
-      const setting = _.findWhere(settings, {
-        key: mappingSetting,
-      });
-
-      setMappings(setting?.value || {});
-      setGroups(groupsIncludingDefaultGroup.filter(groupIsMappable));
+      setMappings(mappings);
+      setGroups(groups);
     }
 
     fetchData();
-  }, [mappingSetting, lastDeletedMappingTime]);
+  }, [mappingSetting]);
 
   const handleShowAddRow = () => {
     setShowAddRow(true);
@@ -109,8 +117,12 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
         onSuccess && (await onSuccess());
 
-        setLastDeletedMappingTime(Date.now());
+        const { groups, mappings } = await loadGroupsAndMappings(
+          mappingSetting,
+        );
 
+        setGroups(groups);
+        setMappings(mappings);
         setSaveError(null);
       },
       e => setSaveError(e),
