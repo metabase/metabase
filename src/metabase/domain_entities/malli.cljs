@@ -2,7 +2,6 @@
   (:require
     [malli.core :as mc]
     [malli.util :as mut]
-    [malli.instrument]
     [metabase.domain-entities.converters])
   (:require-macros [metabase.domain-entities.malli]))
 

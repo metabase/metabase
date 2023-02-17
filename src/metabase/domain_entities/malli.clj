@@ -1,8 +1,7 @@
 (ns metabase.domain-entities.malli
   (:refer-clojure :exclude [defn])
   (:require
-    [malli.core :as mc]
-    [malli.util :as mut]
+    [malli.instrument]
     [metabase.util.malli :as mu]
     [net.cgrand.macrovich :as macros]))
 
@@ -16,14 +15,16 @@
     :clj  `(mu/defn ~sym :- ~return-schema ~docs ~args ~@body)
     :cljs `(clojure.core/defn ~sym ~docs ~(mapv first (partition 3 args)) ~@body)))
 
-(defmacro -define-getter [sym path]
+(defmacro -define-getter
+  "Generates an accessor, given the symbol and path to the value."
+  [sym path]
   `(clojure.core/defn ~(vary-meta sym assoc :export true)
      ~(str "Accessor for `" path "`.")
      [obj#]
      (get-in obj# ~path)))
 
 (defmacro -define-converter
-  "Incoming converter for the replacement value."
+  "Incoming converter for the replacement value. `identity` in CLJ."
   [schema path in-sym]
   `(def ~in-sym
      ~(macros/case
@@ -32,20 +33,32 @@
                    metabase.domain-entities.converters/incoming)
         :clj  `identity)))
 
-(defmacro -define-setter [sym path in-sym]
+(defmacro -define-setter
+  "Generates a setter. Prefixes the symbol with `with-`, ie. `with-foo-bar`.
+  `in-sym` is the name of the incoming converter defined by [[-define-converter]].
+  Calls that converter on the new value before `assoc`ing it in."
+  [sym path in-sym]
   `(clojure.core/defn ~(vary-meta (symbol (str "with-" (name sym)))
                                   assoc :export true)
      ~(str "Updater for `" path "`.")
      [obj# new-value#]
      (assoc-in obj# ~path (~in-sym new-value#))))
 
-(defmacro -define-js-converter [schema path out-sym]
+(defmacro -define-js-converter
+  "Generates the outgoing converter from CLJS data structures to vanilla JS objects.
+  Generates nothing in CLJ mode."
+  [schema path out-sym]
   (macros/case
     :cljs `(def ~out-sym
              (metabase.domain-entities.converters/outgoing
                (metabase.domain-entities.malli/schema-for-path ~schema ~path)))))
 
-(defmacro -define-js-returning-getter [sym path out-sym]
+(defmacro -define-js-returning-getter
+  "Generates a getter that converts back to a JS object, in CLJS.
+  Generates nothing in CLJ.
+  `sym` is the main symbol, eg. `foo-bar`. `out-sym` is the outgoing converter defined by
+  [[-define-js-converter]], eg. `foo-bar->`."
+  [sym path out-sym]
   (macros/case
     :cljs `(clojure.core/defn ~(vary-meta (symbol (str (name sym) "-js"))
                                           assoc :export true)
@@ -53,7 +66,14 @@
              [obj#]
              (~out-sym (~sym obj#)))))
 
-(defmacro -define-getter-and-setter [schema sym path]
+(defmacro -define-getter-and-setter
+  "Generates the getter, setter and necessary JS<->CLJS converters for a single `sym` and `path` pair.
+
+  In CLJ, this generates the getter, setter and a dummy incoming converter that is just `identity`.
+
+  In CLJS, generates the getter and setter, real converters in both directions, and a getter that returns
+  vanilla JS objects instead of CLJS data."
+  [schema sym path]
   (let [in-sym  (vary-meta (symbol (str "->" (name sym)))
                            assoc :private true)
         out-sym (vary-meta (symbol (str (name sym) "->"))
