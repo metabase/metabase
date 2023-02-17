@@ -220,11 +220,11 @@ describe("scenarios > models > actions", () => {
       cy.wait("@getModel");
     });
 
-    cy.findByRole("listitem", { name: SAMPLE_QUERY_ACTION.name }).within(() => {
-      cy.icon("ellipsis").should("not.exist");
+    openActionMenuFor(SAMPLE_QUERY_ACTION.name);
+    popover().within(() => {
+      cy.findByText("Archive").should("not.exist");
+      cy.findByText("View").click();
     });
-
-    openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
 
     cy.findByRole("dialog").within(() => {
       cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
