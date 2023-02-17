@@ -3,6 +3,7 @@ import { css } from "@emotion/react";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
   display: flex;
@@ -24,6 +25,11 @@ export const FormContainer = styled.div`
 
   ${FormSubmitButton.Button} {
     width: 100%;
+  }
+
+  ${breakpointMaxSmall} {
+    width: 100%;
+    padding: 0 0.5rem;
   }
 `;
 
