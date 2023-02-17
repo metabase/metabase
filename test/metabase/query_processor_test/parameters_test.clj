@@ -210,6 +210,43 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
+(deftest params-in-comments-test
+  (testing "Params in SQL comments are ignored"
+    (testing "Single-line comments"
+      (mt/dataset airports
+                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                          :params nil}
+                         (qp/compile-and-splice-parameters
+                          {:type       :native
+                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                                        :template-tags {"country"
+                                                        {:name         "country"
+                                                         :display-name "Country"
+                                                         :type         :dimension
+                                                         :dimension    [:field (mt/id :country :name) nil]
+                                                         :widget-type  :category}}}
+                           :database   (mt/id)
+                           :parameters [{:type   :location/country
+                                         :target [:dimension [:template-tag "country"]]
+                                         :value  ["US" "MX"]}]})))))
+
+    (testing "Multi-line comments"
+      (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type       :native
+               :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
+                            :template-tags {"price"
+                                            {:name         "price"
+                                             :display-name "Price"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :widget-type  :category}}}
+               :database   (mt/id)
+               :parameters [{:type   :category
+                             :target [:dimension [:template-tag "price"]]
+                             :value  [1 2]}]}))))))
+
 (deftest ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"
     (let [query {:database (mt/id)

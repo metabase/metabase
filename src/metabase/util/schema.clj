@@ -347,7 +347,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Something that adheres to this schema is guaranteed to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 

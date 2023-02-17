@@ -72,13 +72,16 @@ export const FieldInfoLabel = styled.div`
 `;
 
 export interface FieldRootProps {
+  alignment: FieldAlignment;
   orientation: FieldOrientation;
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
   display: ${props => props.orientation === "horizontal" && "flex"};
   justify-content: ${props =>
-    props.orientation === "horizontal" && "space-between"};
+    props.alignment === "end" &&
+    props.orientation === "horizontal" &&
+    "space-between"};
   margin-bottom: 1.25rem;
 
   &:focus-within {

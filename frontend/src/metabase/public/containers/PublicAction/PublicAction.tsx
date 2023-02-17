@@ -5,7 +5,11 @@ import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
-import { getSuccessMessage } from "metabase/actions/utils";
+import {
+  generateFieldSettingsFromParameters,
+  getSuccessMessage,
+  setNumericValues,
+} from "metabase/actions/utils";
 
 import type {
   ParametersForActionExecution,
@@ -33,13 +37,17 @@ function PublicAction({ action, publicId, onError }: Props) {
   const handleSubmit = useCallback(
     async (values: ParametersForActionExecution) => {
       try {
-        await PublicApi.executeAction({ uuid: publicId, parameters: values });
+        const fieldSettings =
+          action.visualization_settings?.fields ||
+          generateFieldSettingsFromParameters(action.parameters);
+        const parameters = setNumericValues(values, fieldSettings);
+        await PublicApi.executeAction({ uuid: publicId, parameters });
         setSubmitted(true);
       } catch (error) {
         onError(error as AppErrorDescriptor);
       }
     },
-    [publicId, onError],
+    [action, publicId, onError],
   );
 
   useMount(() => {

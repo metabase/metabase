@@ -65,13 +65,7 @@ describe("ChartSettingsSidebar", () => {
     expect(sensible).toHaveLength(5);
     expect(nonSensible).toHaveLength(12);
 
-    const sensibleOrder = [
-      "Table",
-      "Number",
-      "Gauge",
-      "Progress",
-      "Object Detail",
-    ];
+    const sensibleOrder = ["Table", "Number", "Gauge", "Progress", "Detail"];
     const nonSensibleOrder = [
       "Bar",
       "Line",

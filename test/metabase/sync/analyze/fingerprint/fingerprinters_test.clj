@@ -75,7 +75,7 @@
                                  "2007-12-03T10:15:30.00Z"                         ; string
                                  (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))))))))
 
-(deftest disambiguate-test
+(deftest ^:parallel disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
     (let [field {:base_type     :type/DateTime
                  :semantic_type :type/FK}]
@@ -89,7 +89,7 @@
                         (fingerprinters/fingerprinter field)
                         [#t "2013" #t "2018" #t "2015"]))))))
 
-(deftest fingerprint-numeric-values-test
+(deftest ^:parallel fingerprint-numeric-values-test
   (is (= {:global {:distinct-count 3
                    :nil%           0.0}
           :type   {:type/Number {:avg 2.0
@@ -114,7 +114,7 @@
                       (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Number}))
                       [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])))))
 
-(deftest fingerprint-string-values-test
+(deftest ^:parallel fingerprint-string-values-test
   (is (= {:global {:distinct-count 5
                    :nil%           0.0}
           :type   {:type/Text {:percent-json   0.2
@@ -168,14 +168,16 @@
                                              :avg (s/eq 2.03)}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :price))))))))
 
-(deftest valid-serialized-json?-test
+(deftest ^:parallel valid-serialized-json?-test
   (testing "recognizes substrings of json"
-    (let [partial-json (fn [x]
-                         (let [json (json/generate-string x)]
-                           (subs json 0 (/ (count json) 2))))]
-      (is (#'fingerprinters/valid-serialized-json? (partial-json [1 2 3])))
-      (is (#'fingerprinters/valid-serialized-json? (partial-json {:a 1 :b 2})))
-      (is (#'fingerprinters/valid-serialized-json? (partial-json [{:a 2}])))
-      (is (#'fingerprinters/valid-serialized-json? (partial-json [true true])))
-      (is (not (#'fingerprinters/valid-serialized-json? "bob")))
-      (is (not (#'fingerprinters/valid-serialized-json? "[bob]"))))))
+    (letfn [(partial-json [x]
+              (let [json (json/generate-string x)]
+                (subs json 0 (/ (count json) 2))))]
+      (are [x] (#'fingerprinters/valid-serialized-json? (partial-json x))
+        [1 2 3]
+        {:a 1 :b 2}
+        [{:a 2}]
+        [true true])
+      (are [x] (not (#'fingerprinters/valid-serialized-json? x))
+        "bob"
+        "[bob]"))))

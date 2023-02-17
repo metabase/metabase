@@ -69,8 +69,8 @@
 ;; `:sql` driver test extensions as well because there's nothing JDBC specific about them
 
 (defmulti insert-rows-honeysql-form
-  "Return an appropriate HoneySQL for inserting `row-or-rows` into a Table named by `table-identifier`."
-  {:arglists '([driver ^metabase.util.honey_sql_1 table-identifier row-or-rows])}
+  "Return an appropriate Honey SQL form for inserting `row-or-rows` (as maps) into a Table named by `table-identifier`."
+  {:arglists '([driver table-identifier row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
