@@ -123,12 +123,16 @@ function mapStateToProps(state: State, props: ActionProps) {
 }
 
 export function ActionFn(props: ActionProps) {
-  const actionsEnabled = !!props.metadata
-    ?.database(props.dashcard?.action?.database_id)
+  const {
+    metadata,
+    dashcard: { action },
+  } = props;
+  const actionsEnabled = !!metadata
+    ?.database(action?.database_id)
     ?.hasActionsEnabled?.();
 
   if (!props.dashcard?.action || !actionsEnabled) {
-    const tooltip = !props.dashcard?.action
+    const tooltip = !action
       ? t`No action assigned`
       : t`Actions are not enabled for this database`;
 
