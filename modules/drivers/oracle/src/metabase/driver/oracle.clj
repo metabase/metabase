@@ -256,7 +256,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :oracle
   [_]
-  (h2x/with-database-type-info :%CURRENT_TIMESTAMP "timestamp with time zone"))
+  (h2x/with-database-type-info [:raw "CURRENT_TIMESTAMP"] "timestamp with time zone"))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -269,8 +269,11 @@
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
-(defn- num-to-ds-interval [unit v] [:numtodsinterval v (h2x/literal unit)])
-(defn- num-to-ym-interval [unit v] [:numtoyminterval v (h2x/literal unit)])
+(defn- num-to-ds-interval [driver unit v]
+  [:numtodsinterval (sql.qp/->honeysql driver v) (h2x/literal unit)])
+
+(defn- num-to-ym-interval [driver unit v]
+  [:numtoyminterval (sql.qp/->honeysql driver v) (h2x/literal unit)])
 
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
@@ -330,17 +333,17 @@
   (case unit
     :quarter (recur driver hsql-form (* 3 amount) :month)
     :month   (add-months hsql-form amount)
-    :second  (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :second amount))
-    :minute  (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :minute amount))
-    :hour    (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :hour   amount))
-    :day     (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    amount))
-    :week    (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    (h2x/* amount [:inline 7])))
-    :year    (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ym-interval :year   amount))))
+    :second  (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval driver :second amount))
+    :minute  (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval driver :minute amount))
+    :hour    (h2x/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval driver :hour   amount))
+    :day     (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval driver :day    amount))
+    :week    (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval driver :day    (h2x/* amount [:inline 7])))
+    :year    (h2x/+ (cast-to-date-if-needed hsql-form)      (num-to-ym-interval driver :year   amount))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
-  [_ _ field-or-value]
+  [driver _unit field-or-value]
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
-         (num-to-ds-interval :second field-or-value)))
+         (num-to-ds-interval driver :second field-or-value)))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
