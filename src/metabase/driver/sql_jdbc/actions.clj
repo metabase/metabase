@@ -114,7 +114,7 @@
 (defn- do-with-jdbc-transaction [database-id f]
   (if *connection*
     (f *connection*)
-    (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (let [jdbc-spec (sql-jdbc.conn/db+connection-type->pooled-connection-spec database-id ::sql-jdbc.conn/rw)]
       (with-open [conn (jdbc/get-connection jdbc-spec)]
         ;; execute inside of a transaction.
         (.setAutoCommit conn false)
