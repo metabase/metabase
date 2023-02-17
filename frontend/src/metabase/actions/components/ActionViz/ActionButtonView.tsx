@@ -39,6 +39,7 @@ function ActionButtonView({
       onClick={onClick}
       isFullHeight={isFullHeight}
       focus={focus}
+      aria-label={tooltip}
       {...variantProps}
     >
       <StyledButtonContent>

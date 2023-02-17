@@ -87,7 +87,7 @@ export const ActionForm = ({
     const newOrder = destination?.index ?? source.index;
 
     const reorderedFields = reorderFields(
-      formSettings.fields,
+      formSettings.fields ?? {},
       oldOrder,
       newOrder,
     );
@@ -117,6 +117,7 @@ export const ActionForm = ({
   ) => onSubmit?.(formValidationSchema.cast(values), actions);
 
   if (isSettings) {
+    const fieldSettings = formSettings.fields || {};
     return (
       <FormProvider
         initialValues={initialValues}
@@ -155,7 +156,7 @@ export const ActionForm = ({
                           </InputContainer>
                           {isEditable && (
                             <FieldSettingsButtons
-                              fieldSettings={formSettings.fields[field.name]}
+                              fieldSettings={fieldSettings[field.name]}
                               onChange={handleChangeFieldSettings}
                             />
                           )}

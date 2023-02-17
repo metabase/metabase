@@ -11,6 +11,7 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
+  createMockDatabase,
 } from "metabase-types/api/mocks";
 
 import Action, { ActionComponent, ActionProps } from "./Action";
@@ -21,6 +22,7 @@ const defaultProps = {
     card_id: 777, // action model id
     action: createMockQueryAction({
       name: "My Awesome Action",
+      database_id: 2,
       parameters: [
         createMockActionParameter({
           id: "1",
@@ -65,7 +67,20 @@ async function setup(options?: Partial<ActionProps>) {
 }
 
 async function setupActionWrapper(options?: Partial<ActionProps>) {
-  return renderWithProviders(<Action {...defaultProps} {...options} />);
+  return renderWithProviders(<Action {...defaultProps} {...options} />, {
+    withSampleDatabase: true,
+    storeInitialState: {
+      entities: {
+        databases: {
+          1: createMockDatabase({ id: 1 }),
+          2: createMockDatabase({
+            id: 2,
+            settings: { "database-enable-actions": true },
+          }),
+        },
+      },
+    },
+  });
 }
 
 function setupExecutionEndpoint(expectedBody: any) {
@@ -91,6 +106,38 @@ describe("Actions > ActionViz > ActionComponent", () => {
         },
       });
       expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(screen.getByLabelText(/no action assigned/i)).toBeInTheDocument();
+    });
+
+    it("should render a disabled state for a button with an action from a database where actions are disabled", async () => {
+      await setupActionWrapper({
+        dashcard: {
+          ...defaultProps.dashcard,
+          action: createMockQueryAction({
+            name: "My Awesome Action",
+            database_id: 1,
+          }),
+        },
+      });
+      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(
+        screen.getByLabelText(/actions are not enabled/i),
+      ).toBeInTheDocument();
+    });
+
+    it("should render an enabled state when the action is valid", async () => {
+      await setupActionWrapper({
+        dashcard: {
+          ...defaultProps.dashcard,
+          action: createMockQueryAction({
+            name: "My Awesome Action",
+            database_id: 2,
+          }),
+        },
+      });
+      expect(screen.getByRole("button")).toBeEnabled();
     });
 
     it("should render a button with default text", async () => {
@@ -191,7 +238,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 2")).toHaveValue("bar"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });
@@ -217,7 +264,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });

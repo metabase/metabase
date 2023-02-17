@@ -1,17 +1,18 @@
 (ns metabase.test.data.snowflake
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [metabase.util.log :as log]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
@@ -29,13 +30,16 @@
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
+(def ^:dynamic *database-prefix*
+  "v4_")
+
 (defn- qualified-db-name
   "Prepend `database-name` with a version number so we can create new versions without breaking existing tests."
   [database-name]
   ;; try not to qualify the database name twice!
-  (if (str/starts-with? database-name "v3_")
+  (if (str/starts-with? database-name *database-prefix*)
     database-name
-    (str "v3_" database-name)))
+    (str *database-prefix* database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_ context {:keys [database-name]}]
