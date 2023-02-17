@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
@@ -11,7 +12,6 @@ import {
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { executeAction, ExecuteActionOpts } from "../../actions";
-import { getFormTitle } from "../../utils";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 
 interface OwnProps {
@@ -31,7 +31,8 @@ const ActionExecuteModal = ({
   onSubmit,
   onClose,
 }: ActionExecuteModalProps) => {
-  const title = getFormTitle(action);
+  const title =
+    action.parameters.length > 0 ? action.name : t`Run ${action.name}?`;
 
   const handleSubmit = useCallback(
     (parameters: ParametersForActionExecution) => {
