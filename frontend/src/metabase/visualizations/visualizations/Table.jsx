@@ -186,10 +186,10 @@ export default class Table extends Component {
           tableColumns &&
           tableColumns.length !== 0 &&
           (extra.isQueryRunning ||
-            _.all(
+            _.every(
               tableColumns,
               columnSetting =>
-                !columnSettings.enabled ||
+                !columnSetting.enabled ||
                 findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
             ));
         if (!isValid) {
