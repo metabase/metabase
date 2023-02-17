@@ -6,6 +6,12 @@ import Button from "metabase/core/components/Button";
 
 import SettingToggle from "../SettingToggle";
 
+export const GroupMappingsWidgetAndErrorRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+`;
+
 export const GroupMappingsWidgetRoot = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 8px;

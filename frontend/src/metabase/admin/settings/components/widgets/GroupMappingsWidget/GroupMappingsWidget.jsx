@@ -12,6 +12,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
 import {
+  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
   GroupMappingsWidgetRoot as Root,
   GroupMappingsWidgetHeader as Header,
   GroupMappingsWidgetToggleRoot as ToggleRoot,
@@ -27,7 +28,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
-  const [saveError, setSaveError] = useState(null);
+  const [saveError, setSaveError] = useState({});
   const [lastDeletedMappingTime, setLastDeletedMappingTime] = useState(null);
 
   useEffect(() => {
@@ -117,7 +118,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   return (
-    <>
+    <WidgetAndErrorRoot>
       <Root>
         <Header>
           <ToggleRoot>
@@ -179,7 +180,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       {saveError?.data?.message && (
         <div className="text-error text-bold m1">{saveError.data.message}</div>
       )}
-    </>
+    </WidgetAndErrorRoot>
   );
 }
 
