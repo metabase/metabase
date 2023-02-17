@@ -302,7 +302,7 @@
    ;; if we're ceiling a whole number, just cast it to an integer
    ;; [:ceil 1.0] should returns 1
    [:= [:round arg] arg] (h2x/->integer arg)
-   :else                 [:round [h2x/+ arg 0.5]]])
+   :else                 [:round (h2x/+ arg 0.5)]])
 
 ;; See https://sqlite.org/lang_datefunc.html
 
