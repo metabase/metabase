@@ -54,8 +54,12 @@ function DashCardActionButtons({
   onPreviewToggle,
   metadata,
 }: Props) {
-  const { disableSettingsConfig, supportPreviewing, supportsSeries } =
-    getVisualizationRaw(series).visualization;
+  const {
+    disableSettingsConfig,
+    supportPreviewing,
+    supportsSeries,
+    disableClickBehavior,
+  } = getVisualizationRaw(series).visualization;
 
   const buttons = [];
 
@@ -89,7 +93,7 @@ function DashCardActionButtons({
       );
     }
 
-    if (!isVirtualDashCard) {
+    if (!isVirtualDashCard && !disableClickBehavior) {
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"

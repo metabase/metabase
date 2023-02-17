@@ -407,6 +407,8 @@
   ;; steps that are in the default impl
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
+      ;; in H2, setting readOnly to true doesn't prevent writes
+      ;; see https://github.com/h2database/h2database/issues/1163
       (doto conn
         (.setReadOnly true))
       (catch Throwable e

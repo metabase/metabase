@@ -191,7 +191,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 2")).toHaveValue("bar"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });
@@ -217,7 +217,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });

@@ -674,3 +674,34 @@
       (is (= {:bottom "X custom", :left "Y custom"}
              (#'body/x-and-y-axis-label-info x-col y-col {:graph.x_axis.title_text "X custom"
                                                           :graph.y_axis.title_text "Y custom"}))))))
+
+(deftest lab-charts-respect-y-axis-range
+  (let [rows     [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        2          1.9]
+                  ["C"        -3          6]]
+        renderfn (fn [viz]
+                   (-> rows
+                       (render.tu/make-card-and-data :bar)
+                       (render.tu/merge-viz-settings viz)
+                       render.tu/render-as-hiccup))]
+    (testing "Graph min and max values are respected in the render. #27927"
+      (let [to-find           ["14" "2" "-2" "-14"]
+            no-viz-render     (renderfn {})
+            viz-a-render      (renderfn {:graph.y_axis.max 14
+                                         :graph.y_axis.min -14})
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text no-viz-render %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text viz-a-render %))) to-find)]
+        ;; we only see 14/-14 in the render where min and max are explicitly set.
+        ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
+        ;; without cutting off the chart's actual values
+        (is (= {:without-viz ["2" "-2"]
+                :with-viz    ["14" "2" "-2" "-14"]}
+               {:without-viz (remove nil? nodes-without-viz)
+                :with-viz    nodes-with-viz}))))
+    (testing "Graph min and max values do not cut off the chart."
+      (let [viz-b-render   (renderfn {:graph.y_axis.max 1
+                                      :graph.y_axis.min -1})
+            to-find        ["14" "2" "-2" "-14"]
+            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-text viz-b-render %))) to-find)]
+        (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))
