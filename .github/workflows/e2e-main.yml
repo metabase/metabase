@@ -84,10 +84,10 @@ jobs:
             java-version: 11
     services:
       maildev:
-        image: maildev/maildev:1.1.0
+        image: maildev/maildev:2.0.5
         ports:
-          - "80:80"
-          - "25:25"
+          - "1080:1080"
+          - "1025:1025"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -190,10 +190,10 @@ jobs:
         edition: [ee]
     services:
       maildev:
-        image: maildev/maildev:1.1.0
+        image: maildev/maildev:2.0.5
         ports:
-          - "80:80"
-          - "25:25"
+          - "1080:1080"
+          - "1025:1025"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

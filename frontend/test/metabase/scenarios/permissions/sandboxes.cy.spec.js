@@ -14,6 +14,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  sendEmailAndAssert,
 } from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -982,8 +983,6 @@ describeEE("formatting > sandboxes", () => {
       "sandboxed user should receive sandboxed dashboard subscription",
       { tags: "@external" },
       () => {
-        cy.intercept("POST", "/api/pulse/test").as("emailSent");
-
         setupSMTP();
 
         cy.sandboxTable({
@@ -999,12 +998,10 @@ describeEE("formatting > sandboxes", () => {
         cy.findByText("Email it").click();
         cy.findByPlaceholderText("Enter user names or email addresses").click();
         cy.findByText("User 1").click();
-        cy.findByText("Send email now").click();
-        cy.wait("@emailSent");
-        cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-          expect(body[0].html).to.include("Orders in a dashboard");
-          expect(body[0].html).to.include("37.65");
-          expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
+        sendEmailAndAssert(email => {
+          expect(email.html).to.include("Orders in a dashboard");
+          expect(email.html).to.include("37.65");
+          expect(email.html).not.to.include("148.23"); // Order for user with ID 3
         });
       },
     );

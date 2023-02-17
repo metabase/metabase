@@ -146,3 +146,8 @@ export const METABASE_SECRET_KEY =
 export const QA_MYSQL_PORT = 3304;
 export const QA_MONGO_PORT = 27004;
 export const QA_POSTGRES_PORT = 5404;
+
+export const WEBMAIL_CONFIG = {
+  WEB_PORT: 1080,
+  SMTP_PORT: 1025,
+};
