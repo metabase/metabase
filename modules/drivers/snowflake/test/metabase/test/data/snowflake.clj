@@ -120,18 +120,29 @@
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
 (defn- old-dataset-name?
-  "Is this dataset name prefixed by a date two days ago or older?"
+  "Is this dataset name prefixed by a date two days ago or older?
+
+  If the date is invalid e.g. `2023-02-31` then we'll count it as old so it will get deleted anyway."
   [dataset-name]
   (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2}).*$" dataset-name)]
-    (let [dataset-date (t/local-date (parse-long year) (parse-long month) (parse-long day))]
-      (t/before? dataset-date (u.date/add (utc-date) :day -1)))))
+    (let [dataset-date (try
+                         (t/local-date (parse-long year) (parse-long month) (parse-long day))
+                         (catch Throwable _
+                           nil))]
+      (if-not dataset-date
+        true
+        (t/before? dataset-date (u.date/add (utc-date) :day -1))))))
 
 (deftest ^:parallel old-dataset-name?-test
   (are [s] (old-dataset-name? s)
     "2023_02_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
     "2023_01_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
     "2022_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-    (str (unique-prefix (u.date/add (utc-date) :day -2)) "test-data"))
+    (str (unique-prefix (u.date/add (utc-date) :day -2)) "test-data")
+    ;; if the date is invalid we should just treat it as old and delete it.
+    "2022_00_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+    "2022_13_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+    "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
   (are [s] (not (old-dataset-name? s))
     "2050_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
     "v3_test-data"
