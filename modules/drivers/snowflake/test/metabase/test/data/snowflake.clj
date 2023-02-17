@@ -31,7 +31,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
 (def ^:dynamic *database-prefix*
-  "v4_")
+  "v5_")
 
 (defn- qualified-db-name
   "Prepend `database-name` with a version number so we can create new versions without breaking existing tests."
