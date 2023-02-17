@@ -49,7 +49,6 @@ function ModelActionListItem({
   onArchive,
 }: Props) {
   const isImplicitAction = action.type === "implicit";
-  const hasEditorLink = !isImplicitAction;
 
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
