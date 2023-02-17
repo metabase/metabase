@@ -23,8 +23,6 @@
                             "/modules/drivers/googleanalytics/src"
                             "/modules/drivers/mongo/src"
                             "/modules/drivers/oracle/src"
-                            "/modules/drivers/presto/src"
-                            "/modules/drivers/presto-common/src"
                             "/modules/drivers/presto-jdbc/src"
                             "/modules/drivers/redshift/src"
                             "/modules/drivers/snowflake/src"

@@ -24,7 +24,6 @@
   #{:athena
     :bigquery-cloud-sdk
     :oracle
-    :presto
     :redshift
     :snowflake
     :sparksql
