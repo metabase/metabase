@@ -67,6 +67,10 @@ function setup({
 }
 
 describe("NewItemMenu", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();
