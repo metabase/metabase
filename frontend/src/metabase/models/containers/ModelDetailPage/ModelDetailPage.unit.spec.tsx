@@ -718,6 +718,7 @@ describe("ModelDetailPage", () => {
 
           userEvent.click(screen.getByTestId("actions-menu"));
           userEvent.click(screen.getByText("Disable basic actions"));
+          userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
           actions.forEach(action => {
             expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });

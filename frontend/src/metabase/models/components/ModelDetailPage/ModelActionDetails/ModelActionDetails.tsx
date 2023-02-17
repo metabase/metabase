@@ -9,6 +9,7 @@ import Link from "metabase/core/components/Link";
 import Actions from "metabase/entities/actions";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -63,6 +64,9 @@ function ModelActionDetails({
   onArchiveAction,
   onDeleteAction,
 }: Props) {
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
+
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
@@ -77,11 +81,18 @@ function ModelActionDetails({
     [actions],
   );
 
-  const onDeleteImplicitAction = useCallback(() => {
-    implicitActions.forEach(action => {
-      onDeleteAction(action);
+  const onDeleteImplicitActions = useCallback(() => {
+    askConfirmation({
+      title: t`Disable basic actions`,
+      message: t`Disabling basic actions will also remove any buttons that use these actions. Are you sure you want to continue?`,
+      confirmButtonText: t`Continue`,
+      onConfirm: () => {
+        implicitActions.forEach(action => {
+          onDeleteAction(action);
+        });
+      },
     });
-  }, [implicitActions, onDeleteAction]);
+  }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const menuItems = useMemo(() => {
     const hasImplicitActions = implicitActions.length > 0;
@@ -92,11 +103,11 @@ function ModelActionDetails({
           : t`Create basic actions`,
         icon: "bolt",
         action: hasImplicitActions
-          ? onDeleteImplicitAction
+          ? onDeleteImplicitActions
           : onEnableImplicitActions,
       },
     ];
-  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitAction]);
+  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitActions]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -145,6 +156,7 @@ function ModelActionDetails({
           onCreateClick={onEnableImplicitActions}
         />
       )}
+      {confirmationModal}
     </Root>
   );
 }
