@@ -47,8 +47,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod connection-type+details->spec :default
-  ;; For most drivers, `connection-type` doesn't matter. Driver authors can implement `connection-details->spec` and use
-  ;; the same connection details for both read and writes.
+  ;; For most drivers, `connection-type` doesn't change the JDBC connection spec. Driver authors can implement
+  ;; `connection-details->spec` and use the same connection details for both read and write connections.
   [driver _connection-type details-map]
   (connection-details->spec driver details-map))
 
@@ -291,6 +291,8 @@
                     {:input (class db-or-id-or-spec)}))))
 
 (defn db->pooled-connection-spec
+  "Returns a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
+  Similar to [[db+connection-type->pooled-connection-spec]] but uses the `::r` connection type by default."
   [db-or-id-or-spec]
   (db+connection-type->pooled-connection-spec db-or-id-or-spec ::r))
 
