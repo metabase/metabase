@@ -21,8 +21,15 @@ function AddMappingRow({
 }: AddMappingRowProps) {
   const [value, setValue] = useState("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter key
+    if (e.keyCode === 13) {
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+    e?.preventDefault();
     onAdd(value);
     setValue("");
   };
@@ -49,6 +56,7 @@ function AddMappingRow({
             placeholder={placeholder}
             autoFocus
             onChange={e => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
           <div>
             <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
