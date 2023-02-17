@@ -4,10 +4,11 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 
+import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
+
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import { isNotNull } from "metabase/core/utils/types";
-import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionHeader,
   ActionTitle,
@@ -35,7 +36,7 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 function ImplicitActionCardContent() {
   return (
     <ImplicitActionCardContentRoot>
-      <StackedInsightIcon />
+      <ImplicitActionIcon size={32} />
       <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
     </ImplicitActionCardContentRoot>
   );
@@ -113,9 +114,7 @@ function ModelActionListItem({
       </ActionHeader>
       <Card>
         {renderCardContent()}
-        {hasEditorLink && (
-          <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
-        )}
+        <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
       </Card>
       {confirmationModal}
     </>

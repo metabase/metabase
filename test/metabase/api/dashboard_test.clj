@@ -1992,6 +1992,56 @@
                                                           :values_source_config []}]})
                      [:errors :parameters]))))))
 
+(deftest native-query-get-params-test
+  (testing "GET /api/dashboard/:id/params/:param-key/values works for native queries"
+    (mt/dataset sample-dataset
+      ;; Note that we can directly query the values for the model, but this is
+      ;; nonsensical from a dashboard standpoint as the returned values aren't
+      ;; usable for filtering...
+      (mt/with-temp* [Card [{model-id :id :as native-card}
+                            {:database_id   (mt/id)
+                             :name          "Native Query"
+                             :dataset_query (mt/native-query
+                                             {:query "SELECT category FROM products LIMIT 10;"})
+                             :dataset       true}]]
+        (let [metadata (-> (qp/process-query (:dataset_query native-card))
+                           :data :results_metadata :columns)]
+          (is (seq metadata) "Did not get metadata")
+          (db/update-where! 'Card {:id model-id}
+                            :result_metadata (json/generate-string
+                                              (assoc-in metadata [0 :id]
+                                                        (mt/id :products :category)))))
+        ;; ...so instead we create a question on top of this model (note that
+        ;; metadata must be present on the model) and use the question on the
+        ;; dashboard.
+        (mt/with-temp* [Card [{question-id :id}
+                              {:database_id   (mt/id)
+                               :name          "card on native query"
+                               :dataset_query {:type     :query
+                                               :database (mt/id)
+                                               :query    {:source-table (str "card__" model-id)}}
+                               :dataset       true}]
+                        Dashboard [dashboard {:name       "Dashboard"
+                                              :parameters [{:name      "Native Dropdown"
+                                                            :slug      "native_dropdown"
+                                                            :id        "_NATIVE_CATEGORY_NAME_"
+                                                            :type      :string/=
+                                                            :sectionId "string"}]}]
+                        DashboardCard [_dashcard {:parameter_mappings
+                                                  [{:parameter_id "_NATIVE_CATEGORY_NAME_"
+                                                    :card_id      question-id
+                                                    :target       [:dimension
+                                                                   [:field "CATEGORY" {:base-type :type/Text}]]}]
+                                                  :card_id      question-id
+                                                  :dashboard_id (:id dashboard)}]]
+          (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
+            (is (=? {:values          ["Doohickey"
+                                      "Gadget"
+                                      "Gizmo"
+                                      "Widget"]
+                    :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 url)))))))))
+
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -2440,14 +2490,19 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (doseq [action-type [:http :implicit :query]]
-        (mt/with-actions [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
+        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
               (is (partial= {:visualization_settings {:label "Update"}
-                             :action_id action-id
-                             :card_id model-id}
+                             :action_id              action-id
+                             :card_id                nil}
                             (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                  {:size_x 1 :size_y 1 :row 1 :col 1 :cardId model-id :action_id action-id
+                                                  {:size_x                 1
+                                                   :size_y                 1
+                                                   :row                    1
+                                                   :col                    1
+                                                   :cardId                 nil
+                                                   :action_id              action-id
                                                    :visualization_settings {:label "Update"}})))
               (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
                                                        :type (name action-type)

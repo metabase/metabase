@@ -4,14 +4,18 @@ import type {
   Database,
   Parameter,
   WritebackAction,
+  WritebackActionBase,
   ActionDashboardCard,
   BaseDashboardOrderedCard,
   Card,
   FieldSettings,
+  FieldSettingsMap,
   ParameterId,
+  ParametersForActionExecution,
 } from "metabase-types/api";
 
 import { slugify } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
@@ -77,8 +81,10 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
-    const aOrder = formSettings.fields[a.id]?.order ?? 0;
-    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+    const fields = formSettings.fields || {};
+
+    const aOrder = fields[a.id]?.order ?? 0;
+    const bOrder = fields[b.id]?.order ?? 0;
 
     return aOrder - bOrder;
   };
@@ -199,6 +205,12 @@ export const getInputType = (param: Parameter, field?: Field) => {
   return "string";
 };
 
+export function isSavedAction(
+  action?: Partial<WritebackActionBase>,
+): action is WritebackAction {
+  return action != null && action.id != null;
+}
+
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
@@ -211,3 +223,16 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
+
+export function setNumericValues(
+  params: ParametersForActionExecution,
+  fieldSettings: FieldSettingsMap,
+) {
+  Object.entries(params).forEach(([key, value]) => {
+    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
+      params[key] = Number(value) ?? null;
+    }
+  });
+
+  return params;
+}

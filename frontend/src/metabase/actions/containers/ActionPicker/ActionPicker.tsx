@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -31,9 +31,15 @@ export default function ActionPicker({
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
+  const sortedModels =
+    useMemo(
+      () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+      [models],
+    ) ?? [];
+
   return (
     <div className="scroll-y">
-      {models.map(model => (
+      {sortedModels.map(model => (
         <ConnectedModelActionPicker
           key={model.id}
           model={model}
@@ -41,7 +47,7 @@ export default function ActionPicker({
           currentAction={currentAction}
         />
       ))}
-      {!models.length && (
+      {!sortedModels.length && (
         <EmptyState
           message={t`No models found`}
           action={t`Create new model`}

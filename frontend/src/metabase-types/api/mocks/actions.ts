@@ -50,7 +50,7 @@ export const createMockQueryAction = ({
 export const createMockImplicitQueryAction = ({
   creator = createMockUserInfo(),
   ...opts
-}: Partial<WritebackImplicitQueryAction>): WritebackImplicitQueryAction => ({
+}: Partial<WritebackImplicitQueryAction> = {}): WritebackImplicitQueryAction => ({
   id: 1,
   kind: "row/create",
   name: "Create",

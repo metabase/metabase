@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
+import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import { createEntity, undo } from "metabase/lib/entities";
@@ -37,6 +38,14 @@ export type UpdateImplicitActionParams = Omit<
   "type"
 > &
   BaseUpdateActionParams;
+
+export type CreateActionParams =
+  | CreateQueryActionParams
+  | CreateImplicitActionParams;
+
+export type UpdateActionParams =
+  | UpdateQueryActionParams
+  | UpdateImplicitActionParams;
 
 const defaultImplicitActionCreateOptions = {
   insert: true,
@@ -95,14 +104,28 @@ const Actions = createEntity({
   nameOne: "action",
   path: "/api/action",
   api: {
-    create: (params: CreateQueryActionParams | CreateImplicitActionParams) =>
-      ActionsApi.create(params),
-    update: (params: UpdateQueryActionParams | UpdateImplicitActionParams) =>
-      ActionsApi.update(params),
+    create: (params: CreateActionParams) => ActionsApi.create(params),
+    update: (params: UpdateActionParams) => {
+      // Changing action type is not supported
+      const cleanParams = _.omit(params, "type");
+      return ActionsApi.update(cleanParams);
+    },
   },
   actions: {
     enableImplicitActionsForModel,
   },
+  writableProperties: [
+    "name",
+    "description",
+    "type",
+    "model_id",
+    "database_id",
+    "dataset_query",
+    "parameters",
+    "public_uuid",
+    "visualization_settings",
+    "archived",
+  ],
   objectActions: {
     createPublicLink: createAction(
       CREATE_PUBLIC_LINK,

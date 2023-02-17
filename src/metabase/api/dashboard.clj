@@ -480,14 +480,15 @@
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
-  "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings row col size_x size_y], :as dashboard-card} :body}]
+  "Add a `Card` or `Action` to a Dashboard."
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings (s/maybe [dashboard-card/ParamMapping])
    row                su/IntGreaterThanOrEqualToZero
    col                su/IntGreaterThanOrEqualToZero
    size_x             su/IntGreaterThanZero
-   size_y             su/IntGreaterThanZero}
+   size_y             su/IntGreaterThanZero
+   action_id          (s/maybe su/IntGreaterThanZero)}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -683,11 +684,18 @@
 
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
-  (set (for [param parameter-mappings
-             :let  [field-clause (params/param-target->field-clause (:target param)
-                                                                    (-> param :dashcard :card))]
+  (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
+             :let  [field-clause (params/param-target->field-clause target card)]
              :when field-clause
-             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :let  [{:keys [result_metadata]} card
+                    field-id (or
+                              ;; Get the field id from the field-clause if it contains it. This is the common case for
+                              ;; mbql queries.
+                              (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)
+                              ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                              ;; This is the common case for native queries in which mappings from original columns
+                              ;; have been performed using model metadata.
+                              (:id (qp.util/field->field-info field-clause result_metadata)))]
              :when field-id]
          field-id)))
 
