@@ -209,21 +209,21 @@
 (defmethod sql.qp/date [:oracle :second-of-minute]
   [_driver _unit v]
   (let [t (h2x/->timestamp v)]
-    (h2x/->integer [:floor [:extract :second t]])))
+    (h2x/->integer [:floor [::h2x/extract :second t]])))
 
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
-(defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] [:extract :minute (h2x/->timestamp v)])
+(defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] [::h2x/extract :minute (h2x/->timestamp v)])
 (defmethod sql.qp/date [:oracle :hour]             [_ _ v] (trunc :hh v))
-(defmethod sql.qp/date [:oracle :hour-of-day]      [_ _ v] [:extract :hour (h2x/->timestamp v)])
+(defmethod sql.qp/date [:oracle :hour-of-day]      [_ _ v] [::h2x/extract :hour (h2x/->timestamp v)])
 (defmethod sql.qp/date [:oracle :day]              [_ _ v] (trunc :dd v))
-(defmethod sql.qp/date [:oracle :day-of-month]     [_ _ v] [:extract :day v])
+(defmethod sql.qp/date [:oracle :day-of-month]     [_ _ v] [::h2x/extract :day v])
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
 (defmethod sql.qp/date [:oracle :month]            [_ _ v] (trunc :month v))
-(defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] [:extract :month v])
+(defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] [::h2x/extract :month v])
 (defmethod sql.qp/date [:oracle :quarter]          [_ _ v] (trunc :q v))
 (defmethod sql.qp/date [:oracle :year]             [_ _ v] (trunc :year v))
-(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] [:extract :year v])
+(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] [::h2x/extract :year v])
 
 (defmethod sql.qp/date [:oracle :week]
   [driver _ v]
