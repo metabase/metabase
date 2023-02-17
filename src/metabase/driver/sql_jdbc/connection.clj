@@ -46,8 +46,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod connection-type+details->spec ::r
-  ;; For most drivers, the connection-type doesn't matter. We can use the same connection details.
+(defmethod connection-type+details->spec :default
+  ;; For most drivers, `connection-type` doesn't matter. Driver authors can implement `connection-details->spec` and use
+  ;; the same connection details for both read and writes.
   [driver _connection-type details-map]
   (connection-details->spec driver details-map))
 
