@@ -97,7 +97,7 @@ describe("Actions > ActionParametersInputForm", () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Run"));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({

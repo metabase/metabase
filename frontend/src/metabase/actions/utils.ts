@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type {
   ActionFormSettings,
   Database,
@@ -12,8 +13,10 @@ import type {
   FieldSettingsMap,
   ParameterId,
   ParametersForActionExecution,
+  ImplicitQueryAction,
 } from "metabase-types/api";
 
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { slugify } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 
@@ -235,4 +238,45 @@ export function setNumericValues(
   });
 
   return params;
+}
+
+function hasDataFromExplicitAction(result: any) {
+  const isInsert = result["created-row"];
+  const isUpdate =
+    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isDelete = result["rows-deleted"]?.[0] > 0;
+  return !isInsert && !isUpdate && !isDelete;
+}
+
+function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+  if (action.kind === "row/create") {
+    return t`Successfully saved`;
+  }
+  if (action.kind === "row/update") {
+    return t`Successfully updated`;
+  }
+  if (action.kind === "row/delete") {
+    return t`Successfully deleted`;
+  }
+  return t`Successfully ran the action`;
+}
+
+export function getActionExecutionMessage(
+  action: WritebackAction,
+  result: any,
+) {
+  if (action.type === "implicit") {
+    return getImplicitActionExecutionMessage(action);
+  }
+  if (hasDataFromExplicitAction(result)) {
+    return t`Success! The action returned: ${JSON.stringify(result)}`;
+  }
+  return getSuccessMessage(action);
+}
+
+export function getActionErrorMessage(error: unknown) {
+  return (
+    getResponseErrorMessage(error) ??
+    t`Something went wrong while executing the action`
+  );
 }

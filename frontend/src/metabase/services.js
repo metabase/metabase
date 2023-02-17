@@ -498,10 +498,13 @@ export const ActionsApi = {
   get: GET("/api/action/:id"),
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
+  execute: POST("/api/action/:id/execute"),
   prefetchValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+  executeDashcardAction: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
   createPublicLink: POST("/api/action/:id/public_link"),
   deletePublicLink: DELETE("/api/action/:id/public_link"),
   listPublic: GET("/api/action/public"),

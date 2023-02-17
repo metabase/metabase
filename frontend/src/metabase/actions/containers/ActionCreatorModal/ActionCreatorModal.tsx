@@ -1,16 +1,11 @@
 import React from "react";
-import type { Location } from "history";
-
 import * as Urls from "metabase/lib/urls";
 import Models from "metabase/entities/questions";
-
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
 import ActionCreator from "../ActionCreator";
 
 interface OwnProps {
-  location: Location;
   params: {
     slug: string;
     actionId?: string;
@@ -22,13 +17,13 @@ interface ModelLoaderProps {
   model: Card;
 }
 
-type ActionCreatorRouteProps = OwnProps & ModelLoaderProps;
+type ActionCreatorModalProps = OwnProps & ModelLoaderProps;
 
-function ActionCreatorRoute({
+function ActionCreatorModal({
   model,
   params,
   onClose,
-}: ActionCreatorRouteProps) {
+}: ActionCreatorModalProps) {
   const { slug, actionId } = params;
   const modelId = Urls.extractEntityId(slug);
   const databaseId = model.database_id || model.dataset_query.database;
@@ -49,4 +44,4 @@ function getModelId(state: State, props: OwnProps) {
 export default Models.load({
   id: getModelId,
   entityAlias: "model",
-})(ActionCreatorRoute);
+})(ActionCreatorModal);
