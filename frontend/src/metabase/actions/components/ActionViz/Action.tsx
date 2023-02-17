@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -10,6 +11,7 @@ import type {
   WritebackQueryAction,
   Dashboard,
 } from "metabase-types/api";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -20,8 +22,9 @@ import {
 } from "metabase/actions/utils";
 
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
-import { getMetadata } from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Databases from "metabase/entities/databases";
+
+import type Database from "metabase-lib/metadata/Database";
 
 import {
   getDashcardParamValues,
@@ -37,7 +40,7 @@ export interface ActionProps extends VisualizationProps {
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
   isEditingDashcard: boolean;
-  metadata: Metadata;
+  database: Database;
 }
 
 export function ActionComponent({
@@ -120,20 +123,18 @@ const ConnectedActionComponent = connect()(ActionComponent);
 function mapStateToProps(state: State, props: ActionProps) {
   return {
     isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
-    metadata: getMetadata(state),
   };
 }
 
 export function ActionFn(props: ActionProps) {
   const {
-    metadata,
+    database,
     dashcard: { action },
   } = props;
-  const actionsEnabled = !!metadata
-    ?.database(action?.database_id)
-    ?.hasActionsEnabled?.();
 
-  if (!props.dashcard?.action || !actionsEnabled) {
+  const hasActionsEnabled = database?.hasActionsEnabled?.();
+
+  if (!action || !hasActionsEnabled) {
     const tooltip = !action
       ? t`No action assigned`
       : t`Actions are not enabled for this database`;
@@ -152,4 +153,10 @@ export function ActionFn(props: ActionProps) {
   return <ConnectedActionComponent {...props} />;
 }
 
-export default connect(mapStateToProps)(ActionFn);
+export default _.compose(
+  Databases.load({
+    id: (state: State, props: ActionProps) =>
+      props.dashcard?.action?.database_id,
+  }),
+  connect(mapStateToProps),
+)(ActionFn);
