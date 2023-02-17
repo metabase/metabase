@@ -172,6 +172,10 @@ export function queryWritableDB(query, type = "postgres") {
   });
 }
 
+export function resetTestTable({ type, table }) {
+  cy.task("resetTable", { type, table });
+}
+
 // will this work for multiple schemas?
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy

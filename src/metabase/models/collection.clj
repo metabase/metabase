@@ -362,7 +362,9 @@
 (s/defn ^:private ancestors* :- [(mi/InstanceOf Collection)]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:location]})))
+    (db/select [Collection :name :id :personal_owner_id]
+      :id [:in ancestor-ids]
+      {:order-by [:location]})))
 
 (mi/define-simple-hydration-method ^:private ancestors
   :ancestors
