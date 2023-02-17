@@ -334,28 +334,28 @@
                  {:select [:*]
                   :from   [{:select
                             [[(id "id" "number")
-                              (h2x/identifier :field-alias "id")]
+                              [(h2x/identifier :field-alias "id")]]
                              [(id "name" "varchar2")
-                              (h2x/identifier :field-alias "name")]
+                              [(h2x/identifier :field-alias "name")]]
                              [(id "category_id" "number")
-                              (h2x/identifier :field-alias "category_id")]
+                              [(h2x/identifier :field-alias "category_id")]]
                              [(id "latitude" "binary_float")
-                              (h2x/identifier :field-alias "latitude")]
+                              [(h2x/identifier :field-alias "latitude")]]
                              [(id "longitude" "binary_float")
-                              (h2x/identifier :field-alias "longitude")]
+                              [(h2x/identifier :field-alias "longitude")]]
                              [(id "price" "number")
-                              (h2x/identifier :field-alias "price")]]
-                            :from      [(h2x/identifier :table oracle.tx/session-schema "test_data_venues")]
-                            :left-join [[(h2x/identifier :table oracle.tx/session-schema "test_data_categories")
-                                         (h2x/identifier :table-alias "test_data_categories__via__cat")]
-                                        [:=
-                                         (id "category_id" "number")
-                                         (id "test_data_categories__via__cat" "id" "number")]]
-                            :where     [:=
-                                        (id "test_data_categories__via__cat" "name" "varchar2")
-                                        "BBQ"]
-                            :order-by  [[(id "id" "number") :asc]]}]
-                  :where  [:<= [:raw "rownum"] 100]})
+                              [(h2x/identifier :field-alias "price")]]]
+                            :from     [[(h2x/identifier :table oracle.tx/session-schema "test_data_venues")]]
+                            :join-by  [:left-join [[(h2x/identifier :table oracle.tx/session-schema "test_data_categories")
+                                                    [(h2x/identifier :table-alias "test_data_categories__via__cat")]]
+                                                   [:=
+                                                    (id "category_id" "number")
+                                                    (id "test_data_categories__via__cat" "id" "number")]]]
+                            :where    [:=
+                                       (id "test_data_categories__via__cat" "name" "varchar2")
+                                       "BBQ"]
+                            :order-by [[(id "id" "number") :asc]]}]
+                  :where  [:<= [:raw "rownum"] [:inline 100]]})
                (#'sql.qp/mbql->honeysql
                 :oracle
                 (qp/preprocess
