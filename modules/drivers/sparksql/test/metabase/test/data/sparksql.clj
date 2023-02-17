@@ -73,7 +73,12 @@
   [driver table-identifier row-or-rows]
   (let [rows (u/one-or-many row-or-rows)
         rows (for [row rows]
-               (update-vals row ->inline))]
+               (update-vals row
+                            (fn [val]
+                              (if (and (vector? val)
+                                       (= (first val) :metabase.driver.sql.query-processor/compiled))
+                                val
+                                (->inline val)))))]
     ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier rows)))
 
 (defmethod load-data/do-insert! :sparksql

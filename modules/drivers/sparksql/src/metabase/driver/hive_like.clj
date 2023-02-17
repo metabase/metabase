@@ -89,8 +89,7 @@
   [:date_format expr (h2x/literal format-str)])
 
 (defn- str-to-date [format-str expr]
-  (-> [:from_unixtime [:unix_timestamp expr (h2x/literal format-str)]]
-      (h2x/with-database-type-info "timestamp")))
+  (h2x/->timestamp [:from_unixtime [:unix_timestamp expr (h2x/literal format-str)]]))
 
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
@@ -138,7 +137,7 @@
   [_fn [amount unit]]
   {:pre [(number? amount)
          ;; other units are supported too but we're not currently supporting them.
-         (#{:year :month :day :hour :minute :second} unit)]}
+         (#{:year :month :week :day :hour :minute :second :millisecond} unit)]}
   [(format "(interval '%d' %s)" (long amount) (name unit))])
 
 (sql/register-fn! ::interval #'format-interval)
