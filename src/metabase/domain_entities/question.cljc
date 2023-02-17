@@ -1,5 +1,6 @@
 (ns metabase.domain-entities.question
   (:require
+   [clojure.pprint :refer [pprint]]
    [metabase.domain-entities.malli :as de]
    [metabase.util :as u]
    #?@(:cljs ([metabase.domain-entities.converters :as converters]))))
@@ -266,6 +267,11 @@
                   (= (card-id q1) (card-id q2))
                   (= (card-prep (:card q1)) (card-prep (:card q2)))
                   (= (:parameter-values q1) (:parameter-values q2))))))
+
+(de/defn ^:export print-value :- nil?
+  "Clojure printing for debugging"
+  [x :- :any]
+  (pprint x))
 
 #?(:cljs
    (def ^:export from-js

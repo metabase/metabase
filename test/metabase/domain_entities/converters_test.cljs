@@ -209,3 +209,29 @@
         (is (= exp converted)))
       (testing "round-trips as expected"
         (is (js= input (-> input ->sink sink->)))))))
+
+(deftest idempotency-test
+  (testing "CLJS maps are not further converted"
+    (let [->parent (converters/incoming Parent)
+          input    {:child {:inner-value "foo"}}]
+      (is (identical? input (->parent input))))))
+
+(deftest opaque-any-test
+  (testing ":any values are not touched, and round-trip as identical?"
+    (let [schema    [:map
+                     [:wrapper [:map
+                                [:inner :any]
+                                [:other number?]]]
+                     [:foo string?]]
+          js-obj    #js {"neverConverted" true}
+          input     #js {"wrapper" #js {"inner" js-obj
+                                        "other" 7}
+                         "foo" "bar"}
+          ->map     (converters/incoming schema)
+          map->     (converters/outgoing schema)
+          converted (->map input)
+          returned  (map-> converted)]
+      (is (map?    (-> converted :wrapper)))
+      (is (object? (-> converted :wrapper :inner)))
+      (is (identical? js-obj (-> converted :wrapper :inner)))
+      (is (identical? js-obj (.. returned -wrapper -inner))))))

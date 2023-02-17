@@ -127,10 +127,45 @@ class QuestionInner {
   private readonly _inner: CLJS<QuestionContents>;
 
   /**
+   * HACK that can be removed once this is done being ported. Metadata changing has been a source of
+   * difficult-to-debug test failures, so it's captured here at constructor time and when metadata() is
+   * retrieved it gets checked against this.
+   */
+  private readonly _hackMetadata: Metadata;
+
+  /**
    * Question constructor
    */
   constructor(contents: QuestionContents) {
+    // HACK This is a mess in order to extract the Metadata from either a CLJS or JS object,
+    // and to upgrade it to a full Metadata instance if it's undefined or a regular object.
+    const isJSObj = contents.__proto__ === Object.prototype;
+    let metadata = isJSObj ? contents.metadata : Q.metadata(contents);
+
+    if (!metadata) {
+      metadata = new Metadata({
+        databases: {},
+        tables: {},
+        fields: {},
+        metrics: {},
+        segments: {},
+        questions: {},
+      });
+    } else if (!(metadata instanceof Metadata)) {
+      metadata = new Metadata(metadata);
+    }
+
+    this._hackMetadata = metadata;
+    if (isJSObj) {
+      contents = { ...contents, metadata };
+    } else {
+      contents = Q.with_metadata(contents, metadata);
+    }
     this._inner = Q.from_js(contents);
+
+    if (!this._hackMetadata || !(this._hackMetadata instanceof Metadata)) {
+      throw new Error("bad metadata at Question init" + this._hackMetadata);
+    }
   }
 
   clone() {
@@ -142,21 +177,13 @@ class QuestionInner {
   }
 
   metadata(): Metadata {
-    const metadata = Q.metadata(this.inner());
-    if (!metadata) {
-      return new Metadata({
-        databases: {},
-        tables: {},
-        fields: {},
-        metrics: {},
-        segments: {},
-        questions: {},
-      });
-    } else if (metadata instanceof Metadata) {
-      return metadata;
-    } else {
-      return new Metadata(metadata);
+    const m = Q.metadata(this.inner());
+    if (m !== this._hackMetadata) {
+      throw new Error(
+        "Metadata changed from " + this._hackMetadata + " to " + m,
+      );
     }
+    return m;
   }
 
   card() {
@@ -1158,7 +1185,7 @@ class QuestionInner {
     const [a, b] = [this, originalQuestion].map(q => {
       return (
         q &&
-        buildQuestion({ card: q.card(), metadata: Q.metadata(this.inner) })
+        buildQuestion({ card: q.card(), metadata: this.metadata() })
           .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
