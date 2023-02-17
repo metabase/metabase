@@ -107,6 +107,7 @@ describe("scenarios > account > notifications", () => {
       modal().within(() => {
         cy.findByText("Confirm you want to unsubscribe");
         cy.findByText("Unsubscribe").click();
+        cy.findByText("Unsubscribe").should("not.exist");
       });
 
       modal().within(() => {
