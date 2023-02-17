@@ -34,7 +34,8 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  handleEnableImplicitActions: () => void;
+  onEnableImplicitActions: () => void;
+  onArchiveAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -45,15 +46,18 @@ type Props = OwnProps & DispatchProps & ActionsLoaderProps;
 
 function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
-    handleEnableImplicitActions: () =>
+    onEnableImplicitActions: () =>
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
+    onArchiveAction: (action: WritebackAction) =>
+      dispatch(Actions.objectActions.setArchived(action, true)),
   };
 }
 
 function ModelActionDetails({
   model,
   actions,
-  handleEnableImplicitActions,
+  onEnableImplicitActions,
+  onArchiveAction,
 }: Props) {
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
@@ -70,25 +74,27 @@ function ModelActionDetails({
       {
         title: t`Create basic actions`,
         icon: "bolt",
-        action: handleEnableImplicitActions,
+        action: onEnableImplicitActions,
       },
     ];
-  }, [handleEnableImplicitActions]);
+  }, [onEnableImplicitActions]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
       const editorUrl = Urls.action(model.card() as Card, action.id);
+      const onArchive = canWrite ? () => onArchiveAction(action) : undefined;
       return (
         <li key={action.id} aria-label={action.name}>
           <ModelActionListItem
             action={action}
             editorUrl={editorUrl}
             canWrite={canWrite}
+            onArchive={onArchive}
           />
         </li>
       );
     },
-    [model, canWrite],
+    [model, canWrite, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
@@ -119,7 +125,7 @@ function ModelActionDetails({
       ) : (
         <NoActionsState
           hasCreateButton={canWrite}
-          onCreateClick={handleEnableImplicitActions}
+          onCreateClick={onEnableImplicitActions}
         />
       )}
     </Root>

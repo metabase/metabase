@@ -2,7 +2,8 @@ import { t } from "ttag";
 import { updateIn } from "icepick";
 import { createAction } from "redux-actions";
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 import { ActionsApi } from "metabase/services";
 
 import type {
@@ -126,6 +127,12 @@ const Actions = createEntity({
         });
       },
     ),
+    setArchived: ({ id }: WritebackAction, archived: boolean) =>
+      Actions.actions.update(
+        { id },
+        { archived },
+        undo({}, t`action`, archived ? t`archived` : t`unarchived`),
+      ),
   },
   reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
@@ -147,7 +154,9 @@ const Actions = createEntity({
     }
   },
   objectSelectors: {
-    getUrl: (action, opts) => action && "oh-no",
+    getUrl: (action: WritebackAction) =>
+      Urls.action({ id: action.model_id }, action.id),
+    getIcon: () => ({ name: "bolt" }),
   },
 });
 
