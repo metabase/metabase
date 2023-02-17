@@ -66,30 +66,49 @@ const MappingRow = ({
 
   const getCallbackForGroupsAfterDeletingMapping = (
     whatToDoAboutGroups: DeleteMappingModalValueType,
-    groups: GroupIds,
+    groupIds: GroupIds,
   ) => {
     switch (whatToDoAboutGroups) {
       case "clear":
         return () =>
           Promise.all(
-            groups.map(
-              async id => await PermissionsApi.clearGroupMembership({ id }),
-            ),
+            groupIds.map(async id => {
+              try {
+                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                  await PermissionsApi.clearGroupMembership({ id });
+                }
+              } catch (error) {
+                console.error(error);
+              }
+            }),
           );
       case "delete":
         return () =>
           Promise.all(
-            groups.map(async id => await PermissionsApi.deleteGroup({ id })),
+            groupIds.map(async id => {
+              try {
+                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                  await PermissionsApi.deleteGroup({ id });
+                }
+              } catch (error) {
+                console.error(error);
+              }
+            }),
           );
       default:
         return () => null;
     }
   };
 
+  const firstGroupIdInMapping = groups.find(
+    group => group.id === selectedGroupIds[0],
+  );
+
   const isMappingLinkedOnlyToAdminGroup =
     groups.length > 0 &&
     selectedGroupIds.length === 1 &&
-    isAdminGroup(groups.find(group => group.id === selectedGroupIds[0]));
+    // firstGroupIdInMapping &&
+    isAdminGroup(firstGroupIdInMapping);
 
   const shouldUseDeleteMappingModal =
     selectedGroupIds.length > 0 && !isMappingLinkedOnlyToAdminGroup;
