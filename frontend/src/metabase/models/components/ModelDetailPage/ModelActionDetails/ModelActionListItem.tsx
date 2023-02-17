@@ -63,8 +63,19 @@ function ModelActionListItem({
   }, [action, askConfirmation, onArchive]);
 
   const menuItems = useMemo(
-    () => [{ title: t`Archive`, icon: "archive", action: handleArchive }],
-    [handleArchive],
+    () => [
+      {
+        title: canWrite ? t`Edit` : t`View`,
+        icon: canWrite ? `pencil` : `eye`,
+        link: actionUrl,
+      },
+      canArchive && {
+        title: t`Archive`,
+        icon: "archive",
+        action: handleArchive,
+      },
+    ],
+    [actionUrl, canWrite, canArchive, handleArchive],
   );
 
   return (
@@ -83,12 +94,10 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        {canArchive && (
-          <EntityMenu
-            items={menuItems}
-            trigger={<MenuIcon name="ellipsis" size={14} />}
-          />
-        )}
+        <EntityMenu
+          items={menuItems}
+          trigger={<MenuIcon name="ellipsis" size={14} />}
+        />
       </ActionHeader>
       <ActionCard>
         {action.type === "query" ? (
