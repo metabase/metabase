@@ -115,7 +115,8 @@ describe("scenarios > account > notifications", () => {
         cy.findByText("Delete this alert").click();
       });
 
-      cy.findByText("Question").should("not.exist");
+      modal().should("not.exist");
+      cy.findByTestId("notification-list").should("not.exist");
     });
 
     it("should be able to unsubscribe from an alert when the user has not created it", () => {
