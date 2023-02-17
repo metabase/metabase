@@ -10,10 +10,15 @@ export const ActionHeader = styled.div`
   justify-content: space-between;
 `;
 
-export const ActionTitle = styled.h4`
+export const ActionTitle = styled(Link)`
   font-size: 1rem;
   font-weight: 700;
   color: ${color("text-dark")};
+  cursor: ${props => (props.to ? "pointer" : "unset")};
+
+  &:hover {
+    color: ${props => props.to && color("brand")};
+  }
 `;
 
 export const ActionSubtitle = styled.span`
@@ -42,9 +47,7 @@ export const MenuIcon = styled(Icon)`
   }
 `;
 
-MenuIcon.defaultProps = { size: 14 };
-
-export const Card = styled.div`
+export const ActionCard = styled.div`
   display: block;
   position: relative;
 
@@ -63,7 +66,7 @@ export const CodeBlock = styled.pre`
   margin: 0;
 `;
 
-export const EditorLink = styled(Button)`
+export const ActionRunButton = styled(Button)`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -71,11 +74,6 @@ export const EditorLink = styled(Button)`
   background-color: ${color("bg-white")};
   color: ${color("text-dark")};
 `;
-
-EditorLink.defaultProps = {
-  as: Link,
-  onlyIcon: true,
-};
 
 export const ImplicitActionCardContentRoot = styled.div`
   display: flex;

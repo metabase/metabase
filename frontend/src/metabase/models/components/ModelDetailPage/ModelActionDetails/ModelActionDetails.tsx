@@ -81,15 +81,15 @@ function ModelActionDetails({
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const editorUrl = Urls.action(model.card() as Card, action.id);
-      const onArchive = canWrite ? () => onArchiveAction(action) : undefined;
+      const actionUrl = Urls.action(model.card() as Card, action.id);
+
       return (
         <li key={action.id} aria-label={action.name}>
           <ModelActionListItem
             action={action}
-            editorUrl={editorUrl}
+            actionUrl={actionUrl}
             canWrite={canWrite}
-            onArchive={onArchive}
+            onArchive={onArchiveAction}
           />
         </li>
       );
