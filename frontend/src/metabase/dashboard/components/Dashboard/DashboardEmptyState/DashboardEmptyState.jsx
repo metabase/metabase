@@ -3,9 +3,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import EmptyState from "metabase/components/EmptyState";
-import { Container } from "./DashboardEmptyState.styled";
+import { Container, BrandLink } from "./DashboardEmptyState.styled";
 
 const propTypes = {
   isNightMode: PropTypes.bool.isRequired,
@@ -26,13 +25,13 @@ const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
             {t`Add a saved question`}
           </Button>
           {t`, or `}
-          <Link
+          <BrandLink
             to="/question/new"
             className="text-bold text-brand"
             onClick={closeNavbar}
           >
             {t`ask a new one`}
-          </Link>
+          </BrandLink>
         </>
       }
     />
