@@ -78,7 +78,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to see help info", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Not seeing one here?").click();
 
@@ -91,7 +91,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to see alerts notifications", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Question");
       cy.findByText("Emailed hourly", { exact: false });
@@ -99,7 +99,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to unsubscribe and delete an alert when the user created it", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Question");
       clickUnsubscribe();
@@ -122,7 +122,7 @@ describe("scenarios > account > notifications", () => {
     it("should be able to unsubscribe from an alert when the user has not created it", () => {
       cy.signOut();
       cy.signInAsAdmin();
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Question");
       clickUnsubscribe();
@@ -148,7 +148,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to see help info", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Not seeing one here?").click();
 
@@ -161,7 +161,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to see pulses notifications", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Subscription");
       cy.findByText("Slack’d hourly", { exact: false });
@@ -169,7 +169,7 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to unsubscribe and delete a pulse when the user has created it", () => {
-      cy.visit("/account/notifications");
+      openUserNotifications();
 
       cy.findByText("Subscription");
       clickUnsubscribe();
@@ -188,4 +188,10 @@ function clickUnsubscribe() {
   cy.findByTestId("notifications-list").within(() => {
     cy.findByLabelText("close icon").click();
   });
+}
+
+function openUserNotifications() {
+  cy.intercept("GET", "/api/pulse?*").as("loadSubscriptions");
+  cy.visit("/account/notifications");
+  cy.wait("@loadSubscriptions");
 }
