@@ -253,6 +253,12 @@ async function setupActions(opts: SetupActionsOpts) {
   return setup({ ...opts, tab: "actions", hasActionsEnabled: true });
 }
 
+function openActionMenu(action: WritebackAction) {
+  const listItem = screen.getByRole("listitem", { name: action.name });
+  const menuButton = within(listItem).getByLabelText("ellipsis icon");
+  userEvent.click(menuButton);
+}
+
 describe("ModelDetailPage", () => {
   afterEach(() => {
     nock.cleanAll();
@@ -572,13 +578,23 @@ describe("ModelDetailPage", () => {
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
 
-        it("allows to edit a query action", async () => {
+        it("allows to edit a query action via link", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          userEvent.click(within(listItem).getByLabelText("pencil icon"));
+          userEvent.click(screen.getByRole("link", { name: action.name }));
+
+          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+        });
+
+        it("allows to edit a query action via menu", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          openActionMenu(action);
+          userEvent.click(screen.getByText("Edit"));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
@@ -689,10 +705,8 @@ describe("ModelDetailPage", () => {
           });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          const menuButton = within(listItem).queryByLabelText("ellipsis icon");
+          openActionMenu(action);
 
-          expect(menuButton).not.toBeInTheDocument();
           expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
@@ -745,20 +759,17 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          const editButton = within(listItem).queryByLabelText("pencil icon");
+          openActionMenu(action);
 
-          expect(editButton).not.toBeInTheDocument();
+          expect(screen.getByText("View")).toBeInTheDocument();
         });
 
         it("doesn't allow to archive actions", async () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          const menuButton = within(listItem).queryByLabelText("ellipsis icon");
+          openActionMenu(action);
 
-          expect(menuButton).not.toBeInTheDocument();
           expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
