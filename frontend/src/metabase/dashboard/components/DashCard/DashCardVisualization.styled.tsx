@@ -3,8 +3,9 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { lighten, color } from "metabase/lib/colors";
 
 export const CardDownloadWidget = styled(QueryDownloadWidget)`
+  display: block;
   color: ${lighten("text-light", 0.1)};
-  margin: 0.5rem;
+  margin: 0 0.5rem;
 
   &:hover {
     color: ${color("brand")};

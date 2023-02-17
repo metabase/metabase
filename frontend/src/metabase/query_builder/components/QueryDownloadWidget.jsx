@@ -261,6 +261,8 @@ const DashboardEmbedQueryButton = ({
   </DownloadButton>
 );
 
+const LOADER_SCALE_FACTOR = 0.9;
+
 const renderIcon = ({ icon, status, iconSize }) => {
   if ([`idle`, `resolved`, `rejected`].includes(status)) {
     return (
@@ -276,7 +278,7 @@ const renderIcon = ({ icon, status, iconSize }) => {
   } else if (status === "pending") {
     return (
       <Tooltip tooltip={t`Downloading…`}>
-        <LoadingSpinner size={18} />
+        <LoadingSpinner size={iconSize * LOADER_SCALE_FACTOR} />
       </Tooltip>
     );
   } else {
