@@ -309,14 +309,17 @@
   (reify clojure.lang.IReduceInit
     (reduce [_this rf init]
       (with-open [rset (.getColumns metadata db-name-or-nil schema table-name nil)]
-        (loop [acc init]
-          (if-not (.next rset)
-            acc
-            (recur (rf acc (merge {:name          (str/trim (.getString rset "COLUMN_NAME"))
-                                   :database-type (str/trim (.getString rset "TYPE_NAME"))}
-                                  (when-let [remarks (.getString rset "REMARKS")]
-                                    (when (not (str/blank? remarks))
-                                      {:field-comment remarks})))))))))))
+        (reduce
+         ((take-while some?) rf)
+         init
+         (repeatedly
+          (fn []
+            (when (.next rset)
+              (merge {:name          (str/trim (.getString rset "COLUMN_NAME"))
+                      :database-type (str/trim (.getString rset "TYPE_NAME"))}
+                     (when-let [remarks (.getString rset "REMARKS")]
+                       (when (not (str/blank? remarks))
+                         {:field-comment remarks})))))))))))
 
 (defn- add-database-position-xform []
   (map-indexed (fn [i field]
@@ -335,11 +338,14 @@
                   stmt (doto (.createStatement conn)
                          (.execute (format "DESCRIBE `%s`.`%s`;" schema table-name)))
                   rset (.getResultSet stmt)]
-        (loop [acc init]
-          (if-not (.next rset)
-            acc
-            (recur (rf acc {:name          (str/trim (.getString rset "COL_NAME"))
-                            :database-type (str/trim (.getString rset "DATA_TYPE"))}))))))))
+        (reduce
+         ((take-while some?) rf)
+         init
+         (repeatedly
+          (fn []
+            (when (.next rset)
+              {:name          (str/trim (.getString rset "COL_NAME"))
+               :database-type (str/trim (.getString rset "DATA_TYPE"))}))))))))
 
 (defn- fields-from-query-xform [driver]
   (comp
@@ -403,11 +409,14 @@
   (reify clojure.lang.IReduceInit
     (reduce [_this rf init]
       (with-open [rset (.getSchemas metadata)]
-        (loop [acc init]
-          (if-not (.next rset)
-            acc
-            (recur (rf acc {:catalog (.getString rset "TABLE_CATALOG")
-                            :schema  (.getString rset "TABLE_SCHEM")}))))))))
+        (reduce
+         ((take-while some?) rf)
+         init
+         (repeatedly
+          (fn []
+            (when (.next rset)
+              {:catalog (.getString rset "TABLE_CATALOG")
+               :schema  (.getString rset "TABLE_SCHEM")}))))))))
 
 (defn- reducible-tables
   "Athena can query EXTERNAL and MANAGED tables."
@@ -425,14 +434,17 @@
                                                        "FOREIGN TABLE"
                                                        "MATERIALIZED VIEW"
                                                        "MANAGED_TABLE"]))]
-        (loop [acc init]
-          (if-not (.next rset)
-            acc
-            (recur (rf acc (merge {:name    (.getString rset "TABLE_NAME")
-                                   :schema  (.getString rset "TABLE_SCHEM")}
-                                  (when-let [remarks (.getString rset "REMARKS")]
-                                    (when-not (str/blank? remarks)
-                                      {:description remarks})))))))))))
+        (reduce
+         ((take-while some?) rf)
+         init
+         (repeatedly
+          (fn []
+            (when (.next rset)
+              (merge {:name    (.getString rset "TABLE_NAME")
+                      :schema  (.getString rset "TABLE_SCHEM")}
+                     (when-let [remarks (.getString rset "REMARKS")]
+                       (when-not (str/blank? remarks)
+                         {:description remarks})))))))))))
 
 (defn- fast-active-tables
   "Required because we're calling our own custom private get-tables method to support Athena.

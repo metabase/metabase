@@ -40,10 +40,12 @@
   "Returns a set of all of the catalogs found via `metadata`"
   [^DatabaseMetaData metadata]
   (with-open [rset (.getCatalogs metadata)]
-    (loop [acc #{}]
-      (if-not (.next rset)
-        acc
-        (recur (conj acc (.getString rset "TABLE_CAT")))))))
+    (into #{}
+          (take-while some?)
+          (repeatedly
+           (fn []
+             (when (.next rset)
+               (.getString rset "TABLE_CAT")))))))
 
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
@@ -231,14 +233,13 @@
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
    #{}
-   (sql-jdbc.sync.common/reducible-results
-    #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-    (fn [^ResultSet rs]
-      (fn []
-        {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-         :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                            :schema (.getString rs "PKTABLE_SCHEM")}
-         :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                           (fn [^ResultSet rs]
+                                             (fn []
+                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
+                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

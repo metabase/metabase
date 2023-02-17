@@ -45,14 +45,15 @@
   (jdbc/with-db-metadata [metadata spec]
     (with-open [rset (.getTables metadata nil "PUBLIC" nil
                                  (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-      (loop [acc []]
-        (if-not (.next rset)
-          (sort acc)
-          (let [table-name (.getString rset "TABLE_NAME")
-                acc (cond-> acc
-                      (not (contains? ignored-table-names table-name))
-                      (conj table-name))]
-            (recur acc)))))))
+      (sort
+       (into []
+             (comp (take-while some?)
+                   (remove (fn [table-name]
+                             (contains? ignored-table-names table-name))))
+             (repeatedly
+              (fn []
+                (when (.next rset)
+                  (.getString rset "TABLE_NAME")))))))))
 
 (defmulti ^:private normalize-value
   class)
