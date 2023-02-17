@@ -452,7 +452,7 @@
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :page]
   [driver _ honeysql-query {{:keys [items page]} :page}]
-  {:pre [(number? items) (number? [page])]}
+  {:pre [(number? items) (number? page)]}
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`
