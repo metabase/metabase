@@ -526,7 +526,7 @@
   {:pre [(string? sql)]}
   (try
     (let [{:keys [details]} (qp.store/database)
-          jdbc-spec         (sql-jdbc.conn/connection-type+details->spec driver ::w details)]
+          jdbc-spec         (sql-jdbc.conn/connection-type+details->spec driver ::rw details)]
       ;; TODO -- should this be done in a transaction? Should we set the isolation level?
       (with-open [conn (jdbc/get-connection jdbc-spec)
                   stmt (statement-or-prepared-statement driver conn sql params nil)]
