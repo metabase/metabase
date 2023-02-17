@@ -36,6 +36,7 @@ interface OwnProps {
 interface DispatchProps {
   onEnableImplicitActions: () => void;
   onArchiveAction: (action: WritebackAction) => void;
+  onDeleteAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -50,6 +51,8 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
     onArchiveAction: (action: WritebackAction) =>
       dispatch(Actions.objectActions.setArchived(action, true)),
+    onDeleteAction: (action: WritebackAction) =>
+      dispatch(Actions.actions.delete({ id: action.id })),
   };
 }
 
@@ -58,26 +61,42 @@ function ModelActionDetails({
   actions,
   onEnableImplicitActions,
   onArchiveAction,
+  onDeleteAction,
 }: Props) {
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
-  const hasImplicitActions = actions.some(action => action.type === "implicit");
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
     [actions],
   );
 
+  const implicitActions = useMemo(
+    () => actions.filter(action => action.type === "implicit"),
+    [actions],
+  );
+
+  const onDeleteImplicitAction = useCallback(() => {
+    implicitActions.forEach(action => {
+      onDeleteAction(action);
+    });
+  }, [implicitActions, onDeleteAction]);
+
   const menuItems = useMemo(() => {
+    const hasImplicitActions = implicitActions.length > 0;
     return [
       {
-        title: t`Create basic actions`,
+        title: hasImplicitActions
+          ? t`Disable basic actions`
+          : t`Create basic actions`,
         icon: "bolt",
-        action: onEnableImplicitActions,
+        action: hasImplicitActions
+          ? onDeleteImplicitAction
+          : onEnableImplicitActions,
       },
     ];
-  }, [onEnableImplicitActions]);
+  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitAction]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -104,13 +123,11 @@ function ModelActionDetails({
       {canWrite && (
         <ActionsHeader>
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          {!hasImplicitActions && (
-            <ActionMenu
-              triggerIcon="ellipsis"
-              items={menuItems}
-              triggerProps={ACTION_MENU_TRIGGER_PROPS}
-            />
-          )}
+          <ActionMenu
+            triggerIcon="ellipsis"
+            items={menuItems}
+            triggerProps={ACTION_MENU_TRIGGER_PROPS}
+          />
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
@@ -161,7 +178,7 @@ function mostRecentFirst(action: WritebackAction) {
 }
 
 const ACTION_MENU_TRIGGER_PROPS = {
-  "data-testid": "new-action-menu",
+  "data-testid": "actions-menu",
 };
 
 export default _.compose(

@@ -130,6 +130,13 @@ describe("scenarios > models > actions", () => {
     });
 
     cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
+
+    cy.findByTestId("actions-menu").click();
+    popover().findByText("Disable basic actions").click();
+    cy.findByLabelText("Action list").should("not.exist");
+    cy.findByText("Create").should("not.exist");
+    cy.findByText("Update").should("not.exist");
+    cy.findByText("Delete").should("not.exist");
   });
 
   it("should allow to execute actions from the model page", () => {
