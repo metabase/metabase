@@ -32,10 +32,6 @@
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
-(defmethod sql.qp/honey-sql-version :sparksql
-  [_driver]
-  2)
-
 (def ^:private source-table-alias
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
