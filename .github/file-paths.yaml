@@ -3,7 +3,7 @@ default: &default
   - "bin/**"
 
 ci: &ci
-  - ".github/**(!.md)"
+  - ".github/**/!(*.md)"
 
 shared_sources: &shared_sources
   - "shared/src"
