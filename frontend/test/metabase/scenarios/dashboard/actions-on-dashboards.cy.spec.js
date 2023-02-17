@@ -20,13 +20,15 @@ const TEST_TABLE = "scoreboard_actions";
     { tags: ["@external", "@actions"] },
     () => {
       beforeEach(() => {
-        cy.intercept("/api/card/*").as("getModel");
+        cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
+        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
+          "getCardAssociations",
+        );
+        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
           "executeAPI",
         );
-
-        cy.intercept("GET", "/api/dashboard/*").as("dashboardLoad");
 
         resetTestTable({ type: dialect, table: TEST_TABLE });
         restore(`${dialect}-writable`);
@@ -46,10 +48,10 @@ const TEST_TABLE = "scoreboard_actions";
 
         cy.get("@modelId").then(id => {
           cy.visit(`/model/${id}/detail`);
-          cy.wait("@getModel");
+          cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
         });
 
-        cy.findByText("Actions").click();
+        cy.findByRole("tab", { name: "Actions" }).click();
         cy.findByText("New action").click();
 
         cy.findByRole("dialog").within(() => {
@@ -69,7 +71,7 @@ const TEST_TABLE = "scoreboard_actions";
         );
 
         editDashboard();
-        cy.findByLabelText("click icon").click();
+        cy.icon("click").click();
         cy.get("aside").within(() => {
           cy.button("Pick an action").click();
         });
