@@ -10,8 +10,8 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 
 import type {
   DashboardOrderedCard,
-  LinkEntity,
   LinkCardSettings,
+  UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -19,6 +19,7 @@ import Search from "metabase/entities/search";
 
 import { isEmpty } from "metabase/lib/validate";
 
+import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 import { EntityDisplay } from "./EntityDisplay";
 import { settings } from "./LinkVizSettings";
 
@@ -60,7 +61,7 @@ function LinkViz({
   const handleLinkChange = (newLink: string) =>
     onUpdateVisualizationSettings({ link: { url: newLink } });
 
-  const handleEntitySelect = (entity: LinkEntity) => {
+  const handleEntitySelect = (entity: UnrestrictedLinkEntity) => {
     onUpdateVisualizationSettings({
       link: {
         entity: {
@@ -86,6 +87,14 @@ function LinkViz({
   }, [previousUrl, url]);
 
   if (entity) {
+    if (isRestrictedLinkEntity(entity)) {
+      return (
+        <EditLinkCardWrapper>
+          <EntityDisplay entity={entity} />
+        </EditLinkCardWrapper>
+      );
+    }
+
     const wrappedEntity = Search.wrapEntity({
       ...entity,
       database_id: entity.db_id ?? entity.database_id,

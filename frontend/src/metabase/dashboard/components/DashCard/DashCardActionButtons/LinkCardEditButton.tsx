@@ -5,6 +5,7 @@ import type {
   DashboardOrderedCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
 import DashCardActionButton from "./DashCardActionButton";
 
@@ -21,7 +22,7 @@ export default function LinkCardEditButton({
 }: Props) {
   const entity = dashcard?.visualization_settings?.link?.entity;
 
-  if (!entity) {
+  if (!entity || isRestrictedLinkEntity(entity)) {
     return null;
   }
 

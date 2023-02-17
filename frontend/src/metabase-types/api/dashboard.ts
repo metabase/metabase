@@ -75,7 +75,9 @@ export type DashCardDataMap = Record<
   Record<CardId, Dataset | undefined>
 >;
 
-export type LinkEntity = {
+export type LinkEntity = RestrictedLinkEntity | UnrestrictedLinkEntity;
+
+export type UnrestrictedLinkEntity = {
   id: number;
   db_id?: number;
   database_id?: number;
@@ -84,6 +86,10 @@ export type LinkEntity = {
   display_name?: string;
   description?: string;
   display?: CardDisplayType;
+};
+
+export type RestrictedLinkEntity = {
+  restricted: true;
 };
 
 export interface LinkCardSettings {

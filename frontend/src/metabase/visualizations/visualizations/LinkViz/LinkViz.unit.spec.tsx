@@ -2,7 +2,12 @@ import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, fireEvent } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  fireEvent,
+  getIcon,
+} from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 
 import type {
@@ -50,6 +55,19 @@ const questionLinkDashcard = createMockDashboardCardWithVirtualCard({
         name: "Question Uno",
         model: "card",
         display: "pie",
+      },
+    },
+    virtual_card: {
+      display: "link",
+    },
+  },
+});
+
+const restrictedLinkDashcard = createMockDashboardCardWithVirtualCard({
+  visualization_settings: {
+    link: {
+      entity: {
+        restricted: true,
       },
     },
     virtual_card: {
@@ -228,6 +246,18 @@ describe("LinkViz", () => {
           }),
         },
       });
+    });
+
+    it("shows a notice if the user doesn't have permissions to the entity", () => {
+      setup({
+        isEditing: false,
+        dashcard: restrictedLinkDashcard,
+        settings:
+          restrictedLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(getIcon("key")).toBeInTheDocument();
+      expect(screen.getByText(/don't have permission/i)).toBeInTheDocument();
     });
   });
 });
