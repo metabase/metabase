@@ -182,292 +182,100 @@ describe(
         name: IMPLICIT_ACTION_NAME,
         model_id: modelId,
       });
-
-      cy.intercept("GET", "/api/card/*").as("getModel");
-      cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.visit(`/model/${modelId}/detail/actions`);
+      cy.wait("@getModel");
     });
 
-    it("should allow to view, create, edit, and archive model actions", () => {
-      cy.get("@modelId").then(id => {
-        cy.visit(`/model/${id}/detail`);
-        cy.wait("@getModel");
-      });
+    enableSharingFor(SAMPLE_QUERY_ACTION.name, {
+      publicUrlAlias: "queryActionPublicUrl",
+    });
+    enableSharingFor(IMPLICIT_ACTION_NAME, {
+      publicUrlAlias: "implicitActionPublicUrl",
+    });
 
-      cy.findByText("Actions").click();
+    cy.signOut();
 
-      cy.findByRole("button", { name: /Create basic actions/i }).click();
-      cy.findByLabelText("Action list").within(() => {
-        cy.findByText("Create").should("be.visible");
-        cy.findByText("Update").should("be.visible");
-        cy.findByText("Delete").should("be.visible");
-      });
+    cy.get("@queryActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByLabelText(TEST_PARAMETER.name).type("1");
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+        "be.visible",
+      );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+    });
+
+    cy.get("@implicitActionPublicUrl").then(url => {
+      cy.visit(url);
 
       // Order 1 has quantity 2 by default, so we're not actually mutating data
       cy.findByLabelText("id").type("1");
       cy.findByLabelText(/quantity/i).type("2");
 
-      modal().within(() => {
-        cy.findByText("Archive Delete Order?").should("be.visible");
-        cy.findByRole("button", { name: "Archive" }).click();
-      });
-
-      cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
-    });
-
-    it("should allow to execute actions from the model page", () => {
-      cy.get("@modelId").then(modelId => {
-        createAction({
-          ...SAMPLE_QUERY_ACTION,
-          model_id: modelId,
-        });
-        cy.visit(`/model/${modelId}/detail/actions`);
-        cy.wait("@getModel");
-      });
-
-      runActionFor(SAMPLE_QUERY_ACTION.name);
-
-      modal().within(() => {
-        cy.findByLabelText(TEST_PARAMETER.name).type("1");
-        cy.button("Run").click();
-      });
-
-      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+      cy.findByRole("button", { name: "Submit" }).click();
+      cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
         "be.visible",
       );
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
     });
 
-    it("should allow to make actions public and execute them", () => {
-      const IMPLICIT_ACTION_NAME = "Update order";
+    cy.signInAsAdmin();
+    cy.get("@modelId").then(modelId => {
+      cy.visit(`/model/${modelId}/detail/actions`);
+      cy.wait("@getModel");
+    });
 
-      cy.get("@modelId").then(modelId => {
-        createAction({
-          ...SAMPLE_QUERY_ACTION,
-          model_id: modelId,
-        });
-        createAction({
-          type: "implicit",
-          kind: "row/update",
-          name: IMPLICIT_ACTION_NAME,
-          model_id: modelId,
-        });
+    disableSharingFor(SAMPLE_QUERY_ACTION.name);
+    disableSharingFor(IMPLICIT_ACTION_NAME);
 
-        cy.intercept("GET", "/api/card/*").as("getModel");
-        cy.intercept("PUT", "/api/action/*").as("updateAction");
+    cy.get("@queryActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+      cy.findByText("An error occurred.").should("be.visible");
+    });
+
+    cy.get("@implicitActionPublicUrl").then(url => {
+      cy.visit(url);
+      cy.findByRole("form").should("not.exist");
+      cy.findByRole("button", { name: "Submit" }).should("not.exist");
+      cy.findByText("An error occurred.").should("be.visible");
+    });
+  });
+
+  it("should respect permissions", () => {
+    cy.get("@modelId").then(modelId => {
+      cy.request("POST", "/api/action", {
+        ...SAMPLE_QUERY_ACTION,
+        model_id: modelId,
+      });
+      cy.signIn("readonly");
+      cy.visit(`/model/${modelId}/detail/actions`);
+      cy.wait("@getModel");
+    });
+
+    openActionMenuFor(SAMPLE_QUERY_ACTION.name);
+    popover().within(() => {
+      cy.findByText("Archive").should("not.exist");
+      cy.findByText("View").click();
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+      cy.button("Save").should("not.exist");
+      cy.button("Update").should("not.exist");
+
+      assertQueryEditorDisabled();
+
+      cy.findByRole("form").within(() => {
+        cy.icon("gear").should("not.exist");
       });
 
-      it("should allow to view, create, edit, and archive model actions", () => {
-        cy.get("@modelId").then(id => {
-          cy.visit(`/model/${id}/detail`);
-          cy.wait("@getModel");
-        });
-
-        cy.get("@queryActionPublicUrl").then(url => {
-          cy.visit(url);
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.findByRole("button", { name: "Submit" }).click();
-          cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
-            "be.visible",
-          );
-          cy.findByRole("form").should("not.exist");
-          cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        });
-
-        cy.findByRole("button", { name: /Create basic actions/i }).click();
-        cy.findByLabelText("Action list").within(() => {
-          cy.findByText("Create").should("be.visible");
-          cy.findByText("Update").should("be.visible");
-          cy.findByText("Delete").should("be.visible");
-        });
-
-        cy.findByRole("link", { name: "New action" }).click();
-        fillActionQuery("DELETE FROM orders WHERE id = {{ id }}");
-        fieldSettings().findByText("number").click();
-        cy.findByRole("button", { name: "Save" }).click();
-        modal().within(() => {
-          cy.findByLabelText("Name").type("Delete Order");
-          cy.findByRole("button", { name: "Create" }).click();
-        });
-        cy.findByLabelText("Action list")
-          .findByText("Delete Order")
-          .should("be.visible");
-
-        openActionEditorFor("Delete Order");
-        fillActionQuery(" AND status = 'pending'");
-        fieldSettings()
-          .findByRole("radiogroup", { name: "Field type" })
-          .findByLabelText("number")
-          .should("be.checked");
-        cy.findByRole("button", { name: "Update" }).click();
-
-        cy.findByLabelText("Action list")
-          .findByText(
-            "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
-          )
-          .should("be.visible");
-
-        openActionMenuFor("Delete Order");
-        popover().findByText("Archive").click();
-
-        modal().within(() => {
-          cy.findByText("Archive Delete Order?").should("be.visible");
-          cy.findByRole("button", { name: "Archive" }).click();
-        });
-
-        cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
-      });
-
-      it("should allow to make actions public and execute them", () => {
-        const IMPLICIT_ACTION_NAME = "Update order";
-
-        cy.get("@modelId").then(modelId => {
-          createAction({
-            ...SAMPLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          createAction({
-            type: "implicit",
-            kind: "row/update",
-            name: IMPLICIT_ACTION_NAME,
-            model_id: modelId,
-          });
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        enableSharingFor(SAMPLE_QUERY_ACTION.name, {
-          publicUrlAlias: "queryActionPublicUrl",
-        });
-        enableSharingFor(IMPLICIT_ACTION_NAME, {
-          publicUrlAlias: "implicitActionPublicUrl",
-        });
-
-        openActionMenuFor(SAMPLE_QUERY_ACTION.name);
-        popover().within(() => {
-          cy.findByText("Archive").should("not.exist");
-          cy.findByText("View").click();
-        });
-
-        cy.findByRole("dialog").within(() => {
-          cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
-
-          // Order 1 has quantity 2 by default, so we're not actually mutating data
-          cy.findByLabelText(/^id/i).type("1");
-          cy.findByLabelText(/quantity/i).type("2");
-
-          cy.findByRole("button", { name: "Submit" }).click();
-          cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
-            "be.visible",
-          );
-          cy.findByRole("form").should("not.exist");
-          cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        });
-
-        cy.signInAsAdmin();
-        cy.get("@modelId").then(modelId => {
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        disableSharingFor(SAMPLE_QUERY_ACTION.name);
-        disableSharingFor(IMPLICIT_ACTION_NAME);
-
-        cy.get("@queryActionPublicUrl").then(url => {
-          cy.visit(url);
-          cy.findByRole("form").should("not.exist");
-          cy.findByRole("button", { name: "Submit" }).should("not.exist");
-          cy.findByText("An error occurred.").should("be.visible");
-        });
-
-        cy.get("@implicitActionPublicUrl").then(url => {
-          cy.visit(url);
-          cy.findByRole("form").should("not.exist");
-          cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        });
-      });
-
-      it("should respect permissions", () => {
-        cy.get("@modelId").then(modelId => {
-          cy.request("POST", "/api/action", {
-            ...SAMPLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          cy.signIn("readonly");
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        cy.findByRole("listitem", { name: SAMPLE_QUERY_ACTION.name }).within(
-          () => {
-            cy.icon("ellipsis").should("not.exist");
-          },
-        );
-
-        openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
-
-        cy.findByRole("dialog").within(() => {
-          cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
-
-          cy.button("Save").should("not.exist");
-          cy.button("Update").should("not.exist");
-
-          assertQueryEditorDisabled();
-
-          cy.findByRole("form").within(() => {
-            cy.icon("gear").should("not.exist");
-          });
-
-          cy.findByText("Actions").click();
-          openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByRole("button", { name: "Action settings" }).click();
-            cy.findByLabelText("Make public").should("be.checked").click();
-          });
-          modal().within(() => {
-            cy.findByText("Disable this public link?").should("be.visible");
-            cy.findByRole("button", { name: "Yes" }).click();
-          });
-
-          cy.get("@publicUrl").then(url => {
-            cy.visit(url);
-            cy.findByRole("form").should("not.exist");
-            cy.findByRole("button", { name: "Submit" }).should("not.exist");
-            cy.findByText("An error occurred.").should("be.visible");
-          });
-        });
-
-        it("should respect permissions", () => {
-          cy.get("@modelId").then(modelId => {
-            cy.request("POST", "/api/action", {
-              ...SAMPLE_QUERY_ACTION,
-              model_id: modelId,
-            });
-            cy.signIn("readonly");
-            cy.visit(`/model/${modelId}/detail/actions`);
-            cy.wait("@getModel");
-          });
-
-          openActionEditorFor(SAMPLE_QUERY_ACTION.name, { isReadOnly: true });
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should(
-              "be.disabled",
-            );
-
-            cy.button("Save").should("not.exist");
-            cy.button("Update").should("not.exist");
-
-            assertQueryEditorDisabled();
-
-            cy.findByRole("form").within(() => {
-              cy.icon("gear").should("not.exist");
-            });
-
-            cy.findByLabelText("Action settings").click();
-            cy.findByLabelText("Success message").should("be.disabled");
-          });
-        });
-      });
+      cy.findByLabelText("Action settings").click();
+      cy.findByLabelText("Success message").should("be.disabled");
     });
   });
 });
