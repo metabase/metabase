@@ -576,8 +576,7 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          userEvent.click(within(listItem).getByLabelText("pencil icon"));
+          userEvent.click(screen.getByText(action.name));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
@@ -702,16 +701,6 @@ describe("ModelDetailPage", () => {
           expect(
             screen.queryByTestId("new-action-menu"),
           ).not.toBeInTheDocument();
-        });
-
-        it("doesn't allow to edit actions", async () => {
-          const action = createMockQueryAction({ model_id: model.id() });
-          await setupActions({ model, actions: [action] });
-
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          const editButton = within(listItem).queryByLabelText("pencil icon");
-
-          expect(editButton).not.toBeInTheDocument();
         });
       });
     });
