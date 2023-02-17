@@ -9,8 +9,8 @@
 
 (defn warn-about-disallowed-parallel-forms [form]
   (letfn [(f [form]
-            (when (hooks/token-node? form)
-              (let [sexpr (hooks/sexpr form)]
+            (when-let [sexpr (and (hooks/token-node? form)
+                                  (hooks/sexpr form))]
                 (when (symbol? sexpr)
                   (when (or (disallowed-parallel-forms sexpr)
                             #_(= (last (str sexpr)) \!))
