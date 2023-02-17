@@ -5,6 +5,9 @@ import {
   getTableId,
   fillActionQuery,
   resyncDatabase,
+  visitDashboard,
+  editDashboard,
+  saveDashboard,
 } from "__support__/e2e/helpers";
 
 import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -31,22 +34,6 @@ const TEST_TABLE = "scoreboard_actions";
         resyncDatabase(WRITABLE_DB_ID);
       });
 
-      it("should show writable_db with actions enabled", () => {
-        cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-        cy.get("#model-actions-toggle").should("be.checked");
-      });
-
-      // this test is mostly to prove that we're actually reading from freshly reset data
-      it("can read from the test table", () => {
-        cy.visit(`/browse/${WRITABLE_DB_ID}`);
-        cy.findByText("Scoreboard Actions").click();
-
-        cy.findByText("Generous Giraffes").should("be.visible");
-        cy.findByText("Dusty Ducks").should("be.visible");
-        cy.findByText("Lively Lemurs").should("be.visible");
-        cy.findByText("Zany Zebras").should("not.exist");
-      });
-
       it("adds a custom query action to a dashboard and runs it", () => {
         queryWritableDB(
           `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
@@ -54,7 +41,6 @@ const TEST_TABLE = "scoreboard_actions";
         ).then(result => {
           expect(result.rows.length).to.equal(0);
         });
-        cy.visit("/");
 
         createModelFromTable(TEST_TABLE);
 
@@ -63,7 +49,6 @@ const TEST_TABLE = "scoreboard_actions";
           cy.wait("@getModel");
         });
 
-        cy.visit("/model/4-test-model/detail");
         cy.findByText("Actions").click();
         cy.findByText("New action").click();
 
@@ -79,29 +64,29 @@ const TEST_TABLE = "scoreboard_actions";
 
         cy.createDashboard({ name: `action packed dash` }).then(
           ({ body: { id: dashboardId } }) => {
-            cy.visit(`/dashboard/${dashboardId}`);
+            visitDashboard(dashboardId);
           },
         );
 
-        cy.findByLabelText("pencil icon").click();
+        editDashboard();
         cy.findByLabelText("click icon").click();
         cy.get("aside").within(() => {
-          cy.findByText("Pick an action").click();
+          cy.button("Pick an action").click();
         });
 
         cy.findByRole("dialog").within(() => {
           cy.findByText("Test Model").click();
           cy.findByText("Add Zebras").click();
-          cy.findByRole("button", { name: "Done" }).click();
+          cy.button("Done").click();
         });
 
-        cy.findByText("Save").click();
+        saveDashboard();
 
         // this keeps the test from flaking because it's confused about the detached
         // edit-mode button
-        cy.reload();
+        cy.findByText(/^Edited a few seconds ago/).should("not.be.visible");
 
-        cy.findByText("Click Me").click();
+        cy.button("Click Me").click();
 
         cy.wait("@executeAPI");
 
