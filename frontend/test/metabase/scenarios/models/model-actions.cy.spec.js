@@ -33,7 +33,7 @@ const TEST_TEMPLATE_TAG = {
   id: TEST_PARAMETER.id,
   type: "number",
   name: TEST_PARAMETER.slug,
-  "display-name": "Total",
+  "display-name": "Id",
   slug: TEST_PARAMETER.slug,
 };
 
@@ -45,7 +45,7 @@ const SAMPLE_QUERY_ACTION = {
   dataset_query: {
     type: "native",
     native: {
-      query: `DELETE FROM orders WHERE total < {{ ${TEST_TEMPLATE_TAG.name} }}`,
+      query: `UPDATE ORDERS SET TOTAL = TOTAL WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
       "template-tags": {
         [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
       },
@@ -132,6 +132,28 @@ describe("scenarios > models > actions", () => {
     cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
   });
 
+  it("should allow to execute actions from the model page", () => {
+    cy.get("@modelId").then(modelId => {
+      createAction({
+        ...SAMPLE_QUERY_ACTION,
+        model_id: modelId,
+      });
+      cy.visit(`/model/${modelId}/detail/actions`);
+      cy.wait("@getModel");
+    });
+
+    runActionFor(SAMPLE_QUERY_ACTION.name);
+
+    modal().within(() => {
+      cy.findByLabelText(TEST_PARAMETER.name).type("1");
+      cy.button("Run").click();
+    });
+
+    cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+      "be.visible",
+    );
+  });
+
   it("should allow to make actions public and execute them", () => {
     const IMPLICIT_ACTION_NAME = "Update order";
 
@@ -161,7 +183,7 @@ describe("scenarios > models > actions", () => {
 
     cy.get("@queryActionPublicUrl").then(url => {
       cy.visit(url);
-      cy.findByLabelText(TEST_PARAMETER.name).type("-2");
+      cy.findByLabelText(TEST_PARAMETER.name).type("1");
       cy.findByRole("button", { name: "Submit" }).click();
       cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
         "be.visible",
@@ -244,17 +266,23 @@ describe("scenarios > models > actions", () => {
   });
 });
 
-function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
-  openActionMenuFor(actionName);
-  popover()
-    .findByText(isReadOnly ? "View" : "Edit")
-    .click();
+function runActionFor(actionName) {
+  cy.findByRole("listitem", { name: actionName }).within(() => {
+    cy.icon("play").click();
+  });
 }
 
 function openActionMenuFor(actionName) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
     cy.icon("ellipsis").click();
   });
+}
+
+function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
+  openActionMenuFor(actionName);
+  popover()
+    .findByText(isReadOnly ? "View" : "Edit")
+    .click();
 }
 
 function fillQuery(query) {
