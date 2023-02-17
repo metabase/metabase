@@ -61,7 +61,8 @@
                   (is (seq (get @@#'sql-jdbc.conn/database-id->connection-type->connection-pool
                                 (u/id database))))))
               (testing "and is no longer in our connection map after cleanup"
-                (#'sql-jdbc.conn/set-pool! (u/id database) ::sql-jdbc.conn/write nil nil)
+                (doseq [connection-type [::sql-jdbc.conn/r ::sql-jdbc.conn/rw]]
+                  (#'sql-jdbc.conn/invalidate-pool-for-db+connection-type! database connection-type))
                 (is (empty? (get @@#'sql-jdbc.conn/database-id->connection-type->connection-pool
                                  (u/id database)))))
               (testing "the pool has been destroyed"
