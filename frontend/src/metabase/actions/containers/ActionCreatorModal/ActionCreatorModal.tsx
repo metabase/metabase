@@ -17,13 +17,13 @@ interface ModelLoaderProps {
   model: Card;
 }
 
-type ActionCreatorRouteProps = OwnProps & ModelLoaderProps;
+type ActionCreatorModalProps = OwnProps & ModelLoaderProps;
 
 function ActionCreatorModal({
   model,
   params,
   onClose,
-}: ActionCreatorRouteProps) {
+}: ActionCreatorModalProps) {
   const { slug, actionId } = params;
   const modelId = Urls.extractEntityId(slug);
   const databaseId = model.database_id || model.dataset_query.database;
