@@ -230,8 +230,9 @@
           ->map     (converters/incoming schema)
           map->     (converters/outgoing schema)
           converted (->map input)
-          returned  (map-> converted)]
+          returned  ^Object (map-> converted)]
       (is (map?    (-> converted :wrapper)))
       (is (object? (-> converted :wrapper :inner)))
       (is (identical? js-obj (-> converted :wrapper :inner)))
-      (is (identical? js-obj (.. returned -wrapper -inner))))))
+      (is (identical? js-obj (let [^Object wrapper (.-wrapper returned)]
+                               (.-inner wrapper)))))))

@@ -197,7 +197,7 @@
                  original-card-id? (dissoc :original-card-id)))
       original)))
 
-(de/def-getters-and-setters Question
+(de/define-getters-and-setters Question
   cache-ttl             [:card :cache-ttl]
   can-write             [:card :can-write]
   card                  [:card]
