@@ -517,29 +517,6 @@ jobs:
       with:
         junit-name: 'be-tests-postgres-latest-ee'
 
-  be-tests-presto-186-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: presto
-    services:
-      presto:
-        image: metabase/presto-mb-ci:0.186
-        ports:
-          - "8080:8080"
-        env:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    steps:
-    - uses: actions/checkout@v3
-    - name: Test Presto 0.186 driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-presto-186-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
-
   be-tests-presto-jdbc-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'

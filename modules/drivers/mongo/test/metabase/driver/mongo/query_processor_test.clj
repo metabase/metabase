@@ -427,17 +427,17 @@
             (doseq [op               [:datetime-add :datetime-subtract]
                     unit             [:year :quarter :month :day]
                     {:keys [expected query]}
-                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
                        :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :fields      [[:expression "expr"]]}}
                      {:expected (into [] (frequencies
-                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
                       :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :aggregation [[:count]]
                                  :breakout    [[:expression "expr"]]}}]]

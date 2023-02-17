@@ -20,6 +20,9 @@ import {
 } from "metabase/actions/utils";
 
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import { getMetadata } from "metabase/selectors/metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
+
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
@@ -34,6 +37,7 @@ export interface ActionProps extends VisualizationProps {
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
   isEditingDashcard: boolean;
+  metadata: Metadata;
 }
 
 export function ActionComponent({
@@ -116,16 +120,29 @@ const ConnectedActionComponent = connect()(ActionComponent);
 function mapStateToProps(state: State, props: ActionProps) {
   return {
     isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
+    metadata: getMetadata(state),
   };
 }
 
 export function ActionFn(props: ActionProps) {
-  if (!props.dashcard?.action) {
+  const {
+    metadata,
+    dashcard: { action },
+  } = props;
+  const actionsEnabled = !!metadata
+    ?.database(action?.database_id)
+    ?.hasActionsEnabled?.();
+
+  if (!props.dashcard?.action || !actionsEnabled) {
+    const tooltip = !action
+      ? t`No action assigned`
+      : t`Actions are not enabled for this database`;
+
     return (
       <ActionButtonView
         disabled
         icon="bolt"
-        tooltip={t`No action assigned`}
+        tooltip={tooltip}
         settings={props.settings}
         focus={props.isEditingDashcard}
       />
