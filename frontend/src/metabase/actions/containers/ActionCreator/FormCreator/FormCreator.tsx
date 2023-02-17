@@ -6,6 +6,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { ActionForm } from "metabase/actions/components/ActionForm";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
 import { getDefaultFormSettings, sortActionParams } from "../../../utils";
@@ -61,7 +63,7 @@ function FormCreator({
   const docsLink = (
     <ExternalLink
       key="learn-more"
-      href="https://metabase.com"
+      href={MetabaseSettings.docsUrl("actions/custom")}
     >{t`Learn more`}</ExternalLink>
   );
 
