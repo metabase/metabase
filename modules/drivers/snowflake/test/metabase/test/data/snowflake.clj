@@ -73,18 +73,24 @@
    (-> (format "%s_%s_" local-date (public-settings/site-uuid))
        (str/replace  #"-" "_"))))
 
-(def ^:dynamic *database-prefix*
-  "The unique prefix to use for test datasets for this instance. This is dynamic so we can rebind it to something fixed
-  when we're testing the SQL we generate e.g. [[metabase.driver.snowflake-test/report-timezone-test]]."
-  (unique-prefix))
+(def ^:dynamic *database-prefix-fn*
+  "Function that returns a unique prefix to use for test datasets for this instance. This is dynamic so we can rebind it
+  to something fixed when we're testing the SQL we generate
+  e.g. [[metabase.driver.snowflake-test/report-timezone-test]].
+
+  This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
+  because it relies on [[public-settings/site-uuid]]."
+  #'unique-prefix)
 
 (defn- qualified-db-name
-  "Prepend `database-name` with the [[*database-prefix*]] so we don't stomp on any other jobs running at the same time."
+  "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
+  time."
   [database-name]
-  ;; try not to qualify the database name twice!
-  (if (str/starts-with? database-name *database-prefix*)
-    database-name
-    (str *database-prefix* database-name)))
+  (let [prefix (*database-prefix-fn*)]
+    ;; try not to qualify the database name twice!
+    (if (str/starts-with? database-name prefix)
+      database-name
+      (str prefix database-name))))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_ context {:keys [database-name]}]
