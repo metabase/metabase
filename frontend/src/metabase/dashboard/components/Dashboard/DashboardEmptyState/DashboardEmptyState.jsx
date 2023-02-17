@@ -10,11 +10,12 @@ import { Container } from "./DashboardEmptyState.styled";
 const propTypes = {
   isNightMode: PropTypes.bool.isRequired,
   addQuestion: PropTypes.func.isRequired,
+  closeNavbar: PropTypes.func.isRequired,
 };
 
 const questionCircle = <span className="QuestionCircle">?</span>;
 
-const DashboardEmptyState = ({ isNightMode, addQuestion }) => (
+const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
   <Container isNightMode={isNightMode}>
     <EmptyState
       illustrationElement={questionCircle}
@@ -25,7 +26,11 @@ const DashboardEmptyState = ({ isNightMode, addQuestion }) => (
             {t`Add a saved question`}
           </Button>
           {t`, or `}
-          <Link to="/question/new" className="text-bold text-brand">
+          <Link
+            to="/question/new"
+            className="text-bold text-brand"
+            onClick={closeNavbar}
+          >
             {t`ask a new one`}
           </Link>
         </>

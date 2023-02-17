@@ -91,6 +91,7 @@ class Dashboard extends Component {
     }).isRequired,
     toggleSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+    closeNavbar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
   };
 
@@ -205,11 +206,7 @@ class Dashboard extends Component {
 
   onAddQuestion = () => {
     this.setEditing(true);
-    if (this.props.sidebar.name !== SIDEBAR_NAME.addQuestion) {
-      this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
-    } else {
-      this.props.closeSidebar();
-    }
+    this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
   render() {
@@ -327,6 +324,7 @@ class Dashboard extends Component {
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}
                       addQuestion={this.onAddQuestion}
+                      closeNavbar={this.props.closeNavbar}
                     />
                   )}
                 </CardsContainer>
