@@ -247,7 +247,7 @@
 
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
-  "Hydrates action from DashboardCard."
+  "Hydrates action from DashboardCards."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
                         (m/index-by :id (select-actions nil :id [:in action-ids])))]
