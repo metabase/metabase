@@ -34,8 +34,8 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  handleEnableImplicitActions: () => void;
-  handleArchiveAction: (action: WritebackAction) => void;
+  onEnableImplicitActions: () => void;
+  onArchiveAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -46,9 +46,9 @@ type Props = OwnProps & DispatchProps & ActionsLoaderProps;
 
 function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
-    handleEnableImplicitActions: () =>
+    onEnableImplicitActions: () =>
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
-    handleArchiveAction: (action: WritebackAction) =>
+    onArchiveAction: (action: WritebackAction) =>
       dispatch(Actions.objectActions.setArchived(action, true)),
   };
 }
@@ -56,8 +56,8 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
 function ModelActionDetails({
   model,
   actions,
-  handleEnableImplicitActions,
-  handleArchiveAction,
+  onEnableImplicitActions,
+  onArchiveAction,
 }: Props) {
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
@@ -74,17 +74,15 @@ function ModelActionDetails({
       {
         title: t`Create basic actions`,
         icon: "bolt",
-        action: handleEnableImplicitActions,
+        action: onEnableImplicitActions,
       },
     ];
-  }, [handleEnableImplicitActions]);
+  }, [onEnableImplicitActions]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
       const editorUrl = Urls.action(model.card() as Card, action.id);
-      const onArchive = canWrite
-        ? () => handleArchiveAction(action)
-        : undefined;
+      const onArchive = canWrite ? () => onArchiveAction(action) : undefined;
       return (
         <li key={action.id} aria-label={action.name}>
           <ModelActionListItem
@@ -96,7 +94,7 @@ function ModelActionDetails({
         </li>
       );
     },
-    [model, canWrite, handleArchiveAction],
+    [model, canWrite, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
@@ -127,7 +125,7 @@ function ModelActionDetails({
       ) : (
         <NoActionsState
           hasCreateButton={canWrite}
-          onCreateClick={handleEnableImplicitActions}
+          onCreateClick={onEnableImplicitActions}
         />
       )}
     </Root>
