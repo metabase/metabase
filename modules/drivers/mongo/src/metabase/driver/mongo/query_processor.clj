@@ -845,8 +845,7 @@
           (if-let [native (:native source-query)]
             {:projections (:projections source-query)
              :query (:query native)}
-            (binding [*field-mappings* (apply dissoc *field-mappings* result-fields)
-                      *query* (assoc (select-keys *query* [:database :type])
+            (binding [*query* (assoc (select-keys *query* [:database :type])
                                      :query source-query)]
               (mbql->native-rec source-query))))
         field-mappings (when source-query
