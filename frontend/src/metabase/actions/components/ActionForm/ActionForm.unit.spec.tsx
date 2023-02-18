@@ -614,7 +614,7 @@ describe("Actions > ActionForm", () => {
 
       // click the settings cog then the number input type
       userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("number"));
+      userEvent.click(await screen.findByText("Number"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -644,7 +644,7 @@ describe("Actions > ActionForm", () => {
 
       // click the settings cog then the number input type
       userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("long text"));
+      userEvent.click(await screen.findByText("Long text"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -673,7 +673,7 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("date"));
+      userEvent.click(await screen.findByText("Date"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -701,7 +701,7 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("category"));
+      userEvent.click(await screen.findByText("Category"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({

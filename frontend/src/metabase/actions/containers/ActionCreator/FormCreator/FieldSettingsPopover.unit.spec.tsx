@@ -35,7 +35,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       await screen.findByTestId("field-settings-popover"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("date"));
+    await userEvent.click(screen.getByText("Date"));
 
     expect(changeSpy).toHaveBeenCalledTimes(1);
 
@@ -60,7 +60,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       await screen.findByTestId("field-settings-popover"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("dropdown"));
+    await userEvent.click(screen.getByText("Dropdown"));
 
     expect(changeSpy).toHaveBeenCalledTimes(1);
 
