@@ -4,6 +4,7 @@
    [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.util :refer [with-mongo-connection]]
@@ -71,7 +72,7 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
+            (mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
                                                            (cond->> (zipmap field-names row)
                                                              *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
