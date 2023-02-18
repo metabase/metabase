@@ -55,7 +55,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   return (
     <Form
       className="mx2"
-      style={{ maxWidth: 520 }}
       initialValues={{ ...settingValues, ...attributeValues }}
       disablePristineSubmit
       overwriteOnInitialValuesChange
@@ -152,7 +151,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         </FormSection>
       </SAMLFormSection>
 
-      <SAMLFormSection>
+      <SAMLFormSection wide>
         <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
         <p className="mb4 mt1 text-medium">
           {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
@@ -160,7 +159,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         </p>
         <FormField
           {...fields["saml-group-sync"]}
-          title={t`Synchronize group memberships`}
           type={({ field: { value, onChange } }) => (
             <GroupMappingsWidget
               // map to legacy setting props

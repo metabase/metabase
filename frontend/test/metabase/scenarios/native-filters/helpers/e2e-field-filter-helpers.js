@@ -175,12 +175,15 @@ export function pickDefaultValue(searchTerm, result) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
 
-  // We could search for only one result inside popover()
-  // instead of `all` then `last`,
-  // but it flakes out as sometimes the popover
-  // is detached from the DOM.
+  // Popover is re-rendering every 100ms!
+  // That prevents us from targeting popover() element first,
+  // and then searching for strings inside of it.
   //
-  cy.findAllByText(result).last().click();
+  // Until FE finds a better solution, our best bet for E2E tests
+  // is to make sure the string is "visible" before acting on it.
+  // This seems to help with the flakiness.
+  //
+  cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
 
   cy.button("Add filter").click();
 }
