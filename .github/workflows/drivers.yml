@@ -128,7 +128,7 @@ jobs:
     - name: Test Google Related Drivers Classpath
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-google-related--classpath-test'
+        junit-name: 'be-google-related-drivers-classpath-test'
         test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
 
   be-tests-mariadb-10-2-ee:
