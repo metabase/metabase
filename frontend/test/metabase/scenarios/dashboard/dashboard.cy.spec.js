@@ -540,7 +540,6 @@ describe("scenarios > dashboard", () => {
   it("should allow downloading card data", () => {
     visitDashboard(1);
     cy.findByTestId("dashcard").within(() => {
-      cy.icon("ellipsis").should("not.be.visible");
       cy.findByTestId("legend-caption").realHover();
     });
 

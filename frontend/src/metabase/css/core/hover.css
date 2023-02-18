@@ -33,6 +33,12 @@
   transition: opacity 0.2s ease-in-out;
 }
 
+@media (prefers-reduced-motion) {
+  .hover-child--smooth {
+    transition: none;
+  }
+}
+
 .hover-parent.hover--display .hover-child--smooth,
 .hover-parent.hover--visibility .hover-child--smooth {
   opacity: 0;
