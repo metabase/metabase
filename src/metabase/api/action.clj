@@ -3,6 +3,7 @@
   (:require
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -162,5 +163,16 @@
   (actions/check-actions-enabled! id)
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})
+
+(api/defendpoint POST "/:id/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [id :as {{:keys [parameters], :as _body} :body}]
+  {id       pos-int?
+   parameters [:maybe [:map-of :keyword any?]]}
+  (-> (action/select-action :id id :archived false)
+      (api/check-404)
+      (actions.execution/execute-action! (update-keys parameters name))))
 
 (api/define-routes)

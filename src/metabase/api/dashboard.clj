@@ -480,14 +480,15 @@
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
-  "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings row col size_x size_y], :as dashboard-card} :body}]
+  "Add a `Card` or `Action` to a Dashboard."
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings (s/maybe [dashboard-card/ParamMapping])
    row                su/IntGreaterThanOrEqualToZero
    col                su/IntGreaterThanOrEqualToZero
    size_x             su/IntGreaterThanZero
-   size_y             su/IntGreaterThanZero}
+   size_y             su/IntGreaterThanZero
+   action_id          (s/maybe su/IntGreaterThanZero)}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))

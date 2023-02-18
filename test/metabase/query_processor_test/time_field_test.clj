@@ -59,10 +59,6 @@
                [[1 "Plato Yeshua" "08:30:00"]
                 [4 "Simcha Yan" "08:30:00"]]
 
-               ;; TIMEZONE FIXME — Wack answer
-               (= :presto driver/*driver*)
-               [[3 "Kaneonuskatew Eiran" "08:15:00-08:00"]]
-
                ;; Databases like PostgreSQL ignore timezone information when
                ;; using a time field, the result below is what happens when the
                ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific

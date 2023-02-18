@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { t } from "ttag";
 
+import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 
 import { isImplicitAction } from "metabase/actions/utils";
-import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -31,9 +32,15 @@ export default function ActionPicker({
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
+  const sortedModels =
+    useMemo(
+      () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+      [models],
+    ) ?? [];
+
   return (
     <div className="scroll-y">
-      {models.map(model => (
+      {sortedModels.map(model => (
         <ConnectedModelActionPicker
           key={model.id}
           model={model}
@@ -41,7 +48,7 @@ export default function ActionPicker({
           currentAction={currentAction}
         />
       ))}
-      {!models.length && (
+      {!sortedModels.length && (
         <EmptyState
           message={t`No models found`}
           action={t`Create new model`}
@@ -122,12 +129,14 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <ActionCreatorModal
-          modelId={model.id}
-          databaseId={model.database_id}
-          actionId={editingActionId}
-          onClose={closeModal}
-        />
+        <Modal wide onClose={closeModal}>
+          <ActionCreator
+            modelId={model.id}
+            databaseId={model.database_id}
+            actionId={editingActionId}
+            onClose={closeModal}
+          />
+        </Modal>
       )}
     </>
   );

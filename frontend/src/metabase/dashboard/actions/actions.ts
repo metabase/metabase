@@ -1,15 +1,10 @@
-import { t } from "ttag";
-
-import {
-  getResponseErrorMessage,
-  GenericErrorResponse,
-} from "metabase/core/utils/errors";
-
 import { addUndo } from "metabase/redux/undo";
-
 import { ActionsApi, PublicApi } from "metabase/services";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getSuccessMessage } from "metabase/actions/utils";
+import {
+  getActionErrorMessage,
+  getActionExecutionMessage,
+} from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -17,7 +12,6 @@ import type {
   ActionParametersMapping,
   CardId,
   Dashboard,
-  ImplicitQueryAction,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
@@ -26,7 +20,7 @@ import type { Dispatch } from "metabase-types/store";
 import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
-import { setSidebar, closeSidebar } from "./ui";
+import { closeSidebar, setSidebar } from "./ui";
 
 interface DashboardAttributes {
   card_id?: CardId | null;
@@ -57,37 +51,6 @@ export type ExecuteRowActionPayload = {
   shouldToast?: boolean;
 };
 
-function hasDataFromExplicitAction(result: any) {
-  const isInsert = result["created-row"];
-  const isUpdate =
-    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
-  const isDelete = result["rows-deleted"]?.[0] > 0;
-  return !isInsert && !isUpdate && !isDelete;
-}
-
-function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
-  if (action.kind === "row/create") {
-    return t`Successfully saved`;
-  }
-  if (action.kind === "row/update") {
-    return t`Successfully updated`;
-  }
-  if (action.kind === "row/delete") {
-    return t`Successfully deleted`;
-  }
-  return t`Successfully ran the action`;
-}
-
-function getActionExecutionMessage(action: WritebackAction, result: any) {
-  if (action.type === "implicit") {
-    return getImplicitActionExecutionMessage(action);
-  }
-  if (hasDataFromExplicitAction(result)) {
-    return t`Success! The action returned: ${JSON.stringify(result)}`;
-  }
-  return getSuccessMessage(action);
-}
-
 export const executeRowAction = async ({
   dashboard,
   dashcard,
@@ -98,7 +61,7 @@ export const executeRowAction = async ({
   const executeAction =
     getDashboardType(dashboard.id) === "public"
       ? PublicApi.executeDashcardAction
-      : ActionsApi.execute;
+      : ActionsApi.executeDashcardAction;
 
   try {
     const result = await executeAction({
@@ -124,11 +87,8 @@ export const executeRowAction = async ({
     }
 
     return { success: true, message };
-  } catch (err) {
-    const response = err as GenericErrorResponse;
-    const message =
-      getResponseErrorMessage(response) ??
-      t`Something went wrong while executing the action`;
+  } catch (error) {
+    const message = getActionErrorMessage(error);
 
     if (shouldToast) {
       dispatch(
