@@ -193,7 +193,12 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
-(defn- from-db-object [input]
+(defn- from-db-object
+  "This is mostly a copy of the monger library's own function of the same name with the
+  only difference that it uses an ordered map to represent the document. This ensures that
+  the order of the top level fields of the table is preserved. For anything that's not a
+  DBObject, it falls back to the original function."
+  [input]
   (if (instance? DBObject input)
     (let [^DBObject dbobj input]
       (reduce (fn [m ^String k]

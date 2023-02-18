@@ -92,11 +92,17 @@
 (def ^:dynamic ^:private *query* nil)
 
 (def ^:dynamic ^:private *field-mappings*
-  "The mapping from the expressions to the projected names created
+  "The mapping from the fields to the projected names created
   by the nested query."
   {})
 
-(defn- find-mapped-field-name [[_ field-id params :as field]]
+(defn- find-mapped-field-name
+  "Finds the name of a mapped field, if any.
+  First it does a quick exact match and if the field is not found, it searches for a field with the same ID/name and
+  the same join alias.
+  Note that during the compilation of joins, the field :join-alias is renamed to ::join-local to prevent prefixing the
+  fields of the current join to be prefixed with the join alias."
+  [[_ field-id params :as field]]
   (or (get *field-mappings* field)
       (some (fn [[e n]]
               (when (and (vector? e)
@@ -106,7 +112,12 @@
                 n))
             *field-mappings*)))
 
-(defn- get-join-alias [join-alias]
+(defn- get-join-alias
+  "Calculates the name of the join field used for `join-alias`, if any.
+  It is assumed that join aliases are unique in the query (this is ensured by the escape-join-aliases middleware),
+  so the alias is simply prefixed with a string to make it less likely that join filed we introduce in the $unwind
+  stage overwrites a field of the document being joined to."
+  [join-alias]
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
@@ -821,55 +832,68 @@
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
-(defn- find-source-table-id [join-or-query]
-  (or (some-> join-or-query :source-table)
+(defn- find-source-collection
+  "Determine the source collection of a :join clauseby recursively searching for a :source-table or a :collection
+  clause in :source-query clauses."
+  [join-or-query]
+  (or (-> join-or-query :collection)
+      (some-> join-or-query :source-table qp.store/table :name)
       (some-> join-or-query :source-query recur)))
 
-(defn- find-source-collection [join]
-  (or (-> join :source-query :collection)
-      (-> join find-source-table-id qp.store/table :name)))
-
-(defn- localize-join-alias [expr alias]
+(defn- localize-join-alias
+  "Rename :join-alias properties fields to ::join-local.
+  See [[find-mapped-field-name]] for an explanation why this is done."
+  [expr alias]
   (mbql.u/replace expr
     [:field _ {:join-alias alias}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
+(defn- get-field-mappings [source-query projections]
+  (when source-query
+    (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
+            projections)))
+
 (declare ^:private mbql->native-rec)
+
+(defn- compile-join-source
+  "Compile `source-query`, the source of a join clause, if any. Returns a map with the projections under the
+  key :projections and the pipeline under the key :query.
+  Handles both native and MBQL source queries."
+  [source-query]
+  (when source-query
+    (if-let [native (:native source-query)]
+      {:projections (:projections source-query)
+       :query (:query native)}
+      (binding [*query* (assoc (select-keys *query* [:database :type])
+                               :query source-query)]
+        (mbql->native-rec source-query)))))
 
 (defn- handle-join [pipeline-ctx
                     {:keys [alias condition fields source-query strategy] :as join}]
-  (let [result-fields (mapcat #(% source-query) [:fields :breakout :aggregation])
-        {:keys [projections] pipeline :query
-         :or {projections [] pipeline []}}
-        (when source-query
-          (if-let [native (:native source-query)]
-            {:projections (:projections source-query)
-             :query (:query native)}
-            (binding [*query* (assoc (select-keys *query* [:database :type])
-                                     :query source-query)]
-              (mbql->native-rec source-query))))
-        field-mappings (when source-query
-                         (zipmap result-fields
-                                 projections))
-        own-fields (->> (mbql.u/match condition
-                          [:field _ (_ :guard #(not= (:join-alias %) alias))])
-                        (remove *field-mappings*))
+  (let [{:keys [projections], pipeline :query, :or {projections [], pipeline []}} (compile-join-source source-query)
+        ;; Get the mappings introduced by the source query.
+        field-mappings (get-field-mappings source-query projections)
+        ;; Find the fields the join condition refers to that are not coming from the joined query.
+        own-fields (mbql.u/match condition
+                     [:field _ (_ :guard #(not= (:join-alias %) alias))])
+        ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [n (str/replace (->lvalue f) "~" "")]
-                               {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
+                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
                      own-fields)
-        let-map (into {} (map (juxt :alias :rvalue)) mapping)
-        context-map (into {} (map (juxt :field #(str \$ (:alias %)))) mapping)
         lookup-as (get-join-alias alias)]
-    (binding [*field-mappings* (merge *field-mappings* field-mappings context-map)]
+    ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
+    ;; In the join pipeline the let bindings have to referenced with the prefix $$.
+    (binding [*field-mappings* (merge *field-mappings*
+                                      field-mappings
+                                      (into {} (map (juxt :field #(str \$ (:alias %)))) mapping))]
       (let [pipeline (cond-> pipeline
                        condition (conj {$match (compile-filter (localize-join-alias condition alias))}))
-            stages (cond-> [{$lookup {:from (find-source-collection join)
-                                      :let let-map
-                                      :pipeline pipeline
-                                      :as lookup-as}}
-                            {$unwind {:path (str \$ lookup-as)
-                                      :preserveNullAndEmptyArrays (= strategy :left-join)}}]
-                     fields (conj))]
+            stages [{$lookup {:from (find-source-collection join)
+                              :let (into {} (map (juxt :alias :rvalue)) mapping)
+                              :pipeline pipeline
+                              :as lookup-as}}
+                    {$unwind {:path (str \$ lookup-as)
+                              :preserveNullAndEmptyArrays (= strategy :left-join)}}]]
         (-> pipeline-ctx
             (update :projections into projections)
             (update :query into stages))))))
@@ -1304,8 +1328,7 @@
                            :else
                            nq))
                        (mbql->native-rec source-query))
-          field-mappings (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
-                                 (:projections compiled))]
+          field-mappings (get-field-mappings source-query (:projections compiled))]
       (binding [*field-mappings* field-mappings]
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
