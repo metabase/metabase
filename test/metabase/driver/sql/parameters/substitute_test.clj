@@ -618,9 +618,6 @@
 (deftest e2e-parse-native-dates-test
   (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
     (is (= [(cond
-              (= driver/*driver* :presto)
-              "2018-04-18"
-
               ;; TIMEZONE FIXME — Busted
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
