@@ -193,7 +193,7 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
-(defn- from-db-object [^DBObject input]
+(defn- from-db-object [input]
   (if (instance? DBObject input)
     (let [^DBObject dbobj input]
       (reduce (fn [m ^String k]
