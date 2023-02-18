@@ -261,7 +261,9 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :foreign-keys)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -853,7 +855,9 @@
 
 (deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations :foreign-keys)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+                           ;; mongodb doesn't support foreign keys required by this test
+                           :mongo)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders
