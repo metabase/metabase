@@ -893,7 +893,8 @@
                               :pipeline pipeline
                               :as lookup-as}}
                     {$unwind {:path (str \$ lookup-as)
-                              :preserveNullAndEmptyArrays (= strategy :left-join)}}]]
+                              ;; left and inner joins are supported, the default is left join
+                              :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
         (-> pipeline-ctx
             (update :projections into projections)
             (update :query into stages))))))
