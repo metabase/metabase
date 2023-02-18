@@ -645,9 +645,9 @@
 
 (deftest fuzzy-field-info-test
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
-    (mt/dataset sample-dataset
-      (mt/with-everything-store
-        (mt/with-driver :h2
+    (mt/with-driver :h2
+      (mt/dataset sample-dataset
+        (mt/with-everything-store
           (is (= {:field-name              "CREATED_AT"
                   :join-is-this-level?     "Q2"
                   :alias-from-join         "Products__CREATED_AT"

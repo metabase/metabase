@@ -831,8 +831,8 @@
 
 (defn- localize-join-alias [expr alias]
   (mbql.u/replace expr
-    [:field id-or-name (m :guard (every-pred map? #(= (:join-alias %) alias)))]
-    [:field id-or-name (set/rename-keys m {:join-alias ::join-local})]))
+    [:field _ {:join-alias alias}]
+    (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (declare ^:private mbql->native-rec)
 
