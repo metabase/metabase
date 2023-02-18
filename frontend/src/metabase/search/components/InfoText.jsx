@@ -46,6 +46,8 @@ export function InfoText({ result }) {
       return jt`Segment of ${(<TableLink result={result} />)}`;
     case "metric":
       return jt`Metric for ${(<TableLink result={result} />)}`;
+    case "action":
+      return jt`for ${result.model_name}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result,

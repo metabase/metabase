@@ -8,15 +8,20 @@ import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
+  VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
@@ -120,13 +125,24 @@ function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
-      if (isVirtualDashCard(dashcard)) {
-        const isTextCard =
-          dashcard?.visualization_settings?.virtual_card?.display === "text";
+      const { disableClickBehavior } =
+        getVisualizationRaw(series).visualization;
+      if (isVirtualDashCard(dashcard) || disableClickBehavior) {
+        const virtualDashcardType = getVirtualCardType(
+          dashcard,
+        ) as VirtualCardDisplay;
+        const placeholderText =
+          {
+            link: t`Link`,
+            action: t`Action Button`,
+            text: t`Text Card`,
+          }[virtualDashcardType] ??
+          t`This card does not support click mappings`;
+
         return (
           <VirtualDashCardOverlayRoot>
             <VirtualDashCardOverlayText>
-              {isTextCard ? t`Text card` : t`Action button`}
+              {placeholderText}
             </VirtualDashCardOverlayText>
           </VirtualDashCardOverlayRoot>
         );
@@ -156,6 +172,7 @@ function DashCardVisualization({
     isClickBehaviorSidebarOpen,
     isEditingDashCardClickBehavior,
     showClickBehaviorSidebar,
+    series,
   ]);
 
   const renderActionButtons = useCallback(() => {

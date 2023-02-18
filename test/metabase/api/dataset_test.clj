@@ -335,7 +335,7 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:mongo :presto :h2 :sqlite} driver/*driver*)
+        (when (#{:mongo :h2 :sqlite} driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
             ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].

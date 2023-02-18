@@ -1,17 +1,16 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 
 import Actions from "metabase/entities/actions";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { parseTimestamp } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
@@ -27,6 +26,7 @@ import {
   ActionsHeader,
   ActionMenu,
   ActionList,
+  ActionAlert,
 } from "./ModelActionDetails.styled";
 
 interface OwnProps {
@@ -34,7 +34,8 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  handleEnableImplicitActions: () => void;
+  onEnableImplicitActions: () => void;
+  onArchiveAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -45,26 +46,22 @@ type Props = OwnProps & DispatchProps & ActionsLoaderProps;
 
 function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
-    handleEnableImplicitActions: () =>
+    onEnableImplicitActions: () =>
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
+    onArchiveAction: (action: WritebackAction) =>
+      dispatch(Actions.objectActions.setArchived(action, true)),
   };
 }
 
 function ModelActionDetails({
   model,
   actions,
-  handleEnableImplicitActions,
+  onEnableImplicitActions,
+  onArchiveAction,
 }: Props) {
-  const [editingActionId, setEditingActionId] = useState<
-    WritebackActionId | undefined
-  >(undefined);
-
-  const [
-    isActionCreatorOpen,
-    { turnOn: showActionCreator, turnOff: hideActionCreator },
-  ] = useToggle();
-
-  const canWrite = model.canWrite();
+  const database = model.database();
+  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const canWrite = model.canWriteActions();
   const hasImplicitActions = actions.some(action => action.type === "implicit");
 
   const actionsSorted = useMemo(
@@ -77,41 +74,36 @@ function ModelActionDetails({
       {
         title: t`Create basic actions`,
         icon: "bolt",
-        action: handleEnableImplicitActions,
+        action: onEnableImplicitActions,
       },
     ];
-  }, [handleEnableImplicitActions]);
-
-  const handleEditAction = useCallback(
-    (action: WritebackAction) => {
-      setEditingActionId(action.id);
-      showActionCreator();
-    },
-    [showActionCreator],
-  );
-
-  const handleCloseActionCreator = useCallback(() => {
-    hideActionCreator();
-    setEditingActionId(undefined);
-  }, [hideActionCreator]);
+  }, [onEnableImplicitActions]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const onEdit = canWrite ? () => handleEditAction(action) : undefined;
+      const actionUrl = Urls.action(model.card() as Card, action.id);
+
       return (
         <li key={action.id} aria-label={action.name}>
-          <ModelActionListItem action={action} onEdit={onEdit} />
+          <ModelActionListItem
+            action={action}
+            actionUrl={actionUrl}
+            canWrite={canWrite}
+            onArchive={onArchiveAction}
+          />
         </li>
       );
     },
-    [canWrite, handleEditAction],
+    [model, canWrite, onArchiveAction],
   );
+
+  const newActionUrl = Urls.newAction(model.card() as Card);
 
   return (
     <Root>
       {canWrite && (
         <ActionsHeader>
-          <Button onClick={showActionCreator}>{t`New action`}</Button>
+          <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {!hasImplicitActions && (
             <ActionMenu
               triggerIcon="ellipsis"
@@ -121,6 +113,11 @@ function ModelActionDetails({
           )}
         </ActionsHeader>
       )}
+      {database && !hasActionsEnabled && (
+        <ActionAlert icon="warning" variant="error">
+          {t`Running Actions is not enabled for database ${database.displayName()}`}
+        </ActionAlert>
+      )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>
           {actionsSorted.map(renderActionListItem)}
@@ -128,15 +125,7 @@ function ModelActionDetails({
       ) : (
         <NoActionsState
           hasCreateButton={canWrite}
-          onCreateClick={handleEnableImplicitActions}
-        />
-      )}
-      {isActionCreatorOpen && (
-        <ActionCreator
-          modelId={model.id()}
-          databaseId={model.databaseId()}
-          actionId={editingActionId}
-          onClose={handleCloseActionCreator}
+          onCreateClick={onEnableImplicitActions}
         />
       )}
     </Root>

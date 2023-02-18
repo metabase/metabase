@@ -235,7 +235,7 @@
 
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
-  implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
+  implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
   way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
@@ -545,12 +545,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

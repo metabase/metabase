@@ -77,10 +77,6 @@ jobs:
         /work/modules/drivers/sparksql/test
         /work/modules/drivers/vertica/src
         /work/modules/drivers/vertica/test
-        /work/modules/drivers/presto-common/src
-        /work/modules/drivers/presto-common/test
-        /work/modules/drivers/presto/src
-        /work/modules/drivers/presto/test
         /work/modules/drivers/mongo/src
         /work/modules/drivers/mongo/test
         /work/modules/drivers/oracle/src
@@ -221,3 +217,19 @@ jobs:
           m2-cache-key: be-check
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
+
+  be-check-stub:
+    needs: files-changed
+    if: |
+      always() &&
+      github.event.pull_request.draft == false &&
+      needs.files-changed.outputs.backend_all == 'false'
+    runs-on: ubuntu-20.04
+    name: be-check-java-${{ matrix.java-version }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        java-version: [11, 17, 19]
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"

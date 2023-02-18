@@ -3,7 +3,7 @@ default: &default
   - "bin/**"
 
 ci: &ci
-  - ".github/**"
+  - ".github/**/!(*.md)"
 
 shared_sources: &shared_sources
   - "shared/src"
@@ -13,7 +13,6 @@ shared_specs: &shared_specs
 
 frontend_sources: &frontend_sources
   - *shared_sources
-  - "frontend/**"
   - "enterprise/frontend/**"
   - "frontend/!(test)/**"
   - "yarn.lock"

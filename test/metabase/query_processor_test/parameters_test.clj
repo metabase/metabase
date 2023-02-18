@@ -118,10 +118,8 @@
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
         (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; TIMEZONE FIXME -- Presto and Snowflake do support TIME types, but this fails for Presto because it
-                   ;; doesn't support TIME WITH TIME ZONE... we should just use TIME instead so we can run this test.
                    ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (#{:presto :snowflake} driver/*driver*)))
+                   (not (= :snowflake driver/*driver*)))
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime
@@ -199,6 +197,43 @@
              (qp/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
+                            :template-tags {"price"
+                                            {:name         "price"
+                                             :display-name "Price"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :widget-type  :category}}}
+               :database   (mt/id)
+               :parameters [{:type   :category
+                             :target [:dimension [:template-tag "price"]]
+                             :value  [1 2]}]}))))))
+
+(deftest params-in-comments-test
+  (testing "Params in SQL comments are ignored"
+    (testing "Single-line comments"
+      (mt/dataset airports
+                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                          :params nil}
+                         (qp/compile-and-splice-parameters
+                          {:type       :native
+                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                                        :template-tags {"country"
+                                                        {:name         "country"
+                                                         :display-name "Country"
+                                                         :type         :dimension
+                                                         :dimension    [:field (mt/id :country :name) nil]
+                                                         :widget-type  :category}}}
+                           :database   (mt/id)
+                           :parameters [{:type   :location/country
+                                         :target [:dimension [:template-tag "country"]]
+                                         :value  ["US" "MX"]}]})))))
+
+    (testing "Multi-line comments"
+      (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type       :native
+               :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
                                             {:name         "price"
                                              :display-name "Price"
