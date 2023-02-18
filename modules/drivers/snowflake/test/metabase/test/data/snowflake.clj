@@ -80,7 +80,7 @@
 
   This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
   because it relies on [[public-settings/site-uuid]]."
-  #'unique-prefix)
+  (memoize unique-prefix))
 
 (defn- qualified-db-name
   "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
