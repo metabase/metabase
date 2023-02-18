@@ -549,13 +549,13 @@
 (deftest time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure using a time interval filter works"
-      (is (= :completed
-             (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
-               (-> (query-with-source-card card
-                     (mt/$ids checkins
-                       {:filter [:time-interval *date -30 :day]}))
-                   qp/process-query
-                   completed-status)))))))
+      (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
+        (let [query (query-with-source-card card
+                      (mt/$ids checkins
+                        {:filter [:time-interval *date -30 :day]}))]
+          (mt/with-native-query-testing-context query
+            (is (=? {:status :completed}
+                    (qp/process-query query)))))))))
 
 (deftest datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

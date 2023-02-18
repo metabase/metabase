@@ -8,6 +8,7 @@ import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
@@ -124,15 +125,19 @@ function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
-      if (isVirtualDashCard(dashcard)) {
+      const { disableClickBehavior } =
+        getVisualizationRaw(series).visualization;
+      if (isVirtualDashCard(dashcard) || disableClickBehavior) {
         const virtualDashcardType = getVirtualCardType(
           dashcard,
         ) as VirtualCardDisplay;
-        const placeholderText = {
-          link: t`Link`,
-          action: t`Action Button`,
-          text: t`Text Card`,
-        }[virtualDashcardType];
+        const placeholderText =
+          {
+            link: t`Link`,
+            action: t`Action Button`,
+            text: t`Text Card`,
+          }[virtualDashcardType] ??
+          t`This card does not support click mappings`;
 
         return (
           <VirtualDashCardOverlayRoot>
@@ -167,6 +172,7 @@ function DashCardVisualization({
     isClickBehaviorSidebarOpen,
     isEditingDashCardClickBehavior,
     showClickBehaviorSidebar,
+    series,
   ]);
 
   const renderActionButtons = useCallback(() => {

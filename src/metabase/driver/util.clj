@@ -455,7 +455,6 @@
     "mysql"
     "oracle"
     "postgres"
-    "presto"
     "presto-jdbc"
     "redshift"
     "snowflake"
