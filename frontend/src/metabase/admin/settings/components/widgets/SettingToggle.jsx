@@ -4,7 +4,14 @@ import { t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
 
-const SettingToggle = ({ id, setting, onChange, disabled, tooltip }) => {
+const SettingToggle = ({
+  disabled,
+  hideLabel,
+  id,
+  setting,
+  tooltip,
+  onChange,
+}) => {
   const value = setting.value == null ? setting.default : setting.value;
   const on = value === true || value === "true";
   return (
@@ -17,7 +24,9 @@ const SettingToggle = ({ id, setting, onChange, disabled, tooltip }) => {
           disabled={disabled}
         />
       </Tooltip>
-      <span className="text-bold mx1">{on ? t`Enabled` : t`Disabled`}</span>
+      {!hideLabel && (
+        <span className="text-bold mx1">{on ? t`Enabled` : t`Disabled`}</span>
+      )}
     </div>
   );
 };
