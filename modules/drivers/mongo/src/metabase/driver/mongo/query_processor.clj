@@ -878,8 +878,12 @@
         own-fields (mbql.u/match condition
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
-        mapping (map (fn [f] (let [n (str/replace (->lvalue f) "~" "")]
-                              {:field f, :rvalue (->rvalue f), :alias (-> (format "let_%s_" n) gensym name)}))
+        mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
+                                            ;; ~ in let aliases provokes a parse error in Mongo
+                                            (str/replace "~" "_")
+                                            gensym
+                                            name)]
+                              {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
