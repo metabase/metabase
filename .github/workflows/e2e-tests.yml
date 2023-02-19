@@ -237,7 +237,7 @@ jobs:
   visual-regression-tests:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    needs: build-ee
+    needs: build
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
