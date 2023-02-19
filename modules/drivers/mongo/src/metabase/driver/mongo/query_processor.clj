@@ -833,7 +833,7 @@
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (defn- find-source-collection
-  "Determine the source collection of a :join clauseby recursively searching for a :source-table or a :collection
+  "Determine the source collection of a :join clause by recursively searching for a :source-table or a :collection
   clause in :source-query clauses."
   [join-or-query]
   (or (-> join-or-query :collection)
