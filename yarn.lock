@@ -2907,10 +2907,10 @@
     "@babel/helper-validator-identifier" "^7.19.1"
     to-fast-properties "^2.0.0"
 
-"@bahmutov/cypress-esbuild-preprocessor@^2.1.5":
-  version "2.1.5"
-  resolved "https://registry.yarnpkg.com/@bahmutov/cypress-esbuild-preprocessor/-/cypress-esbuild-preprocessor-2.1.5.tgz#6e4746a470f097f3833a25f5e72bdcac178cbc41"
-  integrity sha512-cJMlZOZ3kUb/s2KQ8p7DJNiOzwApSoYCiK1toJKBvz58MbqBIeBjD7F8NFJE1MrFzYBYAOQcSMVWHp4y1l/Fjg==
+"@bahmutov/cypress-esbuild-preprocessor@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@bahmutov/cypress-esbuild-preprocessor/-/cypress-esbuild-preprocessor-2.2.0.tgz#ba5b6bf96e83da3cb4d0cc2baedd0eeee8c84a4f"
+  integrity sha512-pTvxRi6+OFsXy6uCn/HlO5zi0fUZWbiCtTiLTDf/+kgEfZ/Y8WIxZ2pjuir9MEM8prQenBw60TLcM0wcazh7+Q==
   dependencies:
     debug "4.3.4"
 
