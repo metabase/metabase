@@ -8,14 +8,13 @@ import Tooltip from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Confirm from "metabase/components/Confirm";
 
-import Selectbox from "../GroupSelect";
-import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
-
 import type {
   DeleteMappingModalValueType,
   GroupIds,
   UserGroupsType,
-} from "../types";
+} from "metabase/admin/types";
+import Selectbox from "../GroupSelect";
+import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
