@@ -119,6 +119,22 @@ describe("PublicAction", () => {
     expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
   });
 
+  it("doesn't let to submit until required parameters are filled", async () => {
+    const action = {
+      ...TEST_ACTION,
+      parameters: [SIZE_PARAMETER, { ...COLOR_PARAMETER, required: true }],
+    };
+    await setup({ action });
+
+    userEvent.type(screen.getByLabelText("Size"), "42");
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+
+    userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled(),
+    );
+  });
+
   it("submits form correctly", async () => {
     const { executeActionEndpointSpy } = await setup({
       expectedRequestBody: {
