@@ -154,9 +154,7 @@ describe(
       popover().findByText("Action").click();
 
       cy.findByText("Select a database").click();
-      popover()
-        .findByText(/QA Postgres/i)
-        .click();
+      popover().findByText("QA Postgres12").click();
 
       fillActionQuery(QUERY);
       cy.findByRole("button", { name: "Save" }).click();

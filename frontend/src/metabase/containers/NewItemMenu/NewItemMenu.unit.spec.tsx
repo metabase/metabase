@@ -10,10 +10,13 @@ import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 
 import NewItemMenu from "./NewItemMenu";
 
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/actions/containers/ActionCreator", () => () => (
-  <div data-testid="mock-action-editor" />
-));
+jest.mock(
+  "metabase/actions/containers/ActionCreator",
+  () =>
+    function ActionCreator() {
+      return <div data-testid="mock-action-editor" />;
+    },
+);
 
 console.warn = jest.fn();
 console.error = jest.fn();
@@ -55,7 +58,7 @@ function setup({
 
   setupDatabasesEndpoints(scope, databases);
 
-  scope.get(/\/api\/search+/).reply(200, {
+  scope.get(/\/api\/search/).reply(200, {
     available_models: ["dataset"],
     models: ["dataset"],
     data: models,
