@@ -49,7 +49,7 @@ describe("scenarios > auth > search", () => {
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 
-      cy.url().should("match", /\/question\/1-orders$/);
+      cy.location("pathname").should("eq", "/question/1-orders");
     });
   });
 });
