@@ -130,7 +130,7 @@ const InlineActionSettings = ({
           {action && hasSharingPermission && (
             <FormField
               title={t`Make public`}
-              description={t`Creates a publicly shareable link to this action.`}
+              description={t`Creates a publicly shareable link to this action form.`}
               orientation="horizontal"
               htmlFor={`${id}-public`}
             >
@@ -145,7 +145,7 @@ const InlineActionSettings = ({
             <CopyWidgetContainer>
               <CopyWidget
                 value={Urls.publicAction(siteUrl, action.public_uuid)}
-                aria-label={t`Public action link URL`}
+                aria-label={t`Public action form URL`}
               />
             </CopyWidgetContainer>
           )}

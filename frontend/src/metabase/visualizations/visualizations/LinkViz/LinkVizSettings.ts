@@ -1,21 +1,5 @@
 import { t } from "ttag";
 
-export interface LinkCardSettings {
-  link: {
-    url?: string;
-    entity?: {
-      type:
-        | "dashboard"
-        | "card"
-        | "dataset"
-        | "collection"
-        | "table"
-        | "database";
-      id: number;
-    };
-  };
-}
-
 export const settings = {
   uiName: "Link",
   identifier: "link",

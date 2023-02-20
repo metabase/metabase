@@ -130,6 +130,17 @@ describe("scenarios > models > actions", () => {
     });
 
     cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
+
+    cy.findByLabelText("Actions menu").click();
+    popover().findByText("Disable basic actions").click();
+    modal().within(() => {
+      cy.findByText("Disable basic actions?").should("be.visible");
+      cy.button("Disable").click();
+    });
+    cy.findByLabelText("Action list").should("not.exist");
+    cy.findByText("Create").should("not.exist");
+    cy.findByText("Update").should("not.exist");
+    cy.findByText("Delete").should("not.exist");
   });
 
   it("should allow to execute actions from the model page", () => {
@@ -307,7 +318,7 @@ function enableSharingFor(actionName, { publicUrlAlias }) {
   cy.findByRole("dialog").within(() => {
     cy.button("Action settings").click();
     cy.findByLabelText("Make public").should("not.be.checked").click();
-    cy.findByLabelText("Public action link URL")
+    cy.findByLabelText("Public action form URL")
       .invoke("val")
       .then(url => {
         cy.wrap(url).as(publicUrlAlias);
