@@ -228,8 +228,7 @@
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
-                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}
-                                {"$sort" {"source.username" 1}}]
+                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
                   :collection  "tips"
                   :mbql?       true}
                  (qp/compile
@@ -337,8 +336,7 @@
               :projections ["asdf" "count"],
               :query [{"$group" {"_id" {"asdf" "$price"}, "count" {"$sum" 1}}}
                       {"$sort" {"_id" 1}}
-                      {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}
-                      {"$sort" {"asdf" 1}}]}
+                      {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp/compile
                (mt/mbql-query venues
                               {:expressions {:asdf ["field" $price nil]},
@@ -372,7 +370,6 @@
                                                    :timezone tz}}}}))}}}
                   {"$sort" {"_id" 1}}
                   {"$project" {"_id" false, "date" "$_id.date"}}
-                  {"$sort" {"date" 1}}
                   {"$limit" 1048575}]
                  (:query
                   (qp/compile

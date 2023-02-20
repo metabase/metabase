@@ -1225,13 +1225,20 @@
                                                 (let [[_ _ {:keys [temporal-unit]}] field]
                                                   (and (some? temporal-unit)
                                                        (not= temporal-unit :default)))))))]
-                      [(->lvalue field) (->rvalue field)])]
-    (cond-> pipeline-ctx
-      (seq sort-fields) (update :query conj
-                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
-                                {:$addFields (into (ordered-map/ordered-map) sort-fields)})
-      (seq order-by) (update :query conj
-                             (order-by->$sort order-by)))))
+                      [(->lvalue field) (->rvalue field)])
+        ;; We have already compiled breakout fields into the document.
+        breakout-field-mappings (into {} (map (juxt identity field-alias)) breakout)
+        ;; We have already sorted ascending by the breakout fields so we don't have to repeat the
+        ;; same sort.
+        explicit-order-by (and (seq order-by)
+                               (not= order-by (map (fn [field] [:asc field]) breakout)))]
+    (binding [*field-mappings* (merge *field-mappings* breakout-field-mappings)]
+      (cond-> pipeline-ctx
+        (seq sort-fields) (update :query conj
+                                  ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                  {:$addFields (into (ordered-map/ordered-map) sort-fields)})
+        explicit-order-by (update :query conj
+                                  (order-by->$sort order-by))))))
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)

@@ -907,3 +907,25 @@
                 (is (= [[1 1 14]]
                        (mt/formatted-rows [int int int]
                          (qp/process-query query))))))))))))
+
+(deftest join-with-brakout-and-aggregation-expression
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                                 {:source-query {:source-table $$orders
+                                                 :joins    [{:source-table $$products
+                                                             :alias        "Products"
+                                                             :condition    [:= $product_id &Products.products.id]}]
+                                                 :filter   [:> $subtotal 100]
+                                                 :breakout [&Products.products.category
+                                                            &Products.products.vendor
+                                                            !month.created_at]
+                                                 :aggregation [[:sum $subtotal]]}
+                                  :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
+                                  :limit 3})]
+        (mt/with-native-query-testing-context query
+          (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
+                 (mt/formatted-rows [str str str 2.0 4.0]
+                   (qp/process-query query)))))))))
