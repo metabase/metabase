@@ -46,7 +46,23 @@ export const Title = styled("h3")`
   color: ${props => color(props.active ? "text-dark" : "text-medium")};
 `;
 
+export const ResultButton = styled.button`
+  ${props => resultStyles(props)}
+  padding-right: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+  &:hover {
+    ${Title} {
+      color: ${color("brand")};
+    }
+  }
+`;
+
 export const ResultLink = styled(Link)`
+  ${props => resultStyles(props)}
+`;
+
+const resultStyles = props => `
   display: block;
   background-color: ${props =>
     props.isSelected ? lighten("brand", 0.63) : "transparent"};
