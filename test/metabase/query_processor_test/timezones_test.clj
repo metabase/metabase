@@ -306,15 +306,20 @@
                                  [[expected-datetime]]]
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
-              (is (= (-> expected-datetime
-                         (u.date/with-time-zone-same-instant timezone)
-                         t/offset-date-time)
-                     (some-> (mt/run-mbql-query relative_filter {:fields [$created]
-                                                                 :filter [:time-interval $created :current :minute]})
-                             mt/first-row
-                             first
-                             (u.date/parse nil)
-                             t/offset-date-time))))))))))
+              (let [query (mt/mbql-query relative_filter {:fields [$created]
+                                                          :filter [:time-interval $created :current :minute]})]
+                (mt/with-native-query-testing-context query
+                  (let [results (qp/process-query query)]
+                    (is (=? {:status :completed}
+                            results))
+                    (is (= (-> expected-datetime
+                               (u.date/with-time-zone-same-instant timezone)
+                               t/offset-date-time)
+                           (some-> results
+                                   mt/first-row
+                                   first
+                                   (u.date/parse nil)
+                                   t/offset-date-time)))))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
   (mt/test-drivers (set-timezone-drivers)
@@ -325,15 +330,20 @@
                                  [[expected-datetime]]]
           (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
-              (is (= (-> expected-datetime
-                         (u.date/with-time-zone-same-instant timezone)
-                         t/offset-date-time)
-                     (some-> (mt/run-mbql-query relative_filter {:fields [$created]
-                                                                 :filter [:time-interval $created -1 :day]})
-                             mt/first-row
-                             first
-                             (u.date/parse nil)
-                             t/offset-date-time))))))))))
+              (let [query (mt/mbql-query relative_filter {:fields [$created]
+                                                          :filter [:time-interval $created -1 :day]})]
+                (mt/with-native-query-testing-context query
+                  (let [results (qp/process-query query)]
+                    (is (=? {:status :completed}
+                            results))
+                    (is (= (-> expected-datetime
+                               (u.date/with-time-zone-same-instant timezone)
+                               t/offset-date-time)
+                           (some-> results
+                                   mt/first-row
+                                   first
+                                   (u.date/parse nil)
+                                   t/offset-date-time)))))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
