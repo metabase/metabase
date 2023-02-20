@@ -38,7 +38,7 @@ describe("scenarios > auth > search", () => {
       cy.findByText("Didn't find anything");
     });
 
-    it("allows select a search result from keyboard", () => {
+    it("allows to select a search result using keyboard", () => {
       cy.intercept("GET", "/api/search*").as("search");
 
       cy.signInAsNormalUser();
