@@ -263,7 +263,9 @@
                      (mt/rows results))))))))))
 
 (deftest remapped-columns-in-joined-source-queries-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
