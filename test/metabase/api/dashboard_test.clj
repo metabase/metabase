@@ -333,7 +333,7 @@
             crowberto-pc-id         (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto))]
         (t2.with-temp/with-temp
           [Collection    {coll-id :id}      {:name        "Linked collection"
-                                             :description "Linked collection des"
+                                             :description "Linked collection desc"
                                              :location    (format "/%d/" crowberto-pc-id)}
            Database      {db-id :id}        {:name        "Linked database"
                                              :description "Linked database desc"}
