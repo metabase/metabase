@@ -1072,11 +1072,8 @@
   (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
 
 (defmethod ->honeysql [:sql :between]
-  [driver [_ expr min-val max-val]]
-  (let [expr-hsql (->honeysql driver expr)]
-    [:and
-     [:>= expr (->honeysql driver min-val)]
-     [:<  expr (->honeysql driver max-val)]]))
+  [driver [_ field min-val max-val]]
+  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
 
 (defmethod ->honeysql [:sql :>]
   [driver [_ field value]]
