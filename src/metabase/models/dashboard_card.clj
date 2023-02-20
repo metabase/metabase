@@ -237,11 +237,12 @@
    :db_id        :integer})
 
 (def ^:private  link-card-columns-for-model*
-  {:database  [:id :name :description]
-   :table     [:id [:display_name :name] :description :db_id]
-   :dashboard [:id :name :description :collection_id]
-   :card      [:id :name :description :collection_id :display]
-   :dataset   [:id :name :description :collection_id :display]})
+  {:database   [:id :name :description]
+   :table      [:id [:display_name :name] :description :db_id]
+   :dashboard  [:id :name :description :collection_id]
+   :card       [:id :name :description :collection_id :display]
+   :dataset    [:id :name :description :collection_id :display]
+   :collection [:id :name :description]})
 
 (defn- ->column-alias
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
@@ -276,11 +277,15 @@
          col]))))
 
 (def ^:private link-card-model->toucan-model
-  {:database  :metabase.models.database/Database
-   :table     :metabase.models.table/Table
-   :dashboard :metabase.models.dashboard/Dashboard
-   :card      :metabase.models.card/Card
-   :dataset   :metabase.models.card/Card})
+  {:card       :metabase.models.card/Card
+   :dataset    :metabase.models.card/Card
+   :collection :metabase.models.collection/Collection
+   :database   :metabase.models.database/Database
+   :dashboard  :metabase.models.dashboard/Dashboard
+   :table      :metabase.models.table/Table})
+
+(def ^:private link-card-models
+  (set (keys link-card-model->toucan-model)))
 
 (defn- link-card-info-query-for-model
   [[model ids]]
@@ -296,9 +301,6 @@
      :from     [[{:union-all (map link-card-info-query-for-model link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
 
-(def ^:private link-card-models
-  #{"database" "table" "dataset" "card" "dashboard"})
-
 (defn with-link-card-info
   "Update entity info for link cards.
 
@@ -310,7 +312,7 @@
         ;; find all dashcards that are link-cards and get its model, id
         ;; [[:table #{1 2}] [:database #{3 4}]]
         model-and-ids      (->> dashcards
-                                (filter #(link-card-models (get-in % (conj entity-path :model))))
+                                (filter #(link-card-models (keyword (get-in % (conj entity-path :model)))))
                                 (map #(get-in % entity-path))
                                 (group-by :model)
                                 (map (fn [[k v]] [(keyword k) (set (map :id v))])))

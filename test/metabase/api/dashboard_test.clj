@@ -332,7 +332,10 @@
                                             (map #(get-in % [:visualization_settings :link :entity]))))
             crowberto-pc-id         (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto))]
         (t2.with-temp/with-temp
-          [Database      {db-id :id}        {:name        "Linked database"
+          [Collection    {coll-id :id}      {:name        "Linked collection"
+                                             :description "Linked collection des"
+                                             :location    (format "/%d/" crowberto-pc-id)}
+           Database      {db-id :id}        {:name        "Linked database"
                                              :description "Linked database desc"}
            Table         {table-id    :id}  {:db_id        db-id
                                              :name        "Linked table"
@@ -352,6 +355,8 @@
                                              :collection_id crowberto-pc-id}
            Dashboard     {dashboard-id :id} {:name        "Test Dashboard"}
            DashboardCard _                  {:dashboard_id           dashboard-id
+                                             :visualization_settings (link-card-viz-setting "collection" coll-id)}
+           DashboardCard _                  {:dashboard_id           dashboard-id
                                              :visualization_settings (link-card-viz-setting "database" db-id)}
            DashboardCard _                  {:dashboard_id           dashboard-id
                                              :visualization_settings (link-card-viz-setting "table" table-id)}
@@ -361,7 +366,9 @@
                                              :visualization_settings (link-card-viz-setting "card" card-id)}
            DashboardCard _                  {:dashboard_id           dashboard-id
                                              :visualization_settings (link-card-viz-setting "dataset" model-id)}]
-          (is (= [{:id db-id    :model "database"  :name "Linked database"  :description "Linked database desc"  :display nil
+          (is (= [{:id coll-id  :model "collection":name "Linked collection"  :description "Linked collection desc"  :display nil
+                   :db_id nil   :collection_id     nil}
+                  {:id db-id    :model "database"  :name "Linked database"  :description "Linked database desc"  :display nil
                    :db_id nil   :collection_id     nil}
                   {:id table-id :model "table"     :name "Linked table dname" :description "Linked table desc"     :display nil
                    :db_id db-id :collection_id     nil}
@@ -2098,10 +2105,10 @@
                                                   :dashboard_id (:id dashboard)}]]
           (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
             (is (=? {:values          ["Doohickey"
-                                      "Gadget"
-                                      "Gizmo"
-                                      "Widget"]
-                    :has_more_values false}
+                                       "Gadget"
+                                       "Gizmo"
+                                       "Widget"]
+                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest chain-filter-search-test
