@@ -6,7 +6,7 @@ on:
     # We're currently notifying developers only for frontend source changes.
     # Update this glob if that ever changes and we start including backend source code changes.
     paths:
-      - '**/frontend/src/metabase*/**.js'
+      - '**/frontend/src/metabase*/**'
 
 jobs:
   codenotify:
