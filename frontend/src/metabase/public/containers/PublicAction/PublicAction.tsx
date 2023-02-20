@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 
-import { useMount } from "react-use";
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
@@ -31,7 +30,6 @@ interface Props {
 
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
-  const hasParameters = action.parameters.length > 0;
   const successMessage = getSuccessMessage(action);
 
   const formSettings = useMemo(() => {
@@ -58,18 +56,8 @@ function PublicAction({ action, publicId, onError }: Props) {
     [publicId, formSettings, onError],
   );
 
-  useMount(() => {
-    if (!hasParameters) {
-      handleSubmit({});
-    }
-  });
-
   if (isSubmitted) {
     return <FormResultMessage>{successMessage}</FormResultMessage>;
-  }
-
-  if (!hasParameters) {
-    return null;
   }
 
   return (

@@ -184,17 +184,14 @@ describe("PublicAction", () => {
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
-  it("immediately executes an action without parameters", async () => {
+  it("does not immediately executes an action without parameters", async () => {
     const { executeActionEndpointSpy } = await setup({
       action: { ...TEST_ACTION, parameters: [] },
       expectedRequestBody: { parameters: {} },
     });
 
-    expect(
-      await screen.findByText(`${TEST_ACTION.name} ran successfully`),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
-    expect(executeActionEndpointSpy.isDone()).toBe(true);
+    expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
+    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await waitFor(() => expect(executeActionEndpointSpy.isDone()).toBe(true));
   });
 });
