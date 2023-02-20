@@ -236,7 +236,7 @@
    ;; for tables
    :db_id        :integer})
 
-(def ^:private  link-card-columns-for-model*
+(def ^:private  link-card-columns-for-model
   {"database"   [:id :name :description]
    "table"      [:id [:display_name :name] :description :db_id]
    "dashboard"  [:id :name :description :collection_id]
@@ -257,7 +257,7 @@
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-card-info-columns`."
   [model]
-  (let [model-cols                       (link-card-columns-for-model* model)
+  (let [model-cols                       (link-card-columns-for-model model)
         model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
     (for [[col col-type] all-card-info-columns
           :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
@@ -312,22 +312,24 @@
                            (filter #(link-card-models (:model %)))
                            (group-by :model)
                            (map (fn [[k v]] [k (set (map :id v))])))]
-    (if-let [model-and-id->info
-             ;; query all entities in 1 db call
-             ;; {[:table 3] {:name ...}}
-             (and (seq model-and-ids)
-                  (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
-                      (update-vals (fn [{model :model :as instance}]
-                                     (if (mi/can-read? (t2/instance (serdes.util/link-card-model->toucan-model model) instance))
-                                       instance
-                                       {:restricted true})))))]
-      (map (fn [card]
-             (if-let [model-info (->> (get-in card entity-path)
-                                      ((juxt :model :id))
-                                      (get model-and-id->info))]
-               (assoc-in card entity-path model-info)
-               card))
-           dashcards)
+    (if (seq model-and-ids)
+      (let [;; query all entities in 1 db call
+            ;; {[:table 3] {:name ...}}
+            model-and-id->info
+            (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
+                (update-vals (fn [{model :model :as instance}]
+                               (if (mi/can-read? (t2/instance (serdes.util/link-card-model->toucan-model model) instance))
+                                 instance
+                                 {:restricted true}))))]
+
+
+        (map (fn [card]
+               (if-let [model-info (->> (get-in card entity-path)
+                                        ((juxt :model :id))
+                                        (get model-and-id->info))]
+                 (assoc-in card entity-path model-info)
+                 card))
+             dashcards))
       dashcards)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
