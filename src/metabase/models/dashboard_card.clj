@@ -237,12 +237,12 @@
    :db_id        :integer})
 
 (def ^:private  link-card-columns-for-model*
-  {:database   [:id :name :description]
-   :table      [:id [:display_name :name] :description :db_id]
-   :dashboard  [:id :name :description :collection_id]
-   :card       [:id :name :description :collection_id :display]
-   :dataset    [:id :name :description :collection_id :display]
-   :collection [:id :name :description]})
+  {"database"   [:id :name :description]
+   "table"      [:id [:display_name :name] :description :db_id]
+   "dashboard"  [:id :name :description :collection_id]
+   "card"       [:id :name :description :collection_id :display]
+   "dataset"    [:id :name :description :collection_id :display]
+   "collection" [:id :name :description]})
 
 (defn- ->column-alias
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
@@ -252,10 +252,13 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(defn- link-card-columns-for-model
+(defn- select-clause-for-link-card-model
+  "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
+  of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
+  missing from `entity-columns` but found in `all-card-info-columns`."
   [model]
-  (let [model-cols-set                   (link-card-columns-for-model* model)
-        model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols-set)]
+  (let [model-cols                       (link-card-columns-for-model* model)
+        model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
     (for [[col col-type] all-card-info-columns
           :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
       (cond
@@ -277,19 +280,19 @@
          col]))))
 
 (def ^:private link-card-model->toucan-model
-  {:card       :metabase.models.card/Card
-   :dataset    :metabase.models.card/Card
-   :collection :metabase.models.collection/Collection
-   :database   :metabase.models.database/Database
-   :dashboard  :metabase.models.dashboard/Dashboard
-   :table      :metabase.models.table/Table})
+  {"card"       :metabase.models.card/Card
+   "dataset"    :metabase.models.card/Card
+   "collection" :metabase.models.collection/Collection
+   "database"   :metabase.models.database/Database
+   "dashboard"  :metabase.models.dashboard/Dashboard
+   "table"      :metabase.models.table/Table})
 
 (def ^:private link-card-models
   (set (keys link-card-model->toucan-model)))
 
 (defn- link-card-info-query-for-model
   [[model ids]]
-  {:select (link-card-columns-for-model model)
+  {:select (select-clause-for-link-card-model model)
    :from   (t2/table-name (link-card-model->toucan-model model))
    :where  [:in :id ids]})
 
@@ -301,30 +304,31 @@
      :from     [[{:union-all (map link-card-info-query-for-model link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
 
-(defn with-link-card-info
+(mi/define-batched-hydration-method dashcard-linkcard-info
+  :dashcard/linkcard-info
   "Update entity info for link cards.
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
   The viz-settings only store the model name and id, info like name, description will need to be
   hydrated on fetch to make sure those info are up-to-date."
   [dashcards]
-  (let [entity-path        [:visualization_settings :link :entity]
+  (let [entity-path   [:visualization_settings :link :entity]
         ;; find all dashcards that are link-cards and get its model, id
         ;; [[:table #{1 2}] [:database #{3 4}]]
-        model-and-ids      (->> dashcards
-                                (filter #(link-card-models (keyword (get-in % (conj entity-path :model)))))
-                                (map #(get-in % entity-path))
-                                (group-by :model)
-                                (map (fn [[k v]] [(keyword k) (set (map :id v))])))
-        ;; query all entities in 1 db call
-        ;; {[:table 3] {:name ...}}
-        model-and-id->info (when (seq model-and-ids)
-                             (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
-                                 (update-vals (fn [{model :model :as instance}]
-                                                (if (mi/can-read? (t2/instance (link-card-model->toucan-model (keyword model)) instance))
-                                                  instance
-                                                  {:restricted true})))))]
-    (if model-and-id->info
+        model-and-ids (->> dashcards
+                           (map #(get-in % entity-path))
+                           (filter #(link-card-models (:model %)))
+                           (group-by :model)
+                           (map (fn [[k v]] [k (set (map :id v))])))]
+    (if-let [model-and-id->info
+             ;; query all entities in 1 db call
+             ;; {[:table 3] {:name ...}}
+             (and model-and-ids
+                  (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
+                      (update-vals (fn [{model :model :as instance}]
+                                     (if (mi/can-read? (t2/instance (link-card-model->toucan-model model) instance))
+                                       instance
+                                       {:restricted true})))))]
       (map (fn [card]
              (if-let [model-info (->> (get-in card entity-path)
                                       ((juxt :model :id))
