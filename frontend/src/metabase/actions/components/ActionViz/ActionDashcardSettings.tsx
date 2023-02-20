@@ -13,7 +13,6 @@ import Button from "metabase/core/components/Button";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import EmptyState from "metabase/components/EmptyState";
-import Link from "metabase/core/components/Link";
 import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
 
 import {
@@ -24,6 +23,7 @@ import {
   ActionSettingsRight,
   ModalActions,
   ExplainerText,
+  BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
 
 const mapDispatchToProps = {
@@ -70,12 +70,9 @@ export function ActionDashcardSettings({
                 </ActionSettingsHeader>
                 <ExplainerText>
                   {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
-                  <Link
-                    to="https://www.metabase.com/docs/actions/custom"
-                    className="text-brand ml1"
-                  >
+                  <BrandLinkWithLeftMargin to="https://www.metabase.com/docs/actions/custom">
                     {t`Learn more.`}
-                  </Link>
+                  </BrandLinkWithLeftMargin>
                 </ExplainerText>
               </>
             )}

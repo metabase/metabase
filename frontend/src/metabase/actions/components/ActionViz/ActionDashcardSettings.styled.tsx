@@ -3,6 +3,8 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
+import Link from "metabase/core/components/Link";
+
 export const ActionSettingsWrapper = styled.div`
   display: flex;
   height: 80vh;
@@ -85,4 +87,9 @@ export const ExplainerText = styled.p`
   margin-right: ${space(3)};
 
   color: ${color("text-medium")};
+`;
+
+export const BrandLinkWithLeftMargin = styled(Link)`
+  margin-left: ${space(1)};
+  color: ${color("brand")};
 `;
