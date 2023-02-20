@@ -46,8 +46,8 @@ describe("scenarios > auth > search", () => {
       cy.findByPlaceholderText("Search…").type("ord");
       cy.wait("@search");
 
-      cy.get("body").trigger("keydown", { key: "ArrowDown" });
-      cy.get("body").trigger("keydown", { key: "Enter" });
+      cy.realPress("ArrowDown");
+      cy.realPress("Enter");
 
       cy.url().should("match", /\/question\/1-orders$/);
     });
