@@ -606,7 +606,7 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          userEvent.click(screen.getByTestId("actions-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
           userEvent.click(screen.getByText("Create basic actions"));
 
           await waitFor(() => {
@@ -669,7 +669,7 @@ describe("ModelDetailPage", () => {
             actions: createMockImplicitCUDActions(model.id()),
           });
 
-          userEvent.click(screen.getByTestId("actions-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
 
           expect(
             screen.queryByText(/Create basic action/i),
@@ -716,7 +716,7 @@ describe("ModelDetailPage", () => {
           const actions = createMockImplicitCUDActions(model.id());
           await setupActions({ model, actions });
 
-          userEvent.click(screen.getByTestId("actions-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
           userEvent.click(screen.getByText("Disable basic actions"));
           userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
@@ -729,7 +729,7 @@ describe("ModelDetailPage", () => {
           const model = getModel();
           await setupActions({ model, actions: [] });
 
-          userEvent.click(screen.getByTestId("actions-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
 
           expect(
             screen.queryByText("Disable basic actions"),

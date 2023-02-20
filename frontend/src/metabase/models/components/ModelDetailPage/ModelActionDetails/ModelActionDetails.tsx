@@ -143,7 +143,7 @@ function ModelActionDetails({
           <ActionMenu
             triggerIcon="ellipsis"
             items={menuItems}
-            triggerProps={ACTION_MENU_TRIGGER_PROPS}
+            triggerProps={{ "aria-label": t`Actions menu` }}
           />
         </ActionsHeader>
       )}
@@ -194,10 +194,6 @@ function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
   return -createdAt.unix();
 }
-
-const ACTION_MENU_TRIGGER_PROPS = {
-  "data-testid": "actions-menu",
-};
 
 export default _.compose(
   Actions.loadList({
