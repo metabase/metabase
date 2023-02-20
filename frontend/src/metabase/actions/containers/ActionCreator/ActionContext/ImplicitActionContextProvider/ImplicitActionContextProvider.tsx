@@ -75,7 +75,6 @@ function ImplicitActionContextProvider({
       },
       handleFormSettingsChange,
       handleActionChange: _.noop,
-      handleSetupExample: _.noop,
       renderEditorBody: EditorBody,
     }),
     [initialAction, formSettings, canSave, handleFormSettingsChange],

@@ -37,7 +37,6 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
   onChangeAction: (action: Partial<WritebackAction>) => void;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClickSave: () => void;
-  onClickExample: () => void;
   onCloseModal?: () => void;
 }
 
@@ -55,7 +54,6 @@ export default function ActionCreatorView({
   onChangeAction,
   onChangeFormSettings,
   onClickSave,
-  onClickExample,
   onCloseModal,
 }: ActionCreatorProps) {
   const [activeSideView, setActiveSideView] =
@@ -124,7 +122,6 @@ export default function ActionCreatorView({
             formSettings={formSettings}
             isEditable={isEditable && canChangeFieldSettings}
             onChange={onChangeFormSettings}
-            onExampleClick={onClickExample}
           />
         ) : activeSideView === "dataReference" ? (
           <DataReferenceInline onClose={closeSideView} />
