@@ -184,7 +184,7 @@ describe("PublicAction", () => {
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
-  it("does not immediately executes an action without parameters", async () => {
+  it("handles actions without parameters", async () => {
     const { executeActionEndpointSpy } = await setup({
       action: { ...TEST_ACTION, parameters: [] },
       expectedRequestBody: { parameters: {} },
