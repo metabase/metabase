@@ -307,7 +307,7 @@
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
-                                                          :filter [:time-interval $created :current :minute]})]
+                                                          :filter [:time-interval $created :current :day]})]
                 (mt/with-native-query-testing-context query
                   (let [results (qp/process-query query)]
                     (is (=? {:status :completed}
