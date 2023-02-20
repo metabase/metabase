@@ -918,6 +918,10 @@ class QuestionInner {
     return table ? table.id : null;
   }
 
+  isArchived(): boolean {
+    return this._card && this._card.archived;
+  }
+
   getUrl({
     originalQuestion,
     clean = true,
