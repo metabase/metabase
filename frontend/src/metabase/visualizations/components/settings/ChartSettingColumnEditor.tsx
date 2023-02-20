@@ -198,6 +198,9 @@ const ChartSettingColumnEditor = ({
   const getDimensionLabel = (dimension: Dimension, sourceTable = true) => {
     const column = getColumnByDimension(dimension);
 
+    // When we have a colum returned, we want to use that display name as long as it's part of the source table
+    // This ensures that we get the {table}→{column} syntax when appropriate. On anything other than the
+    // Source table, there should be a table header above the list so we should only show the field name.
     if (column && sourceTable) {
       return column.display_name;
     }
@@ -206,7 +209,7 @@ const ChartSettingColumnEditor = ({
   };
 
   return (
-    <div className="list">
+    <div>
       <TableHeaderContainer>
         <TableName>{fieldOptions.name}</TableName>
         <BulkActionButton
