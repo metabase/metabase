@@ -26,7 +26,7 @@
   "Returns the model from an action type.
    `action-type` can be a string or a keyword."
   [action-type]
-  (case (keyword action-type)
+  (case action-type
     :http     HTTPAction
     :implicit ImplicitAction
     :query    QueryAction))
@@ -267,6 +267,7 @@
   (-> (serdes.base/extract-one-basics "Action" action)
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)
+      (update :type name)
       (cond-> (= (:type action) :query)
         (update :database_id serdes.util/export-fk-keyed 'Database :name))))
 
@@ -275,6 +276,7 @@
       serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)
       (update :model_id serdes.util/import-fk 'Card)
+      (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes.util/import-fk-keyed 'Database :name))))
 
@@ -289,7 +291,7 @@
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
-    (when (= (:type action) :query)
+    (when (= (:type action) "query")
       [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
