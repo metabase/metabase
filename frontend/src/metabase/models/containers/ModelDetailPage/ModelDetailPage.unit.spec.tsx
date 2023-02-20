@@ -220,24 +220,27 @@ async function setup({
   const initialRoute = `${baseUrl}/${tab}`;
 
   const { store, history } = renderWithProviders(
-    <Route path="/model/:slug/detail">
-      <IndexRedirect to="usage" />
-      <Route path="usage" component={ModelDetailPage} />
-      <Route path="schema" component={ModelDetailPage} />
-      <Route path="actions" component={ModelDetailPage}>
-        <ModalRoute
-          path="new"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
-        <ModalRoute
-          path=":actionId"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
+    <>
+      <Route path="/model/:slug/detail">
+        <IndexRedirect to="usage" />
+        <Route path="usage" component={ModelDetailPage} />
+        <Route path="schema" component={ModelDetailPage} />
+        <Route path="actions" component={ModelDetailPage}>
+          <ModalRoute
+            path="new"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+          <ModalRoute
+            path=":actionId"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+        </Route>
+        <Redirect from="*" to="usage" />
       </Route>
-      <Redirect from="*" to="usage" />
-    </Route>,
+      <Route path="/question/:slug" component={() => null} />
+    </>,
     { withRouter: true, initialRoute },
   );
 
@@ -887,6 +890,13 @@ describe("ModelDetailPage", () => {
         "aria-selected",
         "true",
       );
+    });
+
+    it("redirects to query builder when trying to open a question", async () => {
+      const question = getSavedStructuredQuestion();
+      const { history } = await setup({ model: question });
+
+      expect(history?.getCurrentLocation().pathname).toBe(question.getUrl());
     });
 
     it("shows 404 when opening an archived model", async () => {
