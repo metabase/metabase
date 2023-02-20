@@ -26,7 +26,7 @@ frontend_sources: &frontend_sources
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/!(__support__|__runner__)/**"
-  - "frontend/**.unit.*"
+  - "frontend/**/*.unit.*"
   - "jest.config.js"
 
 frontend_all: &frontend_all
@@ -68,7 +68,7 @@ sources: &sources
   - *backend_sources
 
 e2e_specs: &e2e_specs
-  - "**.cy.*.js"
+  - "**/*.cy.*.js"
   - "frontend/test/__support__/e2e/**"
   - "frontend/test/__runner__/*cypress*"
 
@@ -84,8 +84,8 @@ snowplow:
 
 documentation:
   - "docs/**"
-  - "**.md"
+  - "**/*.md"
 
 yaml:
-  - "**.yml"
-  - "**.yaml"
+  - "**/*.yml"
+  - "**/*.yaml"
