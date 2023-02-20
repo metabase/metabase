@@ -864,5 +864,16 @@ describe("ModelDetailPage", () => {
         "true",
       );
     });
+
+    it("shows 404 when opening an archived model", async () => {
+      const model = getStructuredModel({ archived: true });
+      const modelName = model.displayName() as string;
+      await setup({ model });
+
+      expect(screen.queryByText(modelName)).not.toBeInTheDocument();
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
+      ).toBeInTheDocument();
+    });
   });
 });
