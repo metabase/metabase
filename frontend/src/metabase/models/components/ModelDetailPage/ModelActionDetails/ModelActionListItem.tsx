@@ -85,7 +85,7 @@ function ModelActionListItem({
           <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
           <ActionSubtitle>
             {action.public_uuid && (
-              <ActionSubtitlePart>{t`Public Action`}</ActionSubtitlePart>
+              <ActionSubtitlePart>{t`Public Action Form`}</ActionSubtitlePart>
             )}
             {action.creator && (
               <ActionSubtitlePart>
