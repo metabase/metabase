@@ -1,7 +1,9 @@
 (ns metabase.driver.sql.parameters.substitute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -16,9 +18,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [metabase.db.query :as mdb.query]
-   [clojure.string :as str]))
+   [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
