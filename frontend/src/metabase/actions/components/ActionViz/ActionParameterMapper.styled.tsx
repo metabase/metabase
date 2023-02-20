@@ -3,11 +3,6 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-export const ParameterMapperContainer = styled.div`
-  min-width: 15rem;
-  max-width: 25rem;
-`;
-
 export const ParameterFormSection = styled.div`
   margin-top: ${space(2)};
 `;
