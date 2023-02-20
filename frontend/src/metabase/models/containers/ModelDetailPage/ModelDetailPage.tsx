@@ -121,7 +121,13 @@ function ModelDetailPage({
   }, [location.pathname]);
 
   useMount(() => {
-    loadMetadataForCard(model.card());
+    const card = model.card();
+    const isModel = model.isDataset();
+    if (isModel) {
+      loadMetadataForCard(card);
+    } else {
+      onChangeLocation(Urls.question(card));
+    }
   });
 
   useEffect(() => {

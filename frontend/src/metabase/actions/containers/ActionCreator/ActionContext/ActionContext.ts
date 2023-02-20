@@ -16,7 +16,6 @@ export type ActionContextType = {
   ui: ActionCreatorUIProps;
   handleActionChange: (action: EditableActionParams) => void;
   handleFormSettingsChange: (formSettings: ActionFormSettings) => void;
-  handleSetupExample: () => void;
   renderEditorBody: (props: EditorBodyProps) => React.ReactNode;
 };
 
@@ -31,7 +30,6 @@ export const ActionContext = createContext<ActionContextType>({
   },
   handleActionChange: _.noop,
   handleFormSettingsChange: _.noop,
-  handleSetupExample: _.noop,
   renderEditorBody: () => null,
 });
 

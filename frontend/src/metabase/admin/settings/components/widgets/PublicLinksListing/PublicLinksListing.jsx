@@ -161,7 +161,7 @@ export const PublicLinksActionListing = connect(mapStateToProps)(
       <PublicLinksListing
         load={ActionsApi.listPublic}
         revoke={ActionsApi.deletePublicLink}
-        type={t`Public Action Listing`}
+        type={t`Public Action Form Listing`}
         getUrl={action => Urls.action({ id: action.model_id }, action.id)}
         getPublicUrl={({ public_uuid }) =>
           Urls.publicAction(siteUrl, public_uuid)
