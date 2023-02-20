@@ -45,6 +45,9 @@ describe("scenarios > auth > search", () => {
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("ord");
       cy.wait("@search");
+      cy.findAllByTestId("search-result-item-name")
+        .first()
+        .should("have.text", "Orders");
 
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
