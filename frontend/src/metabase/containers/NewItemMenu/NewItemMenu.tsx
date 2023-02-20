@@ -15,14 +15,12 @@ import {
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
 
-import { Database } from "metabase-types/api";
+import { Database, CollectionItem } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 interface MenuDatabaseProps {
   databases?: Database[];
-
-  // Search results (untyped yet)
-  models?: unknown[];
+  models?: CollectionItem[];
 }
 
 const mapStateToProps = (
