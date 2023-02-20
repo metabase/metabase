@@ -206,7 +206,6 @@ export default _.compose(
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "modelCard",
-    loadingAndErrorWrapper: false,
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
