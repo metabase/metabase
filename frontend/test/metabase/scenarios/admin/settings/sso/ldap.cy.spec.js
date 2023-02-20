@@ -182,7 +182,7 @@ const enterLdapSettings = () => {
 
 const createMapping = name => {
   cy.button("New mapping").click();
-  cy.focused().type(name);
+  cy.findByPlaceholderText("cn=People,ou=Groups,dc=metabase,dc=com").type(name);
   cy.button("Add").click();
 };
 
