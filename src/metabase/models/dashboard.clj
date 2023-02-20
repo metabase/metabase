@@ -55,6 +55,7 @@
                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
               :order-by  [[:dashcard.created_at :asc]]}))
 
+
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
   "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
