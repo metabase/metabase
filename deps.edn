@@ -466,7 +466,6 @@
                 metabase/buid-mb                {:local/root "bin/build-mb"}}
    :ns-default build}
 
-
 ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile

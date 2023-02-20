@@ -136,9 +136,8 @@
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
-  (log/info (trs "Metabase Initialization COMPLETE"))
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))]
-    (log/infof "Startup completed in %f" (float (/ (- (System/currentTimeMillis) start-time) 1000)))))
+    (log/info (trs "Metabase Initialization COMPLETE in %f" (float (/ (- (System/currentTimeMillis) start-time) 1000))))))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
