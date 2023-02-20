@@ -207,29 +207,29 @@
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [actions                         (apply select-actions-without-implicit-params options)
-        implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
-        models-with-implicit-actions    (if known-models
-                                          (->> known-models
-                                               (filter #(contains? implicit-action-model-ids (:id %)))
-                                               distinct)
-                                          (when (seq implicit-action-model-ids)
-                                            (db/select 'Card :id [:in implicit-action-model-ids])))
-        models->db-id                   (into {} (for [model models-with-implicit-actions]
-                                                   [(:id model) (:database_id model)]))
-        implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
-                                          (implicit-action-parameters models-with-implicit-actions))]
+  (let [actions                       (apply select-actions-without-implicit-params options)
+        implicit-action-model-ids     (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
+        models-with-implicit-actions  (if known-models
+                                        (->> known-models
+                                             (filter #(contains? implicit-action-model-ids (:id %)))
+                                             distinct)
+                                        (when (seq implicit-action-model-ids)
+                                          (db/select 'Card :id [:in implicit-action-model-ids])))
+        model-id->db-id               (into {} (for [card models-with-implicit-actions]
+                                                 [(:id card) (:database_id card)]))
+        model-id->implicit-parameters (when (seq models-with-implicit-actions)
+                                        (implicit-action-parameters models-with-implicit-actions))]
     (for [{:keys [parameters] :as action} actions
           :let [model-id        (:model_id action)
                 implicit-params (when (= (:type action) :implicit)
-                                  (let [implicit-params (get implicit-parameters-by-model-id model-id)
+                                  (let [implicit-params (get model-id->implicit-parameters model-id)
                                         saved-params    (m/index-by :id parameters)]
                                     (for [param implicit-params
                                           :let [saved-param (get saved-params (:id param))]]
                                       (merge param saved-param))))]]
       (cond-> action
         (= (:type action) :implicit)
-        (assoc :database_id (models->db-id (:model_id action)))
+        (assoc :database_id (model-id->db-id (:model_id action)))
         implicit-params
         (m/assoc-some :parameters (cond->> implicit-params
                                     (= "row/delete" (:kind action))
