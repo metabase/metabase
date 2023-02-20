@@ -287,6 +287,7 @@ function DashCard({
             hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
             }
@@ -310,6 +311,7 @@ function DashCard({
     onAddSeries,
     onRemove,
     onReplaceAllVisualizationSettings,
+    onUpdateVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
     metadata,
