@@ -59,7 +59,7 @@ describe("ActionCreator > Sharing", () => {
         });
         expect(makePublicToggle).not.toBeChecked();
         expect(
-          screen.queryByRole("textbox", { name: "Public action link URL" }),
+          screen.queryByRole("textbox", { name: "Public action form URL" }),
         ).not.toBeInTheDocument();
 
         screen.getByRole("switch", { name: "Make public" }).click();
@@ -70,7 +70,7 @@ describe("ActionCreator > Sharing", () => {
 
         const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
         expect(
-          screen.getByRole("textbox", { name: "Public action link URL" }),
+          screen.getByRole("textbox", { name: "Public action form URL" }),
         ).toHaveValue(expectedPublicLinkUrl);
       });
 
@@ -89,7 +89,7 @@ describe("ActionCreator > Sharing", () => {
         expect(makePublicToggle).toBeChecked();
         const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
         expect(
-          screen.getByRole("textbox", { name: "Public action link URL" }),
+          screen.getByRole("textbox", { name: "Public action form URL" }),
         ).toHaveValue(expectedPublicLinkUrl);
 
         makePublicToggle.click();
@@ -103,7 +103,7 @@ describe("ActionCreator > Sharing", () => {
         });
 
         expect(
-          screen.queryByRole("textbox", { name: "Public action link URL" }),
+          screen.queryByRole("textbox", { name: "Public action form URL" }),
         ).not.toBeInTheDocument();
       });
     });

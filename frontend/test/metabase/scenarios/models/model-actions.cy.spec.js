@@ -318,7 +318,7 @@ function enableSharingFor(actionName, { publicUrlAlias }) {
   cy.findByRole("dialog").within(() => {
     cy.button("Action settings").click();
     cy.findByLabelText("Make public").should("not.be.checked").click();
-    cy.findByLabelText("Public action link URL")
+    cy.findByLabelText("Public action form URL")
       .invoke("val")
       .then(url => {
         cy.wrap(url).as(publicUrlAlias);
