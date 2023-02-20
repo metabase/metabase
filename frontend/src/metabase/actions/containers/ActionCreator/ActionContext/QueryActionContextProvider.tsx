@@ -25,9 +25,6 @@ export interface QueryActionContextProviderProps
   databaseId?: DatabaseId;
 }
 
-const EXAMPLE_QUERY =
-  "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
-
 function resolveQuestion(
   action: WritebackQueryAction | undefined,
   { metadata, databaseId }: { metadata: Metadata; databaseId?: DatabaseId },
@@ -89,11 +86,6 @@ function QueryActionContextProvider({
     [question],
   );
 
-  const handleSetupExample = useCallback(() => {
-    const nextQuery = query.setQueryText(query.queryText() + EXAMPLE_QUERY);
-    setQuestion(question.setQuery(nextQuery));
-  }, [question, query]);
-
   const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
     const nextQuestion = nextQuery.question();
     const parameters = getTemplateTagParametersFromCard(nextQuestion.card());
@@ -123,7 +115,6 @@ function QueryActionContextProvider({
       },
       handleActionChange,
       handleFormSettingsChange: setFormSettings,
-      handleSetupExample,
       renderEditorBody,
     }),
     [
@@ -133,7 +124,6 @@ function QueryActionContextProvider({
       canSave,
       handleActionChange,
       setFormSettings,
-      handleSetupExample,
       renderEditorBody,
     ],
   );

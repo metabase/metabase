@@ -2,9 +2,11 @@ import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
+import { useMount } from "react-use";
 import type { Location, LocationDescriptor } from "history";
 
-import { useMount } from "react-use";
+import { NotFound } from "metabase/containers/ErrorPages";
+
 import * as Urls from "metabase/lib/urls";
 
 import Actions from "metabase/entities/actions";
@@ -119,7 +121,13 @@ function ModelDetailPage({
   }, [location.pathname]);
 
   useMount(() => {
-    loadMetadataForCard(model.card());
+    const card = model.card();
+    const isModel = model.isDataset();
+    if (isModel) {
+      loadMetadataForCard(card);
+    } else {
+      onChangeLocation(Urls.question(card));
+    }
   });
 
   useEffect(() => {
@@ -167,6 +175,10 @@ function ModelDetailPage({
     },
     [model, onChangeCollection],
   );
+
+  if (model.isArchived()) {
+    return <NotFound />;
+  }
 
   return (
     <>

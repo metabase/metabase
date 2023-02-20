@@ -769,7 +769,7 @@
               (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
-                              :type        (s/eq :implicit)
+                              :type        (s/eq "implicit")
                               :kind        (s/eq "row/update")
                               :created_at  OffsetDateTime
                               :model_id    (s/eq card-eid-1)
@@ -805,6 +805,7 @@
               (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
+                              :type        (s/eq "http")
                               :created_at  OffsetDateTime
                               :template    (s/eq {})
                               :model_id    (s/eq card-eid-1)
@@ -842,6 +843,7 @@
                 (is (schema= {:serdes/meta   (s/eq [{:model "Action"
                                                      :id    (:entity_id action)
                                                      :label "my_action"}])
+                              :type          (s/eq "query")
                               :creator_id    (s/eq "ann@heart.band")
                               :created_at    OffsetDateTime
                               :dataset_query (s/eq {:type "native", :native {:native "select 1"}, :database db-id})
