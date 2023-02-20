@@ -95,18 +95,24 @@ function ModelActionDetails({
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const menuItems = useMemo(() => {
+    const items = [];
     const hasImplicitActions = implicitActions.length > 0;
-    return [
-      {
-        title: hasImplicitActions
-          ? t`Disable basic actions`
-          : t`Create basic actions`,
+
+    if (hasImplicitActions) {
+      items.push({
+        title: t`Disable basic actions`,
         icon: "bolt",
-        action: hasImplicitActions
-          ? onDeleteImplicitActions
-          : onEnableImplicitActions,
-      },
-    ];
+        action: onDeleteImplicitActions,
+      });
+    } else {
+      items.push({
+        title: t`Create basic actions`,
+        icon: "bolt",
+        action: onEnableImplicitActions,
+      });
+    }
+
+    return items;
   }, [implicitActions, onEnableImplicitActions, onDeleteImplicitActions]);
 
   const renderActionListItem = useCallback(
