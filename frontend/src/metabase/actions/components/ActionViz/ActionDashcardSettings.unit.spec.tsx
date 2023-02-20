@@ -110,6 +110,10 @@ const setup = (
 };
 
 describe("ActionViz > ActionDashcardSettings", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   it("shows the action dashcard settings component", () => {
     setup();
 
