@@ -134,8 +134,8 @@ describe("scenarios > models > actions", () => {
     cy.findByLabelText("Actions menu").click();
     popover().findByText("Disable basic actions").click();
     modal().within(() => {
-      cy.findByText("Disable basic actions").should("be.visible");
-      cy.button("Continue").click();
+      cy.findByText("Disable basic actions?").should("be.visible");
+      cy.button("Disable").click();
     });
     cy.findByLabelText("Action list").should("not.exist");
     cy.findByText("Create").should("not.exist");

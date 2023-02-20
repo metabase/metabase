@@ -83,9 +83,9 @@ function ModelActionDetails({
 
   const onDeleteImplicitActions = useCallback(() => {
     askConfirmation({
-      title: t`Disable basic actions`,
+      title: t`Disable basic actions?`,
       message: t`Disabling basic actions will also remove any buttons that use these actions. Are you sure you want to continue?`,
-      confirmButtonText: t`Continue`,
+      confirmButtonText: t`Disable`,
       onConfirm: () => {
         implicitActions.forEach(action => {
           onDeleteAction(action);
