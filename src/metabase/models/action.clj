@@ -215,6 +215,8 @@
                                                distinct)
                                           (when (seq implicit-action-model-ids)
                                             (db/select 'Card :id [:in implicit-action-model-ids])))
+        models->db-id                   (into {} (for [model models-with-implicit-actions]
+                                                   [(:id model) (:database_id model)]))
         implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
                                           (implicit-action-parameters models-with-implicit-actions))]
     (for [{:keys [parameters] :as action} actions
@@ -226,6 +228,8 @@
                                           :let [saved-param (get saved-params (:id param))]]
                                       (merge param saved-param))))]]
       (cond-> action
+        (= (:type action) :implicit)
+        (assoc :database_id (models->db-id (:model_id action)))
         implicit-params
         (m/assoc-some :parameters (cond->> implicit-params
                                     (= "row/delete" (:kind action))

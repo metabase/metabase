@@ -10,11 +10,22 @@
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
+      (mt/with-actions [{:keys [model-id action-id] :as _context} {:type :query}]
         (is (partial= {:id action-id
                        :name "Query Example"
                        :model_id model-id
+                       :database_id (mt/id)
                        :parameters [{:id "id" :type :number}]}
+                      (action/select-action :id action-id)))))))
+
+(deftest hydrate-implicit-action-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions [{:keys [action-id] :as _context} {:type :implicit}]
+        (is (partial= {:id action-id
+                       :name "Update Example"
+                       :database_id (mt/id)
+                       :parameters [{:type :type/BigInteger} {:type :type/Text, :id "name"}]}
                       (action/select-action :id action-id)))))))
 
 (deftest hydrate-http-action-test
