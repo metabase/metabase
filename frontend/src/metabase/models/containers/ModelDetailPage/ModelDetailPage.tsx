@@ -100,6 +100,7 @@ function ModelDetailPage({
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   const database = model.database();
+  const hasDataPermissions = model.query().isEditable();
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
@@ -123,10 +124,14 @@ function ModelDetailPage({
   useMount(() => {
     const card = model.card();
     const isModel = model.isDataset();
-    if (isModel) {
-      loadMetadataForCard(card);
-    } else {
+
+    if (!isModel) {
       onChangeLocation(Urls.question(card));
+      return;
+    }
+
+    if (hasDataPermissions) {
+      loadMetadataForCard(card);
     }
   });
 
@@ -186,6 +191,7 @@ function ModelDetailPage({
         model={model}
         mainTable={mainTable}
         tab={tab}
+        hasDataPermissions={hasDataPermissions}
         hasActionsTab={hasActionsTab}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}
@@ -214,7 +220,7 @@ function getPageTitle({ modelCard }: Props) {
 
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId }),
+  Databases.load({ id: getModelDatabaseId, loadingAndErrorWrapper: false }),
   Actions.loadList({
     query: (state: State, props: OwnProps) => ({
       "model-id": getModelId(state, props),
