@@ -323,7 +323,7 @@
     (if-let [model-and-id->info
              ;; query all entities in 1 db call
              ;; {[:table 3] {:name ...}}
-             (and model-and-ids
+             (and (seq model-and-ids)
                   (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
                       (update-vals (fn [{model :model :as instance}]
                                      (if (mi/can-read? (t2/instance (link-card-model->toucan-model model) instance))
