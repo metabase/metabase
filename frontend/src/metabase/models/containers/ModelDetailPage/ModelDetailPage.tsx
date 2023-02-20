@@ -124,14 +124,10 @@ function ModelDetailPage({
   useMount(() => {
     const card = model.card();
     const isModel = model.isDataset();
-
-    if (!isModel) {
-      onChangeLocation(Urls.question(card));
-      return;
-    }
-
-    if (hasDataPermissions) {
+    if (isModel) {
       loadMetadataForCard(card);
+    } else {
+      onChangeLocation(Urls.question(card));
     }
   });
 
