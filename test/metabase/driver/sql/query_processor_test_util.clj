@@ -114,24 +114,27 @@
 
 (defn pprint-native-query-with-best-strategy
   "Attempt to compile `query` to a native query, and pretty-print it if possible."
-  [query]
-  (u/ignore-exceptions
-    (let [{native :query, :as query} (query->raw-native-query query)]
-      (str "\nNative Query =\n"
-           (cond
-             (and (string? native)
-                  (isa? driver/hierarchy driver/*driver* :sql))
-             (mdb.query/format-sql native driver/*driver*)
+  ([query]
+   (pprint-native-query-with-best-strategy (or driver/*driver* :h2) query))
 
-             (string? native)
-             native
+  ([driver query]
+   (u/ignore-exceptions
+     (let [{native :query, :as query} (query->raw-native-query query)]
+       (str "\nNative Query =\n"
+            (cond
+              (and (string? native)
+                   (isa? driver/hierarchy driver :sql))
+              (mdb.query/format-sql native driver)
 
-             :else
-             (u/pprint-to-str native))
-           \newline
-           \newline
-           (u/pprint-to-str (dissoc query :query))
-           \newline))))
+              (string? native)
+              native
+
+              :else
+              (u/pprint-to-str native))
+            \newline
+            \newline
+            (u/pprint-to-str (dissoc query :query))
+            \newline)))))
 
 (defn do-with-native-query-testing-context
   [query thunk]

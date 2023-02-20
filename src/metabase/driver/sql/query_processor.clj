@@ -580,12 +580,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
@@ -1072,8 +1072,11 @@
   (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
 
 (defmethod ->honeysql [:sql :between]
-  [driver [_ field min-val max-val]]
-  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+  [driver [_ expr min-val max-val]]
+  (let [expr-hsql (->honeysql driver expr)]
+    [:and
+     [:>= expr (->honeysql driver min-val)]
+     [:<  expr (->honeysql driver max-val)]]))
 
 (defmethod ->honeysql [:sql :>]
   [driver [_ field value]]
