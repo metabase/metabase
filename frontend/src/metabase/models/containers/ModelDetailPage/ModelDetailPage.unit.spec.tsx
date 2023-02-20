@@ -23,6 +23,7 @@ import {
 import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
 
+import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -605,7 +606,7 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          userEvent.click(screen.getByTestId("new-action-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
           userEvent.click(screen.getByText("Create basic actions"));
 
           await waitFor(() => {
@@ -668,11 +669,10 @@ describe("ModelDetailPage", () => {
             actions: createMockImplicitCUDActions(model.id()),
           });
 
+          userEvent.click(screen.getByLabelText("Actions menu"));
+
           expect(
             screen.queryByText(/Create basic action/i),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("new-action-menu"),
           ).not.toBeInTheDocument();
         });
 
@@ -708,6 +708,32 @@ describe("ModelDetailPage", () => {
           openActionMenu(action);
 
           expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        });
+
+        it("allows to disable implicit actions", async () => {
+          const deleteActionSpy = jest.spyOn(Actions.actions, "delete");
+          const model = getModel();
+          const actions = createMockImplicitCUDActions(model.id());
+          await setupActions({ model, actions });
+
+          userEvent.click(screen.getByLabelText("Actions menu"));
+          userEvent.click(screen.getByText("Disable basic actions"));
+          userEvent.click(screen.getByRole("button", { name: "Disable" }));
+
+          actions.forEach(action => {
+            expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
+          });
+        });
+
+        it("doesn't allow to disable implicit actions if they don't exist", async () => {
+          const model = getModel();
+          await setupActions({ model, actions: [] });
+
+          userEvent.click(screen.getByLabelText("Actions menu"));
+
+          expect(
+            screen.queryByText("Disable basic actions"),
+          ).not.toBeInTheDocument();
         });
       });
 
@@ -750,9 +776,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.queryByText("Create basic actions"),
           ).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("new-action-menu"),
-          ).not.toBeInTheDocument();
+          expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
         });
 
         it("doesn't allow to edit actions", async () => {
@@ -863,6 +887,17 @@ describe("ModelDetailPage", () => {
         "aria-selected",
         "true",
       );
+    });
+
+    it("shows 404 when opening an archived model", async () => {
+      const model = getStructuredModel({ archived: true });
+      const modelName = model.displayName() as string;
+      await setup({ model });
+
+      expect(screen.queryByText(modelName)).not.toBeInTheDocument();
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
+      ).toBeInTheDocument();
     });
   });
 });
