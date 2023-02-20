@@ -1069,7 +1069,10 @@
     ;; Honey SQL 2 can't be configured to always inline numbers, so we have to remember to do it, otherwise it won't
     ;; do it for us =(
     1 [:= "A" 1] ["? = 1" "A"]
-    2 [:= "A" 1] ["? = ?" "A" 1]))
+    2 [:= "A" 1] ["(? = ?)" "A" 1]
+
+    1 [:or [:not= :state "OR"] [:= :state nil]] ["(\"state\" <> ? OR \"state\" IS NULL)" "OR"]
+    2 [:or [:not= :state "OR"] [:= :state nil]] ["((\"state\" <> ?) OR (\"state\" IS NULL))" "OR"]))
 
 (deftest day-of-week-inline-numbers-test
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
