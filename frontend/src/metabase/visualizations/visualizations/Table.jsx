@@ -35,6 +35,7 @@ import {
 import {
   findColumnIndexForColumnSetting,
   findColumnForColumnSetting,
+  findColumnSettingIndexForColumn,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
@@ -191,6 +192,12 @@ export default class Table extends Component {
               columnSetting =>
                 !columnSetting.enabled ||
                 findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+            )) &&
+          (extra.isQueryRunning ||
+            _.every(
+              data.cols,
+              column =>
+                findColumnSettingIndexForColumn(tableColumns, column) >= 0,
             ));
         if (!isValid) {
           return data.cols.map(col => ({

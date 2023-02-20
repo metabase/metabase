@@ -10,6 +10,7 @@ import { isNotNull } from "metabase/core/utils/types";
 import Metadata from "metabase-lib/metadata/Metadata";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 
@@ -61,8 +62,9 @@ const structuredQueryFieldOptions = (
       ),
     )
     .filter(isNotNull);
+
   return {
-    name: query.table()?.display_name || t`Columns`,
+    name: query.sourceTable()?.display_name || t`Columns`,
     dimensions: options.dimensions.concat(missingDimensions).filter(isNotNull),
     fks: options.fks.map(fk => ({
       name:
@@ -78,6 +80,7 @@ const structuredQueryFieldOptions = (
 const nativeQueryFieldOptions = (
   columns: DatasetColumn[],
   metadata?: Metadata,
+  query?: AtomicQuery,
 ) => {
   const allDimensions = columns
     .map(column =>
@@ -85,21 +88,10 @@ const nativeQueryFieldOptions = (
     )
     .filter(isNotNull);
 
-  const groupedDimensions = _.groupBy(
-    allDimensions,
-    dimension => dimension.field().table?.displayName() || t`Columns`,
-  );
-  const tables = Object.keys(groupedDimensions);
-  const firstTable = tables[0];
   return {
-    name: firstTable,
-    dimensions: groupedDimensions[firstTable],
-    fks: tables
-      .filter(table => table !== firstTable)
-      .map(table => ({
-        name: table,
-        dimensions: groupedDimensions[table],
-      })),
+    name: query?.sourceTable()?.displayName() || t`Columns`,
+    dimensions: allDimensions,
+    fks: [],
   };
 };
 
@@ -114,10 +106,14 @@ const ChartSettingColumnEditor = ({
 }: ChartSettingColumnEditorProps) => {
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
-    if (query instanceof StructuredQuery && !isDashboard) {
+    if ((query instanceof NativeQuery || isDashboard) && columns) {
+      return nativeQueryFieldOptions(
+        columns,
+        metadata || query.metadata(),
+        query,
+      );
+    } else if (query instanceof StructuredQuery) {
       return structuredQueryFieldOptions(query, columns);
-    } else if ((query instanceof NativeQuery || isDashboard) && columns) {
-      return nativeQueryFieldOptions(columns, metadata);
     } else {
       return {
         name: "",
@@ -130,6 +126,12 @@ const ChartSettingColumnEditor = ({
   const getColumnSettingByDimension = (dimension: Dimension) => {
     return columnSettings.find(setting =>
       dimension.isSameBaseDimension(setting.fieldRef as ConcreteField),
+    );
+  };
+
+  const getColumnByDimension = (dimension: Dimension) => {
+    return columns.find(column =>
+      dimension.isSameBaseDimension(column.field_ref as ConcreteField),
     );
   };
 
@@ -193,6 +195,16 @@ const ChartSettingColumnEditor = ({
     ]);
   };
 
+  const getDimensionLabel = (dimension: Dimension, sourceTable = true) => {
+    const column = getColumnByDimension(dimension);
+
+    if (column && sourceTable) {
+      return column.display_name;
+    }
+
+    return dimension.displayName();
+  };
+
   return (
     <div className="list">
       <TableHeaderContainer>
@@ -206,7 +218,7 @@ const ChartSettingColumnEditor = ({
       </TableHeaderContainer>
       {fieldOptions.dimensions.map((dimension, index) => (
         <FieldCheckbox
-          label={dimension.displayName()}
+          label={getDimensionLabel(dimension)}
           onClick={() => toggleColumn(dimension)}
           checked={columnIsEnabled(dimension)}
           key={`${dimension.displayName()}-${index}`}
@@ -226,7 +238,7 @@ const ChartSettingColumnEditor = ({
           </TableHeaderContainer>
           {fk.dimensions.map((dimension, index) => (
             <FieldCheckbox
-              label={dimension.displayName()}
+              label={getDimensionLabel(dimension, false)}
               onClick={() => toggleColumn(dimension)}
               checked={columnIsEnabled(dimension)}
               key={`${fk.name}-${dimension.displayName()}-${index}`}
