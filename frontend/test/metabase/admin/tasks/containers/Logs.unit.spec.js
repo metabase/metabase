@@ -6,6 +6,10 @@ import Logs from "metabase/admin/tasks/containers/Logs";
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("log fetching", () => {
     afterEach(() => nock.cleanAll());
 

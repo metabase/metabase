@@ -4,9 +4,10 @@ import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
-import { ActionDashboardCard } from "./actions";
 
-import type { Card, CardId } from "./card";
+import { ActionDashboardCard } from "./actions";
+import type { SearchModelType } from "./search";
+import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
 
 export type DashboardId = number;
@@ -43,6 +44,7 @@ export type BaseDashboardOrderedCard = {
   visualization_settings?: {
     [key: string]: unknown;
     virtual_card?: VirtualCard;
+    link?: LinkCardSettings;
   };
   justAdded?: boolean;
   created_at: string;
@@ -72,3 +74,25 @@ export type DashCardDataMap = Record<
   DashCardId,
   Record<CardId, Dataset | undefined>
 >;
+
+export type LinkEntity = RestrictedLinkEntity | UnrestrictedLinkEntity;
+
+export type UnrestrictedLinkEntity = {
+  id: number;
+  db_id?: number;
+  database_id?: number;
+  model: SearchModelType;
+  name: string;
+  display_name?: string;
+  description?: string;
+  display?: CardDisplayType;
+};
+
+export type RestrictedLinkEntity = {
+  restricted: true;
+};
+
+export interface LinkCardSettings {
+  url?: string;
+  entity?: LinkEntity;
+}
