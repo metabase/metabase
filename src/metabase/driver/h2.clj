@@ -19,12 +19,13 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
    (java.time OffsetTime)
-   (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.command CommandInterface Parser CommandList)
+   (org.h2.engine SessionLocal DbObject)))
 
 (set! *warn-on-reflection* true)
 
@@ -111,10 +112,17 @@
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
-  [obj field]
-  (.get (doto (.getDeclaredField (class obj) field)
-          (.setAccessible true))
-        obj))
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (.get (doto (.getDeclaredField (class obj) field)
+                (.setAccessible true))
+              obj)
+        (catch java.lang.NoSuchFieldException e
+          ;; when there are no fields: return no commands
+          or-else))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
@@ -127,22 +135,49 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- contains-ddl?
-  [database query]
+(mu/defn ^:private classify-query
+  :- [:map
+      [:command-class+types [:vector [:tuple :any :int]]]
+      [:remaining-sql [:maybe :string]]]
+  [database query :- :string]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command      (.prepareCommand h2-parser query)
-            command-type (.getCommandType command)]
-        ;; TODO: do we need to handle CommandList?
-        ;; Command types are organized with all DDL commands listed first
-        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< command-type CommandInterface/ALTER_SEQUENCE))
+      (let [command-list      (.prepareCommand h2-parser query)
+            this-command      ((juxt class #(.getCommandType ^org.h2.command.CommandList %)) command-list)
+
+            ;; when there are no fields: return no commands
+            prepared-commands (map (juxt class #(.getType ^org.h2.command.Prepared %))
+                                   (get-field command-list "commands" []))
+
+            ;; when there is no remaining sql: return nil for remaining-sql
+            remaining-sql (get-field command-list "remaining" nil)]
+        {:command-class+types (vec (concat [this-command] prepared-commands))
+         :remaining-sql       remaining-sql})
       ;; if the query is invalid, then it isn't DDL
-      (catch Throwable _ false))))
+      (catch Throwable e
+        ;; TODO: Put more stuff in here -- check that it threw v.s. detected no ddl.
+        (log/warn e)
+        e))))
+
+(defn- cmd-type-ddl? [cmd-type]
+  ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+  ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+  (< cmd-type CommandInterface/ALTER_SEQUENCE))
+
+(defn- contains-ddl? [{:keys [command-class+types remaining-sql] :as cd}]
+  (let [cmd-type-nums (mapv second command-class+types)]
+    (boolean
+     (or (some cmd-type-ddl? cmd-type-nums)
+         (some? remaining-sql)))))
+
+;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
+;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when (and query (contains-ddl? database query))
-    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
+  (let [query-classification (classify-query database query)]
+    (when (and query (contains-ddl? query-classification))
+      (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+                      {:classification query-classification})))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
