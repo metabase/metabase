@@ -1,12 +1,12 @@
 ---
-title: Metabase actions
---- 
+title: Actions overview
+---
 
-# Actions
+# Actions overview
 
 Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.
 
-## [Actions overview](./overview.md)
+## [Introduction to actions ](./introduction.md)
 
 Use actions to update your data based on user input or values on the page.
 

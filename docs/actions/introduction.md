@@ -1,8 +1,8 @@
 ---
-title: Actions overview
+title: Actions
 ---
 
-# Actions overview
+# Actions
 
 > For now, actions are only available for PostgreSQL and MySQL
 
