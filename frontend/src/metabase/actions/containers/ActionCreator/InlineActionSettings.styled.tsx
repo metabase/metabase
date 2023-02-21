@@ -4,6 +4,8 @@ import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export const ActionSettingsContainer = styled.div`
+  width: 100%;
+
   ${SidebarContent.Header.Root} {
     position: sticky;
     top: 0;
