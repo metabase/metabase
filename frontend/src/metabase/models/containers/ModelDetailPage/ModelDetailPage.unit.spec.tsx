@@ -828,7 +828,7 @@ describe("ModelDetailPage", () => {
           ];
           await setupActions({ model, actions, hasDataPermissions: false });
 
-          expect(queryIcon("play")).not.toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
       });
     });
