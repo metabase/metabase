@@ -580,12 +580,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
