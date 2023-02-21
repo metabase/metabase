@@ -490,7 +490,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
+  it("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
     visitQuestionAdhoc({
       name: "15324",
       dataset_query: {
@@ -512,7 +512,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("85")
       .click();
     cy.findByText("View these Orders").click();
-    cy.findByText("Quantity between 10 20");
+    cy.findByText("Quantity is greater than or equal to 10");
+    cy.findByText("Quantity is less than 20");
     cy.findByText("Showing 85 rows");
   });
 
