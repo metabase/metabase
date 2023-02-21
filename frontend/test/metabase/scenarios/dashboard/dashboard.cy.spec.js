@@ -67,7 +67,7 @@ describe("scenarios > dashboard", () => {
       .type("{selectall}Orders per year")
       .blur();
 
-    cy.wait("@updateDashboard");
+    cy.findByText("Edited a few seconds ago by you").should("be.visible");
 
     cy.get("main header").within(() => {
       cy.icon("info").click();
