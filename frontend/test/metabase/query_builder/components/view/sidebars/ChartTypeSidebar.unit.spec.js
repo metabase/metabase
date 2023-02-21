@@ -76,7 +76,7 @@ describe("ChartSettingsSidebar", () => {
       screen.getByTestId("display-options-not-sensible"),
     ).getAllByTestId(/container/i);
 
-    const sensibleOrder = ["Table", "Number", "Gauge", "Progress"];
+    const sensibleOrder = ["Table", "Number", "Gauge", "Progress", "Detail"];
     const nonSensibleOrder = [
       "Bar",
       "Line",

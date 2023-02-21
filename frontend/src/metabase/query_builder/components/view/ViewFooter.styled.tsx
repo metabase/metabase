@@ -10,7 +10,7 @@ export const ViewFooterRoot = styled(ViewSection)`
 
 export const FooterButtonGroup = styled(ButtonGroup)`
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
 
   ${Button.Root} {
     border: 1px solid ${"white"};
