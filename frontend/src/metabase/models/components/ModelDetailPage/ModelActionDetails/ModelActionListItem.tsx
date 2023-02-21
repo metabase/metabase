@@ -116,7 +116,7 @@ function ModelActionListItem({
                   as={Link}
                   icon="play"
                   onlyIcon
-                  tooltip={t`Run action`}
+                  tooltip={t`Run`}
                 />
               </ActionRunButtonContainer>
             }
