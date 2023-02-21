@@ -11,7 +11,7 @@
 
 (deftest ^:parallel inline-Ratio-test
   (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
-    (is (= ["SELECT 4 / (1 / 3) AS x"]
+    (is (= ["SELECT 4 / (1.0 / 3.0) AS x"]
            (sql/format {:select [[[:/
                                    [:inline 4]
                                    [:inline (/ 1 3)]]

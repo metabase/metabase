@@ -569,7 +569,7 @@ jobs:
   be-tests-redshift-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     env:
       CI: 'true'
