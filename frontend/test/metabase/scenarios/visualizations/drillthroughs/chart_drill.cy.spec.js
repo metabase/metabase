@@ -520,7 +520,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("85")
       .click();
     cy.findByText("View these Orders").click();
-    cy.findByText("Quantity between 10 20");
+    cy.findByText("Quantity is greater than or equal to 10");
+    cy.findByText("Quantity is less than 20");
     cy.findByText("Showing 85 rows");
   });
 
