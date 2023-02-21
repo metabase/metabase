@@ -99,6 +99,13 @@ Metabase's reference documentation.
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
+### Actions
+
+- [Actions overview](./actions/start.md)
+- [Introduction to actions](./actions/introduction.md)
+- [Basic actions](./actions/basic.md)
+- [Custom actions](./actions/custom.md)
+
 ### Organization
 
 - [Organization overview](./exploration-and-organization/start.md)
