@@ -26,7 +26,7 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES __join
+                 :left-join [CATEGORIES AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -261,7 +261,9 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -398,7 +400,7 @@
                       :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
               :columns (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
@@ -445,8 +447,8 @@
                                           :limit        2})))]
         (is (= (mapv
                 mt/format-name
-                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
-                 "id_2"   "name"   "last_login"                                   ; users
+                ["id"   "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2" "name"   "last_login"                                   ; users
                  "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
@@ -853,7 +855,9 @@
 
 (deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+                           ;; mongodb doesn't support foreign keys required by this test
+                           :mongo)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders
@@ -903,3 +907,25 @@
                 (is (= [[1 1 14]]
                        (mt/formatted-rows [int int int]
                          (qp/process-query query))))))))))))
+
+(deftest join-with-brakout-and-aggregation-expression
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                                 {:source-query {:source-table $$orders
+                                                 :joins    [{:source-table $$products
+                                                             :alias        "Products"
+                                                             :condition    [:= $product_id &Products.products.id]}]
+                                                 :filter   [:> $subtotal 100]
+                                                 :breakout [&Products.products.category
+                                                            &Products.products.vendor
+                                                            !month.created_at]
+                                                 :aggregation [[:sum $subtotal]]}
+                                  :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
+                                  :limit 3})]
+        (mt/with-native-query-testing-context query
+          (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
+                 (mt/formatted-rows [str str str 2.0 4.0]
+                   (qp/process-query query)))))))))

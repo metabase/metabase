@@ -1134,12 +1134,12 @@
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT count(*) AS \"count\" "
+    (is (= (str "SELECT COUNT(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
                 "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), CAST(now() AS datetime)) AS date)"
+                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
                 ")")
            (:query
             (qp/compile
@@ -1153,9 +1153,9 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= date_trunc('month', dateadd('month', CAST(-4 AS long), CAST(now() AS datetime)))"
+                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
                   " AND "
-                  "CHECKINS.DATE < date_trunc('month', now())) "
+                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
