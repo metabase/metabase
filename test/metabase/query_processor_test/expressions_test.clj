@@ -298,7 +298,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins

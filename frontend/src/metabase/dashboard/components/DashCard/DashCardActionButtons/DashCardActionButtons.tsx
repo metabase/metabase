@@ -13,6 +13,7 @@ import {
 import { Series } from "metabase-types/types/Visualization";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import { isLinkDashCard } from "metabase/dashboard/utils";
 import Metadata from "metabase-lib/metadata/Metadata";
 
 import DashCardActionButton from "./DashCardActionButton";
@@ -22,6 +23,7 @@ import ChartSettingsButton from "./ChartSettingsButton";
 
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 import ActionSettingsButton from "./ActionSettingsButton";
+import LinkCardEditButton from "./LinkCardEditButton";
 
 interface Props {
   series: Series;
@@ -34,6 +36,9 @@ interface Props {
   onRemove: () => void;
   onAddSeries: () => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    settings: Partial<VisualizationSettings>,
+  ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
   metadata: Metadata;
@@ -50,12 +55,17 @@ function DashCardActionButtons({
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
   metadata,
 }: Props) {
-  const { disableSettingsConfig, supportPreviewing, supportsSeries } =
-    getVisualizationRaw(series).visualization;
+  const {
+    disableSettingsConfig,
+    supportPreviewing,
+    supportsSeries,
+    disableClickBehavior,
+  } = getVisualizationRaw(series).visualization;
 
   const buttons = [];
 
@@ -89,7 +99,7 @@ function DashCardActionButtons({
       );
     }
 
-    if (!isVirtualDashCard) {
+    if (!isVirtualDashCard && !disableClickBehavior) {
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"
@@ -118,6 +128,16 @@ function DashCardActionButtons({
           key="action-settings-button"
           dashboard={dashboard}
           dashcard={dashcard}
+        />,
+      );
+    }
+
+    if (dashcard && isLinkDashCard(dashcard)) {
+      buttons.push(
+        <LinkCardEditButton
+          key="link-edit-button"
+          dashcard={dashcard}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />,
       );
     }

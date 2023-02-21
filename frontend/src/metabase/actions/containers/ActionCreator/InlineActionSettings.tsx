@@ -27,6 +27,7 @@ import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 
+import { isSavedAction } from "../../utils";
 import {
   ActionSettingsContainer,
   ActionSettingsContent,
@@ -34,7 +35,7 @@ import {
 } from "./InlineActionSettings.styled";
 
 interface OwnProps {
-  action?: WritebackAction;
+  action?: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
@@ -99,14 +100,18 @@ const InlineActionSettings = ({
 
   const handleTogglePublic = (isPublic: boolean) => {
     if (isPublic) {
-      action && onCreatePublicLink({ id: action.id });
+      if (isSavedAction(action)) {
+        onCreatePublicLink({ id: action.id });
+      }
     } else {
       openModal();
     }
   };
 
   const handleDisablePublicLink = () => {
-    action && onDeletePublicLink({ id: action.id });
+    if (isSavedAction(action)) {
+      onDeletePublicLink({ id: action.id });
+    }
   };
 
   const handleSuccessMessageChange = (
@@ -125,7 +130,7 @@ const InlineActionSettings = ({
           {action && hasSharingPermission && (
             <FormField
               title={t`Make public`}
-              description={t`Creates a publicly shareable link to this action.`}
+              description={t`Creates a publicly shareable link to this action form.`}
               orientation="horizontal"
               htmlFor={`${id}-public`}
             >
@@ -140,7 +145,7 @@ const InlineActionSettings = ({
             <CopyWidgetContainer>
               <CopyWidget
                 value={Urls.publicAction(siteUrl, action.public_uuid)}
-                aria-label={t`Public action link URL`}
+                aria-label={t`Public action form URL`}
               />
             </CopyWidgetContainer>
           )}

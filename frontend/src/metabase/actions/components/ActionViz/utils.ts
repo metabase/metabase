@@ -11,7 +11,6 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
-  FieldSettingsMap,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
@@ -43,19 +42,6 @@ function prepareParameter(
   }
 
   return [actionParameter.id, formatParameterValue(parameterValue)];
-}
-
-export function setNumericValues(
-  params: ParametersForActionExecution,
-  fieldSettings: FieldSettingsMap,
-) {
-  Object.entries(params).forEach(([key, value]) => {
-    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
-      params[key] = Number(value) ?? null;
-    }
-  });
-
-  return params;
 }
 
 export function getDashcardParamValues(

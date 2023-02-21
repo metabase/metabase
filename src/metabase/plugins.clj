@@ -130,7 +130,8 @@
            :when      (and (.isDirectory file)
                            (not (.isHidden file))
                            (str/includes? (str file) "modules/drivers")
-                           (str/ends-with? (str file) "resources"))
+                           (or (str/ends-with? (str file) "resources")
+                               (str/ends-with? (str file) "resources-ee")))
            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
            :when      (.exists manifest-file)]
        manifest-file)

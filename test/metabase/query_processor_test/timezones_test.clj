@@ -24,7 +24,6 @@
   #{:athena
     :bigquery-cloud-sdk
     :oracle
-    :presto
     :redshift
     :snowflake
     :sparksql
@@ -312,7 +311,7 @@
                            (u.date/with-time-zone-same-instant timezone)
                            t/offset-date-time)
                        (-> (mt/run-mbql-query relative_filter {:fields [$created]
-                                                               :filter [:time-interval $created :current :minute]})
+                                                               :filter [:time-interval $created :current :day]})
                            mt/first-row
                            first
                            (u.date/parse nil)

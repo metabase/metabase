@@ -5,7 +5,8 @@
    [clojure.test :refer :all]
    [metabase.api.search :as api.search]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             CardBookmark
             Collection
             Dashboard
@@ -29,25 +30,37 @@
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(defn- ordered-subset?
+  "Test if all the elements in `xs` appear in the same order in `ys`. Search results in this test suite can be polluted
+  by local data, so this is a way to ignore extraneous results."
+  [[x & rest-x :as xs] [y & rest-y :as ys]]
+  (or (zero? (count xs))
+      (if (> (count xs) (count ys))
+        false
+        (if (= x y)
+          (recur rest-x rest-y)
+          (recur xs rest-y)))))
+
 (def ^:private default-search-row
-  {:id                         true
-   :description                nil
-   :archived                   false
+  {:archived                   false
+   :bookmark                   nil
    :collection                 {:id false :name nil :authority_level nil}
    :collection_authority_level nil
    :collection_position        nil
-   :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
-   :bookmark                   nil
-   :table_id                   false
    :database_id                false
    :dataset_query              nil
-   :table_schema               nil
-   :table_name                 nil
+   :description                nil
+   :id                         true
+   :initial_sync_status        nil
+   :model_name                 nil
+   :moderated_status           nil
    :table_description          nil
-   :updated_at                 true
-   :initial_sync_status        nil})
+   :table_id                   false
+   :table_name                 nil
+   :table_schema               nil
+   :updated_at                 true})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -73,12 +86,15 @@
                                             :collection {:id true, :name true :authority_level nil}
                                             :updated_at false))
 
+(def ^:private action-model-params {:name "ActionModel", :dataset true})
+
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params))
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -101,8 +117,8 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "card" "dataset"}
-                   #(assoc % :collection {:id true, :name true :authority_level nil})
+  (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
+                   #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -112,14 +128,20 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
-                    Card       [card      (coll-data-map "card %s card" coll)]
-                    Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
-                                                 :dataset true)]
-                    Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
-                    Metric     [metric    (data-map "metric %s metric")]
-                    Segment    [segment   (data-map "segment %s segment")]]
-      (f {:collection coll
+    (mt/with-temp* [Collection [coll         (data-map "collection %s collection")]
+                    Card       [action-model (if in-root-collection?
+                                               action-model-params
+                                               (assoc action-model-params :collection_id (u/the-id coll)))]
+                    Action     [action       (merge (data-map "action %s action")
+                                                    {:type :query, :model_id (u/the-id action-model)})]
+                    Card       [card         (coll-data-map "card %s card" coll)]
+                    Card       [dataset      (assoc (coll-data-map "dataset %s dataset" coll)
+                                                    :dataset true)]
+                    Dashboard  [dashboard    (coll-data-map "dashboard %s dashboard" coll)]
+                    Metric     [metric       (data-map "metric %s metric")]
+                    Segment    [segment      (data-map "segment %s segment")]]
+      (f {:action     action
+          :collection coll
           :card       card
           :dataset    dataset
           :dashboard  dashboard
@@ -200,6 +222,7 @@
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
+             [:like [:lower :model_name]        "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -389,15 +412,15 @@
   (testing "Databases for which the user does not have access to should not show up in results"
     (mt/with-temp* [Database [db-1 {:name "db-1"}]
                     Database [_db-2 {:name "db-2"}]]
-      (is (= #{"db-2" "db-1"}
-             (->> (search-request-data-with sorted-results :rasta :q "db")
-                  (map :name)
-                  set)))
+      (is (set/subset? #{"db-2" "db-1"}
+                       (->> (search-request-data-with sorted-results :rasta :q "db")
+                            (map :name)
+                            set)))
       (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
-      (is (= #{"db-2"}
-             (->> (search-request-data-with sorted-results :rasta :q "db")
-                  (map :name)
-                  set))))))
+      (is (nil? ((->> (search-request-data-with sorted-results :rasta :q "db")
+                      (map :name)
+                      set)
+                 "db-1"))))))
 
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
@@ -443,7 +466,11 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp* [Card       [_ (archived {:name "card test card 2"})]
+      (mt/with-temp* [Card       [action-model {:dataset true}]
+                      Action     [_ (archived {:name     "action test action 2"
+                                               :type     :query
+                                               :model_id (u/the-id action-model)})]
+                      Card       [_ (archived {:name "card test card 2"})]
                       Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard 2"})]
                       Collection [_ (archived {:name "collection test collection 2"})]
@@ -454,7 +481,14 @@
 
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+      (mt/with-temp* [Card       [action-model action-model-params]
+                      Action     [_ (archived {:name     "action test action"
+                                               :type     :query
+                                               :model_id (u/the-id action-model)})]
+                      Action     [_ (archived {:name     "action that will not appear in results"
+                                               :type     :query
+                                               :model_id (u/the-id action-model)})]
+                      Card       [_ (archived {:name "card test card"})]
                       Card       [_ (archived {:name "card that will not appear in results"})]
                       Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
@@ -463,16 +497,21 @@
                       Segment    [_ (archived {:name "segment test segment"})]]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
+
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+      (mt/with-temp* [Card       [action-model action-model-params]
+                      Action     [_ (archived {:name     "action test action"
+                                               :type     :query
+                                               :model_id (u/the-id action-model)})]
+                      Card       [_ (archived {:name "card test card"})]
                       Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
                       Segment    [_ (archived {:name "segment test segment"})]]
-        (is (= (default-archived-results)
-               (search-request-data :crowberto :archived "true")))))))
+        (is (ordered-subset? (default-archived-results)
+                             (search-request-data :crowberto :archived "true")))))))
 
 (deftest alerts-test
   (testing "Search should not return alerts"

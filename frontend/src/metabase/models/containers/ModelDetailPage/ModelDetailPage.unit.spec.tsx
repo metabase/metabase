@@ -23,11 +23,12 @@ import {
 import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
 
+import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import ActionCreator from "metabase/actions/containers/ActionCreatorRoute";
+import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 
 import type {
   Card,
@@ -43,6 +44,7 @@ import {
   createMockImplicitCUDActions,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockImplicitQueryAction,
   createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -218,24 +220,27 @@ async function setup({
   const initialRoute = `${baseUrl}/${tab}`;
 
   const { store, history } = renderWithProviders(
-    <Route path="/model/:slug/detail">
-      <IndexRedirect to="usage" />
-      <Route path="usage" component={ModelDetailPage} />
-      <Route path="schema" component={ModelDetailPage} />
-      <Route path="actions" component={ModelDetailPage}>
-        <ModalRoute
-          path="new"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
-        <ModalRoute
-          path=":actionId"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
+    <>
+      <Route path="/model/:slug/detail">
+        <IndexRedirect to="usage" />
+        <Route path="usage" component={ModelDetailPage} />
+        <Route path="schema" component={ModelDetailPage} />
+        <Route path="actions" component={ModelDetailPage}>
+          <ModalRoute
+            path="new"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+          <ModalRoute
+            path=":actionId"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+        </Route>
+        <Redirect from="*" to="usage" />
       </Route>
-      <Redirect from="*" to="usage" />
-    </Route>,
+      <Route path="/question/:slug" component={() => null} />
+    </>,
     { withRouter: true, initialRoute },
   );
 
@@ -250,6 +255,12 @@ type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
 
 async function setupActions(opts: SetupActionsOpts) {
   return setup({ ...opts, tab: "actions", hasActionsEnabled: true });
+}
+
+function openActionMenu(action: WritebackAction) {
+  const listItem = screen.getByRole("listitem", { name: action.name });
+  const menuButton = within(listItem).getByLabelText("ellipsis icon");
+  userEvent.click(menuButton);
 }
 
 describe("ModelDetailPage", () => {
@@ -541,7 +552,7 @@ describe("ModelDetailPage", () => {
 
           expect(screen.getByText(action.name)).toBeInTheDocument();
           expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
-          expect(screen.getByText("Public Action")).toBeInTheDocument();
+          expect(screen.getByText("Public action form")).toBeInTheDocument();
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
@@ -571,13 +582,23 @@ describe("ModelDetailPage", () => {
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
 
-        it("allows to edit a query action", async () => {
+        it("allows to edit a query action via link", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          userEvent.click(within(listItem).getByLabelText("pencil icon"));
+          userEvent.click(screen.getByRole("link", { name: action.name }));
+
+          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+        });
+
+        it("allows to edit a query action via menu", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          openActionMenu(action);
+          userEvent.click(screen.getByText("Edit"));
 
           expect(screen.getByTestId("mock-action-editor")).toBeVisible();
         });
@@ -588,7 +609,7 @@ describe("ModelDetailPage", () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          userEvent.click(screen.getByTestId("new-action-menu"));
+          userEvent.click(screen.getByLabelText("Actions menu"));
           userEvent.click(screen.getByText("Create basic actions"));
 
           await waitFor(() => {
@@ -651,11 +672,70 @@ describe("ModelDetailPage", () => {
             actions: createMockImplicitCUDActions(model.id()),
           });
 
+          userEvent.click(screen.getByLabelText("Actions menu"));
+
           expect(
             screen.queryByText(/Create basic action/i),
           ).not.toBeInTheDocument();
+        });
+
+        it("allows to archive a query action", async () => {
+          const updateActionSpy = jest.spyOn(ActionsApi, "update");
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
+          userEvent.click(screen.getByText("Archive"));
+
+          const modal = screen.getByRole("dialog");
+          userEvent.click(
+            within(modal).getByRole("button", { name: "Archive" }),
+          );
+
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          expect(updateActionSpy).toHaveBeenCalledWith({
+            id: action.id,
+            archived: true,
+          });
+        });
+
+        it("doesn't allow to archive an implicit action", async () => {
+          const model = getModel();
+          const action = createMockImplicitQueryAction({
+            model_id: model.id(),
+          });
+          await setupActions({ model, actions: [action] });
+
+          openActionMenu(action);
+
+          expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        });
+
+        it("allows to disable implicit actions", async () => {
+          const deleteActionSpy = jest.spyOn(Actions.actions, "delete");
+          const model = getModel();
+          const actions = createMockImplicitCUDActions(model.id());
+          await setupActions({ model, actions });
+
+          userEvent.click(screen.getByLabelText("Actions menu"));
+          userEvent.click(screen.getByText("Disable basic actions"));
+          userEvent.click(screen.getByRole("button", { name: "Disable" }));
+
+          actions.forEach(action => {
+            expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
+          });
+        });
+
+        it("doesn't allow to disable implicit actions if they don't exist", async () => {
+          const model = getModel();
+          await setupActions({ model, actions: [] });
+
+          userEvent.click(screen.getByLabelText("Actions menu"));
+
           expect(
-            screen.queryByTestId("new-action-menu"),
+            screen.queryByText("Disable basic actions"),
           ).not.toBeInTheDocument();
         });
       });
@@ -699,19 +779,25 @@ describe("ModelDetailPage", () => {
           expect(
             screen.queryByText("Create basic actions"),
           ).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("new-action-menu"),
-          ).not.toBeInTheDocument();
+          expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
         });
 
         it("doesn't allow to edit actions", async () => {
           const action = createMockQueryAction({ model_id: model.id() });
           await setupActions({ model, actions: [action] });
 
-          const listItem = screen.getByRole("listitem", { name: action.name });
-          const editButton = within(listItem).queryByLabelText("pencil icon");
+          openActionMenu(action);
 
-          expect(editButton).not.toBeInTheDocument();
+          expect(screen.getByText("View")).toBeInTheDocument();
+        });
+
+        it("doesn't allow to archive actions", async () => {
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          openActionMenu(action);
+
+          expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
     });
@@ -804,6 +890,24 @@ describe("ModelDetailPage", () => {
         "aria-selected",
         "true",
       );
+    });
+
+    it("redirects to query builder when trying to open a question", async () => {
+      const question = getSavedStructuredQuestion();
+      const { history } = await setup({ model: question });
+
+      expect(history?.getCurrentLocation().pathname).toBe(question.getUrl());
+    });
+
+    it("shows 404 when opening an archived model", async () => {
+      const model = getStructuredModel({ archived: true });
+      const modelName = model.displayName() as string;
+      await setup({ model });
+
+      expect(screen.queryByText(modelName)).not.toBeInTheDocument();
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
+      ).toBeInTheDocument();
     });
   });
 });
