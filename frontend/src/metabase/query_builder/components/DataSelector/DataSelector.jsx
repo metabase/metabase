@@ -456,8 +456,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    const { loading } = this.props;
-    const loadedDatasets = prevProps.loading && !loading;
+    const { allLoading } = this.props;
+    const loadedDatasets = prevProps.allLoading && !allLoading;
 
     // Once datasets are queried with the search endpoint,
     // this would hide the initial loading and view.
