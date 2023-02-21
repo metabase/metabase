@@ -29,7 +29,7 @@ const DEFAULT_OPTIONS = {
 };
 
 export class Api extends EventEmitter {
-  basename = "";
+  basename = location.origin;
 
   GET;
   POST;
@@ -153,58 +153,57 @@ export class Api extends EventEmitter {
   }
 
   // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
-  _makeRequest(method, url, headers, body, data, options) {
-    return new Promise((resolve, reject) => {
-      let isCancelled = false;
-      const xhr = new XMLHttpRequest();
-      xhr.open(method, this.basename + url);
-      for (const headerName in headers) {
-        xhr.setRequestHeader(headerName, headers[headerName]);
-      }
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // getResponseHeader() is case-insensitive
-          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
-          if (antiCsrfToken) {
-            ANTI_CSRF_TOKEN = antiCsrfToken;
-          }
+  async _makeRequest(method, url, headers, requestBody, data, options) {
+    const controller = new AbortController();
+    options.cancelled?.then(() => controller.abort());
 
-          let body = xhr.responseText;
+    const request = new Request(this.basename + url, {
+      method,
+      headers,
+      body: requestBody,
+      signal: controller.signal,
+    });
+
+    return fetch(request)
+      .then(response => {
+        return response.text().then(body => {
           if (options.json) {
             try {
               body = JSON.parse(body);
             } catch (e) {}
           }
-          let status = xhr.status;
+
+          let status = response.status;
           if (status === 202 && body && body._status > 0) {
             status = body._status;
           }
+
+          const token = response.headers.get(ANTI_CSRF_HEADER);
+          if (token) {
+            ANTI_CSRF_TOKEN = token;
+          }
+
+          if (!options.noEvent) {
+            this.emit(status, url);
+          }
+
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
-            resolve(body);
+            return body;
           } else {
-            reject({
-              status: status,
-              data: body,
-              isCancelled: isCancelled,
-            });
+            throw { status: status, data: body };
           }
-          if (!options.noEvent) {
-            this.emit(status, url);
-          }
-        }
-      };
-      xhr.send(body);
-
-      if (options.cancelled) {
-        options.cancelled.then(() => {
-          isCancelled = true;
-          xhr.abort();
         });
-      }
-    });
+      })
+      .catch(error => {
+        if (controller.signal.aborted) {
+          throw { isCancelled: true };
+        } else {
+          throw error;
+        }
+      });
   }
 }
 
