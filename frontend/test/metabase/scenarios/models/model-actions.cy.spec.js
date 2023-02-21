@@ -146,6 +146,32 @@ describe(
       cy.findByText("Delete").should("not.exist");
     });
 
+    it("should allow to create an action with the New button", () => {
+      const QUERY = "UPDATE orders SET discount = {{ discount }}";
+      cy.visit("/");
+
+      cy.findByText("New").click();
+      popover().findByText("Action").click();
+
+      cy.findByText("Select a database").click();
+      popover().findByText("QA Postgres12").click();
+
+      fillActionQuery(QUERY);
+      cy.findByRole("button", { name: "Save" }).click();
+      modal().within(() => {
+        cy.findByLabelText("Name").type("Discount order");
+        cy.findByText("Select a model").click();
+      });
+      popover().findByText(SAMPLE_ORDERS_MODEL.name).click();
+      cy.findByRole("button", { name: "Create" }).click();
+
+      cy.get("@modelId").then(modelId => {
+        cy.url().should("include", `/model/${modelId}/detail/actions`);
+      });
+      cy.findByText("Discount order").should("be.visible");
+      cy.findByText(QUERY).should("be.visible");
+    });
+
     it("should allow to execute actions from the model page", () => {
       cy.get("@modelId").then(modelId => {
         createAction({
