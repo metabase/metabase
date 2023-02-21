@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const glob = require("glob");
 const fs = require("fs");
+const glob = require("glob");
 
 glob("./{enterprise/,}frontend/src/**/*.{js,jsx, ts, tsx}", (err, files) => {
   if (err) {
