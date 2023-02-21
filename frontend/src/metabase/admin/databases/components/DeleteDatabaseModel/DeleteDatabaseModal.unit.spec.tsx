@@ -45,7 +45,6 @@ const setup = async ({
 describe("DeleteDatabaseModal", () => {
   afterEach(() => {
     jest.clearAllMocks();
-    nock.cleanAll();
   });
 
   it("should allow deleting database without content after confirming its name", async () => {

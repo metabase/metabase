@@ -3,10 +3,6 @@ import api, { GET, POST, PUT } from "metabase/lib/api";
 api.basename = "";
 
 describe("api", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   const successResponse = { status: "ok" };
 
   it("should GET", async () => {

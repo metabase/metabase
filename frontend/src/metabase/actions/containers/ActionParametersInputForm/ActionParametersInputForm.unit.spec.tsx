@@ -63,10 +63,6 @@ function setupPrefetch() {
 }
 
 describe("Actions > ActionParametersInputForm", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should render an action form", async () => {
     await setup();
     expect(screen.getByTestId("action-form")).toBeInTheDocument();

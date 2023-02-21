@@ -85,10 +85,6 @@ describe("SavedQuestionPicker", () => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
 

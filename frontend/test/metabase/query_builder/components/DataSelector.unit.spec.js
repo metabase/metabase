@@ -31,10 +31,6 @@ describe("DataSelector", () => {
       });
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   const emptyMetadata = {
     databases: {},
     schemas: {},

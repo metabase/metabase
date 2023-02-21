@@ -12,10 +12,6 @@ describe("schema entity", () => {
     store = getStore();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should save metadata from fetching a schema's tables", async () => {
     nock(location.origin)
       .get("/api/database/1/schema/public")

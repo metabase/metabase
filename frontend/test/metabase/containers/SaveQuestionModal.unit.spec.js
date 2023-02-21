@@ -147,10 +147,6 @@ describe("SaveQuestionModal", () => {
       .reply(200, TEST_COLLECTIONS);
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new question", () => {
     it("should suggest a name for structured queries", async () => {
       await setup(getQuestion());

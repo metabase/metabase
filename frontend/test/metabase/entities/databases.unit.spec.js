@@ -10,10 +10,6 @@ describe("database entity", () => {
     store = getStore();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should save database metadata in redux", async () => {
     nock(location.origin)
       .get("/api/database/123/metadata")

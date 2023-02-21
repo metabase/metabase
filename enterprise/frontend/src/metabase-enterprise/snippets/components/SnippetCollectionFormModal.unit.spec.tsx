@@ -84,10 +84,6 @@ const LABEL = {
 };
 
 describe("SnippetCollectionFormModal", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new folder", () => {
     it("displays correct blank state", async () => {
       await setup();

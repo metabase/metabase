@@ -57,7 +57,6 @@ const mockUpdateToken = (valid: boolean) => {
 
 describe("LicenseAndBilling", () => {
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 

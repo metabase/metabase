@@ -272,10 +272,6 @@ function openActionMenu(action: WritebackAction) {
 }
 
 describe("ModelDetailPage", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   [
     { type: "structured", getModel: getStructuredModel },
     { type: "native", getModel: getNativeModel },

@@ -166,10 +166,6 @@ async function setupCollectionPage({
 }
 
 describe("nav > containers > MainNavbar", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();

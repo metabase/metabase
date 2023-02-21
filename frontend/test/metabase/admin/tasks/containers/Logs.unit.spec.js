@@ -6,13 +6,7 @@ import Logs from "metabase/admin/tasks/containers/Logs";
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("log fetching", () => {
-    afterEach(() => nock.cleanAll());
-
     it("should call UtilApi.logs after 1 second", () => {
       jest.useFakeTimers();
       nock(location.origin).get("/api/util/logs").reply(200, []);

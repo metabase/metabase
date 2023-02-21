@@ -108,10 +108,6 @@ async function setup({ question, cachingEnabled = true } = {}) {
 }
 
 describe("QuestionInfoSidebar", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },

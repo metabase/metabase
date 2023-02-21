@@ -53,10 +53,6 @@ describe("CreateCollectionForm", () => {
     nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays correct blank state", () => {
     setup();
 

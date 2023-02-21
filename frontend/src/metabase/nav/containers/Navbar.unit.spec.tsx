@@ -65,10 +65,6 @@ async function setup({
 }
 
 describe("nav > containers > Navbar > Core App", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should be open when isOpen is true", async () => {
     await setup({ isOpen: true });
     const navbar = screen.getByTestId("main-navbar-root");

@@ -169,10 +169,6 @@ async function openCollection(itemName) {
 }
 
 describe("ItemPicker", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays items from the root collection by default", async () => {
     await setup();
 

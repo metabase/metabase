@@ -62,7 +62,6 @@ async function setup({
 
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 

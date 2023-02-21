@@ -23,10 +23,6 @@ const setup = ({
 };
 
 describe("GroupMappingsWidget", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("when a mapping is set for admin group", () => {
     const settingBody = [
       {

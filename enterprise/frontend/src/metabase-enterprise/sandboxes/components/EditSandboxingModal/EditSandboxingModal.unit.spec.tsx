@@ -63,7 +63,6 @@ const setup = ({
 describe("EditSandboxingModal", () => {
   afterEach(() => {
     jest.clearAllMocks();
-    nock.cleanAll();
   });
 
   describe("EditSandboxingModal", () => {

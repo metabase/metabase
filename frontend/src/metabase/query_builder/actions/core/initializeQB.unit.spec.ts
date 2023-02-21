@@ -147,7 +147,6 @@ describe("QB Actions > initializeQB", () => {
   });
 
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 

@@ -39,10 +39,6 @@ const productVendorField = new Field({
 });
 
 describe("CategoryFieldPicker", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("given a few distinct values", () => {
     beforeEach(() => {
       nock(location.origin)

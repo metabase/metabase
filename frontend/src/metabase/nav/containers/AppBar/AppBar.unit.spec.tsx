@@ -24,7 +24,6 @@ describe("AppBar", () => {
 
     afterEach(() => {
       jest.clearAllMocks();
-      nock.cleanAll();
       restoreMockEmbedding();
     });
 

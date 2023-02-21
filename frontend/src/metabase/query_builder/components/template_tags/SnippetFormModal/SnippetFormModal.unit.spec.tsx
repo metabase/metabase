@@ -86,10 +86,6 @@ const LABEL = {
 };
 
 describe("SnippetFormModal", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new snippet", () => {
     it("displays correct blank state", async () => {
       await setup();

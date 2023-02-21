@@ -101,10 +101,6 @@ async function setup({
 }
 
 describe("PublicAction", () => {
-  beforeEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows acton form", async () => {
     await setup();
 
