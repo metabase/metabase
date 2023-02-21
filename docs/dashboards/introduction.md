@@ -1,7 +1,7 @@
 ---
 title: Introduction to dashboards
 redirect_from:
-- /docs/latest/users-guide/07-dashboards
+  - /docs/latest/users-guide/07-dashboards
 ---
 
 # Introduction to dashboards
@@ -58,8 +58,6 @@ To add a new text card, create a new dashboard (or edit an existing one) and cli
 
 Your new, empty text card will appear. It has two modes: writing and previewing. Toggle between the modes by clicking the **eye** to preview the card, or the **document with pencil** icon to edit the card.
 
-![New text card](images/new-text-card.png)
-
 You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends).
 
 ![Markdown](images/markdown.png)
@@ -93,7 +91,6 @@ You can also make text options by wrapping the text in double brackets, `[[` and
 In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
 
 To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
-
 
 ## Link cards
 
@@ -162,7 +159,7 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the dashboard, Metabase can retrieve the stored results rather than query the database(s) again. For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
 
-You can set cache duration for a dashboard by clicking on the _..._ > __Edit dashboard details__ > __More options__.
+You can set cache duration for a dashboard by clicking on the _..._ > **Edit dashboard details** > **More options**.
 
 ## Sharing dashboards with public links
 
