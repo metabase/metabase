@@ -4,12 +4,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -193,7 +195,7 @@
 
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
-              :params []}
+              :params nil}
              (qp/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
@@ -230,7 +232,7 @@
 
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
-              :params []}
+              :params nil}
              (qp/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
@@ -308,3 +310,66 @@
               (mt/with-native-query-testing-context query
                 (is (= [[0]]
                        (mt/rows (qp/process-query query))))))))))))
+
+(deftest multiple-native-query-parameters-test
+  (mt/dataset sample-dataset
+    (let [sql   (str/join
+                 \newline
+                 ["SELECT orders.id, orders.created_at, people.state, people.name, people.source"
+                  "FROM orders LEFT JOIN people ON orders.user_id = people.id"
+                  "WHERE true"
+                  "  [[AND {{created_at}}]]"
+                  "  [[AND {{state}}]]"
+                  "  AND [[people.source = {{source}}]]"
+                  "  ORDER BY orders.id ASC"
+                  "  LIMIT 15;"])
+          query {:database (mt/id)
+                 :type     :native
+                 :native   {:query         sql
+                            :type          :native
+                            :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
+                                                          :name         "created_at"
+                                                          :display-name "Created At"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :widget-type  :date/quarter-year
+                                                          :default      nil}
+                                            "source"     {:id           "44038e73-f909-1bed-0974-2a42ce8979e8"
+                                                          :name         "source"
+                                                          :display-name "Source"
+                                                          :type         :text}
+                                            "state"      {:id           "88057a9e-91bd-4b2e-9327-afd92c259dc8"
+                                                          :name         "state"
+                                                          :display-name "State"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :state) nil]
+                                                          :widget-type  :string/!=
+                                                          :default      nil}}
+                            :parameters    [{:type   :date/quarter-year
+                                             :target [:dimension [:template-tag "created_at"]]
+                                             :slug   "created_at"
+                                             :value  "Q2-2019"}
+                                            {:type   :category
+                                             :target [:variable [:template-tag "source"]]
+                                             :slug   "source"
+                                             :value  "Organic"}
+                                            {:type   :string/!=
+                                             :target [:dimension [:template-tag "state"]]
+                                             :slug   "state"
+                                             :value  ["OR"]}]}}]
+      (mt/with-native-query-testing-context query
+        (let [rows (mt/rows (qp/process-query query))]
+          (testing (format "Results =\n%s" (u/pprint-to-str rows))
+            (doseq [[_orders-id orders-created-at people-state _people-name people-source :as row] rows]
+              (testing (format "Row =\n%s" (u/pprint-to-str row))
+                (testing "created_at = Q2-2019"
+                  (is (t/after?  (u.date/parse orders-created-at) #t "2019-04-01T00:00:00-00:00"))
+                  (is (t/before? (u.date/parse orders-created-at) #t "2019-07-01T00:00:00-00:00")))
+                (testing "source = Organic"
+                  (is (= people-source "Organic")))
+                (testing "state != OR"
+                  (is (not= people-state "OR")))))
+            (testing "Should contain row with 'Emilie Goyette'"
+              (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
+                          (= people-name "Emilie Goyette"))
+                        rows)))))))))

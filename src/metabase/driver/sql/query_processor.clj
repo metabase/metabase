@@ -580,12 +580,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
@@ -752,7 +752,9 @@
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (case (long hx/*honey-sql-version*)
+                                               1 0.0
+                                               2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1298,7 +1300,7 @@
     (binding [sql/*dialect*      (sql/get-dialect dialect)
               sql/*quoted*       true
               sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form))))
+      (sql/format-expr honeysql-form {:nested true}))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level

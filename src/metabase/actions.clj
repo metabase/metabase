@@ -160,7 +160,8 @@
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
-        (perform-action!* driver action db arg-map)))))
+        (driver/with-driver driver
+          (perform-action!* driver action db arg-map))))))
 
 ;;;; Action definitions.
 

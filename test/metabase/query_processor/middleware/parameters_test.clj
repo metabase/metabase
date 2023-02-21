@@ -10,10 +10,17 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native
