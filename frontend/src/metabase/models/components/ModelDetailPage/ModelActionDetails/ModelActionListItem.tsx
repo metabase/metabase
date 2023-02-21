@@ -24,6 +24,7 @@ interface Props {
   action: WritebackAction;
   actionUrl: string;
   canWrite: boolean;
+  canRun: boolean;
   onArchive: (action: WritebackAction) => void;
 }
 
@@ -48,6 +49,7 @@ function ModelActionListItem({
   action,
   actionUrl,
   canWrite,
+  canRun,
   onArchive,
 }: Props) {
   const canArchive = canWrite && action.type !== "implicit";
@@ -105,13 +107,15 @@ function ModelActionListItem({
         ) : action.type === "implicit" ? (
           <ImplicitActionCardContent />
         ) : null}
-        <ModalWithTrigger
-          triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
-        >
-          {({ onClose }: ModalProps) => (
-            <ActionExecuteModal actionId={action.id} onClose={onClose} />
-          )}
-        </ModalWithTrigger>
+        {canRun && (
+          <ModalWithTrigger
+            triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
+          >
+            {({ onClose }: ModalProps) => (
+              <ActionExecuteModal actionId={action.id} onClose={onClose} />
+            )}
+          </ModalWithTrigger>
+        )}
       </ActionCard>
       {confirmationModal}
     </>

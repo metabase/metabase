@@ -1,11 +1,12 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;
+  justify-content: space-between;
 `;
 
 export const LegendLabel = styled.div`
@@ -24,8 +25,17 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(Icon)`
-  color: ${color("text-medium")};
-  margin-left: 0.5rem;
+  color: ${lighten("text-light", 0.1)};
+  margin: 0 0.375rem;
+
+  &:hover {
+    color: ${color("text-medium")};
+  }
+`;
+
+export const LegendRightContent = styled.div`
+  display: flex;
+  justify-content: flex-end;
 `;
 
 LegendDescriptionIcon.defaultProps = {
