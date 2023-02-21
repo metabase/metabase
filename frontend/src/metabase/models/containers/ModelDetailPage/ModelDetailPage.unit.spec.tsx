@@ -548,6 +548,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
+          expect(await screen.findByLabelText("Run")).toBeInTheDocument();
         });
 
         it("lists existing public query actions with public label", async () => {
@@ -576,6 +577,7 @@ describe("ModelDetailPage", () => {
           expect(screen.getByText("Create")).toBeInTheDocument();
           expect(screen.getByText("Update")).toBeInTheDocument();
           expect(screen.getByText("Delete")).toBeInTheDocument();
+          expect(await screen.findAllByLabelText("Run")).toHaveLength(3);
         });
 
         it("allows to create a new query action", async () => {
