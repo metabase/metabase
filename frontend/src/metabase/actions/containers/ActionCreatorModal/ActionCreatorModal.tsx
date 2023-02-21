@@ -7,9 +7,10 @@ import type { LocationDescriptor } from "history";
 import * as Urls from "metabase/lib/urls";
 import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
+import { setErrorPage } from "metabase/redux/app";
 
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import ActionCreator from "../ActionCreator";
 
@@ -29,12 +30,14 @@ interface EntityLoaderProps {
 }
 
 interface DispatchProps {
+  setErrorPage: (error: AppErrorDescriptor) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
 
 const mapDispatchToProps = {
+  setErrorPage,
   onChangeLocation: replace,
 };
 
@@ -44,6 +47,7 @@ function ActionCreatorModal({
   params,
   loading,
   onClose,
+  setErrorPage,
   onChangeLocation,
 }: ActionCreatorModalProps) {
   const actionId = Urls.extractEntityId(params.actionId);
@@ -53,14 +57,22 @@ function ActionCreatorModal({
   useEffect(() => {
     if (loading === false) {
       const notFound = params.actionId && !action;
+      const hasModelMismatch = action != null && action.model_id !== modelId;
+
       if (notFound || action?.archived) {
         const nextLocation = Urls.modelDetail(model, "actions");
         onChangeLocation(nextLocation);
+      } else if (hasModelMismatch) {
+        setErrorPage({ status: 404 });
       }
     }
     // We only need to run this once, when the action is fetched
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <ActionCreator
