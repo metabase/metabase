@@ -70,3 +70,8 @@ You can include placeholder text for all fields in the action form.
 For both **Dropdown** and **Inline select**, you can specify a list of options to present on the form, with each option on its own line.
 
 ![Dropdown select](./images/dropdown.png)
+
+## Further reading
+
+- [Introduction to actions](./introduction.md)
+- [Basic actions](./basic.md)

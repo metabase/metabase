@@ -4,7 +4,7 @@ title: Basic actions
 
 # Basic actions
 
-Basic actions are premade [actions](./overview.md) that do things that people typically want to do when interacting with a database.
+Basic actions are premade [actions](./introduction.md) that do things that people typically want to do when interacting with a database.
 
 Basic actions auto-track the schema of the model they're associated with. By auto-track the schema, we mean that Metabase will create forms for people to fill out that include all of the model's columns, excluding custom columns. Custom columns are excluded because they are computed columns; if you want to change a custom column's values, you should update the values in the columns used to compute that column.
 
@@ -40,13 +40,7 @@ The Create actions is the `INSERT INTO` action. The Create action will present a
 
 You cannot archive basic actions, you can just toggle them on or off. From the model detail page, next the **New action** button, click on the **...** menu and click **Disable basic actions**. 
 
-## Who can use actions
+## Further reading
 
-### Creating and editing actions
-
-Only people in groups with SQL access (native query editing access) to the relevant database tables can create and edit actions.
-
-### Running actions
-
-Anyone who has access to the collection that includes dashboards with actions. Or, in the case of public actions.
-
+- [Introduction to actions](./introduction.md)
+- [Custom actions](./custom.md)
