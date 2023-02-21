@@ -19,13 +19,12 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
    (java.time OffsetTime)
-   (org.h2.command CommandInterface Parser CommandList)
-   (org.h2.engine SessionLocal DbObject)))
+   (org.h2.command CommandInterface Parser)
+   (org.h2.engine SessionLocal)))
 
 (set! *warn-on-reflection* true)
 
@@ -117,11 +116,9 @@
            (.setAccessible true))
          obj))
   ([obj field or-else]
-   (try (.get (doto (.getDeclaredField (class obj) field)
-                (.setAccessible true))
-              obj)
-        (catch java.lang.NoSuchFieldException e
-          ;; when there are no fields: return no commands
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
           or-else))))
 
 (defn- make-h2-parser
@@ -165,7 +162,7 @@
   ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
   (< cmd-type CommandInterface/ALTER_SEQUENCE))
 
-(defn- contains-ddl? [{:keys [command-class+types remaining-sql] :as cd}]
+(defn- contains-ddl? [{:keys [command-class+types remaining-sql]}]
   (let [cmd-type-nums (mapv second command-class+types)]
     (boolean
      (or (some cmd-type-ddl? cmd-type-nums)
