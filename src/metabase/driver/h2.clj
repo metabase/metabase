@@ -135,11 +135,12 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(mu/defn ^:private classify-query
-  :- [:map
-      [:command-class+types [:vector [:tuple :any :int]]]
-      [:remaining-sql [:maybe :string]]]
-  [database query :- :string]
+(defn- classify-query
+  "Takes an h2 db id, and a query, returns the command-classes+types (see: ), and any remaining sql.
+
+  - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
+    Usually if it exists we will deny the query."
+  [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
       (let [command-list      (.prepareCommand h2-parser query)
