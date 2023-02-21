@@ -10,6 +10,7 @@ import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
   ActionCard,
   ActionHeader,
+  ActionRunButtonContainer,
   ActionRunButton,
   ActionSubtitle,
   ActionSubtitlePart,
@@ -109,7 +110,16 @@ function ModelActionListItem({
         ) : null}
         {canRun && (
           <ModalWithTrigger
-            triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
+            triggerElement={
+              <ActionRunButtonContainer>
+                <ActionRunButton
+                  as={Link}
+                  icon="play"
+                  onlyIcon
+                  tooltip={t`Run action`}
+                />
+              </ActionRunButtonContainer>
+            }
           >
             {({ onClose }: ModalProps) => (
               <ActionExecuteModal actionId={action.id} onClose={onClose} />
