@@ -16,11 +16,7 @@ const questionDetails = {
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
-      breakout: [
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-        ["field", ORDERS.USER_ID, null],
-        ["field", ORDERS.PRODUCT_ID, null],
-      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
     },
     database: SAMPLE_DB_ID,
   },
@@ -52,10 +48,13 @@ const questionDetails = {
         enabled: true,
       },
     ],
+    column_settings: {
+      '["name","count"]': { show_mini_bar: true },
+    },
   },
 };
 
-describe("issue 25250", () => {
+describe("issue 28304", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -63,11 +62,14 @@ describe("issue 25250", () => {
     visitQuestionAdhoc(questionDetails);
   });
 
-  it("pivot table should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
-    cy.findByText("Count by 3 breakouts").should("be.visible");
+  it("table should should generate default columns when table.columns entries do not match data.cols  (metabase#28304)", () => {
+    cy.findByText("Count by Created At: Month").should("be.visible");
 
     cy.findByTestId("viz-settings-button").click();
     leftSidebar().should("not.contain", "[Unknown]");
+    leftSidebar().should("contain", "Created At");
+    leftSidebar().should("contain", "Count");
+    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
     getDraggableElements().should("have.length", 2);
   });
 });
