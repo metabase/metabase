@@ -12,9 +12,13 @@ Actions are entities in Metabase that let you build custom forms and business lo
 
 ## What are actions?
 
-Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements. Use actions to update your data based on user input or values on the page.
+Actions let you write parameterized SQL that writes back to your database. Actions can be attached to buttons on dashboards to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.
 
-Have fun, and try not to break anything.
+Here are a few ideas for what you can do with actions:
+
+- Create a customer feedback form and embed it on your website.
+- Mark the customer you’re viewing in a dashboard as a VIP.
+- Let team members remove redundant data.
 
 ## Enabling actions
 
