@@ -4,7 +4,7 @@ const fs = require("fs");
 const glob = require("glob");
 const chalk = require("chalk");
 
-glob("./{enterprise/,}frontend/src/**/*.{js,jsx, ts, tsx}", (err, files) => {
+glob("./{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}", (err, files) => {
   if (err) {
     console.error(err);
     process.exit(1);
