@@ -11,6 +11,12 @@ process.on("uncaughtException", err =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
 
+// these functions are used by nock, but they are removed by jsdom
+if (!global.setImmediate) {
+  global.setImmediate = global.setTimeout;
+  global.clearImmediate = global.clearTimeout;
+}
+
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {
     ...console.log,
