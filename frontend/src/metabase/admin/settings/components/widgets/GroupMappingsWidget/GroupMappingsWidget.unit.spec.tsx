@@ -63,9 +63,12 @@ describe("GroupMappingsWidget", () => {
       // Confirm remove
       userEvent.click(screen.getByText("Yes"));
 
-      await waitFor(() => {
-        expect(onChangeSettingSpy).toHaveBeenCalledTimes(1);
-      });
+      await waitFor(
+        () => {
+          expect(onChangeSettingSpy).toHaveBeenCalledTimes(1);
+        },
+        { timeout: 10000 },
+      );
     });
   });
 

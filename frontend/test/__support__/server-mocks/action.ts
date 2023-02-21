@@ -8,6 +8,7 @@ import {
 export function setupActionEndpoints(scope: Scope, action: WritebackAction) {
   scope.get(`/api/action/${action.id}`).reply(200, action);
   scope.put(`/api/action/${action.id}`).reply(200, action);
+  scope.delete(`/api/action/${action.id}`).reply(200, action);
 }
 
 export function setupActionsEndpoints(

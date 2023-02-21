@@ -1343,7 +1343,9 @@
                        (qp/process-query query)))))))))))
 
 (deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
