@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
@@ -234,7 +233,7 @@
                   :query    {:aggregation  [[:count]]
                              :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                          "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
-                                                         "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
+                                                         "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
                                             :params []}}
 
                   ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
