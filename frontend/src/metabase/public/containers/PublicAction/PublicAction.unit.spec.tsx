@@ -119,6 +119,22 @@ describe("PublicAction", () => {
     expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
   });
 
+  it("doesn't let to submit until required parameters are filled", async () => {
+    const action = {
+      ...TEST_ACTION,
+      parameters: [SIZE_PARAMETER, { ...COLOR_PARAMETER, required: true }],
+    };
+    await setup({ action });
+
+    userEvent.type(screen.getByLabelText("Size"), "42");
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+
+    userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled(),
+    );
+  });
+
   it("submits form correctly", async () => {
     const { executeActionEndpointSpy } = await setup({
       expectedRequestBody: {
@@ -168,17 +184,14 @@ describe("PublicAction", () => {
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
-  it("immediately executes an action without parameters", async () => {
+  it("handles actions without parameters", async () => {
     const { executeActionEndpointSpy } = await setup({
       action: { ...TEST_ACTION, parameters: [] },
       expectedRequestBody: { parameters: {} },
     });
 
-    expect(
-      await screen.findByText(`${TEST_ACTION.name} ran successfully`),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
-    expect(executeActionEndpointSpy.isDone()).toBe(true);
+    expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
+    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await waitFor(() => expect(executeActionEndpointSpy.isDone()).toBe(true));
   });
 });

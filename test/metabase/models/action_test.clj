@@ -1,7 +1,7 @@
 (ns metabase.models.action-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Dashboard DashboardCard]]
+   [metabase.models :refer [Action Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
    [toucan.hydrate :refer [hydrate]]
@@ -59,10 +59,19 @@
 (deftest dashcard-deletion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (mt/with-actions [{:keys [action-id]} {}]
-        (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:action_id action-id
-                                                          :dashboard_id dashboard-id}]]
-          (is (= 1 (t2/count DashboardCard :id dashcard-id)))
-          (action/update! {:id action-id, :archived true} {:id action-id})
-          (is (zero? (t2/count DashboardCard :id dashcard-id))))))))
+      (testing "Dashcards are deleted after actions are archived"
+        (mt/with-actions [{:keys [action-id]} {}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:action_id action-id
+                                                            :dashboard_id dashboard-id}]]
+            (is (= 1 (t2/count DashboardCard :id dashcard-id)))
+            (action/update! {:id action-id, :archived true} {:id action-id})
+            (is (zero? (t2/count DashboardCard :id dashcard-id))))))
+      (testing "Dashcards are deleted after actions are deleted entirely"
+        (mt/with-actions [{:keys [action-id]} {}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:action_id action-id
+                                                            :dashboard_id dashboard-id}]]
+            (is (= 1 (t2/count DashboardCard :id dashcard-id)))
+            (t2/delete! Action :id action-id)
+            (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))

@@ -181,6 +181,29 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body.tables.find(table => table.name === name).id;
+      return body?.tables?.find(table => table.name === name)?.id;
     });
+}
+
+export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
+  // 100 x 100ms should be plenty of time for the sync to finish.
+  if (iteration === 100) {
+    return;
+  }
+
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    if (!body.tables.length) {
+      cy.wait(100);
+      waitForSyncToFinish(++iteration, databaseId);
+    }
+
+    return;
+  });
+}
+
+export function resyncDatabase(DB_ID = 2) {
+  // must be signed in as admin to sync
+  cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
+  cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
+  waitForSyncToFinish(0, DB_ID);
 }
