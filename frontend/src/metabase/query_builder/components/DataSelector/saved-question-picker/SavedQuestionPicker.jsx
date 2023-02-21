@@ -61,7 +61,7 @@ function SavedQuestionPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const targetModels = isDatasets ? ["dataset"] : null;
+    const targetModels = isDatasets ? ["dataset"] : ["card", "dataset"];
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(

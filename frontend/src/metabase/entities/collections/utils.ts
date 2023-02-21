@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { IconProps } from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
@@ -56,13 +54,6 @@ export function getCollectionType(
   return collectionId !== undefined ? "other" : null;
 }
 
-function hasIntersection(list1: unknown[], list2?: unknown[]) {
-  if (!list2) {
-    return false;
-  }
-  return _.intersection(list1, list2).length > 0;
-}
-
 export interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
   children: CollectionTreeItem[];
@@ -76,13 +67,13 @@ export function buildCollectionTree(
     return [];
   }
 
-  const shouldFilterCollections = Array.isArray(targetModels);
+  const targetModelSet = new Set(targetModels);
 
   return collections.flatMap(collection => {
     const hasTargetModels =
-      !shouldFilterCollections ||
-      hasIntersection(targetModels, collection.below) ||
-      hasIntersection(targetModels, collection.here);
+      !targetModelSet.size ||
+      collection.here?.some(model => targetModelSet.has(model)) ||
+      collection.below?.some(model => targetModelSet.has(model));
 
     return hasTargetModels
       ? {
