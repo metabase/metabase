@@ -232,7 +232,7 @@
     "jest-watch-typeahead": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
     "knex": "^2.4.2",
-    "lint-staged": "^12.3.2",
+    "lint-staged": "^13.1.2",
     "markdown-link-check": "^3.10.2",
     "mini-css-extract-plugin": "2.7.2",
     "mochawesome": "^7.1.3",
