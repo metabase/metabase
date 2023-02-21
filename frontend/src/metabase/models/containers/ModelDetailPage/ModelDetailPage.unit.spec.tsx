@@ -511,7 +511,7 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
-        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+        it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
 
@@ -530,6 +530,7 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
