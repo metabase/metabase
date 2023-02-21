@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require
    [metabase.models.card :refer [Card]]
+   [metabase.query-processor.middleware.fetch-source-query
+    :as fetch-source-query]
    [metabase.query-processor.middleware.resolve-fields
     :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-source-table
@@ -41,10 +43,11 @@
 (s/defn ^:private resolve-referenced-card-resources* :- clojure.lang.IPersistentMap
   [query]
   (doseq [referenced-card (tags-referenced-cards query)
-          :let [referenced-query (:dataset_query referenced-card)]]
+          :let [referenced-query (:dataset_query referenced-card)
+                resolved-query (fetch-source-query/resolve-card-id-source-tables* referenced-query)]]
     (check-query-database-id= referenced-query (:database query))
-    (qp.resolve-source-table/resolve-source-tables referenced-query)
-    (qp.resolve-fields/resolve-fields referenced-query))
+    (qp.resolve-source-table/resolve-source-tables resolved-query)
+    (qp.resolve-fields/resolve-fields resolved-query))
   query)
 
 (defn- card-subquery-graph
