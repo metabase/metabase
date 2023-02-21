@@ -140,7 +140,7 @@
 
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
-    Usually `remaining-sql` it exists we will deny the query."
+    Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
