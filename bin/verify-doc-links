@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const glob = require("glob");
+const chalk = require("chalk");
 
 glob("./{enterprise/,}frontend/src/**/*.{js,jsx, ts, tsx}", (err, files) => {
   if (err) {
@@ -19,7 +20,7 @@ glob("./{enterprise/,}frontend/src/**/*.{js,jsx, ts, tsx}", (err, files) => {
       if (fs.existsSync(path)) {
         console.log(`Exists:  ${path}`);
       } else {
-        console.log(`Missing: ${path}`);
+        console.log(chalk.red(`Missing: ${path}`));
         missing++;
       }
     }
