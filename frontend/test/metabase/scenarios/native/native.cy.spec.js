@@ -12,7 +12,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -251,28 +251,52 @@ describe("scenarios > question > native", () => {
   });
 
   it("should allow to convert a structured query to a native query", () => {
-    visitQuestionAdhoc(
-      {
-        display: "table",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            limit: 1,
-          },
-          database: SAMPLE_DB_ID,
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
         },
+        database: SAMPLE_DB_ID,
       },
-      { mode: "notebook", autorun: false },
-    );
+      visualization_settings: {
+        "table.colums": [
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.ID, null],
+            name: "ID",
+          },
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            name: "User ID",
+          },
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            name: "Product ID",
+          },
+        ],
+      },
+    });
 
+    cy.icon("notebook").click();
     cy.button("View the SQL").click();
     cy.wait("@datasetNative");
     cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
 
     cy.button("Convert this question to SQL").click();
-    runQuery();
+
+    //Ensure that the new native query ran after being converted
     cy.findByText("Showing 1 row").should("be.visible");
+    cy.findAllByTestId("header-cell").contains("USER_ID").should("be.visible");
   });
 });
 
