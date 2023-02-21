@@ -6,7 +6,7 @@ title: Custom actions
 
 Write SQL to update records in your databases.
 
-![Custom action](./images/custom-action.md)
+![Custom action](./images/custom-action.png)
 
 ## Creating a custom action
 
@@ -19,7 +19,7 @@ There are two ways to create a custom action:
 
 ## Custom action editor
 
-Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a model. 
+Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a model.
 
 For example, you could write an action that would update the `plan` column for a record in the `Invoices` table in the Sample Database.
 
@@ -38,9 +38,9 @@ The above code will create a form that prompts people to input updated values fo
 
 For each {% raw %}{{ variable }}{% endraw %} that you set in an action, you'll need to set the field type.
 
-Each of these variable field types present different options. 
+Each of these variable field types present different options.
 
-If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. 
+If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field.
 
 You can include placeholder text for all fields in the action form.
 
@@ -67,6 +67,6 @@ You can include placeholder text for all fields in the action form.
 - Dropdown
 - Inline select
 
-For both **Dropdown** and **Inline select**, you can specify a list of options to present on the form, with each option on its own line. 
+For both **Dropdown** and **Inline select**, you can specify a list of options to present on the form, with each option on its own line.
 
 ![Dropdown select](./images/dropdown.png)
