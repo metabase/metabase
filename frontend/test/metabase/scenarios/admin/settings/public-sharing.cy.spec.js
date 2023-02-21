@@ -215,7 +215,7 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.visit("/admin/settings/public-sharing");
 
-    cy.findByText("Shared Actions").should("be.visible");
+    cy.findByText("Shared Action Forms").should("be.visible");
     cy.findByText(expectedActionName).should("be.visible");
     cy.get("@actionUuid").then(actionUuid => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();

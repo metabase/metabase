@@ -329,7 +329,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "-public-sharing-actions",
-        display_name: t`Shared Actions`,
+        display_name: t`Shared Action Forms`,
         widget: PublicLinksActionListing,
         getHidden: settings => !settings["enable-public-sharing"],
       },

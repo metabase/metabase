@@ -752,7 +752,9 @@
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (case (long hx/*honey-sql-version*)
+                                               1 0.0
+                                               2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1298,7 +1300,7 @@
     (binding [sql/*dialect*      (sql/get-dialect dialect)
               sql/*quoted*       true
               sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form))))
+      (sql/format-expr honeysql-form {:nested true}))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level

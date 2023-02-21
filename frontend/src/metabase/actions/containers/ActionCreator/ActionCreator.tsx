@@ -88,7 +88,6 @@ function ActionCreator({
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
-    handleSetupExample,
     renderEditorBody,
   } = useActionContext();
 
@@ -147,7 +146,6 @@ function ActionCreator({
         onChangeAction={handleActionChange}
         onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
-        onClickExample={handleSetupExample}
         onCloseModal={onClose}
       >
         {renderEditorBody({ isEditable })}
