@@ -8,6 +8,7 @@
    [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
+   (liquibase.database.jvm JdbcConnection)
    (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
@@ -33,7 +34,7 @@
   `(defrecord ~name []
      CustomTaskChange
      (execute [_# database#]
-       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection (.getConnection database#))]
+       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection ^JdbcConnection (.getConnection database#))]
          (let [~db-binding-1 database#]
            ~@migration-body)))
      (getConfirmationMessage [_#]
@@ -45,7 +46,7 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection (.getConnection database#))]
+       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection ^JdbcConnection (.getConnection database#))]
          (let [~db-binding-2 database#]
            ~@reverse-migration-body)))))
 
