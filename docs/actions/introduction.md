@@ -6,13 +6,13 @@ title: Actions
 
 > For now, actions are only available for PostgreSQL and MySQL
 
+![Example action](./images/example-action.png)
+
 Actions are entities in Metabase that let you build custom forms and business logic.
 
 ## What are actions?
 
-Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.
-
-Use actions to update your data based on user input or values on the page.
+Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements. Use actions to update your data based on user input or values on the page.
 
 Have fun, and try not to break anything.
 
@@ -24,8 +24,8 @@ For actions to work, the database user account (the account you're using to conn
 
 ## Who can use actions
 
-**To create or edit an action**, a person must be in a group with Native query editing privileges for the relevant database.
-**To run an action**, all you need is view access to the action's model or dashboard.
+- **To create or edit an action**, a person must be in a group with Native query editing privileges for the relevant database.
+-  **To run an action**, all you need is view access to the action's model or dashboard.
 
 ## Types of actions
 
@@ -38,16 +38,3 @@ There are two types of actions:
 
 See [Actions on dashboards](../dashboards/actions.md).
 
-## Action settings
-
-When in the action editor, click on the gear icon to bring up the action settings.
-
-### Make public
-
-Creates a publicly shareable link to the action form.
-
-### Set a success message
-
-Here you can edit the success message, which is the message Metabase will display in the toast that pops up after Metabase hears back from the database that everything went smoothly.
-
-If something goes wrong, Metabase will display the error message it received from the database.

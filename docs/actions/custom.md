@@ -71,6 +71,20 @@ For both **Dropdown** and **Inline select**, you can specify a list of options t
 
 ![Dropdown select](./images/dropdown.png)
 
+## Action settings
+
+When in the action editor, click on the gear icon to bring up the action settings.
+
+### Make public
+
+Creates a publicly shareable link to the action form.
+
+### Set a success message
+
+Here you can edit the success message, which is the message Metabase will display in the toast that pops up after Metabase hears back from the database that everything went smoothly.
+
+If something goes wrong, Metabase will display the error message it received from the database.
+
 ## Further reading
 
 - [Introduction to actions](./introduction.md)
