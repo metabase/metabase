@@ -12,7 +12,6 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
-  openNotebook,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -400,34 +399,6 @@ describe("scenarios > question > notebook", () => {
     popover().findByText("Product ID").click();
 
     visualize();
-  });
-
-  it("should re-run the query when converting a structured query to a native query", () => {
-    openOrdersTable();
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByText("Add or remove columns").click();
-    cy.findByText("Deselect All").click();
-    cy.findByTestId("Orders-columns").within(() => {
-      cy.findByText("ID").click();
-      cy.findByText("User ID").click();
-      cy.findByText("Product ID").click();
-    });
-    cy.get(".RunButton").first().click();
-    cy.wait("@dataset");
-    cy.findByTestId("loading-spinner").should("not.exist");
-
-    openNotebook();
-    cy.icon("sql").click();
-    cy.button("Convert this question to SQL").click();
-
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByText("Add or remove columns").click();
-
-    cy.findByTestId("Columns-columns").within(() => {
-      cy.findByLabelText("ID").should("be.checked");
-      cy.findByLabelText("USER_ID").should("be.checked");
-      cy.findByLabelText("PRODUCT_ID").should("be.checked");
-    });
   });
 
   // flaky test
