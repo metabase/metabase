@@ -398,4 +398,13 @@ export const AGGREGATION_OPERATORS = [
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
+  {
+    short: "median",
+    name: t`Median of ...`,
+    columnName: t`Median`,
+    description: t`Median value of a column`,
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "percentile-aggregations",
+  },
 ];

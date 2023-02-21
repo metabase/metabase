@@ -554,4 +554,5 @@ export const STANDARD_AGGREGATIONS = new Set([
   "avg",
   "min",
   "max",
+  "median",
 ]);
