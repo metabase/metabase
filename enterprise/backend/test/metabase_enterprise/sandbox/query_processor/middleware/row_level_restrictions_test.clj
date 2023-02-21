@@ -74,6 +74,7 @@
                    (update :from (fn [[table]]
                                    [[table (sql.qp/->honeysql
                                             :sparksql
+                                            #_{:clj-kondo/ignore [:deprecated-var]}
                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
@@ -85,7 +86,7 @@
               (format-honeysql
                {:select   [:*]
                 :from     [(identifier :venues)]
-                :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
+                :where    [:= (identifier :venues :category_id) #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{cat}}")]
                 :order-by [(identifier :venues :id)]})
 
               :template_tags
@@ -105,7 +106,7 @@
                 :from      [(identifier :checkins)]
                 :left-join [(identifier :venues)
                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
+                :where     [:= (identifier :checkins :user_id) #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{user}}")]
                 :order-by  [[(identifier :checkins :id) :asc]]})
 
               :template_tags
@@ -160,7 +161,7 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
+  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
     (-> (mt/with-everything-store
           (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
         remove-metadata)))
