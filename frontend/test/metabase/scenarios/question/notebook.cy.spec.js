@@ -435,7 +435,7 @@ describe("scenarios > question > notebook", () => {
     popover().contains("No description");
   });
 
-  it("should allow to pick a saved question with models", () => {
+  it("should allow to pick a saved question when there are models", () => {
     cy.createNativeQuestion({
       name: "Orders, Model",
       dataset: true,
