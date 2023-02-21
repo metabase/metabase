@@ -210,26 +210,28 @@ const ChartSettingColumnEditor = ({
 
   return (
     <div>
-      <TableHeaderContainer>
-        <TableName>{fieldOptions.name}</TableName>
-        <BulkActionButton
-          tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
-          bulkEnable={() => enableColumns(fieldOptions.dimensions)}
-          bulkDisable={() => disableColumns(fieldOptions.dimensions)}
-          testid={`bulk-action-${fieldOptions.name}`}
-        />
-      </TableHeaderContainer>
-      {fieldOptions.dimensions.map((dimension, index) => (
-        <FieldCheckbox
-          label={getDimensionLabel(dimension)}
-          onClick={() => toggleColumn(dimension)}
-          checked={columnIsEnabled(dimension)}
-          key={`${dimension.displayName()}-${index}`}
-          disabled={isQueryRunning}
-        />
-      ))}
+      <div data-testid={`${fieldOptions.name}-columns`}>
+        <TableHeaderContainer>
+          <TableName>{fieldOptions.name}</TableName>
+          <BulkActionButton
+            tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
+            bulkEnable={() => enableColumns(fieldOptions.dimensions)}
+            bulkDisable={() => disableColumns(fieldOptions.dimensions)}
+            testid={`bulk-action-${fieldOptions.name}`}
+          />
+        </TableHeaderContainer>
+        {fieldOptions.dimensions.map((dimension, index) => (
+          <FieldCheckbox
+            label={getDimensionLabel(dimension)}
+            onClick={() => toggleColumn(dimension)}
+            checked={columnIsEnabled(dimension)}
+            key={`${dimension.displayName()}-${index}`}
+            disabled={isQueryRunning}
+          />
+        ))}
+      </div>
       {fieldOptions.fks.map(fk => (
-        <>
+        <div data-testid={`${fk.name}-columns`} key={`${fk.name}-columns`}>
           <TableHeaderContainer>
             <TableName>{fk.name}</TableName>
             <BulkActionButton
@@ -248,7 +250,7 @@ const ChartSettingColumnEditor = ({
               disabled={isQueryRunning}
             />
           ))}
-        </>
+        </div>
       ))}
     </div>
   );
