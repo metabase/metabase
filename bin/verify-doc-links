@@ -5,7 +5,7 @@ const fs = require("fs");
 
 glob("./{enterprise/,}frontend/src/**/*.{js,jsx, ts, tsx}", (err, files) => {
   if (err) {
-    console.log(err);
+    console.error(err);
     process.exit(1);
   }
   let missing = 0;
