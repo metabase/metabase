@@ -19,6 +19,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
@@ -132,38 +133,40 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- classify-query
+(mu/defn ^:private classify-query :- [:map
+                                      [:command-types [:vector pos-int?]]
+                                      [:remaining-sql [:maybe :string]]]
   "Takes an h2 db id, and a query, returns the command-classes+types (see: ), and any remaining sql.
 
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
-    Usually if it exists we will deny the query."
+    Usually `remaining-sql` it exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
       (let [command-list      (.prepareCommand h2-parser query)
-            this-command      ((juxt class #(.getCommandType ^org.h2.command.CommandList %)) command-list)
-
-            ;; when there are no fields: return no commands
-            prepared-commands (map (juxt class #(.getType ^org.h2.command.Prepared %))
-                                   (get-field command-list "commands" []))
-
-            ;; when there is no remaining sql: return nil for remaining-sql
-            remaining-sql (get-field command-list "remaining" nil)]
-        {:command-class+types (vec (concat [this-command] prepared-commands))
-         :remaining-sql       remaining-sql})
+            command-list-type (.getCommandType ^org.h2.command.CommandList command-list)
+            command-types     (cond-> [command-list-type]
+                                (not (instance? org.h2.command.CommandContainer command-list))
+                                (into
+                                 (map #(.getType ^org.h2.command.Prepared %))
+                                 ;; when there are no fields: return no commands
+                                 (get-field command-list "commands" [])))]
+        {:command-types command-types
+         ;; when there is no remaining sql: return nil for remaining-sql
+         :remaining-sql (get-field command-list "remaining" nil)})
       ;; if the query is invalid, then it isn't DDL
       (catch Throwable e
-        ;; TODO: Put more stuff in here -- check that it threw v.s. detected no ddl.
         (log/warn e)
-        e))))
+        (throw e)))))
 
 (defn- cmd-type-ddl? [cmd-type]
   ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
   ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
   (< cmd-type CommandInterface/ALTER_SEQUENCE))
 
-(defn- contains-ddl? [{:keys [command-class+types remaining-sql]}]
-  (let [cmd-type-nums (mapv second command-class+types)]
+(defn- contains-ddl? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
     (boolean
      (or (some cmd-type-ddl? cmd-type-nums)
          (some? remaining-sql)))))
