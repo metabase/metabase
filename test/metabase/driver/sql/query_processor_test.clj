@@ -1092,3 +1092,22 @@
                                (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
               (testing "this query should not have any parameters"
                 (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+
+(deftest ^:parallel binning-optimize-math-expressions-test
+  (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"
+    (mt/dataset sample-dataset
+      (binding [hx/*honey-sql-version* 2]
+        (is (= ["SELECT"
+                "  FLOOR((ORDERS.QUANTITY / 10)) * 10 AS QUANTITY,"
+                "  COUNT(*) AS count"
+                "FROM"
+                "  ORDERS"
+                "GROUP BY"
+                "  FLOOR((ORDERS.QUANTITY / 10)) * 10"
+                "ORDER BY"
+                "  FLOOR((ORDERS.QUANTITY / 10)) * 10 ASC"]
+               (-> (mbql->native (mt/mbql-query orders
+                                   {:aggregation [[:count]]
+                                    :breakout    [:binning-strategy $quantity :num-bins 10]}))
+                   (mdb.query/format-sql :h2)
+                   str/split-lines)))))))
