@@ -34,7 +34,7 @@ describe("scenarios > question > download", () => {
     });
   });
 
-  it("downloads pngs", () => {
+  describe("png images", () => {
     const canSavePngQuestion = {
       name: "Q1",
       display: "line",
@@ -58,25 +58,53 @@ describe("scenarios > question > download", () => {
       visualization_settings: {},
     };
 
-    cy.createDashboardWithQuestions({
-      dashboardName: "saving pngs dashboard",
-      questions: [canSavePngQuestion, cannotSavePngQuestion],
-    }).then(({ dashboard }) => {
-      visitDashboard(dashboard.id);
+    it("from dashboards", () => {
+      cy.createDashboardWithQuestions({
+        dashboardName: "saving pngs dashboard",
+        questions: [canSavePngQuestion, cannotSavePngQuestion],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+
+      cy.findByText("Q1").realHover();
+      cy.findAllByTestId("download-button").eq(0).click();
+
+      popover().within(() => {
+        cy.findByText(".png").click();
+      });
+
+      cy.findByText("Q2").realHover();
+      cy.findAllByTestId("download-button").eq(1).click();
+
+      popover().within(() => {
+        cy.findByText(".png").should("not.exist");
+      });
+
+      cy.verifyDownload(".png", { contains: true });
     });
 
-    cy.findByText("Q1").realHover();
-    cy.findAllByTestId("download-button").eq(0).click();
+    it("from query builder", () => {
+      cy.createQuestion(canSavePngQuestion).then(({ body: { id } }) => {
+        cy.visit(`/question/${id}`);
+      });
 
-    popover().within(() => {
-      cy.findByText(".png").click();
-    });
+      cy.findByTestId("download-button").click();
 
-    cy.findByText("Q2").realHover();
-    cy.findAllByTestId("download-button").eq(1).click();
+      popover().within(() => {
+        cy.findByText(".png").click();
+      });
 
-    popover().within(() => {
-      cy.findByText(".png").should("not.exist");
+      cy.verifyDownload(".png", { contains: true });
+
+      cy.createQuestion(cannotSavePngQuestion).then(({ body: { id } }) => {
+        cy.visit(`/question/${id}`);
+      });
+
+      cy.findByTestId("download-button").click();
+
+      popover().within(() => {
+        cy.findByText(".png").should("not.exist");
+      });
     });
   });
 });
