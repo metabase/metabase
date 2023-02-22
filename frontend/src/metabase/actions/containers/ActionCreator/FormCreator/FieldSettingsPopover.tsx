@@ -18,6 +18,7 @@ import {
   ToggleContainer,
   SettingsPopoverBody,
   SectionLabel,
+  RequiredToggleLabel,
   Divider,
 } from "./FieldSettingsPopover.styled";
 
@@ -208,16 +209,18 @@ function RequiredInput({
   return (
     <div>
       <ToggleContainer>
-        <strong>{t`Required`}</strong>
+        <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
         <Toggle
+          id="is-required"
           value={!!value}
           onChange={required => onChange({ required, defaultValue })}
         />
       </ToggleContainer>
       {!value && (
         <>
-          <SectionLabel>{t`Default Value`}</SectionLabel>
+          <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
           <Input
+            id="default-value"
             fullWidth
             value={defaultValue ?? ""}
             onChange={e =>
