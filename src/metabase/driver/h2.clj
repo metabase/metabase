@@ -170,19 +170,34 @@
      (or (some cmd-type-ddl? cmd-type-nums)
          (some? remaining-sql)))))
 
+(defn- is-single-select? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (and (every? #{CommandInterface/SELECT
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
 ;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
 ;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native :as in}]
   (let [query-classification (classify-query database query)]
-    (when (and query (contains-ddl? query-classification))
+    (when (and query (not (contains-ddl? query-classification)))
       (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                       {:classification query-classification})))))
+
+(defn- check-single-select-statement [{:keys [database] {:keys [query]} :native :as in}]
+  (when query
+    (let [query-classification (classify-query database query)]
+      (when (is-single-select? query-classification)
+        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-single-select-statement query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod driver/execute-write-query! :h2
