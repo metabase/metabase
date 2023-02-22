@@ -14270,6 +14270,14 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: action
             constraintName: fk_action_model_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v46.00-085
