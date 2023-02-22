@@ -14,11 +14,15 @@ export function setupDatabasesEndpoints(
   dbs: Database[],
   { hasSavedQuestions = true } = {},
 ) {
-  fetchMock.get("path:/api/database", dbs);
   fetchMock.get(
-    "path:/api/database?saved=true",
+    {
+      url: "path:/api/database",
+      query: { saved: true },
+      overwriteRoutes: false,
+    },
     hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,
   );
+  fetchMock.get({ url: "path:/api/database", overwriteRoutes: false }, dbs);
 
   dbs.forEach(db => setupDatabaseEndpoints(db));
 }

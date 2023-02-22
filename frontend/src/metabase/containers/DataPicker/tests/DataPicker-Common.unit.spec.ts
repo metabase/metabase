@@ -1,4 +1,4 @@
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 
@@ -10,7 +10,7 @@ describe("DataPicker", () => {
   });
 
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("shows data type picker by default", async () => {

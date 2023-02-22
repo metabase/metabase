@@ -9,13 +9,27 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 export function setupCollectionsEndpoints(collections: Collection[]) {
-  fetchMock.get("path:/api/collection", collections);
-  fetchMock.get("path:/api/collection/tree?tree=true", collections);
+  fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
   fetchMock.get(
-    "path:/api/collection/tree?tree=true&exclude-archived=true",
+    {
+      url: "path:/api/collection/tree",
+      query: { tree: true, "exclude-archived": true },
+      overwriteRoutes: false,
+    },
     collections.filter(collection => !collection.archived),
   );
-  fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
+  fetchMock.get(
+    {
+      url: "path:/api/collection/tree",
+      query: { tree: true },
+      overwriteRoutes: false,
+    },
+    collections,
+  );
+  fetchMock.get(
+    { url: "path:/api/collection", overwriteRoutes: false },
+    collections,
+  );
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
