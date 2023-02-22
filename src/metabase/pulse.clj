@@ -80,29 +80,21 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
-(defn- virtual-card-of-type?
-  "Check if dashcard is a virtual with type `ttype`.
-
-  There are currently 3 types of virtual card: text, action, link."
-  [dashcard ttype]
-  (and (map? dashcard)
-       (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))))
-
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."
-  [dashcard {pulse-creator-id :creator_id, :as pulse} dashboard]
+  [{viz-settings :visualization_settings :as dashcard} {pulse-creator-id :creator_id, :as pulse} dashboard]
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
       (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
-    (virtual-card-of-type? dashcard "action")
+    (pu/virtual-card-of-type? viz-settings "action")
     nil
 
     ;; link cards
-    (virtual-card-of-type? dashcard "link")
-    nil
+    (pu/virtual-card-of-type? viz-settings "link")
+    (:visualization_settings dashcard)
 
     ;; text cards has existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
@@ -533,3 +525,5 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
+
+#_(send-pulse! (db/select-one Pulse :id 12))

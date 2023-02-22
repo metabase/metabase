@@ -24,6 +24,7 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.pulse.render.style :as style]
+   [metabase.pulse.util :as pu]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -68,6 +69,9 @@
       ;; :else                             url
 
 (defn- icon-bundle
+  "Bundle an icon.
+
+  The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
@@ -404,13 +408,70 @@
          (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
+(defn- link-card->url
+  [{:keys [entity] :as link-card}]
+  (let [{:keys [db_id id model]} entity]
+   (case model
+     "card"       (urls/card-url id)
+     "dataset"    (urls/card-url id)
+     "collection" (urls/collection-url id)
+     "dashboard"  (urls/dashboard-url id)
+     "database"   (urls/database-url id)
+     "table"      (urls/table-url db_id id)
+     ;; link
+     nil          (:url link-card))))
+
+(defn- link-card->icon-name
+  [{:keys [entity] :as _link-card}]
+  (let [{:keys [model display]} entity]
+   (case model
+     "card"    (case display
+                 "table"  :table
+                 "number" :number
+                 :table)
+     "dataset"   :model
+     nil       :link
+     (keyword model))))
+
+(defn- link-card->content
+  [{:keys [entity] :as link-card}]
+  (let [{:keys [model name]} entity]
+    (case model
+      nil (:url link-card)
+      name)))
+
+(defn- render-link-card
+  [link-card]
+  (let [icon (icon-bundle (link-card->icon-name link-card))]
+    {:content     (html
+                    [:div
+
+                     [:a {:href  (link-card->url link-card)
+                          :style (style/style {:line-height :25px})}
+
+                      [:img {:class "icon"
+                             :style (style/style {:margin-right   :10px
+                                                  :vertical-align :middle
+                                                  :width          :16px})
+                             :src   (format "cid:%s" (first (keys icon)))}]
+                      (link-card->content link-card)]])
+     :attachments icon}))
+
 (defn- result-attachments [results]
   (filter some? (mapcat result-attachment results)))
 
 (defn- render-result-card
   [timezone result]
-  (if (:card result)
+  (cond
+    (:card result)
     (render/render-pulse-section timezone result)
+
+    (pu/virtual-card-of-type? result "link")
+    (render-link-card (:link result))
+
+    :else
+    ;; text cards has existed for a while and I'm not sure if all existing text cards
+    ;; will have virtual_card.display = "text", so assume everything else is a text card
     {:content (markdown/process-markdown (:text result) :html)}))
 
 (defn- render-filters
