@@ -28,18 +28,3 @@
   saved-question-query]
  [lib.temporal-bucket
   temporal-bucket])
-
-(defn x []
-  (-> (query metabase.lib.test-metadata/metadata "VENUES")
-      (append (order-by (field "VENUES" "ID")))
-      #_(dissoc :metabase.lib.query/metadata)))
-
-(defn y []
-  (-> (query metabase.lib.test-metadata/metadata "VENUES")
-      (append (order-by (temporal-bucket (field "VENUES" "ID") :month)))
-      (dissoc :metabase.lib.query/metadata)))
-
-(defn z []
-  (-> (native-query metabase.lib.test-metadata/metadata "SELECT * FROM venues;")
-      (append (order-by (field "VENUES" "ID")))
-      (dissoc :metabase.lib.query/metadata)))
