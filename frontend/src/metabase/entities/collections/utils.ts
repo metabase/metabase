@@ -57,6 +57,7 @@ export function getCollectionType(
 export interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
   children: CollectionTreeItem[];
+  schemaName: string;
 }
 
 export function buildCollectionTree(

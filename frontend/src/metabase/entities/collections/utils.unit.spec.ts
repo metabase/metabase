@@ -1,19 +1,6 @@
 import { setupEnterpriseTest } from "__support__/enterprise";
-import { buildCollectionTree } from "metabase/entities/collections";
-
-function getCollection({
-  id = 1,
-  name = "Collection",
-  children = [],
-  ...rest
-} = {}) {
-  return {
-    id,
-    name,
-    children,
-    ...rest,
-  };
-}
+import { createMockCollection } from "metabase-types/api/mocks";
+import { buildCollectionTree } from "./utils";
 
 describe("buildCollectionTree", () => {
   it("returns an empty array when collections are not passed", () => {
@@ -21,9 +8,9 @@ describe("buildCollectionTree", () => {
   });
 
   it("correctly transforms collections", () => {
-    const collection = getCollection({ children: [] });
+    const collection = createMockCollection({ children: [] });
     const [transformed] = buildCollectionTree([collection]);
-    expect(transformed).toEqual({
+    expect(transformed).toMatchObject({
       id: collection.id,
       name: collection.name,
       schemaName: collection.name,
@@ -33,19 +20,22 @@ describe("buildCollectionTree", () => {
   });
 
   it("prefers originalName over name for schema names", () => {
-    const collection = getCollection({ name: "bar", originalName: "foo" });
+    const collection = createMockCollection({
+      name: "bar",
+      originalName: "foo",
+    });
     const [transformed] = buildCollectionTree([collection]);
     expect(transformed.schemaName).toBe(collection.originalName);
   });
 
   it("recursively transforms collection children", () => {
-    const grandchild = getCollection({ id: 3, name: "C3" });
-    const child = getCollection({
+    const grandchild = createMockCollection({ id: 3, name: "C3" });
+    const child = createMockCollection({
       id: 2,
       name: "C2",
       children: [grandchild],
     });
-    const collection = getCollection({
+    const collection = createMockCollection({
       id: 1,
       name: "C1",
       children: [child],
@@ -53,7 +43,7 @@ describe("buildCollectionTree", () => {
 
     const [transformed] = buildCollectionTree([collection]);
 
-    expect(transformed).toEqual({
+    expect(transformed).toMatchObject({
       id: collection.id,
       name: collection.name,
       schemaName: collection.name,
@@ -79,30 +69,30 @@ describe("buildCollectionTree", () => {
   });
 
   it("returns regular icon for official collections in OSS", () => {
-    const collection = getCollection({ authority_level: "official" });
+    const collection = createMockCollection({ authority_level: "official" });
     const [transformed] = buildCollectionTree([collection]);
     expect(transformed.icon).toEqual({ name: "folder" });
   });
 
   describe("filtering by models", () => {
     it("only keeps collection branches containing target models", () => {
-      const grandchild1 = getCollection({
+      const grandchild1 = createMockCollection({
         id: 4,
         name: "Grandchild 1",
         here: ["dataset"],
       });
-      const grandchild2 = getCollection({
+      const grandchild2 = createMockCollection({
         id: 3,
         name: "Grandchild 2",
         here: ["card"],
       });
-      const child = getCollection({
+      const child = createMockCollection({
         id: 2,
         name: "Child",
         below: ["dataset", "card"],
         children: [grandchild1, grandchild2],
       });
-      const collection = getCollection({
+      const collection = createMockCollection({
         id: 1,
         name: "Top-level",
         below: ["dataset", "card"],
@@ -114,7 +104,7 @@ describe("buildCollectionTree", () => {
         model => model === "dataset",
       );
 
-      expect(transformed).toEqual([
+      expect(transformed).toMatchObject([
         {
           id: collection.id,
           name: collection.name,
@@ -145,13 +135,13 @@ describe("buildCollectionTree", () => {
     });
 
     it("filters top-level collections not containing target models", () => {
-      const collectionWithDatasets = getCollection({
+      const collectionWithDatasets = createMockCollection({
         id: 1,
         name: "Top-level",
         here: ["dataset"],
         children: [],
       });
-      const collectionWithCards = getCollection({
+      const collectionWithCards = createMockCollection({
         id: 5,
         name: "Top-level 2",
         below: ["card"],
@@ -162,7 +152,7 @@ describe("buildCollectionTree", () => {
         model => model === "dataset",
       );
 
-      expect(transformed).toEqual([
+      expect(transformed).toMatchObject([
         {
           id: collectionWithDatasets.id,
           name: collectionWithDatasets.name,
@@ -175,14 +165,18 @@ describe("buildCollectionTree", () => {
     });
 
     it("doesn't filter collections if model filter is not passed", () => {
-      const child = getCollection({ id: 2, name: "Child", here: ["dataset"] });
-      const collection = getCollection({
+      const child = createMockCollection({
+        id: 2,
+        name: "Child",
+        here: ["dataset"],
+      });
+      const collection = createMockCollection({
         id: 1,
         name: "Top-level",
         below: ["dataset"],
         children: [child],
       });
-      const collectionWithCards = getCollection({
+      const collectionWithCards = createMockCollection({
         id: 5,
         name: "Top-level 2",
         below: ["card"],
@@ -193,7 +187,7 @@ describe("buildCollectionTree", () => {
         collectionWithCards,
       ]);
 
-      expect(transformed).toEqual([
+      expect(transformed).toMatchObject([
         {
           id: collection.id,
           name: collection.name,
@@ -229,7 +223,7 @@ describe("buildCollectionTree", () => {
     });
 
     it("returns correct icon for official collections", () => {
-      const collection = getCollection({ authority_level: "official" });
+      const collection = createMockCollection({ authority_level: "official" });
       const [transformed] = buildCollectionTree([collection]);
       expect(transformed.icon).toEqual({
         color: expect.any(String),
