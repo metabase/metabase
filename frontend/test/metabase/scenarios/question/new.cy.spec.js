@@ -164,6 +164,9 @@ describe("scenarios > question > new", () => {
       popover().within(() => {
         cy.findByText("Saved Questions").click();
         cy.findByText("All personal collections").click();
+        cy.findByText(getPersonalCollectionName(USERS.normal)).should(
+          "not.exist",
+        );
         cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
       });
