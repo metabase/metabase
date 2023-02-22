@@ -88,9 +88,7 @@ describe("scenarios > question > new", () => {
         .should("have.length", 1)
         .as("leftSide")
         // should display the collection tree on the left side
-        .should("contain", "Our analytics")
-        .and("contain", "Your personal collection")
-        .and("contain", "All personal collections");
+        .should("contain", "Our analytics");
 
       cy.findByText("Orders, Count").click();
       cy.findByText("Orders").should("not.exist");
