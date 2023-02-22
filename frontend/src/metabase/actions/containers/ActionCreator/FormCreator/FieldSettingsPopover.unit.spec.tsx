@@ -1,13 +1,37 @@
-import React from "react";
+import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
+import type { FieldSettings } from "metabase-types/api";
 import { getDefaultFieldSettings } from "../../../utils";
-import { FieldSettingsPopover } from "./FieldSettingsPopover";
+import {
+  FieldSettingsPopover,
+  FieldSettingsPopoverProps,
+} from "./FieldSettingsPopover";
+
+function WrappedFieldSettingsPopover({
+  fieldSettings: initialSettings,
+  onChange,
+}: FieldSettingsPopoverProps) {
+  const [settings, setSettings] = useState(initialSettings);
+
+  const handleChange = (nextSettings: FieldSettings) => {
+    setSettings(nextSettings);
+    onChange(nextSettings);
+  };
+
+  return (
+    <FieldSettingsPopover fieldSettings={settings} onChange={handleChange} />
+  );
+}
 
 function setup({ settings = getDefaultFieldSettings() } = {}) {
   const onChange = jest.fn();
-  render(<FieldSettingsPopover fieldSettings={settings} onChange={onChange} />);
+  render(
+    <WrappedFieldSettingsPopover
+      fieldSettings={settings}
+      onChange={onChange}
+    />,
+  );
   return { settings, onChange };
 }
 

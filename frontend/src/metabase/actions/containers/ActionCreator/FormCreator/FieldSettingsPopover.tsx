@@ -22,13 +22,15 @@ import {
   Divider,
 } from "./FieldSettingsPopover.styled";
 
+export interface FieldSettingsPopoverProps {
+  fieldSettings: FieldSettings;
+  onChange: (fieldSettings: FieldSettings) => void;
+}
+
 export function FieldSettingsPopover({
   fieldSettings,
   onChange,
-}: {
-  fieldSettings: FieldSettings;
-  onChange: (fieldSettings: FieldSettings) => void;
-}) {
+}: FieldSettingsPopoverProps) {
   return (
     <TippyPopoverWithTrigger
       placement="bottom-end"
