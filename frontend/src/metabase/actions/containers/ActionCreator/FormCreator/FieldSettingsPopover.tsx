@@ -53,6 +53,14 @@ export function FieldSettingsPopover({
   );
 }
 
+function cleanDefaultValue(fieldType: FieldType, value?: string | number) {
+  if (fieldType === "number") {
+    const clean = Number(value);
+    return !Number.isNaN(clean) ? clean : 0;
+  }
+  return value;
+}
+
 export function FormCreatorPopoverBody({
   fieldSettings,
   onChange,
@@ -91,10 +99,7 @@ export function FormCreatorPopoverBody({
     onChange({
       ...fieldSettings,
       required,
-      defaultValue:
-        fieldSettings.fieldType === "number"
-          ? Number(defaultValue)
-          : defaultValue,
+      defaultValue: cleanDefaultValue(fieldSettings.fieldType, defaultValue),
     });
 
   const hasPlaceholder =

@@ -99,4 +99,33 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       placeholder: "$",
     });
   });
+
+  it("should fire onChange handler after changing required and default value properties", async () => {
+    const settings = getDefaultFieldSettings({
+      fieldType: "number",
+      required: true,
+    });
+    const { onChange } = setup({ settings });
+
+    userEvent.click(screen.getByLabelText("Field settings"));
+    await screen.findByTestId("field-settings-popover");
+
+    userEvent.click(screen.getByLabelText("Required"));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      defaultValue: 0,
+      required: false,
+    });
+
+    const defaultValueInput = screen.getByLabelText("Default value");
+    expect(defaultValueInput).toHaveValue("0");
+    await userEvent.type(defaultValueInput, "5");
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      required: false,
+      defaultValue: 5,
+    });
+  });
 });
