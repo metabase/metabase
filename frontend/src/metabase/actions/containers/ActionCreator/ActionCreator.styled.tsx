@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -49,4 +50,9 @@ export const ModalRight = styled.div`
   position: relative;
   display: flex;
   overflow-y: auto;
+
+  ${SidebarContent.Root}, ${SidebarContent.Content} {
+    width: 100%;
+    height: 100%;
+  }
 `;
