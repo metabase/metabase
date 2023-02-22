@@ -170,7 +170,7 @@
      (or (some cmd-type-ddl? cmd-type-nums)
          (some? remaining-sql)))))
 
-(defn- read-only-commands? [{:keys [command-types remaining-sql]}]
+(defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
      (and (every? #{CommandInterface/SELECT
@@ -187,17 +187,17 @@
       (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                       {:classification query-classification})))))
 
-(defn- check-read-only-commands [{:keys [database] {:keys [query]} :native}]
+(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
   (when query
     (let [query-classification (classify-query database query)]
-      (when-not (read-only-commands? query-classification)
+      (when-not (read-only-statements? query-classification)
         (throw (ex-info "IllegalArgument: Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-read-only-commands query)
+  (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod driver/execute-write-query! :h2

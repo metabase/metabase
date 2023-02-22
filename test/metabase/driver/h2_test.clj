@@ -214,7 +214,7 @@
                      "explain select * from orders"
                      "call 1 + 1"]]
         (is (nil?
-             (#'h2/check-read-only-commands
+             (#'h2/check-read-only-statements
               {:database (u/the-id (mt/db))
                :engine :h2
                :native {:query query}})))))
@@ -229,7 +229,7 @@
         (is (thrown?
              clojure.lang.ExceptionInfo
              #"Only SELECT statements are allowed in a native query."
-             (#'h2/check-read-only-commands
+             (#'h2/check-read-only-statements
               {:database (u/the-id (mt/db))
                :engine :h2
                :native {:query query}})))))))
