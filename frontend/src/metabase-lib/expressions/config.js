@@ -85,6 +85,12 @@ export const MBQL_CLAUSES = {
     requiresFeature: "standard-deviation-aggregations",
   },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
+  median: {
+    displayName: `Median`,
+    type: "aggregation",
+    args: ["number"],
+    requiresFeature: "percentile-aggregations",
+  },
   min: { displayName: `Min`, type: "aggregation", args: ["expression"] },
   max: { displayName: `Max`, type: "aggregation", args: ["expression"] },
   share: { displayName: `Share`, type: "aggregation", args: ["boolean"] },
@@ -103,12 +109,6 @@ export const MBQL_CLAUSES = {
     type: "aggregation",
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
-  },
-  median: {
-    displayName: `Median`,
-    type: "aggregation",
-    args: ["number"],
-    requiresFeature: "percentile-aggregations",
   },
   percentile: {
     displayName: `Percentile`,
@@ -444,11 +444,11 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "distinct",
   "stddev",
   "avg",
+  "median",
   "min",
   "max",
   "share",
   "var",
-  "median",
   "percentile",
 ]);
 

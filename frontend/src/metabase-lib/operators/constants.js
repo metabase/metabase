@@ -345,6 +345,15 @@ export const AGGREGATION_OPERATORS = [
     requiredDriverFeature: "basic-aggregations",
   },
   {
+    short: "median",
+    name: t`Median of ...`,
+    columnName: t`Median`,
+    description: t`Median of all the values of a column`,
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "percentile-aggregations",
+  },
+  {
     short: "distinct",
     name: t`Number of distinct values of ...`,
     columnName: t`Distinct values`,
@@ -397,14 +406,5 @@ export const AGGREGATION_OPERATORS = [
     validFieldsFilters: [scopeFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
-  },
-  {
-    short: "median",
-    name: t`Median of ...`,
-    columnName: t`Median`,
-    description: t`Median value of a column`,
-    validFieldsFilters: [summableFields],
-    requiresField: true,
-    requiredDriverFeature: "percentile-aggregations",
   },
 ];
