@@ -6,13 +6,12 @@ import {
   convertSavedQuestionToVirtualTable,
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
+import { getRequestBody } from "./utils";
 
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
   fetchMock.put(`path:/api/card/${card.id}`, async (url, request) => {
-    const body = await request.body;
-    const data = typeof body === "string" ? JSON.parse(body) : body;
-    return createMockCard(data);
+    return createMockCard(await getRequestBody(request));
   });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);

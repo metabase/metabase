@@ -513,23 +513,22 @@ Key points:
 We use `nock` to mock requests:
 
 ```tsx
-import nock from "nock";
-import { setupCollectionsEndpoints } from "__support__/server-mocks-legacy";
+import fetchMock from "fetch-mock";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 
 interface SetupOpts {
   collections: Collection[];
 }
 
 const setup = ({ collections }: SetupOpts) => {
-  const scope = nock(location.origin);
-  setupCollectionsEndpoints(scope, collections);
+  setupCollectionsEndpoints(collections);
 
   // renderWithProviders and other setup
 };
 
 describe("Component", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 });
 ```

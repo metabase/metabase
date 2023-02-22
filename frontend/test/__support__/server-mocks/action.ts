@@ -4,6 +4,7 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
+import { getRequestBody } from "__support__/server-mocks/utils";
 
 export function setupActionEndpoints(action: WritebackAction) {
   fetchMock.get(`path:/api/action/${action.id}`, action);
@@ -24,8 +25,7 @@ export function setupActionsEndpoints(
   );
 
   fetchMock.post("path:/api/action", async (uri, request) => {
-    const body = await request.body;
-    const data = typeof body === "string" ? JSON.parse(body) : body;
+    const data = await getRequestBody(request);
     if (data.type === "implicit") {
       return createMockImplicitQueryAction(data);
     }
