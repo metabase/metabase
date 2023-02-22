@@ -145,7 +145,8 @@
                   expected-fn    (fn [m]
                                    (cond-> m
                                      (= (:type initial-action) "implicit")
-                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}]
+                                            :database_id (mt/id))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
