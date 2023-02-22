@@ -268,7 +268,7 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
-  it.skip("should be able to reference a nested question (metabase#25988)", () => {
+  it("should be able to reference a nested question (metabase#25988)", () => {
     const questionDetails = {
       name: "Nested GUI question",
       query: {
