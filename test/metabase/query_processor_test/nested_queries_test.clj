@@ -2,7 +2,7 @@
   "Tests for handling queries with nested expressions."
   (:require
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -20,7 +20,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -335,7 +334,7 @@
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
-  (let [[sql & params] (hsql/format honeysql-form :quoting :ansi)]
+  (let [[sql & params] (sql/format honeysql-form {:dialect :ansi, :quoted true, :quoted-snake false})]
     {:query  sql
      :params (seq params)}))
 
@@ -357,8 +356,8 @@
                     [:source.LONGITUDE :LONGITUDE]
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
-           :where  [:= (hx/raw "\"source\".\"BIRD.ID\"") 1]
-           :limit  10})
+           :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
+           :limit  [:inline 10]})
          (qp/compile
           {:database (mt/id)
            :type     :query
@@ -376,9 +375,9 @@
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
            :where  [:and
-                    [:>= (hx/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< (hx/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  10})
+                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+           :limit  [:inline 10]})
          (qp/compile
           (mt/mbql-query venues
             {:source-query {:source-table $$venues}
@@ -389,12 +388,12 @@
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
     ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
-    (is (= {:query  (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
-                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev_pop(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
+    (is (= {:query  (str "SELECT AVG(\"source\".\"stddev\") AS \"avg\" FROM ("
+                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", STDDEV_POP(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                          "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-                         ") \"source\"")
+                         ") AS \"source\"")
             :params nil}
            (qp/compile
             (mt/mbql-query venues
@@ -414,7 +413,7 @@
                                      VENUES.LONGITUDE   AS LONGITUDE
                                      VENUES.PRICE       AS PRICE]
                             :from [VENUES]}
-                           source]
+                           AS source]
                 :group-by [source.CATEGORY_ID]
                 :order-by [source.CATEGORY_ID ASC]
                 :limit    [10]}
@@ -435,7 +434,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
-             :limit  10})
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -452,8 +451,8 @@
                       [:source.LONGITUDE :LONGITUDE]
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
-             :where  [:> :source.sender_id 3]
-             :limit  10})
+             :where  [:> :source.sender_id [:inline 3]]
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -462,7 +461,7 @@
 
 (deftest native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
-    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048575"
+    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                      :type     :native
@@ -1240,10 +1239,10 @@
         (let [q1        (mt/mbql-query orders
                           {:aggregation [[:count]]
                            :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
-              q1-native {:query  (str "SELECT count(*) AS \"count\" "
+              q1-native {:query  (str "SELECT COUNT(*) AS \"count\" "
                                       "FROM \"PUBLIC\".\"ORDERS\" "
-                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?"
-                                      " AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
+                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
+                                      " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
                          :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
@@ -1257,7 +1256,7 @@
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
                                                   (format (str "SELECT \"source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) \"source\" "
+                                                               "FROM (%s) AS \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
                        (qp/compile q2))))
@@ -1344,7 +1343,9 @@
                        (qp/process-query query)))))))))))
 
 (deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken

@@ -14,6 +14,7 @@ import {
   ModalRoot,
   ModalActions,
   ModalLeft,
+  ModalRight,
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
 
 import { isNotNull } from "metabase/core/utils/types";
@@ -116,24 +117,26 @@ export default function ActionCreatorView({
             )}
           </ModalActions>
         </ModalLeft>
-        {activeSideView === "actionForm" ? (
-          <FormCreator
-            params={action.parameters ?? []}
-            formSettings={formSettings}
-            isEditable={isEditable && canChangeFieldSettings}
-            onChange={onChangeFormSettings}
-          />
-        ) : activeSideView === "dataReference" ? (
-          <DataReferenceInline onClose={closeSideView} />
-        ) : activeSideView === "actionSettings" ? (
-          <InlineActionSettings
-            action={action}
-            formSettings={formSettings}
-            isEditable={isEditable}
-            onChangeFormSettings={onChangeFormSettings}
-            onClose={closeSideView}
-          />
-        ) : null}
+        <ModalRight>
+          {activeSideView === "actionForm" ? (
+            <FormCreator
+              params={action.parameters ?? []}
+              formSettings={formSettings}
+              isEditable={isEditable && canChangeFieldSettings}
+              onChange={onChangeFormSettings}
+            />
+          ) : activeSideView === "dataReference" ? (
+            <DataReferenceInline onClose={closeSideView} />
+          ) : activeSideView === "actionSettings" ? (
+            <InlineActionSettings
+              action={action}
+              formSettings={formSettings}
+              isEditable={isEditable}
+              onChangeFormSettings={onChangeFormSettings}
+              onClose={closeSideView}
+            />
+          ) : null}
+        </ModalRight>
       </ActionCreatorBodyContainer>
     </ModalRoot>
   );

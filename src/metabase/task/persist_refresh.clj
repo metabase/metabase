@@ -329,7 +329,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database cron-spec]
+(defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))

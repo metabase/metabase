@@ -24,6 +24,7 @@ const BUTTON_TITLE = {
 
 interface UpdateQuestionOpts {
   shouldUpdateUrl?: boolean;
+  run?: boolean;
 }
 
 interface ConvertQueryModalProps {
@@ -53,7 +54,7 @@ const ConvertQueryModal = ({
       database: question.datasetQuery().database,
     });
 
-    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
+    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true, run: true });
     onClose?.();
   }, [question, query, onUpdateQuestion, onClose]);
 

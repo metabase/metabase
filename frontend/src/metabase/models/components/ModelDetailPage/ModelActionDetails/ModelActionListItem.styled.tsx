@@ -66,11 +66,13 @@ export const CodeBlock = styled.pre`
   margin: 0;
 `;
 
-export const ActionRunButton = styled(Button)`
+export const ActionRunButtonContainer = styled.div`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
+`;
 
+export const ActionRunButton = styled(Button)`
   background-color: ${color("bg-white")};
   color: ${color("text-dark")};
 `;

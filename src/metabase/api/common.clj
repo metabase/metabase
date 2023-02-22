@@ -238,7 +238,9 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
@@ -255,7 +257,9 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (malli-route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (malli-route-dox method route docstr args
+                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                               body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."

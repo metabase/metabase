@@ -32,6 +32,7 @@ import {
 
 interface OwnProps {
   model: Question;
+  canRunActions: boolean;
 }
 
 interface DispatchProps {
@@ -60,6 +61,7 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
 function ModelActionDetails({
   model,
   actions,
+  canRunActions,
   onEnableImplicitActions,
   onArchiveAction,
   onDeleteAction,
@@ -125,12 +127,13 @@ function ModelActionDetails({
             action={action}
             actionUrl={actionUrl}
             canWrite={canWrite}
+            canRun={canRunActions}
             onArchive={onArchiveAction}
           />
         </li>
       );
     },
-    [model, canWrite, onArchiveAction],
+    [model, canWrite, canRunActions, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
