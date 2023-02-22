@@ -3,7 +3,7 @@ import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks-legacy";
 
 import type { Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";

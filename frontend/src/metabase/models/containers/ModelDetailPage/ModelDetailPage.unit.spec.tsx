@@ -18,7 +18,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";

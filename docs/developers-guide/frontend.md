@@ -514,7 +514,7 @@ We use `nock` to mock requests:
 
 ```tsx
 import nock from "nock";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks-legacy";
 
 interface SetupOpts {
   collections: Collection[];

@@ -10,7 +10,7 @@ import {
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 
 import type { WritebackAction } from "metabase-types/api";
 import {

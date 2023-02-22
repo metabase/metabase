@@ -11,7 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 

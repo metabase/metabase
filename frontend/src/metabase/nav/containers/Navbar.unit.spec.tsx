@@ -10,7 +10,7 @@ import {
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 
 import type { User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";

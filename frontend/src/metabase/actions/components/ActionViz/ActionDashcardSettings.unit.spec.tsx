@@ -8,7 +8,7 @@ import {
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 
 import {
   createMockDashboard,

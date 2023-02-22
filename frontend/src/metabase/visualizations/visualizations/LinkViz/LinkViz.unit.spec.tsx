@@ -8,7 +8,7 @@ import {
   fireEvent,
   getIcon,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { setupSearchEndpoints } from "__support__/server-mocks-legacy";
 
 import type {
   DashboardOrderedCard,

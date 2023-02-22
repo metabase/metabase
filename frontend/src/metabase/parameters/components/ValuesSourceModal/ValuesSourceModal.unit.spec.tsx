@@ -15,7 +15,7 @@ import {
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks-legacy";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Field from "metabase-lib/metadata/Field";
 import { UiParameter } from "metabase-lib/parameters/types";

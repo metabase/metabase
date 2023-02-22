@@ -9,7 +9,7 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks-legacy";
 import { EmbedOptions } from "metabase-types/store";
 import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import AppBar from "./AppBar";
