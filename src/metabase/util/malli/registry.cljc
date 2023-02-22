@@ -10,7 +10,8 @@
 (mr/set-default-registry!
  (mr/mutable-registry registry*))
 
-(defn register! [type schema]
+(defn register!
+  [type schema]
   (swap! registry* assoc type schema)
   nil)
 

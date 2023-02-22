@@ -2,7 +2,8 @@
   (:require
    [metabase.types]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.shared.util.i18n :as i18n]))
 
 (comment metabase.types/keep-me)
 
@@ -24,6 +25,7 @@
 
 (mr/def :mbql/field-options
   [:map
+   [:lib/uuid ms/NonBlankString]
    [:temporal-unit {:optional true} :mbql/datetime-bucketing-unit]])
 
 (mr/def :mbql/field-ref
@@ -33,7 +35,7 @@
     [:id-or-name [:altn
                   [:id ms/IntGreaterThanZero]
                   [:name ms/NonBlankString]]]
-    [:options [:maybe :mbql/field-options]]]
+    [:options :mbql/field-options]]
    [:fn (fn [[_field id-or-name options]]
           (or (integer? id-or-name)
               (and (string? id-or-name)
@@ -63,6 +65,20 @@
    :mbql/aggregation-ref
    :mbql/expression-ref])
 
+(mr/def :mbql/clause
+  [:catn
+   [:clause-name keyword?]
+   [:options :lib/options]
+   [:args [:* [:fn any?]]]])
+
+;; TODO
+(mr/def :mbql/expression
+  :mbql/clause)
+
+;; TODO
+(mr/def :mbql/filter
+  :mbql/expression)
+
 (mr/def :mbql/order-by-direction
   [:enum :asc :desc])
 
@@ -81,9 +97,36 @@
 (mr/def :mbql/order-by
   [:or :mbql/asc :mbql/desc])
 
+(mr/def ::source-table-or-source-query
+  [:fn
+   {:error/fn (fn [& _]
+                (i18n/tru "Query must have either :source-table or :source-query, but not both."))}
+   (fn [{:keys [source-table source-query]}]
+     ;; actually, don't enforce the requirement that we have both for the time being, because in a `:pipeline` query
+     ;; the `:source-query` part is implied if there is a previous stage.
+     (and #_(or source-table source-query)
+          (not (and source-table source-query))))])
+
+(mr/def :mbql/join
+  [:and
+   [:map
+    [:lib/type [:= :lib/join]]
+    [:lib/options :lib/options]
+    [:source-table {:optional true} ms/IntGreaterThanZero]
+    [:source-query {:optional true} [:ref :mbql/inner-query]]
+    [:condition :mbql/filter]]
+   ::source-table-or-source-query])
+
 (mr/def :mbql/inner-query
-  [:map
-   [:order-by {:optional true} [:sequential :mbql/order-by]]])
+  [:and
+   [:map
+    [:lib/type [:= :lib/inner-query]]
+    [:lib/options :lib/options]
+    [:source-table {:optional true} ms/IntGreaterThanZero]
+    [:source-query {:optional true} [:ref :mbql/inner-query]]
+    [:order-by {:optional true} [:sequential :mbql/order-by]]
+    [:joins {:optional true} [:sequential :mbql/join]]]
+   ::source-table-or-source-query])
 
 (mr/def :mbql/query-type
   [:enum :native :query])
@@ -91,6 +134,7 @@
 (mr/def :mbql/outer-query
   [:and
    [:map
+    [:lib/type [:= :lib/outer-query]]
     [:database ms/IntGreaterThanOrEqualToZero]
     [:type :mbql/query-type]]
    [:multi

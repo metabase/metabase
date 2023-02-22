@@ -36,8 +36,8 @@
     stage'))
 
 (defn query-stage
-  [query stage]
-  (let [{:keys [stages]} (roll-query query)]
+  [outer-query stage]
+  (let [{:keys [stages]} (roll-query outer-query)]
     (nth (vec stages) (normalize-stage stages stage))))
 
 (defn update-query-stage

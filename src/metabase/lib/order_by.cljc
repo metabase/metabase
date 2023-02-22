@@ -68,7 +68,7 @@
                                   (conj (vec order-bys) (->order-by x)))))
 
 (defmethod lib.append/append* :asc
-  [ inner-query clause]
+  [inner-query clause]
   (append-order-by inner-query clause))
 
 (defmethod lib.append/append* :desc

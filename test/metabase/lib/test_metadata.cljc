@@ -27,12 +27,12 @@
                    :last-login 302
                    :password   303)
      :venues     (case field-name
-                   :id        400
-                   :name      401
-                   :category  402
-                   :latitude  403
-                   :longitude 404
-                   :price     405))))
+                   :id          400
+                   :name        401
+                   :category-id 402
+                   :latitude    403
+                   :longitude   404
+                   :price       405))))
 
 (defmulti table-metadata
   {:arglists '([table-name])}
@@ -556,7 +556,7 @@
    :points_of_interest  nil
    :type                :metadata/field})
 
-(defmethod field-metadata [:venues :category]
+(defmethod field-metadata [:venues :category-id]
   [_table-name _field-name]
   {:description         nil
    :database_type       "INTEGER"
@@ -575,7 +575,7 @@
    :active              true
    :nfc_path            nil
    :parent_id           nil
-   :id                  (id :venues :category)
+   :id                  (id :venues :category-id)
    :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            2
    :visibility_type     :normal
@@ -724,7 +724,7 @@
    :name                    "VENUES"
    :fields                  [(field-metadata :venues :id)
                              (field-metadata :venues :name)
-                             (field-metadata :venues :category)
+                             (field-metadata :venues :category-id)
                              (field-metadata :venues :latitude)
                              (field-metadata :venues :longitude)
                              (field-metadata :venues :price)]
@@ -871,3 +871,10 @@
                                          :max 4.0
                                          :sd  0.7713951678941896
                                          :avg 2.03}}}}]})
+
+(def saved-question
+  "An example saved question."
+  {:dataset_query   {:database (id)
+                     :type     :query
+                     :query    {:source-table (id :venues)}}
+   :result_metadata results-metadata})

@@ -169,7 +169,7 @@
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
-  ([dialect s]
+  ([dialect s]b
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 

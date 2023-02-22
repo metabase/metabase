@@ -10,12 +10,14 @@
   cljc-friendly way. e.g. I don't know what `(type \"x\") is in Cljs."
   [x]
   (cond
-    (nil? x)     :type/nil
-    (string? x)  :type/string
-    (integer? x) :type/integer
-    (number? x)  :type/number
-    (map? x)     :type/map
-    :else        (type x)))
+    (nil? x)            :type/nil
+    (string? x)         :type/string
+    (integer? x)        :type/integer
+    (number? x)         :type/number
+    (and (map? x)
+         (:lib/type x)) (:lib/type x)
+    (map? x)            :type/map
+    :else               (type x)))
 
 (defn dispatch-value
   [x]
