@@ -26,7 +26,7 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     cy.findByText("Display").click();
     cy.findByText("April, 2016").should("be.visible");
   });

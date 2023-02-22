@@ -40,7 +40,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     cy.get(".Visualization").within(() => {
       assertOnPivotFields();
@@ -54,7 +54,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     // Open Pivot table side-bar
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     assertOnPivotSettings();
   });
@@ -114,10 +114,10 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
 
     // Open Pivot table side-bar
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // Give it some time to open the side-bar fully before we start dragging
-    cy.findByText(/Pivot Table options/i);
+    assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
     dragField(1, 0);
@@ -232,7 +232,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("3,520"); // check for one of the subtotals
 
     // open settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
@@ -261,7 +261,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("3,520"); // affiliate subtotal is visible
 
     // open settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
@@ -276,7 +276,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Users? → Source/);
 
@@ -296,7 +296,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -319,7 +319,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -350,7 +350,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     // open settings and expand Total column settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     openColumnSettings(/Total/);
 
     // sort descending
@@ -822,7 +822,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     cy.findByText("Conditional Formatting").click();
 
     cy.findByText("Add a rule").click();
@@ -957,7 +957,6 @@ function assertOnPivotSettings() {
   cy.findAllByTestId(/draggable-item/).as("fieldOption");
 
   cy.log("Implicit side-bar assertions");
-  cy.findByText(/Pivot Table options/i);
 
   cy.findAllByTestId("pivot-table-setting").eq(0);
   cy.get("@fieldOption")

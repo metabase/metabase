@@ -64,7 +64,7 @@ describe("UI elements that make no sense for users without data permissions (met
 
     cy.findByTextEnsureVisible("There was a problem with your question");
 
-    cy.findByText("Settings").should("not.exist");
+    cy.findByTestId("viz-settings-button").should("not.exist");
     cy.findByText("Visualization").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
