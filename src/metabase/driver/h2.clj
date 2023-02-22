@@ -183,7 +183,7 @@
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native :as in}]
   (let [query-classification (classify-query database query)]
-    (when (and query (not (contains-ddl? query-classification)))
+    (when (and query (contains-ddl? query-classification))
       (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                       {:classification query-classification})))))
 
