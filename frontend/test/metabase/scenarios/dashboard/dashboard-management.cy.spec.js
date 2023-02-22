@@ -26,10 +26,12 @@ describe("managing dashboard from the dashboard's edit menu", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
+              cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
               cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
 
               cy.signIn(user);
               visitDashboard(1);
+              assertOnRequest("getDashboard");
               cy.get("main header").within(() => {
                 cy.icon("ellipsis").click();
               });
@@ -41,6 +43,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 .type("1")
                 .blur();
               assertOnRequest("updateDashboard");
+              assertOnRequest("getDashboard");
 
               cy.get("main header").within(() => {
                 cy.icon("info").click();
@@ -54,8 +57,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
 
               assertOnRequest("updateDashboard");
+              assertOnRequest("getDashboard");
 
               cy.reload();
+              assertOnRequest("getDashboard");
               cy.findByDisplayValue("Orders in a dashboard1");
             });
 
