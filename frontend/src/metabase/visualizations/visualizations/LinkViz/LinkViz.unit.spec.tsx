@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -8,7 +8,7 @@ import {
   fireEvent,
   getIcon,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks-legacy";
+import { setupSearchEndpoints } from "__support__/server-mocks";
 
 import type {
   DashboardOrderedCard,
@@ -16,7 +16,8 @@ import type {
 } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,
-  createMockCard,
+  createMockCollectionItem,
+  createMockCollection,
 } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
@@ -103,15 +104,13 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
   },
 });
 
-const searchCardItem = {
+const searchCardItem = createMockCollectionItem({
+  id: 1,
   model: "card",
-  collection: {},
-  ...createMockCard({
-    name: "Question Uno",
-    id: 1,
-    display: "pie",
-  }),
-};
+  name: "Question Uno",
+  display: "pie",
+  collection: createMockCollection(),
+});
 
 const setup = (options?: Partial<LinkVizProps>) => {
   const changeSpy = jest.fn();
@@ -130,6 +129,10 @@ const setup = (options?: Partial<LinkVizProps>) => {
 };
 
 describe("LinkViz", () => {
+  afterEach(() => {
+    fetchMock.reset();
+  });
+
   describe("url links", () => {
     it("should render link input settings view", () => {
       setup({ isEditing: true });
@@ -202,8 +205,7 @@ describe("LinkViz", () => {
     });
 
     it("should be able to search for questions", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
+      setupSearchEndpoints([searchCardItem]);
 
       setup({
         isEditing: true,
@@ -221,8 +223,7 @@ describe("LinkViz", () => {
     });
 
     it("clicking a search item should update the entity", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
+      setupSearchEndpoints([searchCardItem]);
 
       const { changeSpy } = setup({
         isEditing: true,
