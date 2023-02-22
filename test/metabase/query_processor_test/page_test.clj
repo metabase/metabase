@@ -1,8 +1,9 @@
 (ns metabase.query-processor-test.page-test
   "Tests for the `:page` clause."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
 
 (deftest page-test
   (mt/test-drivers (mt/normal-drivers)

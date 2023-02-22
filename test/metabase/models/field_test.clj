@@ -1,22 +1,14 @@
 (ns metabase.models.field-test
   "Tests for specific behavior related to the Field model."
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
-
-(deftest nfc-field->parent-identifier-test
-  (testing "It replaces the last identifier member"
-    (let [nfc-identifier (hx/identifier :field "boop" "beep" "boop -> deep")
-          new-identifier (#'metabase.models.field/nfc-field->parent-identifier
-                           nfc-identifier
-                           {:nfc_path ["something" "boppity"]})]
-      (is (= (hx/identifier :field "boop" "beep" "something") new-identifier)))))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest unknown-types-test
   (doseq [{:keys [column unknown-type fallback-type]} [{:column        :base_type
@@ -33,7 +25,7 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp Field [field]
-        (db/execute! {:update Field
+        (db/execute! {:update :metabase_field
                       :set    {column (u/qualified-name unknown-type)}
                       :where  [:= :id (u/the-id field)]})
         (is (= fallback-type

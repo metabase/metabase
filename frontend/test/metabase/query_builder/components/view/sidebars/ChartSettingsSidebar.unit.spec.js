@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
@@ -12,37 +12,40 @@ describe("ChartSettingsSidebar", () => {
   };
 
   it("should not hide the title for gauge charts", () => {
-    const { getByText } = render(
+    render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("gauge")}
         result={{ data }}
       />,
     );
+
     // see options header with sections
-    getByText("Gauge options");
-    getByText("Formatting");
-    getByText("Display");
+    expect(screen.getByText("Gauge options")).toBeInTheDocument();
+    expect(screen.getByText("Formatting")).toBeInTheDocument();
+    expect(screen.getByText("Display")).toBeInTheDocument();
 
     // click on formatting section
-    fireEvent.click(getByText("Formatting"));
+    fireEvent.click(screen.getByText("Formatting"));
 
     // you see the formatting stuff
-    getByText("Style");
+    expect(screen.getByText("Style")).toBeInTheDocument();
+
     // but the sections and back title are unchanged
-    getByText("Gauge options");
-    getByText("Formatting");
-    getByText("Display");
+    expect(screen.getByText("Gauge options")).toBeInTheDocument();
+    expect(screen.getByText("Formatting")).toBeInTheDocument();
+    expect(screen.getByText("Display")).toBeInTheDocument();
   });
 
   it("should not hide the title for scalar charts", () => {
-    const { getByText } = render(
+    render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("scalar")}
         result={{ data }}
       />,
     );
+
     // see header with formatting fields
-    getByText("Number options");
-    getByText("Style");
+    expect(screen.getByText("Number options")).toBeInTheDocument();
+    expect(screen.getByText("Style")).toBeInTheDocument();
   });
 });

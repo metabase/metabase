@@ -3,19 +3,20 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [clojure.tools.logging :as log]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.sync.analyze.fingerprint.insights :as insights]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [redux.core :as redux]
-            [schema.core :as s]))
+  (:require
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.analyze.fingerprint.insights :as insights]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [redux.core :as redux]
+   [schema.core :as s]))
 
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."

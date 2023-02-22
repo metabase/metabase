@@ -1,12 +1,16 @@
 (ns metabase.config
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.plugins.classloader :as classloader])
-  (:import clojure.lang.Keyword
-           java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log])
+  (:import
+   (clojure.lang Keyword)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
@@ -18,6 +22,7 @@
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
@@ -121,6 +126,7 @@
 
 (defn- mb-session-cookie-samesite*
   []
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
     (when-not (#{"none", "lax", "strict"} same-site)
       (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))

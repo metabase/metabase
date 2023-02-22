@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
 import {
-  act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 
@@ -64,7 +64,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   );
 
   if (folder.id) {
-    await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
+    await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
   }
 
   return { onClose };
@@ -122,11 +122,11 @@ describe("SnippetCollectionFormModal", () => {
     it("can submit when name is filled in", async () => {
       await setup();
 
-      await act(async () => {
-        await userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
-      });
+      userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
 
-      expect(screen.getByRole("button", { name: "Create" })).not.toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+      });
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -139,7 +139,9 @@ describe("SnippetCollectionFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
@@ -147,8 +149,6 @@ describe("SnippetCollectionFormModal", () => {
     it("shows correct initial state", async () => {
       const folder = createMockCollection({ description: "has description" });
       await setupEditing({ folder });
-
-      screen.debug();
 
       expect(screen.getByLabelText(LABEL.NAME)).toBeInTheDocument();
       expect(screen.getByLabelText(LABEL.NAME)).toHaveValue(folder.name);
@@ -182,16 +182,18 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      await act(async () => {
-        await userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
       });
-      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     });
 
     it("can submit when have changes", async () => {
       await setupEditing();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
-      expect(screen.getByRole("button", { name: "Update" })).not.toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
+      });
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -204,7 +206,9 @@ describe("SnippetCollectionFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

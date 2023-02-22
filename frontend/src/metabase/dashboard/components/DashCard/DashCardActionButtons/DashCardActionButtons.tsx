@@ -5,8 +5,16 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import { Dashboard, VisualizationSettings } from "metabase-types/api";
+import {
+  Dashboard,
+  DashboardOrderedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
+
+import { isActionDashCard } from "metabase/actions/utils";
+import { isLinkDashCard } from "metabase/dashboard/utils";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 import DashCardActionButton from "./DashCardActionButton";
 
@@ -14,10 +22,13 @@ import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
 
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
+import ActionSettingsButton from "./ActionSettingsButton";
+import LinkCardEditButton from "./LinkCardEditButton";
 
 interface Props {
   series: Series;
   dashboard: Dashboard;
+  dashcard?: DashboardOrderedCard;
   isLoading: boolean;
   isVirtualDashCard: boolean;
   isPreviewing: boolean;
@@ -25,13 +36,18 @@ interface Props {
   onRemove: () => void;
   onAddSeries: () => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    settings: Partial<VisualizationSettings>,
+  ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
+  metadata: Metadata;
 }
 
 function DashCardActionButtons({
   series,
   dashboard,
+  dashcard,
   isLoading,
   isVirtualDashCard,
   isPreviewing,
@@ -39,11 +55,17 @@ function DashCardActionButtons({
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
+  metadata,
 }: Props) {
-  const { disableSettingsConfig, supportPreviewing, supportsSeries } =
-    getVisualizationRaw(series).visualization;
+  const {
+    disableSettingsConfig,
+    supportPreviewing,
+    supportsSeries,
+    disableClickBehavior,
+  } = getVisualizationRaw(series).visualization;
 
   const buttons = [];
 
@@ -70,12 +92,14 @@ function DashCardActionButtons({
           key="chart-settings-button"
           series={series}
           dashboard={dashboard}
+          dashcard={dashcard}
+          metadata={metadata}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );
     }
 
-    if (!isVirtualDashCard) {
+    if (!isVirtualDashCard && !disableClickBehavior) {
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"
@@ -94,6 +118,26 @@ function DashCardActionButtons({
           key="add-series-button"
           series={series}
           onClick={onAddSeries}
+        />,
+      );
+    }
+
+    if (dashcard && isActionDashCard(dashcard)) {
+      buttons.push(
+        <ActionSettingsButton
+          key="action-settings-button"
+          dashboard={dashboard}
+          dashcard={dashcard}
+        />,
+      );
+    }
+
+    if (dashcard && isLinkDashCard(dashcard)) {
+      buttons.push(
+        <LinkCardEditButton
+          key="link-edit-button"
+          dashcard={dashcard}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />,
       );
     }

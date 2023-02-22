@@ -1,6 +1,7 @@
 (ns release.common.git
-  (:require [metabuild-common.core :as u]
-            [release.common :as c]))
+  (:require
+   [metabuild-common.core :as u]
+   [release.common :as c]))
 
 (defn delete-local-tag!
   "Delete `tag` if it exists locally."

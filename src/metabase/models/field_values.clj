@@ -18,21 +18,23 @@
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -163,16 +165,15 @@
                                        :else
                                        [])))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class FieldValues)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json-no-keywordization
-                                    :values                :json
-                                    :type                  :keyword})
-          :pre-insert  pre-insert
-          :pre-update  pre-update
-          :post-select post-select}))
+(mi/define-methods
+ FieldValues
+ {:properties  (constantly {::mi/timestamped? true})
+  :types       (constantly {:human_readable_values :json-no-keywordization
+                            :values                :json
+                            :type                  :keyword})
+  :pre-insert  pre-insert
+  :pre-update  pre-update
+  :post-select post-select})
 
 (defmethod serdes.hash/identity-hash-fields FieldValues
   [_field-values]
@@ -355,7 +356,9 @@
 
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
-      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+      (do
+        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
@@ -394,10 +397,17 @@
   (when (field-should-have-field-values? field)
     (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
-        (when-let [result (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))]
-          (when (= result ::fv-updated)
-            (db/update! FieldValues (:id existing) :last_used_at :%now))
-          (db/select-one FieldValues :field_id field-id :type :full))
+        (case (create-or-update-full-field-values! field human-readable-values)
+          ::fv-deleted
+          nil
+
+          ::fv-created
+          (db/select-one FieldValues :field_id field-id :type :full)
+
+          (do
+            (when existing
+              (db/update! FieldValues (:id existing) :last_used_at :%now))
+            (db/select-one FieldValues :field_id field-id :type :full)))
         (do
           (db/update! FieldValues (:id existing) :last_used_at :%now)
           existing)))))

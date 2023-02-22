@@ -16,7 +16,7 @@ const ChartSettingFieldPicker = ({
   options,
   onChange,
   onRemove,
-  onShowWidget,
+  onShowPopoverWidget,
   className,
   columns,
   showColumnSetting,
@@ -76,7 +76,7 @@ const ChartSettingFieldPicker = ({
         <SettingsIcon
           name="ellipsis"
           onClick={e => {
-            onShowWidget(
+            onShowPopoverWidget(
               {
                 id: "column_settings",
                 props: {

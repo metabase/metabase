@@ -1,14 +1,18 @@
 (ns metabase.analytics.prometheus-test
-  (:require [clj-http.client :as http]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [iapetos.registry :as registry]
-            [metabase.analytics.prometheus :as prometheus]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.troubleshooting :as troubleshooting])
-  (:import org.eclipse.jetty.server.Server
-           [io.prometheus.client Collector GaugeMetricFamily]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [iapetos.registry :as registry]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.troubleshooting :as troubleshooting])
+  (:import
+   (io.prometheus.client Collector GaugeMetricFamily)
+   (org.eclipse.jetty.server Server)))
+
+(set! *warn-on-reflection* true)
 
 ;; ensure a handler to instrument with jetty_stats and a db so the c3p0 stats have at least one connection
 (use-fixtures :once (fixtures/initialize :db :web-server))

@@ -2,25 +2,29 @@
   "Utility functions for converting frontend schedule dictionaries to cron strings and vice versa.
    See http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html#format for details on cron
    format."
-  (:require [clojure.string :as str]
-            [metabase.util.i18n :as i18n]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import net.redhogs.cronparser.CronExpressionDescriptor
-           org.quartz.CronExpression))
+  (:require
+   [clojure.string :as str]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (net.redhogs.cronparser CronExpressionDescriptor)
+   (org.quartz CronExpression)))
+
+(set! *warn-on-reflection* true)
 
 (def CronScheduleString
   "Schema for a valid cron schedule string."
   (su/with-api-error-message
-      (s/constrained
-       su/NonBlankString
-       (fn [^String s]
-         (try (CronExpression/validateExpression s)
-              true
-              (catch Throwable _
-                false)))
-       "Invalid cron schedule string.")
-      "value must be a valid Quartz cron schedule string."))
+    (s/constrained
+     su/NonBlankString
+     (fn [^String s]
+       (try (CronExpression/validateExpression s)
+            true
+            (catch Throwable _
+              false)))
+     "Invalid cron schedule string.")
+    "value must be a valid Quartz cron schedule string."))
 
 
 (def ^:private CronHour

@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders, fireEvent } from "__support__/ui";
+import { renderWithProviders, fireEvent, screen } from "__support__/ui";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
@@ -20,97 +20,100 @@ function widget(widget = {}) {
 }
 
 const setup = props => {
-  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />, {
-    withSettings: true,
-    withEmbedSettings: true,
-  });
+  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
 };
 
 describe("ChartSettings", () => {
   it("should not crash if there are no widgets", () => {
-    setup({
-      widgets: [],
-    });
+    expect(() => setup({ widgets: [] })).not.toThrow();
   });
+
   it("should not crash if the initial section is invalid", () => {
-    setup({
-      widgets: [widget({ section: "Foo" })],
-      initial: { section: "Bar" },
-    });
+    expect(() =>
+      setup({
+        widgets: [widget({ section: "Foo" })],
+        initial: { section: "Bar" },
+      }),
+    ).not.toThrow();
   });
+
   it("should default to the first section (if no section in DEFAULT_TAB_PRIORITY)", () => {
-    const { getByLabelText } = setup({
+    setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
-    expect(getByLabelText("Foo")).toBeChecked();
-    expect(getByLabelText("Bar")).not.toBeChecked();
+    expect(screen.getByLabelText("Foo")).toBeChecked();
+    expect(screen.getByLabelText("Bar")).not.toBeChecked();
   });
+
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
-    const { getByLabelText } = setup({
+    setup({
       widgets: [
         widget({ section: "Foo" }),
         widget({ section: "Display" }), // Display is in DEFAULT_TAB_PRIORITY
       ],
     });
 
-    expect(getByLabelText("Foo")).not.toBeChecked();
-    expect(getByLabelText("Display")).toBeChecked();
+    expect(screen.getByLabelText("Foo")).not.toBeChecked();
+    expect(screen.getByLabelText("Display")).toBeChecked();
   });
+
   it("should be able to switch sections", () => {
-    const { getByText, getByLabelText } = setup({
+    setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
 
-    expect(getByLabelText("Foo")).toBeChecked();
-    expect(getByLabelText("Bar")).not.toBeChecked();
-    fireEvent.click(getByText("Bar"));
-    expect(getByLabelText("Foo")).not.toBeChecked();
-    expect(getByLabelText("Bar")).toBeChecked();
+    expect(screen.getByLabelText("Foo")).toBeChecked();
+    expect(screen.getByLabelText("Bar")).not.toBeChecked();
+    fireEvent.click(screen.getByText("Bar"));
+    expect(screen.getByLabelText("Foo")).not.toBeChecked();
+    expect(screen.getByLabelText("Bar")).toBeChecked();
   });
 
   it("should show widget names", () => {
-    const { getByText } = setup({
+    setup({
       widgets: [
         widget({ title: "Widget1", section: "Foo" }),
         widget({ title: "Widget2", section: "Foo" }),
       ],
     });
 
-    expect(getByText("Widget1", { exact: false })).toBeInTheDocument();
-    expect(getByText("Widget2", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Widget1", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Widget2", { exact: false })).toBeInTheDocument();
   });
 
   it("should not show hidden widgets", () => {
-    const { getByText, queryByText } = setup({
+    setup({
       widgets: [
         widget({ title: "Widget1", section: "Foo" }),
         widget({ title: "Widget2", section: "Foo", hidden: true }),
       ],
     });
 
-    expect(getByText("Widget1", { exact: false })).toBeInTheDocument();
-    expect(queryByText("Widget2", { exact: false })).toBe(null);
+    expect(screen.getByText("Widget1", { exact: false })).toBeInTheDocument();
+    expect(
+      screen.queryByText("Widget2", { exact: false }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show the section picker if there are multiple sections", () => {
-    const { getByText } = setup({
+    setup({
       widgets: [
         widget({ title: "Widget1", section: "Foo" }),
         widget({ title: "Widget2", section: "Bar" }),
       ],
     });
 
-    expect(getByText("Foo")).toBeInTheDocument();
+    expect(screen.getByText("Foo")).toBeInTheDocument();
   });
 
   it("should not show the section picker if there's only one section", () => {
-    const { queryByText } = setup({
+    setup({
       widgets: [
         widget({ title: "Something", section: "Foo" }),
         widget({ title: "Other Thing", section: "Foo" }),
       ],
     });
 
-    expect(queryByText("Foo")).toBe(null);
+    expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
 });

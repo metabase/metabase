@@ -135,6 +135,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -217,6 +221,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -490,7 +498,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
+  it("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
     visitQuestionAdhoc({
       name: "15324",
       dataset_query: {
@@ -512,7 +520,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("85")
       .click();
     cy.findByText("View these Orders").click();
-    cy.findByText("Quantity between 10 20");
+    cy.findByText("Quantity is greater than or equal to 10");
+    cy.findByText("Quantity is less than 20");
     cy.findByText("Showing 85 rows");
   });
 
@@ -558,6 +567,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 16,
+          size_y: 10,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Add click through to the custom destination on a card
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

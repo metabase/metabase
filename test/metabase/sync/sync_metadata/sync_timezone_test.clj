@@ -1,12 +1,13 @@
 (ns metabase.sync.sync-metadata.sync-timezone-test
-  (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- db-timezone [db-or-id]
   (db/select-one-field :timezone Database :id (u/the-id db-or-id)))

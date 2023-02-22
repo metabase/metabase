@@ -1,15 +1,20 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
-  (:require [clojure.test :refer :all]
-            [metabase.api.geojson-test :as geojson-test]
-            [metabase.email :as email]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Dashboard]]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
-  (:import java.util.UUID))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.geojson-test :as geojson-test]
+   [metabase.email :as email]
+   [metabase.integrations.slack :as slack]
+   [metabase.models :refer [Card Dashboard]]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -200,6 +205,43 @@
                 (get-public-dashboards user 200)
                 (get-embeddable-dashboards user 200)
                 (delete-public-dashboard user 204)))))))))
+
+(deftest action-api-test
+  (testing "/api/action"
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding      true]
+      (mt/with-actions-enabled
+        (mt/with-user-in-groups
+          [group {:name "New Group"}
+           user  [group]]
+          (letfn [(get-public-actions [user status]
+                    (testing (format "get public actions with %s user" (mt/user-descriptor user))
+                      (mt/user-http-request user :get status "action/public")))
+
+                  (delete-public-action [user status]
+                    (testing (format "delete public action with %s user" (mt/user-descriptor user))
+                      (mt/with-actions [{:keys [action-id]} {:public_uuid       (str (UUID/randomUUID))
+                                                             :made_public_by_id (mt/user->id :crowberto)}]
+                        (mt/user-http-request user :delete status (format "action/%d/public_link" action-id)))))]
+
+            (testing "if `advanced-permissions` is disabled, require admins,"
+              (premium-features-test/with-premium-features #{}
+                (get-public-actions user 403)
+                (delete-public-action user 403)
+                (delete-public-action :crowberto 204)))
+
+            (testing "if `advanced-permissions` is enabled,"
+              (premium-features-test/with-premium-features #{:advanced-permissions}
+                (testing "still fail if user's group doesn't have `setting` permission"
+                  (get-public-actions user 403)
+                  (delete-public-action user 403)
+                  (get-public-actions :crowberto 200)
+                  (delete-public-action :crowberto 204))
+
+                (testing "succeed if user's group has `setting` permission,"
+                  (perms/grant-application-permissions! group :setting)
+                  (get-public-actions user 200)
+                  (delete-public-action user 204))))))))))
 
 (deftest card-api-test
   (testing "/api/card"

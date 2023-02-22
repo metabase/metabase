@@ -1,11 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
-            [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
+   [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 

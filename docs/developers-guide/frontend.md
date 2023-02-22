@@ -449,3 +449,92 @@ Here, clicking on the following will open `<Popover />` components:
 - `Pick the metric you want to see`
 - `Pick a column to group by`
 - `Sort` icon with arrows pointing up and down above `Visualize` button
+
+
+## Unit testing
+
+### Setup pattern
+
+We use the following pattern to unit test components:
+
+```tsx
+import React from "react";
+import userEvent from "@testing-library/user-event";
+import { Collection } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import CollectionHeader from "./CollectionHeader";
+
+interface SetupOpts {
+  collection: Collection;
+}
+
+const setup = ({ collection }: SetupOpts) => {
+  const onUpdateCollection = jest.fn();
+
+  renderWithProviders(
+    <CollectionHeader
+      collection={collection}
+      onUpdateCollection={onUpdateCollection}
+    />
+  );
+
+  return { onUpdateCollection };
+};
+
+describe("CollectionHeader", () => {
+  it("should be able to update the name of the collection", () => {
+    const collection = createMockCollection({
+      name: "Old name",
+    });
+
+    const { onUpdateCollection } = setup({
+      collection,
+    });
+
+    userEvent.clear(screen.getByDisplayValue("Old name"));
+    userEvent.type(screen.getByPlaceholderText("Add title"), "New title");
+    userEvent.tab();
+
+    expect(onUpdateCollection).toHaveBeenCalledWith({
+      ...collection,
+      name: "New name",
+    })
+  });
+});
+```
+
+Key points:
+- `setup` function
+- `renderWithProviders` adds providers used by the app, including `redux`
+
+### Request mocking
+
+We use `nock` to mock requests:
+
+```tsx
+import nock from "nock";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+
+interface SetupOpts {
+  collections: Collection[];
+}
+
+const setup = ({ collections }: SetupOpts) => {
+  const scope = nock(location.origin);
+  setupCollectionsEndpoints(scope, collections);
+
+  // renderWithProviders and other setup
+};
+
+describe("Component", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+});
+```
+
+Key points:
+- Create `scope` in `setup`
+- Call helpers from `__support__/server-mocks` to setup endpoints for your data
+- Call `nock.clearAll` to remove all mocks

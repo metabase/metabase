@@ -1,46 +1,52 @@
 (ns metabase-enterprise.serialization.load
   "Load entities serialized by `metabase-enterprise.serialization.dump`."
   (:refer-clojure :exclude [load])
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
-            [metabase.config :as config]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.setting :as setting]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [yaml.core :as yaml]
-            [yaml.reader :as y.reader])
-  (:import java.time.temporal.Temporal
-           java.util.UUID))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.names
+    :as names
+    :refer [fully-qualified-name->context]]
+   [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.setting :as setting]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [yaml.core :as yaml]
+   [yaml.reader :as y.reader])
+  (:import
+   (java.time.temporal Temporal)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- slurp-dir
   [path]
@@ -191,11 +197,11 @@
   (.getName (io/file path)))
 
 (defn- unresolved-names->string
-  ([entity]
-   (unresolved-names->string entity nil))
-  ([entity insert-id]
+  ([model]
+   (unresolved-names->string model nil))
+  ([model insert-id]
    (str
-    (when-let [nm (:name entity)] (str "\"" nm "\""))
+    (when-let [nm (:name model)] (str "\"" nm "\""))
     (when insert-id (format " (inserted as ID %d) " insert-id))
     "missing:\n  "
     (str/join
@@ -203,7 +209,7 @@
      (map
       (fn [[k v]]
         (format "at %s -> %s" (str/join "/" v) k))
-      (::unresolved-names entity))))))
+      (::unresolved-names model))))))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.

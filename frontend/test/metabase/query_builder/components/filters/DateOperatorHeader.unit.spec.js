@@ -13,9 +13,9 @@ describe("DatePickerHeader", () => {
       />,
     );
 
-    screen.getByText("Past");
-    screen.getByText("Current");
-    screen.getByText("Next");
+    expect(screen.getByText("Past")).toBeInTheDocument();
+    expect(screen.getByText("Current")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
   });
 
   it("should render 'Between'/'before'/'after'/'on'", () => {
@@ -25,9 +25,9 @@ describe("DatePickerHeader", () => {
         onFilterChange={nop}
       />,
     );
-    screen.getByText("Between");
-    screen.getByText("Before");
-    screen.getByText("On");
-    screen.getByText("After");
+    expect(screen.getByText("Between")).toBeInTheDocument();
+    expect(screen.getByText("Before")).toBeInTheDocument();
+    expect(screen.getByText("On")).toBeInTheDocument();
+    expect(screen.getByText("After")).toBeInTheDocument();
   });
 });

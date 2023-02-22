@@ -8,14 +8,16 @@
   [[metabase.driver.sql-jdbc]] for more details."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (declare notify-database-updated)
 
@@ -42,6 +44,11 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
+(defn- long-timezone-name [timezone-id]
+  (if (seq timezone-id)
+    timezone-id
+    (str (t/zone-id))))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -55,6 +62,13 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
+
+(defsetting report-timezone-long
+  "Current report timezone string"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
 
@@ -221,7 +235,7 @@
 
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
-  implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
+  implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
   way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
@@ -476,9 +490,12 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
-    :actions/custom})
+    :actions/custom
+
+    ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
+    :test/jvm-timezone-setting})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -502,6 +519,7 @@
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
 (defmethod supports? [::driver :convert-timezone] [_ _] false)
+(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -515,9 +533,8 @@
   (e.g., :left-join is not supported by any version of Mongo DB).
 
   In some cases, a feature may only be supported by certain versions of the database engine.
-  In this case, after implementing `:version` in `describe-database` for the driver,
-  you can check in `(get-in db [:details :version])` and determine
-  whether a feature is supported for this particular database.
+  In this case, after implementing `[[dbms-version]]` for your driver
+  you can determine whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
@@ -528,12 +545,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -742,6 +753,12 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+;;; TODO:
+;;;
+;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
+;;;    application database.
+;;;
+;;; 2. Something that is done for side effects like updating the application DB NEEDS TO END IN AN EXCLAMATION MARK!
 (defmulti normalize-db-details
   "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
@@ -774,8 +791,8 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
-  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

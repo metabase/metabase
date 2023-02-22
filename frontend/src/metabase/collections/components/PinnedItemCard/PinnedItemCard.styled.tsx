@@ -4,7 +4,6 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
-import ActionMenu from "metabase/collections/components/ActionMenu";
 
 export const ItemCard = styled(Card)``;
 
@@ -19,7 +18,11 @@ export const ItemIcon = styled(Icon)`
   width: 1.5rem;
 `;
 
-export const HoverMenu = styled(ActionMenu)`
+export const ActionsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
   visibility: hidden;
 `;
 
@@ -52,7 +55,7 @@ export const Body = styled.div`
       color: ${color("brand")};
     }
 
-    ${HoverMenu} {
+    ${ActionsContainer} {
       visibility: visible;
     }
   }

@@ -95,6 +95,8 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cardId: CARD_ID,
+                row: 0,
+                col: 0,
                 size_x: 16,
                 size_y: 12,
               });
@@ -157,6 +159,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 10,
+              size_y: 8,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Connect filter to that question");
 
@@ -216,6 +222,8 @@ function addCardToNewDashboard(dashboard_name, card_id) {
       // Add a card to it (with predefined size 6,4 simply for readability)
       cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
         cardId: card_id,
+        row: 0,
+        col: 0,
         size_x: 6,
         size_y: 4,
       });

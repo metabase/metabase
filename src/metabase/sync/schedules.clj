@@ -2,9 +2,10 @@
   "Types and defaults for the syncing schedules used for the scheduled sync tasks. Has defaults for the two schedules
   maps and some helper methods for turning those into appropriately named cron strings as stored in the
   `metabase_database` table."
-  (:require [metabase.util.cron :as u.cron]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.util.cron :as u.cron]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."

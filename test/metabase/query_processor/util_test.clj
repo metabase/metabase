@@ -1,7 +1,10 @@
 (ns metabase.query-processor.util-test
   "Tests for various functions that provide information about the query."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.util :as qp.util]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.util :as qp.util]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel query-without-aggregations-or-limits?-test
   (are [x expected] (= expected

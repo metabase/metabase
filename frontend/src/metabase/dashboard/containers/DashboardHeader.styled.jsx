@@ -14,7 +14,7 @@ export const DashboardHeaderActionDivider = styled.div`
 export const DashboardHeaderButton = styled(Button)`
   padding: 0.25rem 0.5rem;
   height: 2rem;
-  width: 2rem;
+  min-width: 2rem;
   color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
   font-size: 1rem;
 

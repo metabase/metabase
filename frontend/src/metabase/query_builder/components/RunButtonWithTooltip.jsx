@@ -4,7 +4,7 @@ import React from "react";
 import { t } from "ttag";
 import { duration } from "metabase/lib/formatting";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import RunButton from "./RunButton";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds

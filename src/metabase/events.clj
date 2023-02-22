@@ -8,12 +8,15 @@
   `events-init` function which accepts zero arguments. This function is dynamically resolved and called exactly once
   when the application goes through normal startup procedures. Inside this function you can do any work needed and add
   your events subscribers to the bus as usual via `start-event-listener!`."
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 

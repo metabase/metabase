@@ -1,8 +1,9 @@
 (ns metabase.mbql.schema.helpers
   (:refer-clojure :exclude [distinct])
-  (:require [clojure.string :as str]
-            metabase.types
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [metabase.types]
+   [schema.core :as s]))
 
 (comment metabase.types/keep-me)
 

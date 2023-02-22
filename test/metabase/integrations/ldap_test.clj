@@ -1,13 +1,17 @@
 (ns metabase.integrations.ldap-test
-  (:require [clojure.test :refer :all]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.integrations.ldap.default-implementation :as default-impl]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.ldap.sdk LDAPConnectionPool)))
+
+(set! *warn-on-reflection* true)
 
 ;; See test_resources/ldap.ldif for fixtures
 

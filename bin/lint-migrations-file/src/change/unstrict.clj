@@ -1,7 +1,8 @@
 (ns change.unstrict
-  (:require change.common
-            [clojure.spec.alpha :as s]
-            column.unstrict))
+  (:require
+   [change.common]
+   [clojure.spec.alpha :as s]
+   [column.unstrict]))
 
 (comment change.common/keep-me
          column.unstrict/keep-me)

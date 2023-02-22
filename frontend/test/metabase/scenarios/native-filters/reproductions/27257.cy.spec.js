@@ -7,7 +7,7 @@ import {
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
-describe.skip("issue 27257", () => {
+describe("issue 27257", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

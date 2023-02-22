@@ -1,15 +1,19 @@
 (ns metabase.models.pulse-card-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest test-next-position-for
   (testing "No existing cards"

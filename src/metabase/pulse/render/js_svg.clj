@@ -3,19 +3,23 @@
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.js-engine :as js]
-            [metabase.pulse.render.style :as style])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           java.nio.charset.StandardCharsets
-           [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
-           [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
-           org.apache.batik.transcoder.image.PNGTranscoder
-           org.graalvm.polyglot.Context
-           [org.w3c.dom Element Node]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.pulse.render.style :as style])
+  (:import
+   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.nio.charset StandardCharsets)
+   (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
+   (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
+   (org.apache.batik.transcoder.image PNGTranscoder)
+   (org.graalvm.polyglot Context)
+   (org.w3c.dom Element Node)))
+
+(set! *warn-on-reflection* true)
 
 ;; the bundle path goes through webpack. Changes require a `yarn build-static-viz`
 (def ^:private bundle-path

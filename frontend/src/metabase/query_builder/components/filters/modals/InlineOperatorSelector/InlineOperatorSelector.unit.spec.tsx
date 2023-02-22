@@ -1,10 +1,6 @@
 import React from "react";
 
-import {
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { InlineOperatorSelector } from "./InlineOperatorSelector";
@@ -112,7 +108,7 @@ describe("InlineOperatorSelector", () => {
   it("displays a field name", () => {
     render(<InlineOperatorSelector fieldName="field nombre" />);
 
-    screen.getByText("field nombre");
+    expect(screen.getByText("field nombre")).toBeInTheDocument();
   });
 
   it("does not display a dropdown arrow if no onChange function is provided", () => {
@@ -137,7 +133,7 @@ describe("InlineOperatorSelector", () => {
       />,
     );
 
-    screen.getByLabelText("chevrondown icon");
+    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
   });
 
   it("displays the selected value", () => {
@@ -149,7 +145,7 @@ describe("InlineOperatorSelector", () => {
       />,
     );
 
-    screen.getByText("Equal to");
+    expect(screen.getByText("Equal to")).toBeInTheDocument();
   });
 
   it("displays dropdown options for all provided options", async () => {
@@ -166,7 +162,7 @@ describe("InlineOperatorSelector", () => {
     await screen.findByTestId("operator-options");
 
     operatorOptions.forEach(option => {
-      screen.getAllByText(option.verboseName);
+      expect(screen.getAllByText(option.verboseName).length).not.toBe(0);
     });
   });
 

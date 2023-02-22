@@ -1,6 +1,7 @@
 (ns metabase.test.transforms
-  (:require [clojure.test :refer :all]
-            [metabase.transforms.specs :as tf.specs]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.transforms.specs :as tf.specs]))
 
 (def test-transform-spec
   "A test transform spec written against our test DB."

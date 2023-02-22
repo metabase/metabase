@@ -2,11 +2,15 @@
   "`/advanced-permisisons/application` Routes.
   Implements the Permissions routes needed for application permission - a class of permissions that control access to features
   like access Setting pages, access monitoring tools ... etc"
-  (:require [compojure.core :refer [GET PUT]]
-            [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-            [metabase.api.common :as api]))
+  (:require
+   [compojure.core :refer [GET PUT]]
+   [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
+   [metabase.api.common :as api]))
 
-(api/defendpoint GET "/graph"
+(set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/graph"
   "Fetch a graph of Application Permissions."
   []
   (api/check-superuser)
@@ -29,7 +33,8 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
-(api/defendpoint PUT "/graph"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
   [:as {:keys [body]}]
   (api/check-superuser)

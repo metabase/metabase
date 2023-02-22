@@ -72,6 +72,10 @@ describe.skip("issue 15860", () => {
         // Add it to the dashboard
         cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
           cardId: q2,
+          row: 0,
+          col: 8,
+          size_x: 10,
+          size_y: 6,
         }).then(({ body: { id: q2DashCard } }) => {
           // Map filters to the cards and rearrange cards so they can nicely fit
           cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {

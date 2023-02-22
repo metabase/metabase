@@ -24,7 +24,7 @@ const dashboardDetails = {
 
 const CASE_INSENSITIVE_ROWS = 30;
 
-describe.skip("issue 25908", () => {
+describe("issue 25908", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

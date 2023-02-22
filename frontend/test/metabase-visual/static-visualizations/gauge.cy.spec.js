@@ -33,7 +33,8 @@ describe("static visualizations", { tags: "@external" }, () => {
             scale: 2,
             prefix: "<",
             suffix: ">",
-            decimals: 1,
+            minimum_fraction_digits: 1,
+            maximum_fraction_digits: 1,
           },
         }),
         createGaugeQuestion(

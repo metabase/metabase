@@ -1,23 +1,29 @@
 (ns metabase.api.native-query-snippet
   "Native query snippet (/api/native-query-snippet) endpoints."
-  (:require [clojure.data :as data]
-            [compojure.core :refer [GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :as native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [compojure.core :refer [GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet
+    :as native-query-snippet
+    :refer [NativeQuerySnippet]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
   (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch all snippets"
   [archived]
   {archived (s/maybe su/BooleanString)}
@@ -26,7 +32,8 @@
                             {:order-by [[:%lower.name :asc]]})]
     (hydrate (filter mi/can-read? snippets) :creator)))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch native query snippet with ID."
   [id]
   (hydrated-native-query-snippet id))
@@ -36,7 +43,8 @@
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new `NativeQuerySnippet`."
   [:as {{:keys [content description name collection_id]} :body}]
   {content       s/Str
@@ -68,7 +76,8 @@
       (db/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update an existing `NativeQuerySnippet`."
   [id :as {{:keys [archived content description name collection_id] :as body} :body}]
   {archived      (s/maybe s/Bool)

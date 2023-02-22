@@ -1,16 +1,20 @@
 (ns metabase.analytics.snowplow-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.public-settings :as public-settings]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db])
-  (:import java.util.LinkedHashMap))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.public-settings :as public-settings]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db])
+  (:import
+   (java.util LinkedHashMap)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

@@ -1,11 +1,12 @@
 (ns metabase.driver.common.parameters.dates-test
-  (:require [clojure.test :refer :all]
-            [clojure.test.check :as tc]
-            [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop]
-            [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.test :as mt]
-            [metabase.util.date-2 :as u.date]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.test.check :as tc]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 (deftest date-string->filter-test
   (testing "year and month"
@@ -232,7 +233,7 @@
         (str frame n unit "-from-0" unit2)])
      (gen/tuple
       (gen/elements #{"next" "past"})
-      (gen/such-that #(not= % 0) gen/pos-int)
+      (gen/such-that #(not= % 0) gen/nat)
       (gen/elements time-units)
       (gen/elements time-units)))))
 

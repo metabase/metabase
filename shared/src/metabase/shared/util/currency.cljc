@@ -873,9 +873,19 @@
           :code "ZMK",
           :name_plural "Zambian kwachas"}]])
 
+(def currency-map
+  "The currencies as a Clojure map. Wrapped in [[delay]] so it's only computed on demand."
+  (delay (into {} currency-list)))
+
+(defn ^:export currency-symbol
+  "Given a currency symbol, as a string or keyword, look it up in the currency
+  map and return the symbol for it as a string."
+  [currency]
+  (some->> currency keyword (get @currency-map) :symbol))
+
 (def ^:export currency
   "Returns the list of currencies supported by Metabase, with associated metadata.
   In Clojure, it is converted to a map for quick lookup of currency symbols during XLSX
   exports. In ClojureScript, it is kept as a 2D array to maintain the order of currencies."
-  #?(:clj (into {} currency-list)
+  #?(:clj  @currency-map
      :cljs (clj->js currency-list)))

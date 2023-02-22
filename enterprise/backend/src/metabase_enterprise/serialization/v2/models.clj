@@ -2,7 +2,8 @@
 
 (def exported-models
   "The list of models which are exported by serialization. Used for production code and by tests."
-  ["Card"
+  ["Action"
+   "Card"
    "Collection"
    "Dashboard"
    "Database"
@@ -21,4 +22,8 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "Dimension"
+   "HTTPAction"
+   "ImplicitAction"
+   "ParameterCard"
+   "QueryAction"
    "TimelineEvent"])

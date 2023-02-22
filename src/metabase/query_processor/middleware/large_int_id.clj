@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.large-int-id
   "Middleware for handling conversion of IDs to strings for proper display of large numbers"
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [toucan.db :as db]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [toucan.db :as db]))
 
 (defn- result-int->string
   [field-indexes rf]

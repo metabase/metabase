@@ -2,20 +2,20 @@
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.add-implicit-clauses
+    :as qp.add-implicit-clauses]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- implicitly-joined-fields [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
@@ -28,18 +28,18 @@
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
   (when (seq fk-field-ids)
-    (let [infos (db/query {:select    [[:source-fk.id    :fk-field-id]
-                                       [:source-fk.name  :fk-name]
-                                       [:target-pk.id    :pk-id]
-                                       [:target-table.id :source-table]
-                                       [:target-table.name :table-name]]
-                           :from      [[Field :source-fk]]
-                           :left-join [[Field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
-                                       [Table :target-table] [:= :target-pk.table_id :target-table.id]]
-                           :where     [:and
-                                       [:in :source-fk.id (set fk-field-ids)]
-                                       [:= :target-table.db_id (u/the-id (qp.store/database))]
-                                       (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
+    (let [infos (mdb.query/query {:select    [[:source-fk.id    :fk-field-id]
+                                              [:source-fk.name  :fk-name]
+                                              [:target-pk.id    :pk-id]
+                                              [:target-table.id :source-table]
+                                              [:target-table.name :table-name]]
+                                  :from      [[:metabase_field :source-fk]]
+                                  :left-join [[:metabase_field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
+                                              [:metabase_table :target-table] [:= :target-pk.table_id :target-table.id]]
+                                  :where     [:and
+                                              [:in :source-fk.id (set fk-field-ids)]
+                                              [:= :target-table.db_id (u/the-id (qp.store/database))]
+                                              (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
       (for [{:keys [pk-id fk-name table-name fk-field-id], :as info} infos]
         (let [join-alias (join-alias table-name fk-name)]
           (-> info

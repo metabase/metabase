@@ -24,6 +24,7 @@ const BUTTON_TITLE = {
 
 interface UpdateQuestionOpts {
   shouldUpdateUrl?: boolean;
+  run?: boolean;
 }
 
 interface ConvertQueryModalProps {
@@ -53,7 +54,7 @@ const ConvertQueryModal = ({
       database: question.datasetQuery().database,
     });
 
-    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
+    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true, run: true });
     onClose?.();
   }, [question, query, onUpdateQuestion, onClose]);
 
@@ -75,7 +76,9 @@ const ConvertQueryModal = ({
 };
 
 const mapStateToProps = (state: State) => ({
-  question: getQuestion(state),
+  // FIXME: remove the non-null assertion operator
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  question: getQuestion(state)!,
   onLoadQuery: getNativeQueryFn(state),
 });
 

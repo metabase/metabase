@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
-  (:require [clojure.test :refer :all]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.util :as tu]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.util :as tu]))
 
 (deftest no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)

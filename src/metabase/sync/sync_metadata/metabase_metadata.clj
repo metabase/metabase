@@ -5,20 +5,21 @@
   Currently, this is only used by the Sample Database, but theoretically in the future we could add additional sample
   datasets and preconfigure them by populating this Table; or 3rd-party applications or users can add this table to
   their database for an enhanced Metabase experience out-of-the box."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.fetch-metadata :as fetch-metadata]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private KeypathComponents
   {:table-name (s/maybe su/NonBlankString)
@@ -83,7 +84,7 @@
 (s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
-  (= "_metabase_metadata" (str/lower-case (:name table))))
+  (= "_metabase_metadata" (u/lower-case-en (:name table))))
 
 (s/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.

@@ -13,9 +13,8 @@ function getVisualizationRaw(...args) {
 
 import {
   formatColumn,
-  numberFormatterForOptions,
+  formatDateTimeWithUnit,
   getCurrencySymbol,
-  getDateFormatFromStyle,
 } from "metabase/lib/formatting";
 
 import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
@@ -27,6 +26,7 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  hidden,
   ...def
 } = {}) {
   return nestedSettings("column_settings", {
@@ -38,6 +38,7 @@ export function columnSettings({
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
+    hidden,
     ...def,
   });
 }
@@ -114,11 +115,13 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   ];
   const seen = new Set();
   return options.filter(option => {
-    const format = getDateFormatFromStyle(option.value, unit);
-    if (seen.has(format)) {
+    const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+      date_style: option.value,
+    });
+    if (seen.has(formatted)) {
       return false;
     } else {
-      seen.add(format);
+      seen.add(formatted);
       return true;
     }
   });
@@ -131,13 +134,13 @@ function dateStyleOption(
   abbreviate = false,
   separator,
 ) {
-  let format = getDateFormatFromStyle(style, unit, separator);
-  if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
-  }
+  const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+    date_style: style,
+    date_separator: separator,
+    output_density: abbreviate ? "condensed" : "default",
+  });
   return {
-    name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    name: formatted + (description ? ` (${description})` : ``),
     value: style,
   };
 }
@@ -224,8 +227,11 @@ export const DATE_COLUMN_SETTINGS = {
     default: false,
     inline: true,
     getHidden: ({ unit }, settings) => {
-      const format = getDateFormatFromStyle(settings["date_style"], unit);
-      return !format.match(/MMMM|dddd/);
+      const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+        date_style: settings["date_style"],
+      });
+      // If it contains a full month name or full weekday, abbreviation should be an option, ie. not hidden.
+      return !formatted.match(/January|Sunday/);
     },
     readDependencies: ["date_style"],
   },
@@ -403,17 +409,6 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       placeholder: t`dollars`,
     },
-  },
-  // Optimization: build a single NumberFormat object that is used by formatting.js
-  _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
-    // NOTE: make sure to include every setting that affects the number formatter here
-    readDependencies: [
-      "number_style",
-      "currency_style",
-      "currency",
-      "decimals",
-    ],
   },
   _header_unit: {
     getValue: (column, settings) => {

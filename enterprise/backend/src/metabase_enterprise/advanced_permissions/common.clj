@@ -1,10 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.common
-  (:require [metabase.api.common :as api]
-            [metabase.models :refer [PermissionsGroupMembership]]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [metabase.api.common :as api]
+   [metabase.models :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.

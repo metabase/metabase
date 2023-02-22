@@ -1,31 +1,48 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.sql.ResultSet))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db])
+  (:import
+   (java.sql ResultSet)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest simple-select-probe-query-test
+  (testing "honey-sql-version produces the same query"
+    (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                      (binding [hx/*honey-sql-version* version]
+                        (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
+      1
+      2))
+  (testing "real drivers produce correct query"
+    (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                     (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
+      :h2
+      :postgres))
   (testing "simple-select-probe-query shouldn't actually return any rows"
     (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query
-                (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                  (mt/native-query {:query sql})))))))))
+                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                   (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is

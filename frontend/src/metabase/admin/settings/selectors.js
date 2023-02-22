@@ -18,6 +18,7 @@ import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustom
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
+  PublicLinksActionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
@@ -324,6 +325,12 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "-public-sharing-questions",
         display_name: t`Shared Questions`,
         widget: PublicLinksQuestionListing,
+        getHidden: settings => !settings["enable-public-sharing"],
+      },
+      {
+        key: "-public-sharing-actions",
+        display_name: t`Shared Action Forms`,
+        widget: PublicLinksActionListing,
         getHidden: settings => !settings["enable-public-sharing"],
       },
     ],

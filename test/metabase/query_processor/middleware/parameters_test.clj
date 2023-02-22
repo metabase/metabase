@@ -1,17 +1,26 @@
 (ns metabase.query-processor.middleware.parameters-test
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.query-processor.middleware.parameters :as parameters]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native

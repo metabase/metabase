@@ -10,6 +10,7 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  getFullName,
 } from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -97,7 +98,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       // 1. Expand so that deeply nested collection is showing
-      displaySidebarChildOf("Fourth collection");
+      navigationSidebar().within(() => {
+        displaySidebarChildOf("Fourth collection");
+      });
 
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
       cy.findByText("Fifth collection with a very long name").realHover();
@@ -372,6 +375,18 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
+    it("should not be able to move or archive a personal collection", () => {
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor(getPersonalCollectionName(USERS.admin));
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Move").should("not.exist");
+        cy.findByText("Archive").should("not.exist");
+      });
+    });
+
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
@@ -392,6 +407,19 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
 
+        it("should not be possible to archive or move a personal collection via bulk actions", () => {
+          cy.visit("/collection/root");
+
+          selectItemUsingCheckbox(
+            getPersonalCollectionName(USERS.admin),
+            "person",
+          );
+
+          cy.findByText("1 item selected").should("be.visible");
+          cy.button("Move").should("be.disabled");
+          cy.button("Archive").should("be.disabled");
+        });
+
         function bulkSelectDeselectWorkflow() {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
@@ -402,7 +430,7 @@ describe("scenarios > collection defaults", () => {
             cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
-            cy.findByText("4 items selected");
+            cy.findByText("6 items selected");
 
             // Deselect all
             cy.icon("check").click({ force: true });
@@ -476,6 +504,10 @@ describe("scenarios > collection defaults", () => {
   });
 });
 
+function getPersonalCollectionName(user) {
+  return `${getFullName(USERS.admin)}'s Personal Collection`;
+}
+
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
     .closest("tr")
@@ -537,9 +569,11 @@ function moveOpenedCollectionTo(newParent) {
 
   cy.findAllByTestId("item-picker-item").contains(newParent).click();
 
-  cy.button("Move").click();
+  modal().within(() => {
+    cy.button("Move").click();
+  });
   // Make sure modal closed
-  cy.button("Move").should("not.exist");
+  modal().should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {

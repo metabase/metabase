@@ -1,10 +1,11 @@
 (ns metabase-enterprise.serialization.v2.load
   "Loading is the interesting part of deserialization: integrating the maps \"ingested\" from files into the appdb.
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization.base]]."
-  (:require [medley.core :as m]
-            [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-            [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase.models.serialization.base :as serdes.base]))
+  (:require
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase.models.serialization.base :as serdes.base]))
 
 (declare load-one)
 

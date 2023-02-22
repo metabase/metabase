@@ -1,27 +1,33 @@
 (ns metabase-enterprise.sso.integrations.saml-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.config :as config]
-            [metabase.http-client :as client]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [saml20-clj.core :as saml]
-            [saml20-clj.encode-decode :as encode-decode]
-            [toucan.db :as db])
-  (:import java.net.URL
-           java.nio.charset.StandardCharsets
-           org.apache.http.client.utils.URLEncodedUtils
-           org.apache.http.message.BasicNameValuePair))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase.config :as config]
+   [metabase.http-client :as client]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [saml20-clj.core :as saml]
+   [saml20-clj.encode-decode :as encode-decode]
+   [toucan.db :as db])
+  (:import
+   (java.net URL)
+   (java.nio.charset StandardCharsets)
+   (org.apache.http.client.utils URLEncodedUtils)
+   (org.apache.http.message BasicNameValuePair)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
 

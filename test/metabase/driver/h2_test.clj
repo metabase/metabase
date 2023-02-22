@@ -1,17 +1,25 @@
 (ns metabase.driver.h2-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -78,17 +86,17 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd
-             (hx/literal "millisecond")
-             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
-             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
+    (is (= (hx/call :dateadd
+                    (hx/literal "millisecond")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100500.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd
-             (hx/literal "second")
-             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
-             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
+    (is (= (hx/call :dateadd
+                    (hx/literal "second")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -153,7 +161,7 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, COUNT(*) AS count "
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")

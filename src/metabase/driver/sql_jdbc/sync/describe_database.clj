@@ -1,22 +1,27 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sync :as driver.s]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
-  (:import [java.sql Connection DatabaseMetaData ResultSet]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan.db :as db])
+  (:import
+   (java.sql Connection DatabaseMetaData ResultSet)))
 
+(set! *warn-on-reflection* true)
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)
 
@@ -37,20 +42,28 @@
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
-(defn simple-select-probe-query
+(mu/defn simple-select-probe-query :- [:cat ms/NonBlankString [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)
 
     (simple-select-probe-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  [driver schema table]
-  {:pre [(string? table)]}
+  [driver :- :keyword
+   schema :- [:maybe :string] ; I think technically some DBs like SQL Server support empty schema and table names
+   table  :- :string]
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (let [honeysql {:select [[(sql.qp/->honeysql driver true) :_]]
-                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
-                  :where  [:not= 1 1]}
-        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
-    (sql.qp/format-honeysql driver honeysql)))
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    (let [tru      (sql.qp/->honeysql driver true)
+          table    (sql.qp/->honeysql driver (hx/identifier :table schema table))
+          honeysql (case (long hx/*honey-sql-version*)
+                     1 {:select [[tru :_]]
+                        :from   [table]
+                        :where  [:not= 1 1]}
+                     2 {:select [[tru :_]]
+                        :from   [[table]]
+                        :where  [:inline [:not= 1 1]]})
+          honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+      (sql.qp/format-honeysql driver honeysql))))
 
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT

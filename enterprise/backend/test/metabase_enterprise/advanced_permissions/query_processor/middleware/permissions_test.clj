@@ -1,17 +1,22 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
-  (:require [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions :as ee.perms]
-            [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.streaming-test :as streaming-test]
-            [metabase.test :as mt]
-            [metabase.util :as u])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions
+    :as ee.perms]
+   [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
+    :as ee.qp.perms]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.streaming-test :as streaming-test]
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- do-with-download-perms
   [db-or-id graph f]

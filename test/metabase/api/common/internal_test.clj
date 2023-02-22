@@ -1,9 +1,161 @@
 (ns metabase.api.common.internal-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.common.internal :as internal]
-            [metabase.config :as config]
-            [metabase.util :as u]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [compojure.core :refer [POST]]
+   [malli.util :as mut]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.internal :as internal]
+   [metabase.config :as config]
+   [metabase.logger :as mb.logger]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [ring.adapter.jetty9 :as jetty]))
+
+(set! *warn-on-reflection* true)
+
+(def TestAddress
+  [:map
+   {:title "Address"}
+   [:id string?]
+   ;; TODO: coerce stuff automatically via:
+   ;; (mc/decode
+   ;;  [:map [:tags [:set keyword?]]]
+   ;;  (json/decode "{\"tags\": [\"a\", \"b\"]}" true)
+   ;;  (mtx/json-transformer))
+   ;; ;; => {:tags #{:b :a}}
+   [:tags [:vector string?]]
+   [:address
+    [:map
+     [:street string?]
+     [:city string?]
+     [:zip int?]
+     [:lonlat [:tuple double? double?]]]]])
+
+(def NonBlankString
+  "Schema for a string that cannot be blank."
+  (mu/with-api-error-message
+    [:string {:min 1}]
+    (deferred-tru "value must be a non-blank string.")))
+
+(def ClosedTestAddress
+  (mut/closed-schema TestAddress))
+
+(api/defendpoint POST "/post/any" [:as {body :body :as _request}]
+  {:status 200 :body body})
+
+(api/defendpoint POST "/post/id-int"
+  [:as {{:keys [id] :as body} :body :as _request}]
+  {id int?}
+  {:status 200 :body body})
+
+(api/defendpoint POST "/post/test-address"
+  [:as {address :body :as _request}]
+  {address TestAddress}
+  {:status 200 :body address})
+
+(api/defendpoint POST "/post/closed-test-address"
+  [:as {address :body :as _request}]
+  {address ClosedTestAddress}
+  {:status 200 :body address})
+
+(api/defendpoint POST "/test-localized-error"
+  [:as {address :body :as _request}]
+  {address NonBlankString}
+  {:status 200 :body address})
+
+(api/define-routes)
+
+(defn- json-mw [handler]
+  (fn [req]
+    (update
+     (handler
+      (update req :body #(-> % slurp (json/parse-string true))))
+     :body json/generate-string)))
+
+(defn exception-mw [handler]
+  (fn [req] (try
+              (handler req)
+              (catch Exception e (mw.exceptions/api-exception-response e)))))
+
+(deftest defendpoint-test
+  (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
+        port   (.. server getURI getPort)
+        post!  (fn [route body]
+                 (http/post (str "http://localhost:" port route)
+                            {:throw-exceptions false
+                             :accept           :json
+                             :as               :json
+                             :coerce           :always
+                             :body             (json/generate-string body)}))]
+    (is (= {:a 1 :b 2} (:body (post! "/post/any" {:a 1 :b 2}))))
+
+    (is (= {:id 1} (:body (post! "/post/id-int" {:id 1}))))
+    (is (= {:errors          {:id "integer"},
+            :specific-errors {:id ["should be an int"]}}
+           (:body (post! "/post/id-int" {:id "1"}))))
+
+    (mt/with-log-level [metabase.api.common :warn]
+      (is (= {:id      "myid"
+              :tags    ["abc"]
+              :address {:street "abc" :city "sdasd" :zip 2999 :lonlat [0.0 0.0]}}
+             (:body (post! "/post/test-address"
+                           {:id      "myid"
+                            :tags    ["abc"]
+                            :address {:street "abc"
+                                      :city   "sdasd"
+                                      :zip    2999
+                                      :lonlat [0.0 0.0]}}))))
+      (is (some (fn [{message :msg, :as entry}]
+                  (when (str/includes? (str message)
+                                       (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                            "Please add them to the schema or remove them from the API client"))
+                    entry))
+                (mb.logger/messages))))
+
+    (is (= {:errors
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+            :specific-errors {:address {:id      ["missing required key"],
+                                        :tags    ["missing required key"],
+                                        :address ["missing required key"]}}}
+           (:body (post! "/post/test-address" {:x "1"}))))
+
+    (is (= {:errors
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+            :specific-errors {:address
+                              {:id      ["should be a string"]
+                               :tags    ["invalid type"]
+                               :address {:street ["missing required key"]
+                                         :zip    ["should be an int"]}}}}
+           (:body (post! "/post/test-address" {:id      1288
+                                               :tags    "a,b,c"
+                                               :address {:streeqt "abc"
+                                                         :city    "sdasd"
+                                                         :zip     "12342"
+                                                         :lonlat  [0.0 0.0]}}))))
+
+    (is (= {:errors
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
+            :specific-errors {:address
+                              {:address ["missing required key"],
+                               :a ["disallowed key"],
+                               :b ["disallowed key"]}}}
+           (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
+
+    (testing "malli schema message are localized"
+      (mt/with-mock-i18n-bundles  {"es" {:messages
+                                         {"value must be a non-blank string."
+                                          "el valor debe ser una cadena que no esté en blanco."}}}
+        (metabase.test/with-temporary-setting-values [site-locale "es"]
+          (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
+                  :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco."]}}
+                 (:body (post! "/test-localized-error" {:address ""})))))))))
 
 (deftest route-fn-name-test
   (are [method route expected] (= expected
@@ -28,7 +180,7 @@
   {:style/indent 0}
   [& body]
   `(binding [internal/*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
-                                                    internal/*auto-parse-types*)]
+                                                     internal/*auto-parse-types*)]
      ~@body))
 
 (deftest route-param-regex-test

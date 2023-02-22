@@ -9,6 +9,7 @@ import {
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
+import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;
@@ -64,6 +65,20 @@ export const ItemLink = styled(Link)`
   }
 `;
 
+export const ItemNameCell = styled.td`
+  padding: 0 !important;
+
+  ${ItemLink} {
+    padding: 1em;
+  }
+  &:hover {
+    ${ItemLink} {
+      color: ${color("brand")};
+    }
+    cursor: pointer;
+  }
+`;
+
 export const SortingIcon = styled(Icon)`
   margin-left: 4px;
 `;
@@ -75,6 +90,11 @@ export const DescriptionIcon = styled(Icon)`
 SortingIcon.defaultProps = {
   size: 8,
 };
+
+export const ModelDetailLink = styled(BaseModelDetailLink)`
+  color: ${color("text-medium")};
+  visibility: hidden;
+`;
 
 export const SortingControlContainer = styled.div`
   display: flex;
@@ -91,6 +111,11 @@ export const SortingControlContainer = styled.div`
       visibility: visible;
     }
   }
+`;
+
+export const RowActionsContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
 `;
 
 export const TableItemSecondaryField = styled.span`
@@ -141,6 +166,12 @@ export const TBody = styled.tbody`
       &:first-of-type {
         border-bottom-left-radius: 8px;
       }
+    }
+  }
+
+  tr:hover {
+    ${ModelDetailLink} {
+      visibility: visible;
     }
   }
 `;

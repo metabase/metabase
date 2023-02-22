@@ -3,32 +3,37 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
+  Parameter,
   ParameterId,
-  ParameterSourceOptions,
-  ParameterSourceType,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
 } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
-  parameter: UiParameter;
-  otherParameters: UiParameter[];
+  parameter: Parameter;
+  otherParameters: Parameter[];
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
     isMultiSelect: boolean,
   ) => void;
+  onChangeQueryType: (
+    parameterId: ParameterId,
+    sourceType: ValuesQueryType,
+  ) => void;
   onChangeSourceType: (
     parameterId: ParameterId,
-    sourceType: ParameterSourceType,
+    sourceType: ValuesSourceType,
   ) => void;
-  onChangeSourceOptions: (
+  onChangeSourceConfig: (
     parameterId: ParameterId,
-    sourceOptions: ParameterSourceOptions,
+    sourceOptions: ValuesSourceConfig,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: ParameterId,
@@ -45,8 +50,9 @@ const ParameterSidebar = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
   onChangeSourceType,
-  onChangeSourceOptions,
+  onChangeSourceConfig,
   onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -77,18 +83,25 @@ const ParameterSidebar = ({
     [parameterId, onChangeIsMultiSelect],
   );
 
+  const handleQueryTypeChange = useCallback(
+    (queryType: ValuesQueryType) => {
+      onChangeQueryType(parameterId, queryType);
+    },
+    [parameterId, onChangeQueryType],
+  );
+
   const handleSourceTypeChange = useCallback(
-    (sourceType: ParameterSourceType) => {
+    (sourceType: ValuesSourceType) => {
       onChangeSourceType(parameterId, sourceType);
     },
     [parameterId, onChangeSourceType],
   );
 
-  const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceOptions) => {
-      onChangeSourceOptions(parameterId, sourceOptions);
+  const handleSourceConfigChange = useCallback(
+    (sourceOptions: ValuesSourceConfig) => {
+      onChangeSourceConfig(parameterId, sourceOptions);
     },
-    [parameterId, onChangeSourceOptions],
+    [parameterId, onChangeSourceConfig],
   );
 
   const handleFilteringParametersChange = useCallback(
@@ -120,8 +133,9 @@ const ParameterSidebar = ({
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
+            onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
-            onChangeSourceOptions={handleSourceOptionsChange}
+            onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
           />
         ) : (
@@ -137,7 +151,7 @@ const ParameterSidebar = ({
   );
 };
 
-const getTabs = (parameter: UiParameter) => {
+const getTabs = (parameter: Parameter) => {
   const tabs = [{ value: "settings", name: t`Settings`, icon: "gear" }];
 
   if (canUseLinkedFilters(parameter)) {

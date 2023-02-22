@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- resolve-fields-with-ids!
   [field-ids]

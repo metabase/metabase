@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing
-  (:require [clojure.set :as set]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.set :as set]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private valid-date-units
   #{:default :day :day-of-week :day-of-month :day-of-year

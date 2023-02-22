@@ -3,7 +3,11 @@ import {
   openQuestionActions,
   restore,
   visitQuestion,
+  startNewNativeQuestion,
+  runNativeQuery,
 } from "__support__/e2e/helpers";
+
+import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -262,5 +266,52 @@ describe("scenarios > question > native subquery", () => {
       visitQuestion(toplevelQuestionId);
       cy.contains("41");
     });
+  });
+
+  it.skip("should be able to reference a nested question (metabase#25988)", () => {
+    const questionDetails = {
+      name: "Nested GUI question",
+      query: {
+        "source-table": "card__1",
+        limit: 2,
+      },
+    };
+
+    cy.createQuestion(questionDetails).then(
+      ({ body: { id: nestedQuestionId } }) => {
+        const tagID = `#${nestedQuestionId}`;
+
+        startNewNativeQuestion();
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+
+        cy.findByTestId("sidebar-header-title")
+          .invoke("text")
+          .should("eq", questionDetails.name);
+
+        runNativeQuery();
+
+        cy.get(".cellData").should("contain", "37.65");
+      },
+    );
+  });
+
+  it.skip("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+    const questionDetails = {
+      name: "28218",
+      native: { query: "select 1;" }, // semicolon is important here
+    };
+
+    cy.createNativeQuestion(questionDetails).then(
+      ({ body: { id: baseQuestionId } }) => {
+        const tagID = `#${baseQuestionId}`;
+
+        startNewNativeQuestion();
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+
+        runNativeQuery();
+
+        cy.get(".cellData").should("contain", "1");
+      },
+    );
   });
 });

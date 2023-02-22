@@ -2,8 +2,6 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-import ChartSettingsWidget from "./ChartSettingsWidget";
-
 export const ChartSettingsWidgetListHeader = styled.h4`
   margin-left: 2rem;
   margin-bottom: 1rem;

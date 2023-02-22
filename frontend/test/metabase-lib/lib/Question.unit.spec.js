@@ -445,7 +445,7 @@ describe("Question", () => {
 
     describe("pivot(...)", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
-      it("works with a datetime dimension ", () => {
+      it("works with a datetime dimension", () => {
         const pivoted = ordersCountQuestion.pivot([
           ["field", ORDERS.CREATED_AT.id, null],
         ]);
@@ -1221,6 +1221,7 @@ describe("Question", () => {
         "starts-with",
         ["field", PRODUCTS.CATEGORY.id, null],
         "abc",
+        { "case-sensitive": false },
       ]);
     });
   });

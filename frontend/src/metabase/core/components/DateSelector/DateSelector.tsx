@@ -4,7 +4,6 @@ import React, {
   Ref,
   useCallback,
   useMemo,
-  useState,
 } from "react";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";

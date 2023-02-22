@@ -1,3 +1,5 @@
+import { UserId } from "./user";
+
 export type RegularCollectionId = number;
 
 export type CollectionId = RegularCollectionId | "root";
@@ -25,7 +27,7 @@ export interface Collection {
   authority_level?: "official" | null;
 
   parent_id?: CollectionId;
-  personal_owner_id?: number;
+  personal_owner_id?: UserId;
 
   location?: string;
   effective_ancestors?: Collection[];
@@ -38,15 +40,23 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export interface CollectionItem {
+type CollectionItemModel =
+  | "card"
+  | "dataset"
+  | "dashboard"
+  | "pulse"
+  | "collection";
+
+export interface CollectionItem<T = CollectionItemModel> {
   id: number;
-  model: string;
+  model: T;
   name: string;
   description: string | null;
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
+  personal_owner_id?: UserId;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

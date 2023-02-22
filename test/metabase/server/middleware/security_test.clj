@@ -1,9 +1,10 @@
 (ns metabase.server.middleware.security-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.test.util :as tu]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.server.middleware.security :as mw.security]
+   [metabase.test.util :as tu]))
 
 (defn- csp-directive
   [directive]
@@ -46,7 +47,7 @@
     (tu/with-temporary-setting-values [enable-embedding     false
                                        embedding-app-origin "https: http:"]
       (is (= "frame-ancestors 'none'"
-          (csp-directive "frame-ancestors"))))))
+           (csp-directive "frame-ancestors"))))))
 
 (deftest xframeoptions-header-tests
   (testing "`DENY` when embedding is disabled"

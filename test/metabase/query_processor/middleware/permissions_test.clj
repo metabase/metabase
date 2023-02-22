@@ -1,17 +1,19 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Card Collection Database Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Card Collection Database Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- check-perms [query]
   (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))

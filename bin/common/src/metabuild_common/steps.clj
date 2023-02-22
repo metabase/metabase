@@ -1,9 +1,9 @@
 (ns metabuild-common.steps
-  (:require [clojure.main :as main]
-            [colorize.core :as colorize]
-            [metabuild-common
-             [input :as in]
-             [output :as out]]))
+  (:require
+   [clojure.main :as main]
+   [colorize.core :as colorize]
+   [metabuild-common.input :as in]
+   [metabuild-common.output :as out]))
 
 (declare do-step)
 

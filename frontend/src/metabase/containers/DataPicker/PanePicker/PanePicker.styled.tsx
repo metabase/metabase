@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { Tree } from "metabase/components/tree";
 
@@ -17,27 +18,31 @@ export const Root = styled.div`
   }
 `;
 
-export const LeftPaneContainer = styled.div`
+export const LeftPaneContainer = styled.div<{ hasContent?: boolean }>`
   display: flex;
-  flex: 1;
   flex-direction: column;
   overflow: auto;
 
-  border-right: 1px solid ${color("border")};
+  ${({ hasContent }) =>
+    hasContent &&
+    css`
+      flex: 1;
+      border-right: 1px solid ${color("border")};
+    `}
 
   ${Tree.Node.Root} {
     border-radius: 6px;
   }
 `;
 
-export const BackButton = styled.a`
+export const BackButton = styled.button`
   display: flex;
   align-items: center;
+  cursor: pointer;
 
   color: ${color("text-dark")};
   font-weight: 700;
 
-  margin-left: 1rem;
   padding-bottom: 1rem;
 
   &:hover {

@@ -10,8 +10,8 @@
    [clojure.string :as str]
    [grasp.api :as g]
    [metabuild-common.core :as u])
-  (:import [org.fedorahosted.tennera.jgettext
-            Catalog HeaderFields HeaderFields Message PoWriter]))
+  (:import
+   (org.fedorahosted.tennera.jgettext Catalog HeaderFields Message PoWriter)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,8 +23,6 @@
                             "/modules/drivers/googleanalytics/src"
                             "/modules/drivers/mongo/src"
                             "/modules/drivers/oracle/src"
-                            "/modules/drivers/presto/src"
-                            "/modules/drivers/presto-common/src"
                             "/modules/drivers/presto-jdbc/src"
                             "/modules/drivers/redshift/src"
                             "/modules/drivers/snowflake/src"

@@ -23,20 +23,20 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -84,7 +84,11 @@
     ;;
     ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
     ;; deduplication instead.
-    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
+    (let [name-generator (mbql.u/unique-name-generator)
+          unique-name    (fn [field-id]
+                           (qp.store/fetch-and-store-fields! #{field-id})
+                           (let [field (qp.store/field field-id)]
+                             (name-generator (:name field))))]
       (vec
        (mbql.u/match fields
          ;; don't match Fields that have been joined from another Table
@@ -349,7 +353,7 @@
   middleware below for internal columns."
   [columns              :- [su/Map]
    remapping-dimensions :- (s/maybe [ExternalRemappingDimension])
-  internal-cols-info    :- (s/maybe InternalColumnsInfo)]
+   internal-cols-info    :- (s/maybe InternalColumnsInfo)]
   (-> columns
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))
@@ -398,7 +402,7 @@
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
         {values :values, human-readable-values :human_readable_values} :values
         :as                                                            col}]
   (when (and field-id

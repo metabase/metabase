@@ -1,17 +1,18 @@
 (ns metabase.api.timeline-test
   "Tests for /api/timeline endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.http-client :as client]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.http-client :as client]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.timeline :refer [Timeline]]
+   [metabase.models.timeline-event :refer [TimelineEvent]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest auth-tests
   (testing "Authentication"

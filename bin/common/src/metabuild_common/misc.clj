@@ -1,5 +1,6 @@
 (ns metabuild-common.misc
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
 (defmacro varargs
   "Utility macro for passing varargs of a certain `klass` to a Java method.

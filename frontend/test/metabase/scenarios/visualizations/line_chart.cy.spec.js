@@ -167,7 +167,7 @@ describe("scenarios > visualizations > line chart", () => {
     // Now do the same for the input with no value
     openSeriesSettings("Unknown", true);
     popover().within(() => {
-      cy.findAllByTestId("series-name-input").type("cat2").blur();
+      cy.findAllByLabelText("series-name-input").type("cat2").blur();
       cy.findByDisplayValue("cat2");
     });
     cy.button("Done").click();
@@ -323,6 +323,10 @@ describe("scenarios > visualizations > line chart", () => {
       // Add the first question to the dashboard
       cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
         cardId: firstCardId,
+        row: 0,
+        col: 0,
+        size_x: 18,
+        size_y: 12,
       }).then(({ body: { id: dashCardId } }) => {
         // Combine the second question with the first one as the second series
         cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {

@@ -6,6 +6,7 @@ import {
   ObjectDetailFn as ObjectDetail,
   ObjectDetailHeader,
   ObjectDetailBody,
+  ObjectDetailWrapper,
 } from "./ObjectDetail";
 
 describe("Object Detail", () => {
@@ -22,8 +23,8 @@ describe("Object Detail", () => {
         closeObjectDetail={() => null}
       />,
     );
-    screen.getAllByText(/Large Sandstone Socks/i);
-    screen.getByText(/778/i);
+    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
+    expect(screen.getByText(/778/i)).toBeInTheDocument();
   });
 
   it("renders an object detail header with enabled next object button and disabled previous object button", () => {
@@ -69,8 +70,8 @@ describe("Object Detail", () => {
       />,
     );
 
-    screen.getByText("Synergistic Granite Chair");
-    screen.getByText("Doohickey");
+    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
+    expect(screen.getByText("Doohickey")).toBeInTheDocument();
   });
 
   it("renders an object detail component", () => {
@@ -97,6 +98,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        showHeader
         canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
@@ -111,9 +113,141 @@ describe("Object Detail", () => {
       />,
     );
 
-    screen.getAllByText(/Product/i);
-    screen.getByText(testDataset.rows[0][2].toString());
-    screen.getByText(testDataset.rows[0][3].toString());
-    screen.getByText(testDataset.rows[0][4].toString());
+    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][2].toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][3].toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(testDataset.rows[0][4].toString()),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an object detail with a paginator", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+        }}
+        showHeader
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
+  });
+
+  it("shows object detail header", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+          "detail.showHeader": true,
+        }}
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+  });
+
+  it("hides object detail header", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+          "detail.showHeader": false,
+        }}
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
   });
 });

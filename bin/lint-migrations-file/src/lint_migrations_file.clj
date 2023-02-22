@@ -1,12 +1,13 @@
 (ns lint-migrations-file
-  (:require change-set.strict
-            change-set.unstrict
-            [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [yaml.core :as yaml]))
+  (:require
+   [change-set.strict]
+   [change-set.unstrict]
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [yaml.core :as yaml]))
 
 (comment change-set.strict/keep-me
          change-set.unstrict/keep-me)

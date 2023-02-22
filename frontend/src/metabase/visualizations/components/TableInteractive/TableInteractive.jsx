@@ -14,7 +14,7 @@ import "./TableInteractive.css";
 import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import {

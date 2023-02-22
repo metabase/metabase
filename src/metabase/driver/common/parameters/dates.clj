@@ -1,17 +1,21 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
-  (:require [clojure.string :as str]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.params :as params]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.params :as params]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"

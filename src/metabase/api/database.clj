@@ -1,51 +1,55 @@
 (ns metabase.api.database
   "/api/database endpoints."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.table :as api.table]
-            [metabase.config :as config]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.util :as driver.u]
-            [metabase.events :as events]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :as database :refer [Database
-                                                           protected-password]]
-            [metabase.models.field :refer [Field readable-fields-only]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.models.secret :as secret]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.table :refer [Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.sample-data :as sample-data]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models])
-  (:import metabase.models.database.DatabaseInstance))
+  (:require
+   [clojure.string :as str]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.table :as api.table]
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.database
+    :as database
+    :refer [Database protected-password]]
+   [metabase.models.field :refer [Field readable-fields-only]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.models.secret :as secret]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.table :refer [Table]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.sample-data :as sample-data]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
+
+(set! *warn-on-reflection* true)
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
@@ -84,10 +88,10 @@
                                     :write
                                     :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as _card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver/supports? driver :nested-queries))))
+      (driver/database-supports? driver :nested-queries database))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -132,7 +136,8 @@
                (db/select-ids Database))))
 
 (defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
+  `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
   [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
   {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
@@ -142,27 +147,27 @@
            xform)
      (completing conj #(hydrate % :collection))
      []
-     (db/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
-                                     [{:select   [:status]
-                                       :from     [:moderation_review]
-                                       :where    [:and
-                                                  [:= :moderated_item_type "card"]
-                                                  [:= :moderated_item_id :report_card.id]
-                                                  [:= :most_recent true]]
-                                       :order-by [[:id :desc]]
-                                       :limit    1}
-                                      :moderated_status]]
-                          :from     [:report_card]
-                          :where    (into [:and
-                                           [:not= :result_metadata nil]
-                                           [:= :archived false]
-                                           [:= :is_write false]
-                                           [:= :dataset (= question-type :dataset)]
-                                           [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-ids->honeysql-filter-clause
-                                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                                          additional-constraints)
-                          :order-by [[:%lower.name :asc]]}))))
+     (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                            [{:select   [:status]
+                                              :from     [:moderation_review]
+                                              :where    [:and
+                                                         [:= :moderated_item_type "card"]
+                                                         [:= :moderated_item_id :report_card.id]
+                                                         [:= :most_recent true]]
+                                              :order-by [[:id :desc]]
+                                              :limit    1}
+                                             :moderated_status]]
+                                 :from     [:report_card]
+                                 :where    (into [:and
+                                                  [:not= :result_metadata nil]
+                                                  [:= :archived false]
+                                                  [:= :dataset (= question-type :dataset)]
+                                                  [:in :database_id ids-of-dbs-that-support-source-queries]
+                                                  (collection/visible-collection-ids->honeysql-filter-clause
+                                                   (collection/permissions-set->visible-collection-ids
+                                                    @api/*current-user-permissions-set*))]
+                                                 additional-constraints)
+                                 :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -238,7 +243,8 @@
     (s/maybe (s/eq "tables"))
     (deferred-tru "include must be either empty or the value 'tables'")))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch all `Databases`.
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
@@ -292,7 +298,7 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(s/defn ^:private expanded-schedules [db :- DatabaseInstance]
+(s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
   {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
@@ -321,7 +327,8 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
@@ -347,6 +354,69 @@
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
 
+(def ^:private database-usage-models
+  "List of models that are used to report usage on a database."
+  [:question :dataset :metric :segment])
+
+(def ^:private always-false-hsql-expr
+  "A Honey SQL expression that is never true.
+
+    1 = 2"
+  [:= [:inline 1] [:inline 2]])
+
+(defmulti ^:private database-usage-query
+  "Query that will returns the number of `model` that use the database with id `database-id`.
+  The query must returns a scalar, and the method could return `nil` in case no query is available."
+  {:arglists '([model database-id table-ids])}
+  (fn [model _database-id _table-ids] (keyword model)))
+
+(defmethod database-usage-query :question
+  [_ db-id _table-ids]
+  {:select [[:%count.* :question]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset false]]})
+
+(defmethod database-usage-query :dataset
+  [_ db-id _table-ids]
+  {:select [[:%count.* :dataset]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset true]]})
+
+(defmethod database-usage-query :metric
+  [_ _db-id table-ids]
+  {:select [[:%count.* :metric]]
+   :from   [:metric]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
+
+(defmethod database-usage-query :segment
+  [_ _db-id table-ids]
+  {:select [[:%count.* :segment]]
+   :from   [:segment]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
+
+(api/defendpoint GET "/:id/usage_info"
+  "Get usage info for a database.
+  Returns a map with keys are models and values are the number of entities that use this database."
+  [id]
+  {id ms/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/check-404 (db/exists? Database :id id))
+  (let [table-ids (db/select-ids Table :db_id id)]
+    (first (mdb.query/query
+             {:select [:*]
+              :from   (for [model database-usage-models
+                            :let [query (database-usage-query model id table-ids)]
+                            :when query]
+                        [query model])}))))
+
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -354,7 +424,8 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -389,7 +460,8 @@
                                 (update :segments (partial filter mi/can-read?))
                                 (update :metrics  (partial filter mi/can-read?)))))))))
 
-(api/defendpoint GET "/:id/metadata"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
@@ -411,7 +483,7 @@
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
-                     [:like :%lower.name (str/lower-case search-string)]
+                     [:like :%lower.name (u/lower-case-en search-string)]
                      [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
@@ -429,7 +501,7 @@
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
                         (str/replace #"-" " ")
-                        str/lower-case)]
+                        u/lower-case-en)]
     (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
@@ -437,32 +509,34 @@
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
-                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id) (str search-id "%")]
+                             [:like
+                              (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id)
+                              (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
                              (and (not-empty search-id) (not-empty search-name))
                              [:and
                               [:= :report_card.id (Integer/parseInt search-id)]
                               ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like :%lower.report_card.name (str search-name "%")]]
+                              [:like [:lower :report_card.name] (str search-name "%")]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
-                             [:like :%lower.report_card.name (str "%" search-name "%")])]
+                             [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
                 :order-by [[:report_card.id :desc]]
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-    :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str/lower-case search-string)]
-    :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-    :table.db_id                    db-id
-    {:order-by  [[:%lower.metabase_field.name :asc]
-                 [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
-     :limit     limit}))
+             :metabase_field.active          true
+             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
+             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
+             :table.db_id                    db-id
+             {:order-by  [[[:lower :metabase_field.name] :asc]
+                          [[:lower :table.name] :asc]]
+              :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+              :limit     limit}))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -508,7 +582,8 @@
                                     {:option v
                                      :valid-options autocomplete-matching-options}))))))
 
-(api/defendpoint GET "/:id/autocomplete_suggestions"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
@@ -524,17 +599,18 @@
    substring (s/maybe su/NonBlankString)}
   (api/read-check Database id)
   (when (and (str/blank? prefix) (str/blank? substring))
-    (throw (ex-info "Must include prefix or search" {:status-code 400})))
+    (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
     (cond
       substring
       (autocomplete-suggestions id (str "%" substring "%"))
       prefix
       (autocomplete-suggestions id (str prefix "%")))
-    (catch Throwable t
-      (log/warn "Error with autocomplete: " (.getMessage t)))))
+    (catch Throwable e
+      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
-(api/defendpoint GET "/:id/card_autocomplete_suggestions"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
@@ -546,39 +622,42 @@
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :dataset :collection_name])))
-    (catch Throwable t
-      (log/warn "Error with autocomplete: " (.getMessage t)))))
+    (catch Throwable e
+      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
-(api/defendpoint GET "/:id/fields"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (let [fields (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :semantic_type]
+  (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (db/select-field :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
-    (for [{:keys [id display_name table base_type semantic_type]} fields]
+    (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
-       :name          display_name
+       :name          name
+       :display_name  display_name
        :base_type     base_type
        :semantic_type semantic_type
-       :table_name    (:display_name table)
+       :table_name    (:name table)
        :schema        (:schema table)})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
-(api/defendpoint GET "/:id/idfields"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id include_editable_data_model]
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
     (db-perm-check (db/select-one Database :id id))
-    (sort-by (comp str/lower-case :name :table)
+    (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
 
@@ -652,7 +731,8 @@
               (assoc :valid false))
       details)))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
   {name             su/NonBlankString
@@ -698,7 +778,8 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
-(api/defendpoint POST "/validate"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/validate"
   "Validate that we can connect to a database given a set of details."
   ;; TODO - why do we pass the DB in under the key `details`?
   [:as {{{:keys [engine details]} :details} :body}]
@@ -711,7 +792,8 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
-(api/defendpoint POST "/sample_database"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/sample_database"
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
@@ -734,7 +816,8 @@
             details
             (database/sensitive-fields-for-db database)))))
 
-(api/defendpoint POST "/:id/persist"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
@@ -760,7 +843,8 @@
                           {:error error
                            :database (:name database)})))))))
 
-(api/defendpoint POST "/:id/unpersist"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
@@ -775,7 +859,8 @@
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
                    auto_run_queries refingerprint cache_ttl settings]} :body}]
@@ -808,43 +893,42 @@
         ;; TODO - is there really a reason to let someone change the engine on an existing database?
         ;;       that seems like the kind of thing that will almost never work in any practical way
         ;; TODO - this means one cannot unset the description. Does that matter?
-        (api/check-500 (db/update-non-nil-keys! Database id
-                                                (merge
-                                                 {:name               name
-                                                  :engine             engine
-                                                  :details            details
-                                                  :refingerprint      refingerprint
-                                                  :is_full_sync       full-sync?
-                                                  :is_on_demand       (boolean is_on_demand)
-                                                  :description        description
-                                                  :caveats            caveats
-                                                  :points_of_interest points_of_interest
-                                                  :auto_run_queries   auto_run_queries}
-                                                 (cond
-                                                   ;; transition back to metabase managed schedules. the schedule
-                                                   ;; details, even if provided, are ignored. database is the
-                                                   ;; current stored value and check against the incoming details
-                                                   (and (get-in existing-database [:details :let-user-control-scheduling])
-                                                        (not (:let-user-control-scheduling details)))
+        (db/update-non-nil-keys! Database id
+                                 (merge
+                                  {:name               name
+                                   :engine             engine
+                                   :details            details
+                                   :refingerprint      refingerprint
+                                   :is_full_sync       full-sync?
+                                   :is_on_demand       (boolean is_on_demand)
+                                   :description        description
+                                   :caveats            caveats
+                                   :points_of_interest points_of_interest
+                                   :auto_run_queries   auto_run_queries}
+                                  (cond
+                                    ;; transition back to metabase managed schedules. the schedule
+                                    ;; details, even if provided, are ignored. database is the
+                                    ;; current stored value and check against the incoming details
+                                    (and (get-in existing-database [:details :let-user-control-scheduling])
+                                         (not (:let-user-control-scheduling details)))
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+                                    ;; if user is controlling schedules
+                                    (:let-user-control-scheduling details)
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
 
-                                                   ;; if user is controlling schedules
-                                                   (:let-user-control-scheduling details)
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
-
-                                                   ;; upsert settings with a PATCH-style update. `nil` key means unset
-                                                   ;; the Setting.
-                                                   (seq settings)
-                                                   {:settings (into {}
-                                                                    (remove (fn [[_k v]] (nil? v)))
-                                                                    (merge (:settings existing-database)
-                                                                           settings))}))))
+                                    ;; upsert settings with a PATCH-style update. `nil` key means unset
+                                    ;; the Setting.
+                                    (seq settings)
+                                    {:settings (into {}
+                                                     (remove (fn [[_k v]] (nil? v)))
+                                                     (merge (:settings existing-database)
+                                                            settings))})))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
         ;; unlike the other fields, folks might want to nil out cache_ttl
-        (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
+        (db/update! Database id {:cache_ttl cache_ttl})
 
         (let [db (db/select-one Database :id id)]
           (events/publish-event! :database-update db)
@@ -854,7 +938,8 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-(api/defendpoint DELETE "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
   "Delete a `Database`."
   [id]
   (api/check-superuser)
@@ -868,7 +953,8 @@
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
 ;; NOTE Atte: This becomes maybe obsolete
-(api/defendpoint POST "/:id/sync"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/sync"
   "Update the metadata for this `Database`. This happens asynchronously."
   [id]
   ;; just publish a message and let someone else deal with the logistics
@@ -881,7 +967,8 @@
 ;; Currently these match the titles of the admin UI buttons that call these endpoints
 
 ;; Should somehow trigger sync-database/sync-database!
-(api/defendpoint POST "/:id/sync_schema"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
@@ -891,7 +978,8 @@
       (analyze/analyze-db! db)))
   {:status :ok})
 
-(api/defendpoint POST "/:id/dismiss_spinner"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [id]
@@ -911,7 +999,8 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
-(api/defendpoint POST "/:id/rescan_values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
@@ -927,20 +1016,21 @@
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
-  (map :id (db/query {:select    [[:fv.id :id]]
-                      :from      [[FieldValues :fv]]
-                      :left-join [[Field :f] [:= :fv.field_id :f.id]
-                                  [Table :t] [:= :f.table_id :t.id]]
-                      :where     [:= :t.db_id (u/the-id database-or-id)]})))
+  (map :id (mdb.query/query {:select    [[:fv.id :id]]
+                             :from      [[:metabase_fieldvalues :fv]]
+                             :left-join [[:metabase_field :f] [:= :fv.field_id :f.id]
+                                         [:metabase_table :t] [:= :f.table_id :t.id]]
+                             :where     [:= :t.db_id (u/the-id database-or-id)]})))
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (db/execute! {:delete-from FieldValues
+    (db/execute! {:delete-from :metabase_fieldvalues
                   :where       [:in :id field-values-ids]})))
 
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
-(api/defendpoint POST "/:id/discard_values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
   (delete-all-field-values-for-database! (api/write-check (db/select-one Database :id id)))
@@ -959,7 +1049,8 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
-(api/defendpoint GET "/:id/schemas"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
@@ -974,25 +1065,27 @@
        distinct
        sort))
 
-(api/defendpoint GET ["/:virtual-db/schemas"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET ["/:virtual-db/schemas"
+                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
     (->> (cards-virtual-tables :card)
          (map :schema)
          distinct
-         (sort-by str/lower-case))))
+         (sort-by u/lower-case-en))))
 
-(api/defendpoint GET ["/:virtual-db/datasets"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET ["/:virtual-db/datasets"
+                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
     (->> (cards-virtual-tables :dataset)
          (map :schema)
          distinct
-         (sort-by str/lower-case))))
+         (sort-by u/lower-case-en))))
 
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
@@ -1027,8 +1120,8 @@
     (->> (source-query-cards
           :card
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+                                     [:= :collection_id nil]
+                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
@@ -1039,20 +1132,20 @@
     (->> (source-query-cards
           :dataset
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+                                     [:= :collection_id nil]
+                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."
   []
   (map
-    u/the-id
-    (filter
-      (fn [database]
-        (let [info (driver.u/available-drivers-info)
-              d    (driver.u/database->driver database)]
-          (some? (:superseded-by (d info)))))
-      (db/select-ids Database))))
+   u/the-id
+   (filter
+    (fn [database]
+      (let [info (driver.u/available-drivers-info)
+            d    (driver.u/database->driver database)]
+        (some? (:superseded-by (d info)))))
+    (db/select-ids Database))))
 
 (api/define-routes)

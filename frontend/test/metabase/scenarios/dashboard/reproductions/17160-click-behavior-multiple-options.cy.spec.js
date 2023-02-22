@@ -118,6 +118,10 @@ function setup() {
         // Add the question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
           cardId: questionId,
+          row: 0,
+          col: 0,
+          size_x: 12,
+          size_y: 10,
         }).then(({ body: { id: dashCardId } }) => {
           // Add dashboard filter
           cy.request("PUT", `/api/dashboard/${dashboardId}`, {
@@ -140,7 +144,7 @@ function setup() {
 
             cy.wrap(targetDashboardId).as("targetDashboardId");
 
-            // Create a click behavior and resize the question card
+            // Create a click behaviour for the question card
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
                 {

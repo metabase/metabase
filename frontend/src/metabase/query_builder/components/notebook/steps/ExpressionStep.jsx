@@ -9,6 +9,7 @@ export default function ExpressionStep({
   query,
   updateQuery,
   isLastOpened,
+  reportTimezone,
   ...props
 }) {
   return (
@@ -28,6 +29,7 @@ export default function ExpressionStep({
                 )
               : updateQuery(query.addExpression(newName, newExpression))
           }
+          reportTimezone={reportTimezone}
         />
       )}
       isLastOpened={isLastOpened}

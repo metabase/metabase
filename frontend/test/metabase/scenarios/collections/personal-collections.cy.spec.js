@@ -10,7 +10,8 @@ import {
 
 import { USERS } from "__support__/e2e/cypress_data";
 
-const adminPersonalCollectionId = 1;
+const ADMIN_PERSONAL_COLLECTION_ID = 1;
+const NODATA_PERSONAL_COLLECTION_ID = 5;
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -20,6 +21,36 @@ describe("personal collections", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
+    });
+
+    /**
+     * This reproduction is here only as a placeholder until a proper backend tests is added.
+     *
+     * Not entirely sure how this issue will be resolved!
+     * Thus, test might not work as expected by that point.
+     *
+     * For example:
+     *  1. FE might decide not to fetch the full collection tree on the home page or
+     *  2. BE might alter this endpoint
+     *
+     * TODO:
+     *  - When the solution for this problem is ready, either adjust the test or completely remove it!
+     */
+
+    it.skip("shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)", () => {
+      cy.intercept("GET", "/api/collection/tree*").as("getCollections");
+
+      cy.visit("/");
+
+      cy.wait("@getCollections").then(({ response: { body } }) => {
+        const personalCollections = body.filter(({ personal_owner_id }) => {
+          return personal_owner_id !== null;
+        });
+
+        // Admin can only see their own personal collection, so this list should return only that
+        // Loading all other users' personal collections can lead to performance issues!
+        expect(personalCollections).to.have.lengthOf(1);
+      });
     });
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
@@ -47,7 +78,7 @@ describe("personal collections", () => {
       cy.request("POST", "/api/collection", {
         name: "Foo",
         color: "#ff9a9a",
-        parent_id: adminPersonalCollectionId,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
       // Go to admin's personal collection
@@ -93,13 +124,14 @@ describe("personal collections", () => {
       });
     });
 
-    it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.visit("/collection/5");
-      openNewCollectionItemFlowFor("collection");
-      cy.findByLabelText("Name").type("Foo");
-      cy.button("Create").click();
-      // This repro could possibly change depending on the design decision for this feature implementation
-      navigationSidebar().findByText("Foo");
+    it("should be able view other users' personal sub-collections (metabase#15339)", () => {
+      cy.createCollection({
+        name: "Foo",
+        parent_id: NODATA_PERSONAL_COLLECTION_ID,
+      });
+
+      cy.visit(`/collection/${NODATA_PERSONAL_COLLECTION_ID}`);
+      cy.findByText("Foo");
     });
   });
 

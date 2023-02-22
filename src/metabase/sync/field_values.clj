@@ -1,17 +1,20 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [java-time :as t]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
   (when (db/exists? FieldValues :field_id (u/the-id field))
@@ -73,13 +76,14 @@
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [conditions [:field_id   (:id field),
-                      :type       [:in field-values/advanced-field-values-types],
-                      :created_at [:< (sql.qp/add-interval-honeysql-form
-                                        (mdb/db-type)
-                                        :%now
-                                        (- (t/as field-values/advanced-field-values-max-age :days))
-                                        :day)]]
+    (let [conditions [:field_id   (:id field)
+                      :type       [:in field-values/advanced-field-values-types]
+                      :created_at [:< (binding [hx/*honey-sql-version* 2]
+                                        (sql.qp/add-interval-honeysql-form
+                                         (mdb/db-type)
+                                         :%now
+                                         (- (t/as field-values/advanced-field-values-max-age :days))
+                                         :day))]]
           rows-count (apply db/count FieldValues conditions)]
       (apply db/delete! FieldValues conditions)
       rows-count)))
@@ -95,7 +99,14 @@
 (s/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
-  {:deleted (apply + (map delete-expired-advanced-field-values-for-table! tables))})
+  {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                             (map (fn [result]
+                                    (if (instance? Throwable result)
+                                      (throw result)
+                                      result))))
+                       +
+                       0
+                       tables)})
 
 (defn- make-sync-field-values-steps
   [tables]
@@ -108,7 +119,7 @@
 
 (s/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
-   in widgets like filters) for the Tables in DATABASE (as needed)."
+   in widgets like filters) for the Tables in `database` (as needed)."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))

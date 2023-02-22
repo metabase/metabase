@@ -9,7 +9,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
-import { DASHBOARD_LOCATION_FILTERS } from "./dashboard-filters-location";
+import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > location", () => {
   });
 
   it(`should work when set as the default filter`, () => {
-    setFilter("Location", "Dropdown");
+    setFilter("Location", "Is");
     cy.findByText("Select…").click();
     popover().contains("City").click();
 

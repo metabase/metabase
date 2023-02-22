@@ -14,7 +14,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 27279", () => {
+describe("issue 27279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -42,7 +42,6 @@ describe.skip("issue 27279", () => {
         },
         display: "bar",
         visualization_settings: {
-          "stackable.stack_type": "stacked",
           "graph.dimensions": ["K", "O"],
           "graph.metrics": ["sum"],
         },

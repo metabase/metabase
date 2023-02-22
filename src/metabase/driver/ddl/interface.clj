@@ -1,7 +1,8 @@
 (ns metabase.driver.ddl.interface
-  (:require [clojure.string :as str]
-            [metabase.driver :as driver]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
@@ -25,13 +26,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod format-name :default [_ table-or-field-name] table-or-field-name)
-
-(defmulti field-base-type->sql-type
-  "A suitable db type for a base-type per database."
-  {:arglists '([driver base-type])}
-  (fn [driver base-type]
-    [(driver/dispatch-on-initialized-driver driver) (keyword base-type)])
-  :hierarchy #'driver/hierarchy)
 
 (defmulti check-can-persist
   "Verify that the source database is acceptable to persist. Returns a tuple of a boolean and `:persist.check/valid` in

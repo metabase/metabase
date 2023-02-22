@@ -59,7 +59,7 @@ function ModelCachingControl({ database }: Props) {
     ? t`Turn model caching off`
     : t`Turn model caching on`;
 
-  const siteUUID = MetabaseSettings.get("site-uuid");
+  const siteUUID = MetabaseSettings.get("site-uuid") || "";
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID);
 
   const handleCachingChange = async () => {

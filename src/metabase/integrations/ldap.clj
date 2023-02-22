@@ -1,17 +1,21 @@
 (ns metabase.integrations.ldap
-  (:require [cheshire.core :as json]
-            [clj-ldap.client :as ldap]
-            [metabase.integrations.ldap.default-implementation :as default-impl]
-            [metabase.integrations.ldap.interface :as i]
-            [metabase.models.interface :as mi]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
+  (:require
+   [cheshire.core :as json]
+   [clj-ldap.client :as ldap]
+   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
+
+(set! *warn-on-reflection* true)
 
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.

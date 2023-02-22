@@ -1,13 +1,13 @@
 (ns metabase-enterprise.audit-app.pages.query-detail
   "Queries to show details about a (presumably ad-hoc) query."
-  (:require [cheshire.core :as json]
-            [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.cards :as cards]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 (defmethod audit.i/internal-query ::bad-card
   [_ card-id]
@@ -36,7 +36,7 @@
                            [:card.name :card_name]
                            [:latest_qe.error :error_str]
                            :collection_id
-                           [(hsql/call :coalesce :coll.name "Our Analytics") :collection_name]
+                           [[:coalesce :coll.name "Our Analytics"] :collection_name]
                            :card.database_id
                            [:db.name :database_name]
                            [:t.schema :schema_name]
@@ -56,7 +56,7 @@
                            :latest_qe                         [:= :card.id :latest_qe.card_id]
                            :query_runs                        [:= :card.id :query_runs.card_id]
                            :dash_card                         [:= :card.id :dash_card.card_id]]
-               :where     [:= :card.id card-id] })})
+               :where     [:= :card.id card-id]})})
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details

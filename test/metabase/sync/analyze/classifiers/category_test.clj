@@ -1,7 +1,8 @@
 (ns metabase.sync.analyze.classifiers.category-test
   "Tests for the category classifier."
-  (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.classifiers.category :as classifiers.category]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.analyze.classifiers.category :as classifiers.category]))
 
 (defn- field-with-distinct-count [distinct-count]
   {:database_type       "VARCHAR"

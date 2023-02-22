@@ -1,21 +1,25 @@
 (ns metabase.models.secret
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.core.memoize :as memoize]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as mi]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.io.File
-           java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.io File)
+   (java.nio.charset StandardCharsets)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -25,15 +29,12 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
-  models/IModel
-  (merge models/IModelDefaults
-         { ;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
-                                        ; won't have a direct secret-id column
-          :types          (constantly {:value  :secret-value
-                                       :kind   :keyword
-                                       :source :keyword})
-          :properties     (constantly {:timestamped? true})}))
+(mi/define-methods
+ Secret
+ {:types      (constantly {:value  :secret-value
+                           :kind   :keyword
+                           :source :keyword})
+  :properties (constantly {::mi/timestamped? true})})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -320,12 +321,9 @@
                                                                  details
                                                                  expand-inferred-secret-values))))
 
-;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
-
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- SecretInstance
- (fn [secret json-generator]
-   (encode-map
-    (dissoc secret :value)              ; never include the secret value in JSON
-    json-generator)))
+(methodical/defmethod mi/to-json Secret
+  "Never include the secret value in JSON."
+  [secret json-generator]
+  (next-method
+   (dissoc secret :value)
+   json-generator))

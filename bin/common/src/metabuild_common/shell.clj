@@ -1,10 +1,11 @@
 (ns metabuild-common.shell
-  (:require [clojure.string :as str]
-            [colorize.core :as colorize]
-            [metabuild-common
-             [output :as out]
-             [steps :as steps]])
-  (:import [java.io BufferedReader File InputStreamReader]))
+  (:require
+   [clojure.string :as str]
+   [colorize.core :as colorize]
+   [metabuild-common.output :as out]
+   [metabuild-common.steps :as steps])
+  (:import
+   (java.io BufferedReader File InputStreamReader)))
 
 (defn- read-lines [^java.io.BufferedReader reader {:keys [quiet? err?]}]
   (loop [lines []]

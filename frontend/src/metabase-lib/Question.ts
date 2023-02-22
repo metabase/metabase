@@ -43,13 +43,20 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
   normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -444,6 +451,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters or other widgets are this question's values used for?
+   */
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
@@ -452,6 +466,12 @@ class QuestionInner {
 
   canWrite(): boolean {
     return this._card && this._card.can_write;
+  }
+
+  canWriteActions(): boolean {
+    const database = this.database();
+    const hasActionsEnabled = database != null && database.hasActionsEnabled();
+    return this.canWrite() && hasActionsEnabled;
   }
 
   canAutoRun(): boolean {
@@ -580,7 +600,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -597,7 +617,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -699,7 +719,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: getBaseDimensionReference(dimension.mbql()),
+              fieldRef: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
@@ -722,13 +742,14 @@ class QuestionInner {
 
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+        findColumnSettingIndexForColumn(vizSettings, col, false) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      const hasColumn =
+        findColumnIndexForColumnSetting(cols, colSetting, false) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+        findColumnIndexForColumnSetting(addedColumns, colSetting, false) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
@@ -898,6 +919,10 @@ class QuestionInner {
     return table ? table.id : null;
   }
 
+  isArchived(): boolean {
+    return this._card && this._card.archived;
+  }
+
   getUrl({
     originalQuestion,
     clean = true,
@@ -1005,7 +1030,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 
@@ -1113,6 +1138,14 @@ class QuestionInner {
     }
   }
 
+  setParameter(id: ParameterId, parameter: ParameterObject) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === id ? parameter : oldParameter,
+    );
+
+    return this.setParameters(newParameters);
+  }
+
   setParameters(parameters) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
@@ -1158,7 +1191,7 @@ class QuestionInner {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters([])
+          .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,

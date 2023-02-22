@@ -1,8 +1,9 @@
 (ns metabase.pulse.markdown-test
-  (:require [clojure.test :refer :all]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.markdown :as markdown]
-            [metabase.test.util :as tu]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.test.util :as tu]))
 
 (defn- slack
   [markdown]

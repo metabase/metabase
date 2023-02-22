@@ -1,12 +1,13 @@
 (ns metabase.query-processor.util.nest-query-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.query-processor.util.nest-query :as nest-query]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.test :as mt]))
 
 ;; TODO -- this is duplicated with [[metabase.query-processor.util.add-alias-info-test/remove-source-metadata]]
 (defn- remove-source-metadata [x]
@@ -286,11 +287,11 @@
                  :joins        [{:alias           "Question 4918",
                                  :strategy        :left-join,
                                  :fields          [[:field 33 {:join-alias "Question 4918"}]
-                                          [:field
-                                           "count"
-                                           {:join-alias "Question 4918"}]]
+                                                   [:field
+                                                    "count"
+                                                    {:join-alias "Question 4918"}]]
                                  :condition       [:=
-                                             [:field 5 nil]
+                                                   [:field 5 nil]
                                                    [:field 33 {:join-alias "Question 4918",}]],
                                  :source-card-id  4918,
                                  :source-query    {:source-table 4,
@@ -300,12 +301,12 @@
                                                                   [:field 26 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]
                                                                   [:value "Doohickey" {}]],
                                                    :aggregation  [[:aggregation-options
-                                                                  [:count]
+                                                                   [:count]
                                                                    {:name "count"}]],
                                                    :breakout     [[:field 33 nil]],
                                                    :limit        2,
                                                    :order-by     [[:asc
-                                                               [:field 33 nil]]],
+                                                                   [:field 33 nil]]],
                                                    ;; nested query has an implicit join with conditions that should
                                                    ;; not be selected
                                                    :joins        [{:alias        "PRODUCTS__via__PRODUCT_ID",

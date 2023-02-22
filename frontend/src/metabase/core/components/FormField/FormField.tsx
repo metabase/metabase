@@ -1,6 +1,6 @@
 import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { FieldAlignment, FieldOrientation } from "./types";
 import {
   FieldCaption,
@@ -45,7 +45,12 @@ const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <FieldRoot {...props} ref={ref} orientation={orientation}>
+    <FieldRoot
+      {...props}
+      ref={ref}
+      alignment={alignment}
+      orientation={orientation}
+    >
       {alignment === "start" && children}
       {(title || description) && (
         <FieldCaption alignment={alignment} orientation={orientation}>
