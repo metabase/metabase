@@ -1,28 +1,25 @@
 (ns metabase.lib.dispatch)
 
-(defn dispatch-value
+(defn- mbql-clause-type [x]
+  (when (and (vector? x)
+             (keyword? (first x)))
+    (keyword (first x))))
+
+(defn- cljc-friendly-type-keyword
+  "This should probably just be `type`, but these keys are here for now until I figure out how to do this in a
+  cljc-friendly way. e.g. I don't know what `(type \"x\") is in Cljs."
   [x]
   (cond
-    ;; TODO -- support namespaced keywords?
-    (and (vector? x)
-         ((some-fn keyword? string?) (first x)))
-    (keyword "mbql" (name (first x)))
+    (nil? x)     :type/nil
+    (string? x)  :type/string
+    (integer? x) :type/integer
+    (number? x)  :type/number
+    (map? x)     :type/map
+    :else        (type x)))
 
-    (and (map? x)
-         (:type x))
-    (:type x)
-
-    (nil? x)
-    :type/nil
-
-    (string? x)
-    :type/string
-
-    (integer? x)
-    :type/integer
-
-    (number? x)
-    :type/number
-
-    :else
-    (type x)))
+(defn dispatch-value
+  [x]
+  (or (mbql-clause-type x)
+      ;; TODO -- for Clj, we should probably handle Toucan instances as well, and dispatch off
+      ;; of [[toucan2.core/model]]?
+      (cljc-friendly-type-keyword x)))

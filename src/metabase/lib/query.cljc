@@ -18,7 +18,7 @@
   [:and
    :mbql/outer-query
    [:map
-    [::metadata Metadata]]])
+    [:lib/metadata Metadata]]])
 
 (defmulti query*
   {:arglists '([metadata x])}
@@ -32,15 +32,11 @@
    :type      :query
    :query     (let [table (lib.metadata/table-metadata database-metadata table-name)]
                 {:source-table (:id table)})
-   ::metadata database-metadata})
+   :lib/metadata database-metadata})
 
-(defmethod query* :query
+(defmethod query* :type/map
   [metadata query]
-  (assoc query ::metadata metadata))
-
-(defmethod query* :native
-  [metadata query]
-  (assoc query ::metadata metadata))
+  (assoc query :lib/metadata metadata))
 
 (mu/defn query :- Query
   "Create a new MBQL query for a Database."
@@ -52,21 +48,21 @@
   "Create a new native query."
   ([database-metadata :- lib.metadata/DatabaseMetadata ; or results metadata?
     query]
-   {:database  (:id database-metadata)
-    :type      :native
-    :native    {:query query}
-    ::metadata database-metadata})
+   {:database     (:id database-metadata)
+    :type         :native
+    :native       {:query query}
+    :lib/metadata database-metadata})
   ([database-metadata :- lib.metadata/DatabaseMetadata
     results-metadata  :- lib.metadata/SourceQueryMetadata
     query]
-   {:database  (:id database-metadata)
-    :type      :native
-    :native    {:query query}
-    ::metadata results-metadata}))
+   {:database     (:id database-metadata)
+    :type         :native
+    :native       {:query query}
+    :lib/metadata results-metadata}))
 
 (mu/defn saved-question-query :- Query
   [{query :dataset_query, metadata :result_metadata}]
-  (assoc query ::metadata metadata))
+  (assoc query :lib/metadata metadata))
 
 #_(mu/defn card-query :- QueryWithMetadata
   "Create a query for a Saved Question (aka a 'Card')."
@@ -84,4 +80,4 @@
 
 (mu/defn metadata :- Metadata
   [query :- Query]
-  (::metadata query))
+  (:lib/metadata query))

@@ -1,8 +1,15 @@
 (ns metabase.lib-test
-  (:require [metabase.lib :as lib]
-            [metabase.lib.test-metadata :as meta]
-            #?(:clj [clojure.test :as t]
-               :cljs [cljs.test :as t :include-macros true])))
+  #?@
+   (:clj
+    [(:require
+      [clojure.test :as t]
+      [metabase.lib :as lib]
+      [metabase.lib.test-metadata :as meta])]
+    :cljs
+    [(:require
+      [cljs.test :as t :include-macros true]
+      [metabase.lib :as lib]
+      [metabase.lib.test-metadata :as meta])]))
 
 (t/deftest ^:parallel mbql-query-test
   (t/is (=? {:database (meta/id)
@@ -13,13 +20,17 @@
     (t/is (=? {:database (meta/id)
                :type     :query
                :query    {:source-table (meta/id :venues)
-                          :order-by     [[:asc [:field (meta/id :venues :id) nil]]]}}
+                          :order-by     [[:asc
+                                          {:lib/uuid string?}
+                                          [:field (meta/id :venues :id) nil]]]}}
               (-> (lib/query meta/metadata "VENUES")
                   (lib/append (lib/order-by (lib/field "VENUES" "ID"))))))
     (t/is (=? {:database (meta/id)
                :type     :query
                :query    {:source-table (meta/id :venues)
-                          :order-by     [[:asc [:field (meta/id :venues :id) {:temporal-unit :month}]]]}}
+                          :order-by     [[:asc
+                                          {:lib/uuid string?}
+                                          [:field (meta/id :venues :id) {:temporal-unit :month}]]]}}
               (-> (lib/query meta/metadata "VENUES")
                   (lib/append (lib/order-by (-> (lib/field "VENUES" "ID")
                                                 (lib/temporal-bucket :month)))))))))
@@ -33,7 +44,9 @@
     (t/is (=? {:database (meta/id)
                :type     :query
                :query    {:source-query {:native "SELECT * FROM VENUES;"}
-                          :order-by     [[:asc [:field "ID" {:temporal-unit :month, :base-type :type/BigInteger}]]]}}
+                          :order-by     [[:asc
+                                          {:lib/uuid string?}
+                                          [:field "ID" {:temporal-unit :month, :base-type :type/BigInteger}]]]}}
               (-> (lib/native-query meta/metadata meta/results-metadata "SELECT * FROM VENUES;")
                   (lib/append (lib/order-by (-> (lib/field "ID")
                                                 (lib/temporal-bucket :month)))))))))
@@ -50,7 +63,9 @@
     (t/is (=? {:database 1
                :type     :query
                :query    {:source-query {:native "SELECT * FROM VENUES;"}
-                          :order-by     [[:asc [:field "ID" {:base-type :type/BigInteger, :temporal-unit :month}]]]}}
+                          :order-by     [[:asc
+                                          {:lib/uuid string?}
+                                          [:field "ID" {:base-type :type/BigInteger, :temporal-unit :month}]]]}}
               (-> (lib/saved-question-query {:dataset_query   {:database 1
                                                                :type     :native
                                                                :native   {:query "SELECT * FROM VENUES;"}}
@@ -62,7 +77,9 @@
   (t/is (=? {:database 1
              :type     :query
              :query    {:source-query {:source-query {:source-table (meta/id :venues)}
-                                       :order-by     [[:asc [:field (meta/id :venues :id) nil]]]}}}
+                                       :order-by     [[:asc
+                                                       {:lib/uuid string?}
+                                                       [:field (meta/id :venues :id) nil]]]}}}
             (-> (lib/query meta/metadata {:database 1
                                           :type     :query
                                           :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}})

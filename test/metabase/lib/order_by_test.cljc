@@ -3,34 +3,49 @@
    (:clj
     [(:require
       [clojure.test :as t]
-      [metabase.lib.append :as lib.append]
-      [metabase.lib.field :as lib.field]
-      [metabase.lib.order-by :as lib.order-by]
-      [metabase.lib.query :as lib.query]
-      [metabase.lib.test-metadata :as lib.test-metadata])]
+      [metabase.lib :as lib]
+      [metabase.lib.test-metadata :as meta])]
     :cljs
     [(:require
       [cljs.test :as t :include-macros true]
-      [metabase.lib.append :as lib.append]
-      [metabase.lib.field :as lib.field]
-      [metabase.lib.order-by :as lib.order-by]
-      [metabase.lib.query :as lib.query]
-      [metabase.lib.test-metadata :as lib.test-metadata])]))
+      [metabase.lib :as lib]
+      [metabase.lib.test-metadata :as meta])]))
 
 (t/deftest ^:parallel order-by-test
-  (t/is (=? {:database (lib.test-metadata/id)
+  (t/is (=? {:database (meta/id)
              :type     :query
-             :query    {:source-table (lib.test-metadata/id :venues)
-                        :order-by     [[:asc [:field (lib.test-metadata/id :venues :id) nil]]]}}
-            (-> (lib.query/query lib.test-metadata/metadata "VENUES")
-                (lib.append/append (lib.order-by/order-by (lib.field/field "VENUES" "ID")))))))
+             :query    {:source-table (meta/id :venues)
+                        :order-by     [[:asc
+                                        {:lib/uuid string?}
+                                        [:field (meta/id :venues :id) nil]]]}}
+            (-> (lib/query meta/metadata "VENUES")
+                (lib/append (lib/order-by (lib/field "VENUES" "ID")))))))
+
+(t/deftest ^:parallel threading-test
+  (t/is (=? {:database (meta/id)
+             :type     :query
+             :query    {:source-table (meta/id :venues)
+                        :order-by     [[:asc
+                                        {:lib/uuid string?}
+                                        [:field (meta/id :venues :id) nil]]]}}
+            (-> (lib/query meta/metadata "VENUES")
+                (lib/order-by (lib/field "VENUES" "ID"))))))
+
+(t/deftest ^:parallel threading-with-direction-test
+  (t/is (=? {:database (meta/id)
+             :type     :query
+             :query    {:source-table (meta/id :venues)
+                        :order-by     [[:desc
+                                        {:lib/uuid string?}
+                                        [:field (meta/id :venues :id) nil]]]}}
+            (-> (lib/query meta/metadata "VENUES")
+                (lib/order-by (lib/field "VENUES" "ID") :desc)))))
 
 (t/deftest ^:parallel order-bys-test
-  (t/is (=? [{:type      :metabase.lib.order-by/order-by
-              :direction :asc
-              :ref       {:type       :metabase.lib.field/field
-                          :table-name "VENUES"
-                          :field-name "ID"}}]
-            (-> (lib.query/query lib.test-metadata/metadata "VENUES")
-                (lib.append/append (lib.order-by/order-by (lib.field/field "VENUES" "ID")))
-                lib.order-by/order-bys))))
+  (t/is (=? [[:asc
+              {:lib/uuid string?}
+              [:field 400 nil]]]
+            (-> (lib/query meta/metadata "VENUES"
+                 )
+                (lib/append (lib/order-by (lib/field "VENUES" "ID")))
+                lib/order-bys))))

@@ -1,10 +1,14 @@
 (ns metabase.lib.schema
   (:require
+   [metabase.types]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.types]))
+   [metabase.util.malli.schema :as ms]))
 
 (comment metabase.types/keep-me)
+
+(mr/def :lib/options
+  [:map
+   [:lib/uuid ms/NonBlankString]])
 
 (mr/def :mbql/date-bucketing-unit
   [:enum :default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
@@ -45,8 +49,16 @@
    [:clause [:= :expression]]
    [:name ms/NonBlankString]])
 
+;; this is a placeholder that will be resolved later once we have metadata and `append` it to the query. Used to
+;; implement [[metabase.lib.field/field]] so you don't have to pass metadata to it directly.
+(mr/def :lib/field-placeholder
+  [:catn
+   [:clause [:= :lib/field-placeholder]]
+   [:info [:fn map?]]])
+
 (mr/def :mbql/ref
   [:or
+   :lib/field-placeholder
    :mbql/field-ref
    :mbql/aggregation-ref
    :mbql/expression-ref])
@@ -54,10 +66,20 @@
 (mr/def :mbql/order-by-direction
   [:enum :asc :desc])
 
-(mr/def :mbql/order-by
+(mr/def :mbql/asc
   [:catn
-   [:direction :mbql/order-by-direction]
+   [:direction [:= :asc]]
+   [:options :lib/options]
    [:ref :mbql/ref]])
+
+(mr/def :mbql/desc
+  [:catn
+   [:direction [:= :desc]]
+   [:options :lib/options]
+   [:ref :mbql/ref]])
+
+(mr/def :mbql/order-by
+  [:or :mbql/asc :mbql/desc])
 
 (mr/def :mbql/inner-query
   [:map
