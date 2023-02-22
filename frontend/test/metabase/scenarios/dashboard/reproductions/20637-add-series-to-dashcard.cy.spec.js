@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, saveDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -33,16 +33,6 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
     cy.wait(["@dashcardQuery", "@additionalSeriesDashcardQuery"]);
   });
 });
-
-function saveDashboard() {
-  cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-  cy.intercept("PUT", "/api/dashboard/*/cards").as("updateDashCards");
-  cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
-
-  cy.findByText("Save").click();
-
-  cy.wait(["@updateDashboard", "@updateDashCards", "@loadDashboard"]);
-}
 
 function createQuestionsAndDashboard() {
   const dashcardQuestion = {
