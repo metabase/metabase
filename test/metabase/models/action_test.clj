@@ -1,6 +1,7 @@
 (ns metabase.models.action-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.models :refer [Action Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
@@ -25,7 +26,10 @@
         (is (partial= {:id action-id
                        :name "Update Example"
                        :database_id (mt/id)
-                       :parameters [{:type :type/BigInteger} {:type :type/Text, :id "name"}]}
+                       :parameters [(if (= driver/*driver* :h2)
+                                      {:type :type/BigInteger}
+                                      {:type :type/Integer})
+                                    {:type :type/Text, :id "name"}]}
                       (action/select-action :id action-id)))))))
 
 (deftest hydrate-http-action-test
