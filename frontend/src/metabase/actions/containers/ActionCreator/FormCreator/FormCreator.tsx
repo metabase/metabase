@@ -22,13 +22,11 @@ function FormCreator({
   isEditable,
   formSettings: passedFormSettings,
   onChange,
-  onExampleClick,
 }: {
   params: Parameter[];
   isEditable: boolean;
   formSettings?: ActionFormSettings;
   onChange: (formSettings: ActionFormSettings) => void;
-  onExampleClick: () => void;
 }) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
@@ -54,7 +52,7 @@ function FormCreator({
     return (
       <SidebarContent title={t`Action parameters`}>
         <FormContainer>
-          <EmptyFormPlaceholder onExampleClick={onExampleClick} />
+          <EmptyFormPlaceholder />
         </FormContainer>
       </SidebarContent>
     );

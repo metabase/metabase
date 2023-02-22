@@ -8,6 +8,7 @@ import {
   assertSheetRowsCount,
   sidebar,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -111,10 +112,18 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
     });
 
     cy.signInAsNormalUser();
+
     visitQuestion("1");
 
     cy.findByText("Showing first 2,000 rows");
     cy.icon("download").should("not.exist");
+
+    visitDashboard("1");
+
+    cy.findByTestId("dashcard").within(() => {
+      cy.findByTestId("legend-caption").realHover();
+      cy.icon("ellipsis").should("not.exist");
+    });
   });
 
   it("limits users from downloading all results", () => {

@@ -1,4 +1,9 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  saveDashboard,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -490,5 +495,6 @@ function saveDashCardVisualizationOptions() {
   cy.get(".Modal").within(() => {
     cy.findByText("Done").click();
   });
-  cy.findByText("Save").click();
+
+  saveDashboard();
 }

@@ -12,19 +12,20 @@
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest cast-values-test
-  (testing "Should work with underscored Field names (#24166)"
-    (is (= {:CATEGORY_ID (hx/cast "INTEGER" 50)}
-           (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID 50} (mt/id :venues))))
-    (testing "Should parse string values as integers"
-      (is (= {:CATEGORY_ID (hx/cast "INTEGER" "50")}
-             (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID "50"} (mt/id :venues))))))
-  (testing "Should cache column types for repeated calls"
-    (binding [actions/*misc-value-cache* (atom {})]
+  (binding [hx/*honey-sql-version* 2]
+    (testing "Should work with underscored Field names (#24166)"
       (is (= {:CATEGORY_ID (hx/cast "INTEGER" 50)}
              (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID 50} (mt/id :venues))))
-      (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:base_type :type/Float}
-        (is (= {:CATEGORY_ID (hx/cast "INTEGER" 40)}
-               (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID 40} (mt/id :venues))))))))
+      (testing "Should parse string values as integers"
+        (is (= {:CATEGORY_ID (hx/cast "INTEGER" "50")}
+               (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID "50"} (mt/id :venues))))))
+    (testing "Should cache column types for repeated calls"
+      (binding [actions/*misc-value-cache* (atom {})]
+        (is (= {:CATEGORY_ID (hx/cast "INTEGER" 50)}
+               (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID 50} (mt/id :venues))))
+        (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:base_type :type/Float}
+          (is (= {:CATEGORY_ID (hx/cast "INTEGER" 40)}
+                 (#'sql-jdbc.actions/cast-values :h2 {:CATEGORY_ID 40} (mt/id :venues)))))))))
 
 ;; this driver throws an Exception when you call `parse-sql-error`.
 (driver/register! ::parse-sql-error-exception, :parent :h2)

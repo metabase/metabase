@@ -160,9 +160,10 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (-> (mt/with-everything-store
-        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
-      remove-metadata))
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
+    (-> (mt/with-everything-store
+          (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+        remove-metadata)))
 
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"

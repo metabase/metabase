@@ -20,9 +20,10 @@ import {
 
 interface Props {
   model: Question;
+  hasEditMetadataLink: boolean;
 }
 
-function ModelSchemaDetails({ model }: Props) {
+function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
   const canWrite = model.canWrite();
 
   const metadataEditorUrl = Urls.modelEditor(model.card(), {
@@ -51,7 +52,7 @@ function ModelSchemaDetails({ model }: Props) {
     <>
       <SchemaHeader>
         <span>{fieldsCount}</span>
-        {canWrite && (
+        {hasEditMetadataLink && canWrite && (
           <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
         )}
       </SchemaHeader>

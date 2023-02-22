@@ -6,6 +6,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 export const DataReferenceContainer = styled.div`
   overflow: hidden;
   position: relative;
+  width: 100%;
   height: 100%;
   background-color: ${color("white")};
 
