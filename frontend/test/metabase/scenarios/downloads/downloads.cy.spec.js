@@ -3,7 +3,12 @@ import {
   downloadAndAssert,
   startNewQuestion,
   visualize,
+  visitDashboard,
+  popover,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const testCases = ["csv", "xlsx"];
 
@@ -26,6 +31,52 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+    });
+  });
+
+  it("downloads pngs", () => {
+    const canSavePngQuestion = {
+      name: "Q1",
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      visualization_settings: {
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["CREATED_AT"],
+      },
+    };
+
+    const cannotSavePngQuestion = {
+      name: "Q2",
+      display: "table",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+      visualization_settings: {},
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardName: "saving pngs dashboard",
+      questions: [canSavePngQuestion, cannotSavePngQuestion],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+
+    cy.findByText("Q1").realHover();
+    cy.findAllByTestId("download-button").eq(0).click();
+
+    popover().within(() => {
+      cy.findByText(".png").click();
+    });
+
+    cy.findByText("Q2").realHover();
+    cy.findAllByTestId("download-button").eq(1).click();
+
+    popover().within(() => {
+      cy.findByText(".png").should("not.exist");
     });
   });
 });
