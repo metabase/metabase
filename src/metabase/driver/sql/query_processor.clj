@@ -43,8 +43,9 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
-(defn make-nestable-sql [sql]
-  ;; wrap `sql` string in parens and strip off any trailing semicolons.
+(defn make-nestable-sql
+  "For embedding native sql queries, wraps [sql] in parens and removes any semicolons"
+  [sql]
   (str "(" (str/replace sql #";[\s;]*$" "") ")"))
 
 (defn- format-sql-source-query [_fn [sql params]]
