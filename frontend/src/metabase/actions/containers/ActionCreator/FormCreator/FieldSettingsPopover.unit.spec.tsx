@@ -114,12 +114,12 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
-      defaultValue: 0,
+      defaultValue: undefined,
       required: false,
     });
 
     const defaultValueInput = screen.getByLabelText("Default value");
-    expect(defaultValueInput).toHaveValue("0");
+    expect(defaultValueInput).not.toHaveValue();
     await userEvent.type(defaultValueInput, "5");
 
     expect(onChange).toHaveBeenLastCalledWith({

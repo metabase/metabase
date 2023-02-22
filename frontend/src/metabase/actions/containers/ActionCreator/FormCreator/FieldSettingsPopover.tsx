@@ -12,6 +12,8 @@ import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
+import { isEmpty } from "metabase/lib/validate";
+
 import { getFieldTypes, getInputTypes } from "./constants";
 import {
   SettingsTriggerIcon,
@@ -54,10 +56,15 @@ export function FieldSettingsPopover({
 }
 
 function cleanDefaultValue(fieldType: FieldType, value?: string | number) {
+  if (isEmpty(value)) {
+    return;
+  }
+
   if (fieldType === "number") {
     const clean = Number(value);
     return !Number.isNaN(clean) ? clean : 0;
   }
+
   return value;
 }
 
