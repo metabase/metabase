@@ -206,6 +206,7 @@
                       exposed-fields (into #{} (keep :id) (:result_metadata card))
                       parameters (->> fields
                                       (filter #(contains? exposed-fields (:id %)))
+                                      (remove :nfc_path) ;; remove exploded json fields
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
