@@ -222,6 +222,7 @@
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
     "eslint-plugin-testing-library": "^5.9.1",
+    "fetch-mock": "^9.11.0",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^2.0.0",
     "html-webpack-plugin": "5.5.0",
