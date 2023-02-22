@@ -203,7 +203,8 @@
             [(:id card) parameters]))))
 
 (defn select-actions
-  "Find actions with given options and generate implicit parameters for execution.
+  "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
+   model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
