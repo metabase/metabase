@@ -1,7 +1,7 @@
 (ns metabase.models.action-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Action Dashboard DashboardCard]]
+   [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
    [toucan.hydrate :refer [hydrate]]
@@ -75,3 +75,19 @@
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (t2/delete! Action :id action-id)
             (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))
+
+(deftest model-to-saved-question-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (testing "Actions are archived if their model is converted to a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (is (false? (t2/select-one-fn :archived Action action-id)))
+          (t2/update! Card model-id {:dataset false})
+          (is (true? (t2/select-one-fn :archived Action action-id)))))
+      (testing "Actions can't be unarchived if their model is a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (t2/update! Card model-id {:dataset false})
+          (is (thrown-with-msg?
+               Exception
+               #"Actions must be made with models, not cards"
+               (t2/update! Action action-id {:archived false}))))))))
