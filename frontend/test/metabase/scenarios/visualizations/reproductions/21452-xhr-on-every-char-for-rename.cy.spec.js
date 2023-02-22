@@ -28,7 +28,7 @@ describe("issue 21452", () => {
 
     visitQuestionAdhoc(questionDetails);
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
