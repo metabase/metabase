@@ -318,7 +318,7 @@
               (merge {:name          (str/trim (.getString rset "COLUMN_NAME"))
                       :database-type (str/trim (.getString rset "TYPE_NAME"))}
                      (when-let [remarks (.getString rset "REMARKS")]
-                       (when (not (str/blank? remarks))
+                       (when-not (str/blank? remarks)
                          {:field-comment remarks})))))))))))
 
 (defn- add-database-position-xform []
