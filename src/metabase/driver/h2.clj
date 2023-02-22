@@ -146,14 +146,14 @@
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command           (.prepareCommand h2-parser query)
-            command-list-type (.getCommandType command)
-            command-types     (cond-> [command-list-type]
-                                (not (instance? org.h2.command.CommandContainer command))
-                                (into
-                                 (map #(.getType ^org.h2.command.Prepared %))
-                                 ;; when there are no fields: return no commands
-                                 (get-field command "commands" [])))]
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
         {:command-types command-types
          ;; when there is no remaining sql: return nil for remaining-sql
          :remaining-sql (get-field command "remaining" nil)})
