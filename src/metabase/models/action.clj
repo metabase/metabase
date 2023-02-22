@@ -48,18 +48,23 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(defn- check-model-is-not-a-saved-question
+  [model-id]
+  (when-not (db/select-one-field :dataset Card :id model-id)
+    (throw (ex-info (tru "Actions must be made with models, not cards.")
+                    {:status-code 400}))))
+
 (t2/define-before-insert Action
   [{model-id :model_id, :as action}]
   (u/prog1 action
-    (when-not (db/select-one-field :dataset Card :id model-id)
-      (throw (ex-info (tru "Actions must be made with models, not cards.")
-                      {:status-code 400})))))
+    (check-model-is-not-a-saved-question model-id)))
 
 (t2/define-before-update Action
-  [{archived? :archived, id :id, :as changes}]
+  [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 changes
-    (when archived?
-      (t2/delete! DashboardCard :action_id id))))
+    (if archived?
+      (t2/delete! DashboardCard :action_id id)
+      (check-model-is-not-a-saved-question model-id))))
 
 (mi/define-methods
  Action

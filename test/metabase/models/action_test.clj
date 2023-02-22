@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models :refer [Action Dashboard DashboardCard]]
+   [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
    [toucan.hydrate :refer [hydrate]]
@@ -91,3 +91,19 @@
             (let [new-action (action/select-action :id action-id)]
               (is (partial= {:name "New name"
                              :kind "row/update"} new-action)))))))))
+
+(deftest model-to-saved-question-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (testing "Actions are archived if their model is converted to a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (is (false? (t2/select-one-fn :archived Action action-id)))
+          (t2/update! Card model-id {:dataset false})
+          (is (true? (t2/select-one-fn :archived Action action-id)))))
+      (testing "Actions can't be unarchived if their model is a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (t2/update! Card model-id {:dataset false})
+          (is (thrown-with-msg?
+               Exception
+               #"Actions must be made with models, not cards"
+               (t2/update! Action action-id {:archived false}))))))))
