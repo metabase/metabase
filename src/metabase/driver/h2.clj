@@ -133,12 +133,15 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(mu/defn ^:private classify-query :- [:map
-                                      [:command-types [:vector pos-int?]]
-                                      [:remaining-sql [:maybe :string]]]
+(mu/defn ^:private classify-query :- [:maybe
+                                      [:map
+                                       [:command-types [:vector pos-int?]]
+                                       [:remaining-sql [:maybe :string]]]]
   "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+
+  If the h2 parser cannot be built, returns `nil`.
 
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
@@ -177,7 +180,7 @@
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query database query)]
+    (when-let [query-classification (classify-query database query)]
       (when (contains-ddl? query-classification)
         (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                         {:classification query-classification}))))))
