@@ -191,7 +191,7 @@
   (when query
     (let [query-classification (classify-query database query)]
       (when-not (read-only-statements? query-classification)
-        (throw (ex-info "IllegalArgument: Only SELECT statements are allowed in a native query."
+        (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
