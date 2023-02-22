@@ -60,7 +60,7 @@ export interface CollectionTreeItem extends Collection {
 }
 
 export function buildCollectionTree(
-  collections: Collection[],
+  collections: Collection[] = [],
   modelFilter?: (model: CollectionContentModel) => boolean,
 ): CollectionTreeItem[] {
   return collections.flatMap(collection => {

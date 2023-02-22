@@ -109,9 +109,10 @@ describe("buildCollectionTree", () => {
         children: [child],
       });
 
-      const transformed = buildCollectionTree([collection], {
-        targetModels: ["dataset"],
-      });
+      const transformed = buildCollectionTree(
+        [collection],
+        model => model === "dataset",
+      );
 
       expect(transformed).toEqual([
         {
@@ -158,9 +159,7 @@ describe("buildCollectionTree", () => {
 
       const transformed = buildCollectionTree(
         [collectionWithDatasets, collectionWithCards],
-        {
-          targetModels: ["dataset"],
-        },
+        model => model === "dataset",
       );
 
       expect(transformed).toEqual([
@@ -175,7 +174,7 @@ describe("buildCollectionTree", () => {
       ]);
     });
 
-    it("doesn't filter collections if targetModels are not passed", () => {
+    it("doesn't filter collections if model filter is not passed", () => {
       const child = getCollection({ id: 2, name: "Child", here: ["dataset"] });
       const collection = getCollection({
         id: 1,
