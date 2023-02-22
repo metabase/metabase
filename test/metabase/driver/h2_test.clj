@@ -205,3 +205,27 @@
                     {:database (u/the-id (mt/db))
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
+
+(deftest check-single-select-statement-test
+  (mt/test-driver :h2
+    (testing "a single select statement should pass")
+    (is (nil?
+         (#'h2/check-single-select-statement
+          {:database (u/the-id (mt/db))
+           :engine :h2
+           :native {:query "select 1"}})))
+    (testing "not a single select statement"
+      (doseq [query ["update venues set name = 'bill'"
+                     "insert into venues (name) values ('bill')"
+                     "delete venues"
+                     "select 1; update venues set name = 'bill'; delete venues;"
+                     (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                                     "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                                     "SELECT * FROM INFORMATION_SCHEMA.Users;"])]]
+        (is (thrown?
+             clojure.lang.ExceptionInfo
+             #"Only a single SELECT statement is allowed."
+             (#'h2/check-single-select-statement
+              {:database (u/the-id (mt/db))
+               :engine :h2
+               :native {:query query}})))))))
