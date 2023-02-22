@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmacro def-reversible-migration
+(defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
   similar to the bodies of multi-arity Clojure functions.
 
@@ -24,7 +24,7 @@
   Example:
 
   ```clj
-  (def-reversible-migration ExampleMigrationName
+  (define-reversible-migration ExampleMigrationName
    ([_database]
     (migration-body))
 
@@ -58,7 +58,7 @@
 (defmacro defmigration
   "Define a custom migration."
   [name migration-body]
-  `(def-reversible-migration ~name ~migration-body ([~'_] (no-op ~(str name)))))
+  `(define-reversible-migration ~name ~migration-body ([~'_] (no-op ~(str name)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -82,11 +82,11 @@
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
       [(str "/data/db/" db-id "/") (str "/query/db/" db-id "/schema/")])))
 
-(def-reversible-migration SplitDataPermissions
+(define-reversible-migration SplitDataPermissions
   ([_database]
    (let [current-perms-set (t2/select-fn-set
                             (juxt :object :group_id)
-                            :models/permissions
+                            :metabase.models.permissions/Permissions
                             {:where [:or
                                      [:like :object (h2x/literal "/db/%")]
                                      [:like :object (h2x/literal "/data/db/%")]
