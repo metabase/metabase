@@ -104,7 +104,8 @@
     (virtual-card-of-type? dashcard "link")
     nil
 
-    ;; assume everything else is a text card
+    ;; text cards has existed for a while and I'm not sure if all existings text cards
+    ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
       (-> dashcard
