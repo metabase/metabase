@@ -838,7 +838,7 @@
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
            and clean up orphaned rows"
     (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]
-      (let [db-id    (db/simple-insert! Database {:name       "db"
+      (let [db-id    (db/simple-insert! Database {:name       "DB"
                                                   :engine     "h2"
                                                   :created_at :%now
                                                   :updated_at :%now
