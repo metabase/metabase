@@ -16,7 +16,7 @@ function renderChartSettingOrderedColumns(props) {
 
 const toNativeColumn = column => ({
   base_type: column.base_type,
-  display_name: column.display_name,
+  display_name: column.name,
   effective_type: column.semantic_type,
   field_ref: ["field", column.name, { "base-type": column.base_type }],
   name: column.name,
@@ -214,6 +214,60 @@ describe("ChartSettingOrderedColumns", () => {
           ]);
         });
       });
+    });
+    it("Should show source tables in aggreated columns", () => {
+      const question = new Question(
+        {
+          dataset_query: {
+            type: "query",
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "year" }],
+                [
+                  "field",
+                  PRODUCTS.CREATED_AT.id,
+                  {
+                    "temporal-unit": "year",
+                    "source-field": ORDERS.PRODUCT_ID.id,
+                  },
+                ],
+              ],
+              "source-table": ORDERS.id,
+            },
+            database: SAMPLE_DATABASE.id,
+          },
+        },
+        metadata,
+      );
+      const columns = [
+        ORDERS.CREATED_AT.dimension().column(),
+        // Normally, the column display name would come back with the result data, but in our test here
+        // This isn't quite right, but We just want to confirm that we're getting the name from the
+        // column data, and not the dimension
+        {
+          ...PRODUCTS.CREATED_AT.dimension().column(),
+          display_name: PRODUCTS.CREATED_AT.dimension()
+            .field()
+            .displayName({ includeTable: true }),
+        },
+        {
+          base_type: "type/BigInteger",
+          display_name: "Count",
+          name: "count",
+          field_ref: ["aggregation", 0],
+          source: "aggregation",
+        },
+      ];
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [],
+        columns,
+        question,
+        onChange,
+      });
+
+      expect(screen.getByText("Products → Created At")).toBeInTheDocument();
     });
   });
 

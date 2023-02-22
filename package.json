@@ -336,7 +336,8 @@
     ],
     "+(enterprise|frontend)/**/*.{js,jsx,ts,tsx}": [
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
-      "prettier --write"
+      "prettier --write",
+      "node ./bin/verify-doc-links"
     ],
     "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
       "node frontend/test/validate-e2e-test-files.js"

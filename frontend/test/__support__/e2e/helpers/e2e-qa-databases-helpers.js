@@ -13,7 +13,7 @@ import {
  ******************************************/
 
 export function addMongoDatabase(name = "QA Mongo4") {
-  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.0/images/sha256-3f568127248b6c6dba0b114b65dc3b3bf69bf4c804310eb57b4e3de6eda989cf
+  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
 
