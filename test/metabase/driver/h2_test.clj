@@ -207,32 +207,33 @@
                      :native {:query trigger-creation-attempt}}))))))
 
 (deftest check-read-only-test
-  (mt/test-driver :h2
-    (testing "select statements should pass"
-      (doseq [query ["select * from orders"
-                     "select 1; select 2;"
-                     "explain select * from orders"
-                     "values (1, 'Hello'), (2, 'World');"
-                     "show tables"
-                     "table orders"
-                     "call 1 + 1"]]
-        (is (nil?
-             (#'h2/check-read-only-statements
-              {:database (u/the-id (mt/db))
-               :engine :h2
-               :native {:query query}})))))
-    (testing "not a single select statement"
-      (doseq [query ["update venues set name = 'bill'"
-                     "insert into venues (name) values ('bill')"
-                     "delete venues"
-                     "select 1; update venues set name = 'bill'; delete venues;"
-                     (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
-                                     "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
-                                     "SELECT * FROM INFORMATION_SCHEMA.Users;"])]]
-        (is (thrown?
-             clojure.lang.ExceptionInfo
-             #"Only SELECT statements are allowed in a native query."
-             (#'h2/check-read-only-statements
-              {:database (u/the-id (mt/db))
-               :engine :h2
-               :native {:query query}})))))))
+  (testing "read only statements should pass"
+    (are [query] (nil?
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "select * from orders"
+      "select 1; select 2;"
+      "explain select * from orders"
+      "values (1, 'Hello'), (2, 'World');"
+      "show tables"
+      "table orders"
+      "call 1 + 1"
+      ;; Note this passes the check, but will fail on execution
+      "update venues set name = 'bill'; some query that can't be parsed;"))
+  (testing "not read only statements should fail"
+    (are [query] (thrown?
+                  clojure.lang.ExceptionInfo
+                  #"Only SELECT statements are allowed in a native query."
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "delete venues"
+      "select 1; update venues set name = 'bill'; delete venues;"
+      (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                        "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                        "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
