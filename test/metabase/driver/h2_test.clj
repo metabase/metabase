@@ -206,14 +206,18 @@
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
-(deftest check-single-select-statement-test
+(deftest check-read-only-test
   (mt/test-driver :h2
-    (testing "a single select statement should pass")
-    (is (nil?
-         (#'h2/check-single-select-statement
-          {:database (u/the-id (mt/db))
-           :engine :h2
-           :native {:query "select 1"}})))
+    (testing "select statements should pass"
+      (doseq [query ["select * from orders"
+                     "select 1; select 2;"
+                     "explain select * from orders"
+                     "call 1 + 1"]]
+        (is (nil?
+             (#'h2/check-read-only-commands
+              {:database (u/the-id (mt/db))
+               :engine :h2
+               :native {:query query}})))))
     (testing "not a single select statement"
       (doseq [query ["update venues set name = 'bill'"
                      "insert into venues (name) values ('bill')"
@@ -224,8 +228,8 @@
                                      "SELECT * FROM INFORMATION_SCHEMA.Users;"])]]
         (is (thrown?
              clojure.lang.ExceptionInfo
-             #"Only a single SELECT statement is allowed."
-             (#'h2/check-single-select-statement
+             #"Only SELECT statements are allowed in a native query."
+             (#'h2/check-read-only-commands
               {:database (u/the-id (mt/db))
                :engine :h2
                :native {:query query}})))))))
