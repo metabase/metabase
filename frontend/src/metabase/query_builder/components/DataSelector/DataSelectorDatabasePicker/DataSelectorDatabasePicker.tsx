@@ -54,16 +54,20 @@ const DataSelectorDatabasePicker = ({
       sections.push({ name: <RawDataBackButton /> });
     }
 
-    sections.push({
-      items: databases.map((database, index) => ({
+    const databaseItems = databases
+      .filter(database =>
+        requireWriteback ? checkDatabaseActionsEnabled(database) : true,
+      )
+      .map((database, index) => ({
         name: database.name,
         index,
         database,
-      })),
-    });
+      }));
+
+    sections.push({ items: databaseItems });
 
     return sections;
-  }, [databases, onBack]);
+  }, [databases, requireWriteback, onBack]);
 
   const handleChangeSection = useCallback(
     (section: Section, sectionIndex: number) => {
@@ -89,11 +93,6 @@ const DataSelectorDatabasePicker = ({
       sections={sections}
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
-      itemIsClickable={
-        requireWriteback
-          ? (item: Item) => checkDatabaseActionsEnabled(item.database)
-          : undefined
-      }
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }
