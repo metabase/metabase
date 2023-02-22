@@ -2,7 +2,7 @@ import { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root";
+export type CollectionId = RegularCollectionId | "root" | "personal";
 
 export type CollectionContentModel = "card" | "dataset";
 

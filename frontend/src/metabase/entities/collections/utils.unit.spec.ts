@@ -1,5 +1,6 @@
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { PERSONAL_COLLECTIONS } from "./constants";
 import { buildCollectionTree } from "./utils";
 
 describe("buildCollectionTree", () => {
@@ -162,6 +163,90 @@ describe("buildCollectionTree", () => {
           children: [],
         },
       ]);
+    });
+
+    it("preserves personal collections root if there are other users personal collections with target models", () => {
+      const collection = createMockCollection({
+        ...PERSONAL_COLLECTIONS,
+        children: [
+          createMockCollection({
+            name: "A",
+            below: ["card"],
+            children: [
+              createMockCollection({
+                name: "A1",
+                here: ["card"],
+              }),
+            ],
+          }),
+          createMockCollection({
+            name: "B",
+            below: ["dataset"],
+            children: [
+              createMockCollection({
+                name: "B1",
+                here: ["dataset"],
+              }),
+            ],
+          }),
+          createMockCollection({
+            name: "C",
+            children: [
+              createMockCollection({
+                name: "C1",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      const collectionTree = buildCollectionTree(
+        [collection],
+        model => model === "card",
+      );
+
+      expect(collectionTree).toMatchObject([
+        {
+          ...PERSONAL_COLLECTIONS,
+          children: [
+            {
+              name: "A",
+              children: [
+                {
+                  name: "A1",
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("does not preserve personal collections root if there are no other users personal collections with target models", () => {
+      const collection = createMockCollection({
+        ...PERSONAL_COLLECTIONS,
+        children: [
+          createMockCollection({
+            name: "A",
+            here: ["dataset"],
+            children: [
+              createMockCollection({
+                name: "A1",
+              }),
+            ],
+          }),
+          createMockCollection({
+            name: "B",
+          }),
+        ],
+      });
+
+      const collectionTree = buildCollectionTree(
+        [collection],
+        model => model === "card",
+      );
+
+      expect(collectionTree).toEqual([]);
     });
 
     it("doesn't filter collections if model filter is not passed", () => {
