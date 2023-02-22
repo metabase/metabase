@@ -47,12 +47,25 @@ export const ModalLeft = styled.div`
 `;
 
 export const ModalRight = styled.div`
-  position: relative;
   display: flex;
-  overflow-y: auto;
+  position: relative;
+  overflow-y: hidden;
 
   ${SidebarContent.Root}, ${SidebarContent.Content} {
     width: 100%;
     height: 100%;
+  }
+
+  ${SidebarContent.Content} {
+    overflow-y: auto;
+  }
+
+  ${SidebarContent.Header.Root} {
+    position: sticky;
+    top: 0;
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    margin: 0;
+    background-color: ${color("white")};
+    z-index: 5;
   }
 `;
