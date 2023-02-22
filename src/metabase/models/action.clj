@@ -244,9 +244,7 @@
 
                                 :always
                                 (map #(dissoc % ::pk? ::field-id)))]
-          (cond-> action
-            (= (:type action) :implicit)
-            (assoc :database_id (model-id->db-id (:model_id action)))
+          (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
             (seq implicit-params)
             (assoc :parameters implicit-params)))
         action))))
