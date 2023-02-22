@@ -154,6 +154,8 @@ export class Api extends EventEmitter {
   }
 
   _makeRequest(...args) {
+    // this is temporary to not deal with failed cypress tests
+    // we should switch to using fetch in all cases (metabase#28489)
     if (isTest) {
       return this._makeRequestWithFetch(...args);
     } else {
