@@ -187,11 +187,11 @@
       (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                       {:classification query-classification})))))
 
-(defn- check-single-select-statement [{:keys [database] {:keys [query]} :native :as in}]
+(defn- check-single-select-statement [{:keys [database] {:keys [query]} :native}]
   (when query
     (let [query-classification (classify-query database query)]
-      (when (is-single-select? query-classification)
-        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+      (when-not (is-single-select? query-classification)
+        (throw (ex-info "IllegalArgument: Only a single SELECT statement is allowed in a native query."
                         {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
