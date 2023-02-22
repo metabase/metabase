@@ -1,15 +1,28 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive.jsx";
-import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
-import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getColumnCardinality } from "metabase/visualizations/lib/utils";
+import {
+  getColumnCardinality,
+  getFriendlyName,
+} from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
+import ChartSettingsTableFormatting, {
+  isFormattable,
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import {
   isMetric,
   isDimension,
@@ -18,39 +31,19 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase/lib/schema_metadata";
+} from "metabase-lib/types/utils/isa";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnForColumnSetting,
+  findColumnSettingIndexForColumn,
+} from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import ChartSettingsTableFormatting, {
-  isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
-import { cohortFormat } from "metabase/visualizations/lib/table";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import _ from "underscore";
-import cx from "classnames";
-
-import { getIn } from "icepick";
-
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { Series } from "metabase-types/types/Visualization";
-import type { SettingDefs } from "metabase/visualizations/lib/settings";
-
-type Props = {
-  series: Series,
-  settings: VisualizationSettings,
-  isDashboard: boolean,
-};
-type State = {
-  data: ?DatasetData,
-};
+import TableSimple from "../components/TableSimple";
+import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
 export default class Table extends Component {
-  props: Props;
-  state: State;
-
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -73,12 +66,36 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings: SettingDefs = {
+  static isPivoted(series, settings) {
+    const [{ data }] = series;
+
+    if (!settings["table.pivot"]) {
+      return false;
+    }
+
+    const pivotIndex = _.findIndex(
+      data.cols,
+      col => col.name === settings["table.pivot_column"],
+    );
+    const cellIndex = _.findIndex(
+      data.cols,
+      col => col.name === settings["table.cell_column"],
+    );
+    const normalIndex = _.findIndex(
+      data.cols,
+      (col, index) => index !== pivotIndex && index !== cellIndex,
+    );
+
+    return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
+  }
+
+  static settings = {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
-      title: t`Pivot the table`,
+      title: t`Pivot table`,
       widget: "toggle",
+      inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
       getDefault: ([{ card, data }]) =>
         data &&
@@ -156,55 +173,115 @@ export default class Table extends Component {
     //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
-      title: t`Visible columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
+      title: t`Columns`,
+      widget: ChartSettingOrderedSimple,
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      getValue: ([{ card, data }], vizSettings, extra = {}) => {
         // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
+        const tableColumns = vizSettings["table.columns"];
+
+        const isValid =
+          tableColumns &&
+          tableColumns.length !== 0 &&
+          (extra.isQueryRunning ||
+            _.every(
+              tableColumns,
+              columnSetting =>
+                !columnSetting.enabled ||
+                findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+            )) &&
+          (extra.isQueryRunning ||
+            _.every(
+              data.cols,
+              column =>
+                findColumnSettingIndexForColumn(tableColumns, column) >= 0,
+            ));
+        if (!isValid) {
+          return data.cols.map(col => ({
+            name: col.name,
+            fieldRef: col.field_ref,
+            enabled: col.visibility_type !== "details-only",
+          }));
+        }
+
+        // Remove any columnSettings that do not appear in data.cols
+        const filteredTableColumns = tableColumns.filter(columnSetting =>
+          findColumnForColumnSetting(data.cols, columnSetting),
+        );
+
+        // Place any disabled columns at the end of the list and return them:
+        const [enabledColumns, disabledColumns] = _.partition(
+          filteredTableColumns,
+          columnSetting => columnSetting.enabled,
+        );
+
+        return [...enabledColumns, ...disabledColumns];
+      },
       getProps: ([
         {
           data: { cols },
         },
       ]) => ({
         columns: cols,
+        hasOnEnable: false,
+        paddingLeft: "0",
+        hideOnDisabled: true,
+        getPopoverProps: columnSetting => ({
+          id: "column_settings",
+          props: {
+            initialKey: getColumnKey(
+              findColumnForColumnSetting(cols, columnSetting),
+            ),
+          },
+        }),
+        extraButton: {
+          text: t`Add or remove columns`,
+          key: "table.columns_visibility",
+        },
+        getItemTitle: columnSetting =>
+          getFriendlyName(
+            findColumnForColumnSetting(cols, columnSetting) || {
+              display_name: "[Unknown]",
+            },
+          ),
       }),
     },
-    "table.column_widths": {},
-    "table.column_formatting": {
-      section: t`Conditional Formatting`,
-      widget: ChartSettingsTableFormatting,
-      default: [],
+    "table.columns_visibility": {
+      hidden: true,
+      writeSettingId: "table.columns",
+      readDependencies: ["table.columns"],
+      widget: ChartSettingColumnEditor,
+      getValue: (_series, vizSettings) => vizSettings["table.columns"],
       getProps: (
         [
           {
             data: { cols },
           },
         ],
-        settings,
+        _settings,
+        _onChange,
+        extra,
       ) => ({
-        cols: cols.filter(isFormattable),
+        columns: cols,
+        isDashboard: extra.isDashboard,
+        metadata: extra.metadata,
+        isQueryRunning: extra.isQueryRunning,
+      }),
+    },
+    "table.column_widths": {},
+    [DataGrid.COLUMN_FORMATTING_SETTING]: {
+      section: t`Conditional Formatting`,
+      widget: ChartSettingsTableFormatting,
+      default: [],
+      getProps: (series, settings) => ({
+        cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
         isCohorted: settings["table.pivot_cohort"],
       }),
+
       getHidden: (
         [
           {
@@ -224,9 +301,14 @@ export default class Table extends Component {
         ],
         settings,
       ) {
-        return makeCellBackgroundGetter(rows, cols, settings);
+        return makeCellBackgroundGetter(
+          rows,
+          cols,
+          settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
+          settings["table.pivot"],
+        );
       },
-      readDependencies: ["table.column_formatting", "table.pivot"],
+      readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
     "table.pivot_cohort": {
       id: "pivot_cohort",
@@ -238,7 +320,7 @@ export default class Table extends Component {
   };
 
   static columnSettings = column => {
-    const settings: SettingDefs = {
+    const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -250,13 +332,14 @@ export default class Table extends Component {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
         widget: "toggle",
+        inline: true,
       };
     }
 
     let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
 
     const options = [
-      { name: t`Off`, value: null },
+      { name: t`Text`, value: null },
       { name: t`Link`, value: "link" },
     ];
 
@@ -275,8 +358,8 @@ export default class Table extends Component {
 
     if (options.length > 1) {
       settings["view_as"] = {
-        title: t`View as link or image`,
-        widget: "select",
+        title: t`Display as`,
+        widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
         props: {
           options,
@@ -288,27 +371,61 @@ export default class Table extends Component {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => {
+        return {
+          options: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
+      },
     };
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => {
+        return {
+          options: cols.map(column => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
+      },
     };
 
     return settings;
   };
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -320,7 +437,7 @@ export default class Table extends Component {
     this._updateData(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
@@ -329,14 +446,10 @@ export default class Table extends Component {
     }
   }
 
-  _updateData({
-    series: [{ data }],
-    settings,
-  }: {
-    series: Series,
-    settings: VisualizationSettings,
-  }) {
-    if (settings["table.pivot"]) {
+  _updateData({ series, settings }) {
+    const [{ data }] = series;
+
+    if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
         data.cols,
         col => col.name === settings["table.pivot_column"],
@@ -367,7 +480,10 @@ export default class Table extends Component {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
-        .filter(columnSetting => columnSetting.enabled)
+        .filter(
+          columnSetting =>
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
+        )
         .map(columnSetting =>
           findColumnIndexForColumnSetting(cols, columnSetting),
         )
@@ -384,14 +500,13 @@ export default class Table extends Component {
 
   // shared helpers for table implementations
 
-  getColumnTitle = (columnIndex: number): ?string => {
+  getColumnTitle = columnIndex => {
     const cols = this.state.data && this.state.data.cols;
     if (!cols) {
       return null;
     }
-    const { settings } = this.props;
-    const isPivoted = settings["table.pivot"];
-    const isCohorted = settings["table.pivot_cohort"];
+    const { series, settings } = this.props;
+    const isPivoted = Table.isPivoted(series, settings);
     const column = cols[columnIndex];
     if (isPivoted) {
       return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
@@ -403,17 +518,12 @@ export default class Table extends Component {
   };
 
   render() {
-    const {
-      series: [{ card }],
-      isDashboard,
-      settings,
-    } = this.props;
+    const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
+    const [{ card }] = series;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
-    const isPivoted = settings["table.pivot"];
-    const isCohorted = settings["table.pivot_cohort"];
-    const columnSettings = settings["table.columns"] || [];
-    const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
+    const isPivoted = Table.isPivoted(series, settings);
+    const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
     if (!data) {
       return null;

@@ -1,26 +1,30 @@
 (ns metabase.async.streaming-response
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            compojure.response
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.async.util :as async.u]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [ring.util.response :as ring.response]
-            [ring.util.servlet :as ring.servlet])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           java.nio.ByteBuffer
-           [java.nio.channels ClosedChannelException SocketChannel]
-           java.nio.charset.StandardCharsets
-           java.util.zip.GZIPOutputStream
-           javax.servlet.AsyncContext
-           javax.servlet.http.HttpServletResponse
-           org.eclipse.jetty.io.EofException
-           org.eclipse.jetty.server.Request))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [compojure.response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.async.util :as async.u]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [ring.adapter.jetty9.common :as common]
+   [ring.util.response :as response])
+  (:import
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio ByteBuffer)
+   (java.nio.channels ClosedChannelException SocketChannel)
+   (java.nio.charset StandardCharsets)
+   (java.util.zip GZIPOutputStream)
+   (jakarta.servlet AsyncContext)
+   (jakarta.servlet.http HttpServletResponse)
+   (org.eclipse.jetty.io EofException)
+   (org.eclipse.jetty.server Request)))
+
+(set! *warn-on-reflection* true)
 
 (defn- write-to-output-stream!
   ([^OutputStream os x]
@@ -60,7 +64,7 @@
         (catch Throwable e
           (log/error e (trs "Error writing error to output stream") obj))))))
 
-(defn- do-f* [f ^OutputStream os finished-chan canceled-chan]
+(defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
     (f os canceled-chan)
     (catch EofException _
@@ -79,7 +83,7 @@
   `async-context`."
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
-  (let [task (bound-fn []
+  (let [task (^:once fn* []
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
@@ -178,14 +182,14 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as options} finished-chan]
+   f {:keys [content-type status headers], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
       (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'ring.servlet/set-headers response headers)
+        (#'common/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
@@ -209,7 +213,7 @@
     (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
-  (respond [this context]
+  (respond [_this context]
     (respond context f options donechan))
 
   ;; sync responses only (in some cases?)
@@ -225,11 +229,11 @@
 ;; TODO -- don't think any of this is needed any mo
 (defn- render [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]
-    (assoc (ring.response/response (if gzip?
-                                     (StreamingResponse. (.f streaming-response)
-                                                         (assoc options :gzip? true)
-                                                         (.donechan streaming-response))
-                                     streaming-response))
+    (assoc (response/response (if gzip?
+                                (StreamingResponse. (.f streaming-response)
+                                                    (assoc options :gzip? true)
+                                                    (.donechan streaming-response))
+                                streaming-response))
            :headers      (cond-> (assoc headers "Content-Type" content-type)
                            gzip? (assoc "Content-Encoding" "gzip"))
            :status       202)))
@@ -263,5 +267,5 @@
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(streaming-response* (fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
+  `(streaming-response* (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))

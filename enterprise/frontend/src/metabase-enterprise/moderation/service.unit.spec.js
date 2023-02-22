@@ -1,3 +1,4 @@
+import { ModerationReviewApi } from "metabase/services";
 import {
   verifyItem,
   removeReview,
@@ -16,8 +17,6 @@ jest.mock("metabase/services", () => ({
     create: jest.fn(() => Promise.resolve({ id: 123 })),
   },
 }));
-
-import { ModerationReviewApi } from "metabase/services";
 
 describe("moderation/service", () => {
   beforeEach(() => {

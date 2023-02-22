@@ -3,13 +3,13 @@
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
 import {
-  NULL_DISPLAY_VALUE,
   NULL_NUMERIC_VALUE,
   TOTAL_ORDINAL_VALUE,
 } from "metabase/lib/constants";
+import { formatNullable } from "metabase/lib/formatting/nullable";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
 import {
   computeTimeseriesDataInverval,
@@ -23,8 +23,6 @@ import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
-import type { Value } from "metabase-types/types/Dataset";
-
 export function initChart(chart, element) {
   // set the bounds
   chart.width(getAvailableCanvasWidth(element));
@@ -37,7 +35,7 @@ export function initChart(chart, element) {
   }
 }
 
-export function makeIndexMap(values: Array<Value>): Map<Value, number> {
+export function makeIndexMap(values) {
   const indexMap = new Map();
   for (const [index, key] of values.entries()) {
     indexMap.set(key, index);
@@ -45,18 +43,10 @@ export function makeIndexMap(values: Array<Value>): Map<Value, number> {
   return indexMap;
 }
 
-type CrossfilterGroup = {
-  top: (n: number) => { key: any, value: any },
-  all: () => { key: any, value: any },
-};
-
 // HACK: This ensures each group is sorted by the same order as xValues,
 // otherwise we can end up with line charts with x-axis labels in the correct order
 // but the points in the wrong order. There may be a more efficient way to do this.
-export function forceSortedGroup(
-  group: CrossfilterGroup,
-  indexMap: Map<Value, number>,
-): void {
+export function forceSortedGroup(group, indexMap) {
   const sorted = group
     .top(Infinity)
     .sort((a, b) => indexMap.get(a.key) - indexMap.get(b.key));
@@ -66,10 +56,7 @@ export function forceSortedGroup(
   group.all = () => sorted;
 }
 
-export function forceSortedGroupsOfGroups(
-  groupsOfGroups: CrossfilterGroup[][],
-  indexMap: Map<Value, number>,
-): void {
+export function forceSortedGroupsOfGroups(groupsOfGroups, indexMap) {
   for (const groups of groupsOfGroups) {
     for (const group of groups) {
       forceSortedGroup(group, indexMap);
@@ -122,7 +109,7 @@ const memoizedParseXValue = _.memoize(
     if (isTimeseries && !isQuantitative) {
       return parseTimestampAndWarn(xValue, unit);
     }
-    const parsedValue = isNumeric ? xValue : String(formatNull(xValue));
+    const parsedValue = isNumeric ? xValue : String(formatNullable(xValue));
     return { parsedValue };
   },
   // create cache key from args
@@ -174,7 +161,13 @@ export function getDatas({ settings, series }, warn) {
 
     return rows.map(row => {
       const [x, ...rest] = row;
-      const newRow = [parseXValue(x, parseOptions, warn), ...rest];
+      const { unit } = parseOptions;
+      const xValue = parseXValue(x, parseOptions, warn);
+      const formattedXValue =
+        xValue && unit && typeof xValue.startOf === "function"
+          ? xValue.startOf(unit)
+          : xValue;
+      const newRow = [formattedXValue, ...rest];
       newRow._origin = row._origin;
       return newRow;
     });
@@ -192,6 +185,9 @@ export function getXValues({ settings, series }) {
     // In the raw series, the dimension isn't necessarily in the first element
     // of each row. This finds the correct column index.
     const columnIndex = getColumnIndex({ settings, data });
+    if (!data.cols[columnIndex]) {
+      continue;
+    }
 
     const parseOptions = getParseOptions({ settings, data });
     let lastValue;
@@ -329,8 +325,8 @@ export function getXInterval({ settings, series }, xValues, warn) {
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     // Get the bin width from binning_info, if available
     // TODO: multiseries?
-    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
-      .binning_info;
+    const binningInfo =
+      getFirstNonEmptySeries(series).data.cols[0].binning_info;
     if (binningInfo) {
       return binningInfo.bin_width;
     }
@@ -411,10 +407,6 @@ export const hasClickBehavior = series =>
 export const isMultiCardSeries = series =>
   series.length > 1 &&
   getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
-
-export function formatNull(value) {
-  return value === null ? NULL_DISPLAY_VALUE : value;
-}
 
 // Hack: for numeric dimensions we have to replace null values
 // with anything else since crossfilter groups merge 0 and null

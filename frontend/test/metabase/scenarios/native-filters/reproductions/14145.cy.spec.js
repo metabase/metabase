@@ -1,7 +1,7 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const filter = {
   id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
@@ -30,25 +30,20 @@ describe.skip("issue 14145", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.addH2SampleDataset({
+    cy.addH2SampleDatabase({
       name: "Sample2",
       auto_run_queries: true,
       is_full_sync: true,
     });
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.visit(`/question/${body.id}`);
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("`field-id` should update when database source is changed (metabase#14145)", () => {
-    // Change the source from "Sample Dataset" to the other database
+    // Change the source from "Sample Database" to the other database
     cy.findByText(/Open Editor/i).click();
 
-    cy.get(".GuiBuilder-data")
-      .as("source")
-      .contains("Sample Dataset")
-      .click();
+    cy.get(".GuiBuilder-data").as("source").contains("Sample Database").click();
     cy.findByText("Sample2").click();
 
     // First assert on the UI
@@ -61,9 +56,8 @@ describe.skip("issue 14145", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset").then(xhr => {
-      const { dimension } = xhr.response.body.json_query.native[
-        "template-tags"
-      ].FILTER;
+      const { dimension } =
+        xhr.response.body.json_query.native["template-tags"].FILTER;
 
       expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
     });

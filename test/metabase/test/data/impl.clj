@@ -1,22 +1,29 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.api.common :as api]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.sync :as sync]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.impl.verify :as verify]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.util.timezone :as tu.tz]
-            [metabase.util :as u]
-            [potemkin :as p]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.api.common :as api]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Field FieldValues Secret Table]]
+   [metabase.models.secret :as secret]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.impl.verify :as verify]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [potemkin :as p]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (comment verify/keep-me)
 
@@ -57,7 +64,7 @@
 
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as database-definition} db]
+  [{:keys [table-definitions], :as _database-definition} db]
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
@@ -86,59 +93,54 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
-(defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
+(defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
     (u/with-timeout create-database-timeout-ms
-      (tu.tz/with-system-timezone-id "UTC"
+      (test.tz/with-system-timezone-id "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
           db                 (db/insert! Database
                                :name    database-name
-                               :engine  (name driver)
+                               :engine  (u/qualified-name driver)
                                :details connection-details)]
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
           (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
                                        "NONE")
-                quick-sync? (not= database-name "test-data")]
+                full-sync? (#{"test-data" "sample-dataset"} database-name)]
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                               (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
+                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [metabase.sync.util/*log-exceptions-and-continue?* false]
-                (sync/sync-database! db (when quick-sync? {:scan :schema})))
+              (binding [sync-util/*log-exceptions-and-continue?* false]
+                (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
                 (catch Throwable e
-                  (println "Error adding extra metadata:" e))))))
+                  (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/the-id db))
+        (db/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
                             :database-name      database-name
                             :connection-details connection-details}
                            e)]
-            (println (u/pprint-to-str 'red (Throwable->map e)))
+            (log/error e "Failed to create test database")
             (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
-      (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
-        (println message "\n" e)
-        (if config/is-test?
-          (System/exit -1)
-          (do
-            (println (u/format-color 'red "create-database! failed; destroying %s database %s" driver (pr-str database-name)))
-            (tx/destroy-db! driver database-definition)
-            (throw (ex-info message
-                            {:driver        driver
-                             :database-name database-name}
-                            e))))))))
+      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
+      (tx/destroy-db! driver database-definition)
+      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
+                      {:driver        driver
+                       :database-name database-name}
+                      e)))))
 
 (defmethod get-or-create-database! :default
   [driver dbdef]
@@ -216,7 +218,7 @@
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
-            {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
+            db-name                          (db/select-one-field :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
         (throw
@@ -273,18 +275,18 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (db/query {:select    [[:source-field.name :source-field]
-                                 [:source-table.name :source-table]
-                                 [:target-field.name   :target-field]
-                                 [:target-table.name   :target-table]]
-                     :from      [[Field :source-field]]
-                     :left-join [[Table :source-table] [:= :source-field.table_id :source-table.id]
-                                 [Field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
-                                 [Table :target-table] [:= :target-field.table_id :target-table.id]]
-                     :where     [:and
-                                 [:= :source-table.db_id old-db-id]
-                                 [:= :target-table.db_id old-db-id]
-                                 [:not= :source-field.fk_target_field_id nil]]})]
+          (mdb.query/query {:select    [[:source-field.name :source-field]
+                                        [:source-table.name :source-table]
+                                        [:target-field.name   :target-field]
+                                        [:target-table.name   :target-table]]
+                            :from      [[:metabase_field :source-field]]
+                            :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                        [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
+                                        [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
+                            :where     [:and
+                                        [:= :source-table.db_id old-db-id]
+                                        [:= :target-table.db_id old-db-id]
+                                        [:not= :source-field.fk_target_field_id nil]]})]
     (db/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
       :fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field))))
 
@@ -292,23 +294,48 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
+(defn- get-linked-secrets
+  [{:keys [details] :as database}]
+  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (let [conn-props (conn-props-fn (driver.u/database->driver database))]
+      (into {}
+            (keep (fn [prop-name]
+                    (let [id-prop (keyword (str prop-name "-id"))]
+                      (when-let [id (get details id-prop)]
+                        [id-prop id]))))
+            (keys (secret/conn-props->secret-props-by-name conn-props))))))
+
+(defn- copy-secrets [database]
+  (let [prop->old-id (get-linked-secrets database)]
+    (if (seq prop->old-id)
+      (let [secrets (db/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+            new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
+            old-id->new-id (zipmap (map :id secrets) new-ids)]
+        (assoc database
+               :details
+               (reduce (fn [details [id-prop old-id]]
+                         (assoc details id-prop (get old-id->new-id old-id)))
+                 (:details database)
+                 prop->old-id)))
+      database)))
+
 (def ^:dynamic *db-is-temp-copy?*
-  "Whether the current test database is a temp copy created with the `with-temp-copy-of-db` macro."
+  "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
 (defn do-with-temp-copy-of-db
-  "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
-  standard test database, and syncs it."
+  "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
+  from the standard test database, and syncs it."
   [f]
-  (let [{old-db-id :id, :as old-db}                            (*get-db*)
-        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
-    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
-      (try
-        (copy-db-tables-and-fields! old-db-id new-db-id)
-        (binding [*db-is-temp-copy?* true]
-          (do-with-db new-db f))
-        (finally
-          (db/delete! Database :id new-db-id))))))
+  (let [{old-db-id :id, :as old-db} (*get-db*)
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+    (try
+      (copy-db-tables-and-fields! old-db-id new-db-id)
+      (binding [*db-is-temp-copy?* true]
+        (do-with-db new-db f))
+      (finally
+        (db/delete! Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -316,8 +343,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn resolve-dataset-definition
-  "Impl for `data/dataset` macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in a
-  namespace."
+  "Impl for [[metabase.test/dataset]] macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in
+  a namespace."
   [namespace-symb symb]
   @(or (ns-resolve namespace-symb symb)
        (do
@@ -327,11 +354,10 @@
                                   namespace-symb symb symb)))))
 
 (defn do-with-dataset
-  "Impl for `data/dataset` macro."
-  {:style/indent 1}
+  "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (memoize
+        get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]

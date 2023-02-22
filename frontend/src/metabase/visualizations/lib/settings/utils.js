@@ -1,10 +1,10 @@
-import { isDimension, isMetric } from "metabase/lib/schema_metadata";
+import _ from "underscore";
 import {
   getFriendlyName,
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
-import _ from "underscore";
+import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {

@@ -62,11 +62,10 @@ export function getTextForReviewBanner(
   moderator,
   currentUser,
 ) {
-  const moderatorName = getModeratorDisplayName(moderator, currentUser);
   const { status } = moderationReview;
 
   if (status === "verified") {
-    const bannerText = t`${moderatorName} verified this`;
+    const bannerText = getModeratorDisplayText(moderator, currentUser);
     const tooltipText = t`Remove verification`;
     return { bannerText, tooltipText };
   }
@@ -74,17 +73,22 @@ export function getTextForReviewBanner(
   return {};
 }
 
-function getModeratorDisplayName(user, currentUser) {
-  const { id: userId, common_name } = user || {};
+export function getModeratorDisplayName(moderator, currentUser) {
+  const { id: moderatorId, common_name } = moderator || {};
   const { id: currentUserId } = currentUser || {};
 
-  if (currentUserId != null && userId === currentUserId) {
+  if (currentUserId != null && moderatorId === currentUserId) {
     return t`You`;
-  } else if (userId != null) {
+  } else if (moderatorId != null) {
     return common_name;
   } else {
     return t`A moderator`;
   }
+}
+
+export function getModeratorDisplayText(moderator, currentUser) {
+  const moderatorName = getModeratorDisplayName(moderator, currentUser);
+  return t`${moderatorName} verified this`;
 }
 
 // a `status` of `null` represents the removal of a review, since we can't delete reviews

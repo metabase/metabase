@@ -1,14 +1,15 @@
 (ns metabase.types-test
-  #?@(:clj
-      [(:require
-        [clojure.test :as t]
-        [metabase.types :as types]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
-      :cljs
-      [(:require
-        [cljs.test :as t :include-macros true]
-        [metabase.types :as types]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
+  #?@
+   (:clj
+    [(:require
+      [clojure.test :as t]
+      [metabase.types :as types]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
+    :cljs
+    [(:require
+      [cljs.test :as t :include-macros true]
+      [metabase.types :as types]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
 
 (comment types/keep-me)
 
@@ -66,6 +67,7 @@
           :cljs @(#'clojure.core/get-global-hierarchy))
        :parents
        keys
+       (filter keyword?)
        (filter #(= (namespace %) (name keyword-namespace)))))
 
 (defn- test-derived-from [a-type {:keys [required disallowed]}]

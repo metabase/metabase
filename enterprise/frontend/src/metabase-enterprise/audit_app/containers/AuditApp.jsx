@@ -1,16 +1,17 @@
+/* eslint-disable react/prop-types */
 import React from "react";
+
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import SidebarLayout from "../components/SidebarLayoutFixedWidth";
 import AuditSidebar from "../components/AuditSidebar";
 
-type Props = {
-  children: React.Element,
-};
+const Layout = fitViewport(SidebarLayout);
 
-const AuditApp = ({ children }: Props) => (
-  <SidebarLayout sidebar={<AuditSidebar />}>
+const AuditApp = ({ children }) => (
+  <Layout sidebar={<AuditSidebar />}>
     <div>{children}</div>
-  </SidebarLayout>
+  </Layout>
 );
 
 export default AuditApp;

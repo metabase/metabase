@@ -1,63 +1,99 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
-import { DASHBOARD_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
-Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
-  ([filter, { value, representativeResult }]) => {
-    describe("scenarios > dashboard > filters > text/category", () => {
-      beforeEach(() => {
-        restore();
-        cy.signInAsAdmin();
+describe("scenarios > dashboard > filters > text/category", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-        mockSessionProperty("field-filter-operators-enabled?", true);
+    visitDashboard(1);
 
-        cy.visit("/dashboard/1");
+    editDashboard();
+  });
 
-        editDashboard();
-        setFilter("Text or Category", filter);
+  it(`should work when set through the filter widget`, () => {
+    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
+      setFilter("Text or Category", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
-        popover()
-          .contains("Source")
-          .click();
-      });
-
-      it(`should work for "${filter}" when set through the filter widget`, () => {
-        saveDashboard();
-
-        filterWidget().click();
-        addWidgetStringFilter(value);
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-
-      it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
-
-        addWidgetStringFilter(value);
-
-        saveDashboard();
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
+      cy.findByText("Select…").click();
+      popover().contains("Source").click();
     });
-  },
-);
+
+    saveDashboard();
+
+    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
+      ([filter, { value, representativeResult }], index) => {
+        filterWidget().eq(index).click();
+        applyFilterByType(filter, value);
+
+        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.get(".Card").within(() => {
+          cy.contains(representativeResult);
+        });
+
+        clearFilter(index);
+      },
+    );
+  });
+
+  it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
+    setFilter("Text or Category", "Is");
+
+    cy.findByText("Select…").click();
+    popover().contains("Source").click();
+
+    cy.findByText("Default value").next().click();
+
+    applyFilterByType("Is", "Organic");
+
+    // We need to add another filter only to reproduce metabase#13960
+    setFilter("ID");
+    cy.findByText("Select…").click();
+    popover().contains("User ID").click();
+
+    saveDashboard();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=Organic");
+    cy.get(".Card").within(() => {
+      cy.contains("39.58");
+    });
+
+    // This part reproduces metabase#13960
+    // Remove default filter (category)
+    cy.get("fieldset .Icon-close").click();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=");
+
+    filterWidget().contains("ID").click();
+    cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
+    cy.button("Add filter").click();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=&id=4");
+
+    cy.reload();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=&id=4");
+    filterWidget().contains("Text");
+    filterWidget().contains("Arnold Adams");
+  });
+});
+
+function clearFilter(index = 0) {
+  filterWidget().eq(index).find(".Icon-close").click();
+  cy.wait("@dashcardQuery1");
+}

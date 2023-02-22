@@ -1,7 +1,9 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -10,15 +12,13 @@ const testQuery = {
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }]],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 describe("visual tests > visualizations > row", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with formatted x-axis", () => {
@@ -33,8 +33,6 @@ describe("visual tests > visualizations > row", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

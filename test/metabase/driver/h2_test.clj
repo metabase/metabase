@@ -1,17 +1,25 @@
 (ns metabase.driver.h2-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.db.spec :as db.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -30,7 +38,11 @@
 
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
-           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws")))))
+           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws"))))
+
+  (testing "Check that we override the INIT connection string option"
+    (is (= "file:my-file;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+           (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
 
 (deftest db-details->user-test
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
@@ -49,38 +61,42 @@
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLException e
-                  (and (re-matches #"Database .+ not found .+" (.getMessage e))
+                (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException e
+                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
                        ::exception-thrown)))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :h2
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    ;; [[driver/db-default-timezone]] returns `nil`. This *probably* doesn't make sense. We should go in an fix it, by
+    ;; implementing [[metabase.driver.sql-jdbc.sync.interface/db-default-timezone]], which is what the default
+    ;; `:sql-jdbc` implementation of `db-default-timezone` hands off to. In the mean time, here is a placeholder test we
+    ;; can update when things are fixed.
+    (is (= nil
+           (driver/db-default-timezone :h2 (mt/db))))))
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
     (mt/with-temp Database [db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"^Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
            (qp/process-query {:database (:id db)
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd
-             (hx/literal "millisecond")
-             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
-             :%now)
+    (is (= (hx/call :dateadd
+                    (hx/literal "millisecond")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100500.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd
-             (hx/literal "second")
-             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
-             :%now)
+    (is (= (hx/call :dateadd
+                    (hx/literal "second")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -103,17 +119,17 @@
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
-               :base_type    :type/DateTime
-               :effective_type :type/DateTime
+               :base_type    :type/Date
+               :effective_type :type/Date
                :source       :native
-               :field_ref    [:field "D" {:base-type :type/DateTime}]
+               :field_ref    [:field "D" {:base-type :type/Date}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
 (deftest timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
-           (jdbc/query (db.spec/h2 {:db "mem:test_db"})
+           (jdbc/query (mdb.spec/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest native-query-parameters-test
@@ -127,6 +143,7 @@
                             :template-tags {"date" {:name         "date"
                                                     :display-name "date"
                                                     :type         :dimension
+                                                    :widget-type  :date/all-options
                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]
@@ -144,8 +161,37 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, COUNT(*) AS count "
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))
+
+(deftest classify-ddl-test
+  (mt/test-driver :h2
+    (are [query] (= false (#'h2/contains-ddl? (u/the-id (mt/db)) query))
+      "select 1"
+      "update venues set name = 'bill'"
+      "delete venues"
+      "select 1;
+       update venues set name = 'bill';
+       delete venues;")
+
+    (is (= nil (#'h2/check-disallow-ddl-commands
+                {:database (u/the-id (mt/db))
+                 :engine :h2
+                 :native {:query (str/join "; "
+                                           ["select 1"
+                                            "update venues set name = 'bill'"
+                                            "delete venues"])}})))
+    (let [trigger-creation-attempt
+          (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                          "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                          "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
+      (is (thrown?
+           IllegalArgumentException
+           #"DDL commands are not allowed to be used with h2."
+           (#'h2/check-disallow-ddl-commands
+            {:database (u/the-id (mt/db))
+             :engine :h2
+             :native {:query trigger-creation-attempt}}))))))

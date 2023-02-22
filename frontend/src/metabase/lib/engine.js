@@ -1,4 +1,10 @@
+import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
+
+export function getDefaultEngine() {
+  const engines = Object.keys(Settings.get("engines"));
+  return engines.includes("postgres") ? "postgres" : engines[0];
+}
 
 export function getEngineNativeType(engine) {
   switch (engine) {
@@ -9,6 +15,10 @@ export function getEngineNativeType(engine) {
     default:
       return "sql";
   }
+}
+
+export function getNativeQueryLanguage(engine) {
+  return getEngineNativeType(engine).toUpperCase();
 }
 
 export function getEngineNativeAceMode(engine) {
@@ -28,22 +38,66 @@ export function getEngineNativeAceMode(engine) {
   }
 }
 
-export function getEngineNativeRequiresTable(engine) {
-  return engine === "mongo";
+export function getEngineLogo(engine) {
+  const path = `app/assets/img/drivers`;
+
+  switch (engine) {
+    case "bigquery":
+    case "druid":
+    case "googleanalytics":
+    case "h2":
+    case "mongo":
+    case "mysql":
+    case "oracle":
+    case "postgres":
+    case "redshift":
+    case "snowflake":
+    case "sparksql":
+    case "sqlite":
+    case "sqlserver":
+    case "vertica":
+      return `${path}/${engine}.svg`;
+    case "bigquery-cloud-sdk":
+      return `${path}/bigquery.svg`;
+    case "presto-jdbc":
+      return `${path}/presto.svg`;
+    case "starburst":
+      return `${path}/starburst.svg`;
+  }
+}
+
+export function getElevatedEngines() {
+  return [
+    "mysql",
+    "postgres",
+    "sqlserver",
+    "redshift",
+    "bigquery-cloud-sdk",
+    "snowflake",
+  ];
+}
+
+export function getEngineSupportsFirewall(engine) {
+  return engine !== "googleanalytics";
 }
 
 export function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
-  } else {
-    return JSON.stringify(query);
   }
+
+  return JSON.stringify(query, null, 2);
 }
 
 export function formatNativeQuery(query, engine) {
   return getEngineNativeType(engine) === "json"
     ? formatJsonQuery(query, engine)
     : formatSQL(query);
+}
+
+export function isDeprecatedEngine(engine) {
+  const engines = Settings.get("engines", {});
+  return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
 const GA_ORDERED_PARAMS = [

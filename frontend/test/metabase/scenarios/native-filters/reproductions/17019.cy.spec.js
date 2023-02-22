@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/helpers";
 
 const question = {
   name: "17019",
@@ -7,7 +7,7 @@ const question = {
     "template-tags": {
       foo: {
         id: "08edf340-3d89-cfb1-b7f0-073b9eca6a32",
-        name: "filter",
+        name: "foo",
         "display-name": "Filter",
         type: "text",
       },
@@ -22,13 +22,10 @@ describe("issue 17019", () => {
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(question).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
       // Enable sharing
       cy.request("POST", `/api/card/${id}/public_link`);
 
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
+      visitQuestion(id);
     });
   });
 

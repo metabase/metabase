@@ -1,21 +1,25 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
-  (:require [bigml.histogram.core :as hist]
-            [java-time :as t]
-            [kixi.stats.core :as stats]
-            [kixi.stats.math :as math]
-            [medley.core :as m]
-            [metabase.sync.analyze.classifiers.name :as classify.name]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [redux.core :as redux])
-  (:import com.bigml.histogram.Histogram
-           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
-           java.time.temporal.Temporal
-           java.time.ZoneOffset))
+  (:require
+   [bigml.histogram.core :as hist]
+   [java-time :as t]
+   [kixi.stats.core :as stats]
+   [kixi.stats.math :as math]
+   [medley.core :as m]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [redux.core :as redux])
+  (:import
+   (com.bigml.histogram Histogram)
+   (com.clearspring.analytics.stream.cardinality HyperLogLogPlus)
+   (java.time ZoneOffset)
+   (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -95,7 +99,7 @@
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
   {:arglists '([field])}
-  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit], :as field}]
+  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit]}]
     [(cond
        (u.date/extract-units unit)
        :type/Integer
@@ -209,16 +213,9 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (hist/insert-simple! histogram x)))
 
-(defn real-number?
-  "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
-  [x]
-  (and (number? x)
-       (not (Double/isNaN x))
-       (not (Double/isInfinite x))))
-
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((filter real-number?) histogram)
+   ((filter u/real-number?) histogram)
    (fn [h]
      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
        (robust-map
@@ -263,4 +260,4 @@
                      (cond-> field
                        ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classify.name/infer-semantic-type field)))))))
+                       (assoc :semantic_type (classifiers.name/infer-semantic-type field)))))))

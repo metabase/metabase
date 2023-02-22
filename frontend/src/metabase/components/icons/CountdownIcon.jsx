@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { IconRoot } from "./CountdownIcon.styled";
 
 const CountdownIcon = ({
   percent = 0.75,
@@ -7,7 +8,7 @@ const CountdownIcon = ({
   height = 20,
   className,
 }) => (
-  <svg
+  <IconRoot
     width={width}
     height={height}
     className={className}
@@ -27,7 +28,7 @@ const CountdownIcon = ({
       strokeWidth="32"
       strokeDasharray={percent * 100 + " 100"}
     />
-  </svg>
+  </IconRoot>
 );
 
 export default CountdownIcon;

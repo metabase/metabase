@@ -1,16 +1,17 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [clojure.test :refer :all]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
@@ -73,9 +74,9 @@
                                      {:aggregation [[:count]]
                                       :breakout    [$category_id]
                                       :limit       5})))]
-        (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID")
+        (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
                 (qp.test/aggregate-col :count)
-                (#'add-dim-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]
+                (#'qp.add-dimension-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
                cols))
         (is (= [[2 8 "American"]
                 [3 2 "Artisan"]
@@ -198,16 +199,15 @@
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
-    (mt/suppress-output
-      (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-        (is (= {:status :failed
-                :class  clojure.lang.ExceptionInfo
-                :error  "Unable to bin Field without a min/max value"}
-               (-> (qp/process-userland-query
-                    (mt/mbql-query venues
-                      {:aggregation [[:count]]
-                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
-                   (select-keys [:status :class :error]))))))))
+    (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+      (is (= {:status :failed
+              :class  clojure.lang.ExceptionInfo
+              :error  "Unable to bin Field without a min/max value"}
+             (-> (qp/process-userland-query
+                  (mt/mbql-query venues
+                                 {:aggregation [[:count]]
+                                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
+                 (select-keys [:status :class :error])))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id
@@ -224,9 +224,11 @@
       (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
                                 (mt/mbql-query nil
                                   {:source-query {:source-table $$venues}}))]
-        (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
-               (mt/formatted-rows [1.0 int]
-                 (qp/process-query (nested-venues-query card)))))))
+        (let [query (nested-venues-query card)]
+          (mt/with-native-query-testing-context query
+            (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+                   (mt/formatted-rows [1.0 int]
+                     (qp/process-query query))))))))
 
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]

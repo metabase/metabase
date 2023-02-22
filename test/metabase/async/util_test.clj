@@ -1,8 +1,11 @@
 (ns metabase.async.util-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.async.util :as async.u]
-            [metabase.test.util.async :as tu.async]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.async.util :as async.u]
+   [metabase.test.util.async :as tu.async]))
+
+(set! *warn-on-reflection* true)
 
 (deftest promise-chan?-test
   (doseq [[x expected] {(a/promise-chan) true
@@ -27,16 +30,16 @@
                                   out-chan (a/promise-chan)]
       (async.u/promise-pipe in-chan out-chan)
       (a/close! out-chan)
-      (is (= true
-             (boolean (tu.async/wait-for-close in-chan 100))))))
+      (is (= nil
+             (tu.async/wait-for-result in-chan 100)))))
 
   (testing "`promise-pipe` should close output-chan if input-chan is closed"
     (tu.async/with-open-channels [in-chan  (a/promise-chan)
                                   out-chan (a/promise-chan)]
       (async.u/promise-pipe in-chan out-chan)
       (a/close! in-chan)
-      (is (= true
-             (tu.async/wait-for-close out-chan 100)))))
+      (is (= nil
+             (tu.async/wait-for-result out-chan 100)))))
 
   (testing "if you are a knucklehead and write directly to out-chan it should close `in-chan`"
     (tu.async/with-open-channels [in-chan  (a/promise-chan)

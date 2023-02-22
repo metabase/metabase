@@ -1,37 +1,17 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import cx from "classnames";
-import styles from "./FunnelNormal.css";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
-import { normal } from "metabase/lib/colors";
-
-const DEFAULT_COLORS = Object.values(normal);
-
-import type {
-  VisualizationProps,
-  HoverObject,
-  ClickObject,
-} from "metabase-types/types/Visualization";
-
-type StepInfo = {
-  value: number,
-  graph: {
-    startBottom: number,
-    startTop: number,
-    endBottom: number,
-    endTop: number,
-  },
-  hovered?: HoverObject,
-  clicked?: ClickObject,
-};
+import { color } from "metabase/lib/colors";
+import styles from "./FunnelNormal.css";
 
 export default class FunnelNormal extends Component {
-  props: VisualizationProps;
-
   render() {
     const {
       className,
@@ -47,7 +27,11 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    const rows: number[][] = series.map(s => s.data.rows[0]);
+    const rows = settings["funnel.rows"]
+      ? settings["funnel.rows"]
+          .filter(fr => fr.enabled)
+          .map(fr => findSeriesByKey(series, fr.key).data.rows[0])
+      : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;
     const isShort = gridSize && gridSize.height <= 5;
@@ -68,7 +52,7 @@ export default class FunnelNormal extends Component {
     const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 
     // Initial infos (required for step calculation)
-    let infos: StepInfo[] = [
+    let infos = [
       {
         value: rows[0][metricIndex],
         graph: {
@@ -80,7 +64,7 @@ export default class FunnelNormal extends Component {
       },
     ];
 
-    let remaining: number = rows[0][metricIndex];
+    let remaining = rows[0][metricIndex];
 
     rows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
@@ -124,6 +108,7 @@ export default class FunnelNormal extends Component {
               column: cols[dimensionIndex],
             },
           ],
+          settings,
         },
       };
     });
@@ -137,6 +122,7 @@ export default class FunnelNormal extends Component {
 
     return (
       <div
+        data-testid="funnel-chart"
         className={cx(className, styles.Funnel, "flex", {
           [styles["Funnel--narrow"]]: isNarrow,
           p1: isSmall,
@@ -146,7 +132,10 @@ export default class FunnelNormal extends Component {
         <div
           className={cx(styles.FunnelStep, styles.Initial, "flex flex-column")}
         >
-          <Ellipsified className={styles.Head}>
+          <Ellipsified
+            className={styles.Head}
+            data-testid="funnel-chart-header"
+          >
             {formatDimension(rows[0][dimensionIndex])}
           </Ellipsified>
           <div className={styles.Start}>
@@ -154,7 +143,7 @@ export default class FunnelNormal extends Component {
               {formatMetric(rows[0][metricIndex])}
             </div>
             <div className={styles.Subtitle}>
-              {getFriendlyName(cols[dimensionIndex])}
+              {getFriendlyName(cols[metricIndex])}
             </div>
           </div>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
@@ -163,33 +152,41 @@ export default class FunnelNormal extends Component {
             <div className={styles.Subtitle}>&nbsp;</div>
           </div>
         </div>
-        {infos.slice(1).map((info, index) => (
-          <div
-            key={index}
-            className={cx(styles.FunnelStep, "flex flex-column")}
-          >
-            <Ellipsified className={styles.Head}>
-              {formatDimension(rows[index + 1][dimensionIndex])}
-            </Ellipsified>
-            <GraphSection
-              className={cx({ "cursor-pointer": isClickable })}
-              index={index}
-              info={info}
-              infos={infos}
-              hovered={hovered}
-              onHoverChange={onHoverChange}
-              onVisualizationClick={isClickable ? onVisualizationClick : null}
-            />
-            <div className={styles.Infos}>
-              <Ellipsified className={styles.Title}>
-                {formatPercent(info.value / initial.value)}
+        {infos.slice(1).map((info, index) => {
+          const stepPercentage =
+            initial.value > 0 ? info.value / initial.value : 0;
+
+          return (
+            <div
+              key={index}
+              className={cx(styles.FunnelStep, "flex flex-column")}
+            >
+              <Ellipsified
+                className={styles.Head}
+                data-testid="funnel-chart-header"
+              >
+                {formatDimension(rows[index + 1][dimensionIndex])}
               </Ellipsified>
-              <Ellipsified className={styles.Subtitle}>
-                {formatMetric(rows[index + 1][metricIndex])}
-              </Ellipsified>
+              <GraphSection
+                className={cx({ "cursor-pointer": isClickable })}
+                index={index}
+                info={info}
+                infos={infos}
+                hovered={hovered}
+                onHoverChange={onHoverChange}
+                onVisualizationClick={isClickable ? onVisualizationClick : null}
+              />
+              <div className={styles.Infos}>
+                <Ellipsified className={styles.Title}>
+                  {formatPercent(stepPercentage)}
+                </Ellipsified>
+                <Ellipsified className={styles.Subtitle}>
+                  {formatMetric(rows[index + 1][metricIndex])}
+                </Ellipsified>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -202,14 +199,6 @@ const GraphSection = ({
   onHoverChange,
   onVisualizationClick,
   className,
-}: {
-  className?: string,
-  index: number,
-  info: StepInfo,
-  infos: StepInfo[],
-  hovered: ?HoverObject,
-  onVisualizationClick: ?(clicked: ?ClickObject) => void,
-  onHoverChange: (hovered: ?HoverObject) => void,
 }) => {
   return (
     <div className="relative full-height">
@@ -239,7 +228,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={DEFAULT_COLORS[0]}
+          fill={color("brand")}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

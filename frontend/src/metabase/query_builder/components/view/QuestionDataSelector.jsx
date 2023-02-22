@@ -1,21 +1,24 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
-export default function QuestionDataSelector({ query, triggerElement }) {
+export default function QuestionDataSelector({
+  query,
+  updateQuestion,
+  triggerElement,
+}) {
   return (
-    <DatabaseSchemaAndTableDataSelector
+    <DataSourceSelector
       containerClassName="DataPopoverContainer"
       hasTableSearch
       databaseQuery={{ saved: true }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
-        query
-          .setTableId(tableId)
-          .setDefaultQuery()
-          .update(null, { run: true })
+        updateQuestion(query.setTableId(tableId).setDefaultQuery().question(), {
+          run: true,
+        })
       }
       triggerElement={triggerElement}
       isOpen

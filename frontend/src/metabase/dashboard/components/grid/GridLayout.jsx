@@ -44,20 +44,20 @@ function GridLayout({
     setCurrentBreakpoint(newBreakpoint);
   }, []);
 
-  const margin = useMemo(() => marginMap[currentBreakpoint], [
-    marginMap,
-    currentBreakpoint,
-  ]);
+  const margin = useMemo(
+    () => marginMap[currentBreakpoint],
+    [marginMap, currentBreakpoint],
+  );
 
-  const layout = useMemo(() => layouts[currentBreakpoint], [
-    layouts,
-    currentBreakpoint,
-  ]);
+  const layout = useMemo(
+    () => layouts[currentBreakpoint],
+    [layouts, currentBreakpoint],
+  );
 
-  const cols = useMemo(() => columnsMap[currentBreakpoint], [
-    columnsMap,
-    currentBreakpoint,
-  ]);
+  const cols = useMemo(
+    () => columnsMap[currentBreakpoint],
+    [columnsMap, currentBreakpoint],
+  );
 
   const cellSize = useMemo(() => {
     const marginSlotsCount = cols - 1;
@@ -78,9 +78,10 @@ function GridLayout({
         item,
         gridItemWidth,
         breakpoint: currentBreakpoint,
+        totalNumGridCols: cols,
       });
     },
-    [layout, cellSize, itemRenderer, currentBreakpoint],
+    [layout, cellSize, itemRenderer, currentBreakpoint, cols],
   );
 
   const height = useMemo(() => {

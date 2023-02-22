@@ -2,12 +2,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Popover from "metabase/components/Popover";
-import Icon from "metabase/components/Icon";
-import SearchBar from "./SearchBar";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import Popover from "metabase/components/Popover";
+import Icon from "metabase/components/Icon";
+import SearchBar from "./SearchBar";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {
@@ -18,6 +18,8 @@ export default class SelectionModule extends Component {
     this.onClose = this.onClose.bind(this);
     // a selection module can be told to be open on initialization but otherwise is closed
     const isInitiallyOpen = props.isInitiallyOpen || false;
+
+    this.rootRef = React.createRef();
 
     this.state = {
       open: isInitiallyOpen,
@@ -95,7 +97,7 @@ export default class SelectionModule extends Component {
 
   _displayCustom(values) {
     const custom = [];
-    this.props.children.forEach(function(element) {
+    this.props.children.forEach(function (element) {
       const newElement = element;
       newElement.props.children = values[newElement.props.content];
       custom.push(element);
@@ -112,7 +114,7 @@ export default class SelectionModule extends Component {
         sourceItems = sourceItems.filter(this.props.expandFilter);
       }
 
-      const items = sourceItems.map(function(item, index) {
+      const items = sourceItems.map(function (item, index) {
         const display = item ? item[this.props.display] || item : item;
         const itemClassName = cx({
           SelectionItem: true,
@@ -210,6 +212,7 @@ export default class SelectionModule extends Component {
 
       return (
         <Popover
+          target={this.rootRef.current}
           className={"SelectionModule " + this.props.className}
           onClose={this.onClose}
         >
@@ -226,7 +229,7 @@ export default class SelectionModule extends Component {
 
   render() {
     let selection;
-    this.props.items.forEach(function(item) {
+    this.props.items.forEach(function (item) {
       if (this._itemIsSelected(item)) {
         selection = item[this.props.display];
       }
@@ -254,7 +257,10 @@ export default class SelectionModule extends Component {
     }
 
     return (
-      <div className={moduleClasses + " " + this.props.className}>
+      <div
+        className={moduleClasses + " " + this.props.className}
+        ref={this.rootRef}
+      >
         <div className="SelectionModule-trigger flex align-center">
           <a
             className="QueryOption p1 flex align-center"

@@ -1,22 +1,26 @@
-(ns metabase.util.ssh-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.ssh :as ssh])
-  (:import [java.io BufferedReader InputStreamReader PrintWriter]
-           [java.net InetSocketAddress ServerSocket Socket]
-           org.apache.sshd.server.forward.AcceptAllForwardingFilter
-           org.apache.sshd.server.SshServer
-           org.h2.tools.Server))
+(ns ^:mb/once metabase.util.ssh-test
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (java.io BufferedReader InputStreamReader PrintWriter)
+   (java.net InetSocketAddress ServerSocket Socket)
+   (org.apache.sshd.server SshServer)
+   (org.apache.sshd.server.forward AcceptAllForwardingFilter)
+   (org.h2.tools Server)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")
@@ -27,8 +31,8 @@
 (def ^:private ssh-key-with-passphrase "test_resources/ssh/ssh_test_passphrase")
 (def ^:private ssh-key-passphrase "Password1234")
 (def ^:private ssh-mock-server-with-password-port 12221)
-(def ^:private ssh-mock-server-with-publickey-port 12222)
-(def ^:private ssh-mock-server-with-publickey-passphrase-port 12223)
+(def ^:private ssh-mock-server-with-publickey-port 12222)   ; ED25519 pubkey
+(def ^:private ssh-mock-server-with-publickey-passphrase-port 12223) ; RSA pubkey
 
 ;;--------------
 ;; mock ssh server fixtures
@@ -39,7 +43,7 @@
   []
   (try
     (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ username password session]
+                             (authenticate [_ username password _session]
                                (and
                                 (= username ssh-username)
                                 (= password ssh-password))))
@@ -90,7 +94,7 @@
 
 (defn- start-mock-servers! []
   (try
-    (doseq [start-server! [#(start-ssh-mock-server-with-password!)
+    (doseq [start-server! [start-ssh-mock-server-with-password!
                            #(start-ssh-mock-server-with-public-key!
                              ssh-publickey ssh-mock-server-with-publickey-port)
                            #(start-ssh-mock-server-with-public-key!
@@ -105,9 +109,8 @@
 (defn- do-with-mock-servers [thunk]
   (try
     (stop-mock-servers!)
-    (try
-      (start-mock-servers!)
-      (thunk))
+    (start-mock-servers!)
+    (thunk)
     (finally
       (stop-mock-servers!))))
 
@@ -119,7 +122,7 @@
 
 ;; correct password
 (deftest connects-with-correct-password
-  (ssh/start-ssh-tunnel!
+  (#'ssh/start-ssh-tunnel!
    {:tunnel-user ssh-username
     :tunnel-host "127.0.0.1"
     :tunnel-port ssh-mock-server-with-password-port
@@ -131,7 +134,7 @@
 (deftest throws-exception-on-incorrect-password
   (is (thrown?
        org.apache.sshd.common.SshException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user ssh-username
          :tunnel-host "127.0.0.1"
          :tunnel-port ssh-mock-server-with-password-port
@@ -142,7 +145,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key
   (is (some?
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -154,7 +157,7 @@
 (deftest throws-exception-on-incorrect-ssh-key
   (is (thrown?
        org.apache.sshd.common.SshException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -165,7 +168,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key-and-passphrase
   (is (some?
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
@@ -177,7 +180,7 @@
 (deftest throws-exception-on-incorrect-ssh-key-and-passphrase
   (is (thrown?
        java.io.StreamCorruptedException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port

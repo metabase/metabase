@@ -1,28 +1,34 @@
 (ns metabase.driver.sql.parameters.substitute-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.parse :as parse]
-            [metabase.driver.sql.parameters.substitute :as substitute]
-            [metabase.mbql.normalize :as normalize]
-            [metabase.models :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.parameters.native :as native]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
-(defn- optional [& args] (i/->Optional args))
-(defn- param [param-name] (i/->Param param-name))
+(defn- optional [& args] (params/->Optional args))
+(defn- param [param-name] (params/->Param param-name))
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
-    (substitute/substitute parsed param->value)))
+    (mt/with-everything-store
+      (sql.params.substitute/substitute parsed param->value))))
 
-(deftest substitute-test
+(deftest ^:parallel substitute-test
   (testing "normal substitution"
     (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
            (substitute
@@ -76,36 +82,36 @@
 
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
 
-(defn- date-field-filter-value
+(defn date-field-filter-value
   "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain
   information about"
   []
-  (i/map->FieldFilter
-   {:field (Field (mt/id :checkins :date))
+  (params/map->FieldFilter
+   {:field (db/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
-(deftest substitute-field-filter-test
+(deftest ^:parallel substitute-field-filter-test
   (testing "field-filters"
     (testing "non-optional"
       (let [query ["select * from checkins where " (param "date")]]
         (testing "param is present"
-          (is (= ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+          (is (= ["select * from checkins where \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?"
                   [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from checkins where 1 = 1" []]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)}))
               "should be replaced with 1 = 1"))))
     (testing "optional"
       (let [query ["select * from checkins " (optional "where " (param "date"))]]
         (testing "param is present"
-          (is (= ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+          (is (= ["select * from checkins where \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?"
                   [#t "2019-09-20T19:52:00.000-07:00"]]
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from checkins" nil]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)})))))))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)})))))))
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
@@ -114,98 +120,186 @@
                  2
                  [:string/contains         {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
                                                        ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NOT (\"PUBLIC\".\"VENUES\".\"NAME\" like ?) OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                                        "  )"]
                                                        ["%foo%"]]}
                   :string/starts-with      {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
                                                        ["foo%"]]}
                   :string/=                {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" = ?"
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"]
                                                        ["foo"]]}
                   :string/=                {:field    :name
                                             :value    ["foo" "bar" "baz"]
-                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" = ? OR \"PUBLIC\".\"VENUES\".\"NAME\" = ? "
-                                                            "OR \"PUBLIC\".\"VENUES\".\"NAME\" = ?)")
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                                        "  )"]
                                                        ["foo" "bar" "baz"]]}
                   :string/!=               {:field    :name
                                             :value    ["foo" "bar"]
-                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL))")
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    ("
+                                                        "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
+                                                        "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                                        "    )"
+                                                        "    AND ("
+                                                        "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
+                                                        "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                                        "    )"
+                                                        "  )"]
                                                        ["foo" "bar"]]}
                   :number/=                {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" = 1" ()]}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"]
+                                                       []]}
                   :number/=                {:field    :price
                                             :value    [1 2 3]
-                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 2 "
-                                                            "OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 3)")
-                                                       ()]}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 2)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3)"
+                                                        "  )"]
+                                                       []]}
                   :number/!=               {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)" ()]}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                                        "  )"]
+                                                       []]}
                   :number/!=               {:field    :price
                                             :value    [1 2 3]
-                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL))")
-                                                       ()]}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    ("
+                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
+                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                                        "    )"
+                                                        "    AND ("
+                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2)"
+                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                                        "    )"
+                                                        "    AND ("
+                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3)"
+                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                                        "    )"
+                                                        "  )"]
+                                                       []]}
                   :number/>=               {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" >= 1" ()]}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (\"PUBLIC\".\"VENUES\".\"PRICE\" >= 1)"]
+                                                       []]}
                   :number/between          {:field    :price
                                             :value    [1 3]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}])]
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3"]
+                                                       []]}])]
           (testing operator
             (is (= expected
-                   (substitute query {"param" (i/map->FieldFilter
-                                               {:field (Field (mt/id :venues field))
-                                                :value {:type  operator
-                                                        :value value}})})))))))
-    (testing "Throws if not enabled (#15488)"
-      (with-redefs [i/field-filter-operators-enabled? (constantly false)]
-        (is (= :invalid-parameter
-               (try
-                 (substitute ["select * from venues where " (param "param")]
-                             {"param" (i/map->FieldFilter
-                                       {:field (Field (mt/id :venues :price))
-                                        :value {:type  :number/>=
-                                                :value [3]}})})
-                 (catch Exception e (:type (ex-data e))))))))))
-
+                   (-> (substitute query {"param" (params/map->FieldFilter
+                                                   {:field (db/select-one Field :id (mt/id :venues field))
+                                                    :value {:type  operator
+                                                            :value value}})})
+                       vec
+                       (update 0 mdb.query/format-sql :h2)
+                       (update 0 str/split-lines))))))))))
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
-(deftest substitute-referenced-card-query-test
+(deftest ^:parallel substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
+             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
-(deftest substitute-native-query-snippets-test
+(deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (qp.test-util/with-everything-store
-                           (#'substitute/substitute (parse/parse sql) (into {} params))))]
+                         (binding [hx/*honey-sql-version* 2]
+                           (qp.test-util/with-everything-store
+                             (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params)))))]
     {:query query, :params (vec params)}))
 
-(deftest basic-substitution-test
+(deftest ^:parallel basic-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -229,7 +323,7 @@
 
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
-(deftest optional-substitution-test
+(deftest ^:parallel optional-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
@@ -356,17 +450,18 @@
   "Expand parameters inside a top-level native `query`. Not recursive. "
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
-    (qp.test-util/with-everything-store
-      (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
-        (assoc query :native inner')))))
+    (binding [hx/*honey-sql-version* 2]
+      (qp.test-util/with-everything-store
+        (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
+          (assoc query :native inner'))))))
 
 (defn- expand* [query]
-  (-> (expand** (normalize/normalize query))
+  (-> (expand** (mbql.normalize/normalize query))
       :native
       (select-keys [:query :params :template-tags])
       (update :params vec)))
 
-(deftest expand-variables-test
+(deftest ^:parallel expand-variables-test
   ;; unspecified optional param
   (is (= {:query  "SELECT * FROM orders ;"
           :params []}
@@ -418,13 +513,14 @@
 
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
-   (t/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
      (-> {:native     {:query
                        sql
                        :template-tags {"date" {:name         "date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
-                                               :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                               :widget-type  :date/all-options
+                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
                                 field-filter-param)])}
@@ -433,73 +529,73 @@
 
 (deftest expand-field-filters-test
   (testing "dimension (date/single)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
             :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
   (testing "dimension (date/range)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-07-01"
                      #t "2016-08-01"]}
            (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
   (testing "dimension (date/month-year)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-07-01"
                      #t "2016-07-31"]}
            (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
   (testing "dimension (date/quarter-year)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-01-01"
                      #t "2016-03-31"]}
            (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
   (testing "dimension (date/all-options, before)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?;"
             :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
   (testing "dimension (date/all-options, after)"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" > ?;"
             :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
   (testing "relative date — 'yesterday'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
             :params [#t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
   (testing "relative date — 'past7days'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-05-31"
                      #t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
   (testing "relative date — 'past30days'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-05-08"
                      #t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
   (testing "relative date — 'thisweek'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-06-05"
                      #t "2016-06-11"]}
            (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
   (testing "relative date — 'thismonth'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-06-01"
                      #t "2016-06-30"]}
            (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
   (testing "relative date — 'thisyear'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-01-01"
                      #t "2016-12-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
   (testing "relative date — 'lastweek'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-05-29"
                      #t "2016-06-04"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
   (testing "relative date — 'lastmonth'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2016-05-01"
                      #t "2016-05-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
   (testing "relative date — 'lastyear'"
-    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
             :params [#t "2015-01-01"
                      #t "2015-12-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
@@ -530,8 +626,8 @@
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
-  (let [sql (:query (qp/query->native (mt/mbql-query checkins)))]
-    (second (re-find #"FROM\s([^\s()]+)" sql))))
+  (let [sql (:query (qp/compile (mt/mbql-query checkins)))]
+    (second (re-find #"(?m)FROM\s+([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -545,7 +641,7 @@
   (qp/process-query
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
-(deftest e2e-basic-test
+(deftest ^:paralllel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
@@ -555,12 +651,13 @@
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                              :widget-type  :date/range
+                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
                  :parameters [{:type   :date/range
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-04-01~2015-05-01"}])))))))
 
-(deftest e2e-no-parameter-test
+(deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
@@ -571,10 +668,11 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :widget-type  :date/all-options
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters []))))))))
 
-(deftest e2e-relative-dates-test
+(deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
@@ -588,12 +686,13 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :widget-type  :date/relative
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/relative
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
 
-(deftest e2e-combine-multiple-filters-test
+(deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
@@ -605,7 +704,8 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :widget-type  :date/all-options
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/range
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "2015-01-01~2016-09-01"}
@@ -616,9 +716,6 @@
 (deftest e2e-parse-native-dates-test
   (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
     (is (= [(cond
-              (= driver/*driver* :presto)
-              "2018-04-18"
-
               ;; TIMEZONE FIXME — Busted
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
@@ -632,9 +729,6 @@
              (mt/first-row
                (process-native
                  :native     {:query (case driver/*driver*
-                                       :bigquery
-                                       "SELECT {{date}} as date"
-
                                        :oracle
                                        "SELECT cast({{date}} as date) from dual"
 
@@ -644,15 +738,16 @@
         "Native dates should be parsed with the report timezone")))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
-(deftest param-expansion-test
-  (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?",
+(deftest ^:parallel param-expansion-test
+  (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?",
           :params [#t "2017-03-01"
                    #t "2017-03-31"]}
          (expand* {:native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
                                 :template-tags {"created_at" {:name         "created_at"
                                                               :display-name "Created At"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                              :widget-type  :date/all-options
+                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
                                  :value  "2017-03"}]})))
@@ -703,10 +798,10 @@
 
 (deftest expand-field-filter-relative-dates-test
   (testing "Make sure relative date forms like `past5days` work correctly with Field Filters"
-    (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+    (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
       (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                            "FROM CHECKINS "
-                           "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                           "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ? "
                            "GROUP BY \"DATE\"")
               :params [#t "2017-10-31"
                        #t "2017-11-04"]}
@@ -717,7 +812,8 @@
                                     :template-tags {"checkin_date" {:name         "checkin_date"
                                                                     :display-name "Checkin Date"
                                                                     :type         :dimension
-                                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                    :widget-type  :date/all-options
+                                                                    :dimension    [:field (mt/id :checkins :date) nil]}}}
                        :parameters [{:type   :date/range
                                      :target [:dimension [:template-tag "checkin_date"]]
                                      :value  "past5days"}]}))))))
@@ -727,11 +823,11 @@
                 "the `:widget-type` key. Check that it works correctly with relative dates...")
     (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                          "FROM CHECKINS "
-                         "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                         "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ? "
                          "GROUP BY \"DATE\"")
             :params [#t "2017-10-31"
                      #t "2017-11-04"]}
-           (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+           (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
              (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                     "FROM CHECKINS "
                                                     "WHERE {{checkin_date}} "
@@ -739,13 +835,13 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (mt/id :checkins :date)]
+                                                                :dimension    [:field (mt/id :checkins :date) nil]
                                                                 :default      "past5days"
                                                                 :widget-type  :date/all-options}}}})))))
   (testing "Check that it works with absolute dates as well"
     (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                          "FROM CHECKINS "
-                         "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
+                         "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ? "
                          "GROUP BY \"DATE\"")
             :params [#t "2017-11-14"]}
            (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
@@ -755,11 +851,11 @@
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (mt/id :checkins :date)]
+                                                              :dimension    [:field (mt/id :checkins :date) nil]
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
-(deftest newlines-test
+(deftest ^:parallel newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
     (is (= [[1]]
            (mt/rows
@@ -774,7 +870,7 @@
                                                     :default      "Fred 62"}}}
                 :parameters []}))))))
 
-(deftest multiple-value-test
+(deftest ^:parallel multiple-value-test
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
            (-> (qp/process-query
@@ -798,7 +894,7 @@
                                                         :type         :text}}}
              :parameters [{:type   "category"
                            :target [:variable [:template-tag "names_list"]]
-                           :value  ["BBQ", "Bakery", "Bar"]}]}))))
+                           :value  ["BBQ" "Bakery" "Bar"]}]}))))
   (testing "Make sure arrays of values also work for 'field filter' params"
     (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",
             :params ["BBQ" "Bakery" "Bar"]}
@@ -807,20 +903,21 @@
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (mt/id :categories :name)]}}}
+                                                        :dimension    [:field (mt/id :categories :name) nil]
+                                                        :widget-type  :text}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
-                           :value  ["BBQ", "Bakery", "Bar"]}]})))))
+                           :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
-(deftest include-card-parameters-test
+(deftest ^:parallel include-card-parameters-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
     (binding [driver/*driver* :h2]
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
-             (substitute/substitute
-              ["SELECT * FROM " (i/->Param "#1")]
+             (sql.params.substitute/substitute
+              ["SELECT * FROM " (params/->Param "#1")]
               {"#1"
-               (i/map->ReferencedCardQuery
+               (params/map->ReferencedCardQuery
                 {:card-id 1
                  :query   "SELECT * FROM table WHERE x LIKE ?"
                  :params  ["G%"]})}))))))

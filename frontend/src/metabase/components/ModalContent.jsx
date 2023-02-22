@@ -8,7 +8,8 @@ export default class ModalContent extends Component {
   static propTypes = {
     id: PropTypes.string,
     title: PropTypes.string,
-    onClose: PropTypes.func.isRequired,
+    centeredTitle: PropTypes.bool,
+    onClose: PropTypes.func,
     // takes over the entire screen
     fullPageModal: PropTypes.bool,
     // standard modal
@@ -30,6 +31,7 @@ export default class ModalContent extends Component {
   render() {
     const {
       title,
+      centeredTitle,
       footer,
       onClose,
       children,
@@ -58,7 +60,11 @@ export default class ModalContent extends Component {
           />
         )}
         {title && (
-          <ModalHeader fullPageModal={fullPageModal} formModal={formModal}>
+          <ModalHeader
+            fullPageModal={fullPageModal}
+            centeredTitle={centeredTitle}
+            formModal={formModal}
+          >
             {title}
           </ModalHeader>
         )}
@@ -77,12 +83,12 @@ export default class ModalContent extends Component {
 
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
-export const ModalHeader = ({ children, fullPageModal, formModal }) => (
+export const ModalHeader = ({ children, fullPageModal, centeredTitle }) => (
   <div className={cx("ModalHeader flex-no-shrink px4 py4 full")}>
     <h2
       className={cx(
         "text-bold",
-        { "text-centered": fullPageModal },
+        { "text-centered": fullPageModal || centeredTitle },
         { mr4: !fullPageModal },
       )}
     >

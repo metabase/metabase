@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.api.routes
-  (:require [compojure.core :as compojure]
-            [metabase-enterprise.sso.api.sso :as sso]))
+  (:require
+   [compojure.core :as compojure]
+   [metabase-enterprise.sso.api.sso :as sso]))
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
 ;;

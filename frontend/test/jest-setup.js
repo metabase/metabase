@@ -1,5 +1,7 @@
 import "raf/polyfill";
 import "jest-localstorage-mock";
+import "jest-canvas-mock";
+import "__support__/mocks";
 
 // NOTE: this is needed because sometimes asynchronous code tries to access
 // window.location or similar jsdom properties after the tests have ended and

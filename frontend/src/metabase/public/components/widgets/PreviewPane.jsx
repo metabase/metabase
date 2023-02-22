@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 
 import cx from "classnames";
+import { PreviewPaneContainer } from "./PreviewPane.styled";
 
 export default class PreviewPane extends Component {
   constructor(props) {
@@ -19,9 +20,10 @@ export default class PreviewPane extends Component {
   }
 
   render() {
-    const { className, previewUrl } = this.props;
+    const { className, previewUrl, isTransparent } = this.props;
     return (
-      <div
+      <PreviewPaneContainer
+        isTransparent={isTransparent}
         className={cx(className, "flex relative")}
         style={{ minHeight: 280 }}
       >
@@ -32,7 +34,7 @@ export default class PreviewPane extends Component {
           allowTransparency
           onLoad={() => this.setState({ loading: false })}
         />
-      </div>
+      </PreviewPaneContainer>
     );
   }
 }

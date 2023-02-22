@@ -1,12 +1,17 @@
 (ns metabase.test.data.redshift
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+(defmethod tx/supports-time-type? :redshift [_driver] false)
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
@@ -70,40 +75,32 @@
   [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
 
-(defmethod load-data/load-data! :redshift
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (load-data/load-data-all-at-once! driver dbdef tabledef)
-  (let [table-identifier (sql.tx/qualify-and-quote :redshift database-name table-name)
-        spec             (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    ;; VACUUM and ANALYZE after insert to improve performance (according to doc)
-    (jdbc/execute! spec (str "VACUUM " table-identifier) {:transaction? false})
-    (jdbc/execute! spec (str "ANALYZE " table-identifier) {:transaction? false})))
-
 ;;; Create + destroy the schema used for this test session
 
 (defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (println (u/format-color 'blue "[redshift] %s" sql))
+    (log/info (u/format-color 'blue "[redshift] %s" sql))
     (jdbc/execute! spec sql))
-  (println (u/format-color 'blue "[ok]")))
+  (log/info (u/format-color 'blue "[ok]")))
 
 (defmethod tx/before-run :redshift
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
 
-(defonce ^:private ^{:arglists '([driver connection metadata])} original-syncable-schemas
-  (get-method sql-jdbc.sync/syncable-schemas :redshift))
+(defonce ^:private ^{:arglists '([driver connection metadata _ _])}
+  original-filtered-syncable-schemas
+  (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))
 
-(def ^:dynamic *use-original-syncable-schemas-impl?*
-  "Whether to use the actual prod impl for `syncable-schemas` rather than the special test one that only syncs the test
-  schema."
+(def ^:dynamic *use-original-filtered-syncable-schemas-impl?*
+  "Whether to use the actual prod impl for `filtered-syncable-schemas` rather than the special test one that only syncs
+  the test schema."
   false)
 
 ;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
 ;; schema used for a specific test.
-(defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [driver conn metadata]
-  (if *use-original-syncable-schemas-impl?*
-    (original-syncable-schemas driver conn metadata)
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
+  [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
+  (if *use-original-filtered-syncable-schemas-impl?*
+    (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
     #{session-schema-name "spectrum"}))

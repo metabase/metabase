@@ -1,6 +1,7 @@
 (ns metabase.models.params.chain-filter.dedupe-joins
-  (:require [clojure.core.logic :as l]
-            [clojure.set :as set]))
+  (:require
+   [clojure.core.logic :as l]
+   [clojure.set :as set]))
 
 (defn- lhso
   "A relation such that the left-hand side (LHS) of `join` is `lhs`."
@@ -39,6 +40,7 @@
 (defn- list-beforeo
   "A relation such that `sublist` is all items in `lst` up to (but not including) `item`."
   [lst sublist item]
+  #_:clj-kondo/ignore
   (l/matcha [lst sublist]
     ([[] []])
     ([[item . _] []])
@@ -57,9 +59,7 @@
   "A relationship such that all RHS tables in `joins` are distinct."
   [joins]
   (let [rhses (vec (l/lvars (count joins)))]
-    (dorun (map (fn [join rhs]
-                  (rhso join rhs))
-                joins rhses))
+    (dorun (map rhso joins rhses))
     (l/all
      (l/distincto rhses))))
 

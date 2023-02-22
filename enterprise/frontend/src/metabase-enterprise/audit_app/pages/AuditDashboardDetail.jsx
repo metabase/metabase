@@ -1,15 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import Dashboard from "metabase/entities/dashboards";
+import * as Urls from "metabase/lib/urls";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
 
 import OpenInMetabase from "../components/OpenInMetabase";
-
-import Dashboard from "metabase/entities/dashboards";
-
-import * as Urls from "metabase/lib/urls";
 
 import * as DashboardCards from "../lib/cards/dashboard_detail";
 

@@ -1,10 +1,15 @@
 (ns metabase.email.messages-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.email-test :as email-test]
-            [metabase.email.messages :as messages]
-            [metabase.test.util :as tu])
-  (:import java.io.IOException))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.email-test :as et]
+   [metabase.email.messages :as messages]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu])
+  (:import
+   (java.io IOException)))
+
+(set! *warn-on-reflection* true)
 
 (deftest new-user-email
   (is (= [{:from    "notifications@metabase.com",
@@ -12,35 +17,42 @@
            :subject "You're invited to join Metabase Test's Metabase",
            :body    [{:type "text/html; charset=utf-8"}]}]
          (tu/with-temporary-setting-values [site-name "Metabase Test"]
-           (email-test/with-fake-inbox
+           (et/with-fake-inbox
              (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
                                             {:first_name "invitor" :email "invited_by@test.com"}
-                                            "http://localhost/some/url")
-             (-> (@email-test/inbox "test@test.com")
+                                            "http://localhost/some/url"
+                                            false)
+             (-> (@et/inbox "test@test.com")
                  (update-in [0 :body 0] dissoc :content)))))))
 
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
-    (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" true)
+    (et/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" true)
       (is (= [{:from    "notifications@metabase.com",
                :to      ["test@test.com"],
                :subject "[Metabase] Password Reset Request",
                :body    [{:type "text/html; charset=utf-8"}]}]
-             (-> (@email-test/inbox "test@test.com")
+             (-> (@et/inbox "test@test.com")
                  (update-in [0 :body 0] dissoc :content))))))
   ;; Email contents contain randomized elements, so we only check for the inclusion of a single word to verify
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
-    (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" true "test.domain.com" "http://localhost/some/url" true)
-      (is (-> (@email-test/inbox "test@test.com")
+    (et/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" true false "http://localhost/some/url" true)
+      (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
+  (testing "password reset email tells user if they should log in with (non-Google) SSO"
+    (et/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" false true nil true)
+      (is (-> (@et/inbox "test@test.com")
+              (get-in [0 :body 0 :content])
+              (str/includes? "SSO")))))
   (testing "password reset email tells user if their account is inactive"
-    (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" false)
-      (is (-> (@email-test/inbox "test@test.com")
+    (et/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" false)
+      (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
 
@@ -80,3 +92,16 @@
       (is (= "Run daily at 12 AM UTC"
              (@#'messages/alert-schedule-text {:schedule_type :daily
                                                :schedule_hour 0}))))))
+
+(deftest render-pulse-email-test
+  (testing "Email with few rows and columns can be rendered when tracing (#21166)"
+    (mt/with-log-level [metabase.email :trace]
+      (let [result {:card   {:name "card-name"
+                             :visualization_settings
+                             {:table.column_formatting []}}
+                    :result {:data {:cols [{:name "x"} {:name "y"}]
+                                    :rows [[0 0]
+                                           [1 1]]}}}
+            emails (messages/render-pulse-email "America/Pacific" {} {} [result])]
+        (is (vector? emails))
+        (is (map? (first emails)))))))

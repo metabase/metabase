@@ -1,7 +1,6 @@
-import * as Q_DEPRECATED from "metabase/lib/query";
-
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 import Utils from "metabase/lib/utils";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {
   describe("createQuery", () => {
@@ -50,9 +49,7 @@ describe("Legacy Q_DEPRECATED library", () => {
 
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
-      const datasetQuery = ORDERS.query()
-        .aggregate(["count"])
-        .datasetQuery();
+      const datasetQuery = ORDERS.query().aggregate(["count"]).datasetQuery();
 
       // We have to take a copy because the original object isn't extensible
       const copiedDatasetQuery = Utils.copy(datasetQuery);

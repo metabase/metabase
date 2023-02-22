@@ -1,50 +1,56 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models :refer [Table]]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as dataset-defs]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models :refer [Table]]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.snowflake :as test.data.snowflake]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
-(deftest ddl-statements-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (testing "Create DB DDL statements"
-      (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
-             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
+      (testing "Create DB DDL statements"
+        (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+               (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
-    (testing "Create Table DDL statements"
-      (is (= (map
-              #(str/replace % #"\s+" " ")
-              ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
-                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+      (testing "Create Table DDL statements"
+        (is (= (map
+                #(str/replace % #"\s+" " ")
+                ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
                 FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
                 FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
-                                                                 (update :database-name #(str "v3_" %)))))))))
+               (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
+                                                                   (update :database-name #(str "v3_" %))))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
@@ -102,12 +108,14 @@
                          :database-type     "NUMBER"
                          :base-type         :type/Number
                          :pk?               true
-                         :database-position 0}
+                         :database-position 0
+                         :database-required false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
-                         :database-position 1}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
+                         :database-position 1
+                         :database-required true}}}
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
   (mt/test-driver :snowflake
@@ -115,19 +123,45 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :venues))))))))
+
+(defn- format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
 (deftest can-connect-test
-  (mt/test-driver :snowflake
-    (letfn [(can-connect? [details]
-              (driver/can-connect? :snowflake details))]
-      (is (= true
-             (can-connect? (:details (mt/db))))
-          "can-connect? should return true for normal Snowflake DB details")
-      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
-                   (mt/suppress-output
-                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
+  (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+        pk-user (tx/db-test-env-var :snowflake :pk-user)
+        pk-db (tx/db-test-env-var :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
+    (mt/test-driver :snowflake
+      (let [can-connect? (partial driver/can-connect? :snowflake)]
+        (is (can-connect? (:details (mt/db)))
+            "can-connect? should return true for normal Snowflake DB details")
+        (let [original-query jdbc/query]
+          ;; make jdbc/query return a falsey value, but should still be able to connect
+          (with-redefs [jdbc/query (fn fake-jdbc-query
+                                     ([db sql-params] (fake-jdbc-query db sql-params {}))
+                                     ([db sql-params opts] (if (str/starts-with? sql-params "SHOW OBJECTS IN DATABASE")
+                                                             nil
+                                                             (original-query db sql-params (or opts {})))))]
+            (is (can-connect? (:details (mt/db))))))
+        (is (thrown?
+             net.snowflake.client.jdbc.SnowflakeSQLException
+             (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
+            "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+
+        (when (and pk-key pk-user)
+          (mt/with-temp-file [pk-path]
+            (testing "private key authentication"
+              (spit pk-path pk-key)
+              (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
+                                {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array
+                                {:private-key-path pk-path}]] ;; local file path
+                (let [details (-> (:details (mt/db))
+                                  (dissoc :password)
+                                  (merge {:db pk-db :user pk-user} to-merge))]
+                  (is (can-connect? details)))))))))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
@@ -158,7 +192,8 @@
                   {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                    "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
+                                                    (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
+                                                            (test.data.snowflake/*database-prefix-fn*))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"
@@ -172,10 +207,50 @@
                   ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
                  (run-query))))
         (testing "with report timezone set"
-          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T05:30:00-07:00"]
-                  ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
+          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                  ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
+
+(deftest week-start-test
+  (mt/test-driver :snowflake
+    (testing "The WEEK_START session setting is correctly incorporated"
+      (letfn [(run-dayofweek-query [date-str]
+                (-> (mt/rows
+                     (qp/process-query {:database   (mt/id)
+                                        :type       :native
+                                        :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
+                                                     :template-tags {:filter_date {:name         "filter_date"
+                                                                                   :display_name "Just A Date"
+                                                                                   :type         "date"}}}
+                                        :parameters [{:type   "date/single"
+                                                      :target ["variable" ["template-tag" "filter_date"]]
+                                                      :value  date-str}]}))
+                    ffirst))]
+        (testing "under the default value of 7 (Sunday)"
+          (mt/with-temporary-setting-values [start-of-week :sunday]
+            (is (= 1 (run-dayofweek-query "2021-01-10")) "Sunday (first day of the week)")
+            (is (= 2 (run-dayofweek-query "2021-01-11")) "Monday (second day of the week)")))
+        (testing "when we control it via the Metabase setting value"
+          (mt/with-temporary-setting-values [start-of-week :monday]
+            (is (= 7 (run-dayofweek-query "2021-01-10")) "Sunday (last day of week now)")
+            (is (= 1 (run-dayofweek-query "2021-01-11")) "Monday (first day of week now)")))))))
+
+(deftest first-day-of-week-test
+  (mt/test-driver :snowflake
+    (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
+      (mt/dataset sample-dataset
+        (doseq [[start-of-week friday-int] [[:friday 1]
+                                            [:monday 5]
+                                            [:sunday 6]]]
+          (mt/with-temporary-setting-values [start-of-week start-of-week]
+            (let [query (mt/mbql-query people
+                          {:breakout    [!day-of-week.birth_date]
+                           :aggregation [[:count]]
+                           :filter      [:= $birth_date "1986-12-12"]})]
+              (mt/with-native-query-testing-context query
+                (is (= [[friday-int 1]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (deftest normalize-test
   (mt/test-driver :snowflake
@@ -184,5 +259,5 @@
                                   :engine  :snowflake,
                                   :details {:account  "my-instance"
                                             :regionid "us-west-1"}}]
-                             (is (= {:account "my-instance.us-west-1"}
-                                    (:details db)))))))
+        (is (= {:account "my-instance.us-west-1"}
+               (:details db)))))))

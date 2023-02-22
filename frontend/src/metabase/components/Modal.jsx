@@ -3,16 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
+import { CSSTransition, TransitionGroup } from "react-transition-group";
+import { Motion, spring } from "react-motion";
+import _ from "underscore";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 
-import { CSSTransitionGroup } from "react-transition-group";
-import { Motion, spring } from "react-motion";
-
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import routeless from "metabase/hoc/Routeless";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import ModalContent from "./ModalContent";
-
-import _ from "underscore";
 
 function getModalContent(props) {
   if (
@@ -30,11 +29,13 @@ export class WindowModal extends Component {
   static propTypes = {
     isOpen: PropTypes.bool,
     enableMouseEvents: PropTypes.bool,
+    enableTransition: PropTypes.bool,
   };
 
   static defaultProps = {
     className: "Modal",
     backdropClassName: "Modal-backdrop",
+    enableTransition: true,
   };
 
   constructor(props) {
@@ -58,13 +59,19 @@ export class WindowModal extends Component {
   _modalComponent() {
     const className = cx(
       this.props.className,
-      ...["small", "medium", "wide", "tall"]
+      ...["small", "medium", "wide", "tall", "fit"]
         .filter(type => this.props[type])
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
-        <div className={cx(className, "relative bg-white rounded")}>
+      <OnClickOutsideWrapper
+        backdropElement={this._modalElement}
+        handleDismissal={this.handleDismissal}
+      >
+        <div
+          className={cx(className, "relative bg-white rounded")}
+          role="dialog"
+        >
           {getModalContent({
             ...this.props,
             fullPageModal: false,
@@ -78,7 +85,13 @@ export class WindowModal extends Component {
   }
 
   render() {
-    const { enableMouseEvents, backdropClassName, isOpen, style } = this.props;
+    const {
+      enableMouseEvents,
+      backdropClassName,
+      isOpen,
+      style,
+      enableTransition,
+    } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
 
@@ -87,29 +100,34 @@ export class WindowModal extends Component {
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
       >
-        <CSSTransitionGroup
-          transitionName="Modal"
-          transitionAppear={true}
-          transitionAppearTimeout={250}
-          transitionEnterTimeout={250}
-          transitionLeaveTimeout={250}
+        <TransitionGroup
+          appear={enableTransition}
+          enter={enableTransition}
+          exit={enableTransition}
         >
           {isOpen && (
-            <div
+            <CSSTransition
               key="modal"
-              className={cx(backdropClassName, backdropClassnames)}
-              style={style}
+              classNames="Modal"
+              timeout={{
+                appear: 250,
+                enter: 250,
+                exit: 250,
+              }}
             >
-              {this._modalComponent()}
-            </div>
+              <div
+                className={cx(backdropClassName, backdropClassnames)}
+                style={style}
+              >
+                {this._modalComponent()}
+              </div>
+            </CSSTransition>
           )}
-        </CSSTransitionGroup>
+        </TransitionGroup>
       </SandboxedPortal>
     );
   }
 }
-
-import routeless from "metabase/hoc/Routeless";
 
 export class FullPageModal extends Component {
   constructor(props) {
@@ -201,7 +219,7 @@ export class FullPageModal extends Component {
 // the "routeless" version should only be used for non-inline modals
 const RoutelessFullPageModal = routeless(FullPageModal);
 
-const Modal = ({ full, ...props }) =>
+const Modal = ({ full = false, ...props }) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />

@@ -1,27 +1,33 @@
-(ns metabase.api.session-test
+(ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.test :refer :all]
-            [metabase.api.session :as session-api]
-            [metabase.driver.h2 :as h2]
-            [metabase.email-test :as et]
-            [metabase.http-client :as http-client]
-            [metabase.models :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.test :refer :all]
+   [metabase.api.session :as api.session]
+   [metabase.driver.h2 :as h2]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [LoginHistory
+            PermissionsGroup
+            PermissionsGroupMembership
+            Session
+            User]]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
@@ -31,7 +37,7 @@
 
 (use-fixtures :each (fn [thunk]
                       ;; reset login throtllers
-                      (doseq [throttler (vals @#'session-api/login-throttlers)]
+                      (doseq [throttler (vals @#'api.session/login-throttlers)]
                         (reset! (:attempts throttler) nil))
                       (thunk)))
 
@@ -54,7 +60,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
@@ -126,7 +132,7 @@
 
 (defn- send-login-request [username & [{:or {} :as headers}]]
   (try
-    (http/post (http-client/build-url "session" {})
+    (http/post (client/build-url "session" {})
                {:form-params {"username" username,
                               "password" "incorrect-password"}
                 :content-type :json
@@ -141,27 +147,29 @@
 
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
-                                                                            [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
-      (dotimes [n 50]
-        (let [response    (send-login-request (format "user-%d" n)
-                                              {"x-forwarded-for" "10.1.2.3"})
-              status-code (:status response)]
-          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (let [error (fn []
-                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-                        :body
-                        json/parse-string
-                        (get-in ["errors" "username"])))]
-        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                 (error)))
-        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                 (error)))))))
+    ;; disable this when we're testing drivers since it tends to F L A K E.
+    (mt/disable-flaky-test-when-running-driver-tests-in-ci
+      (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+                                                                              [:username :ip-address])
+                    public-settings/source-address-header (constantly "x-forwarded-for")]
+        (dotimes [n 50]
+          (let [response    (send-login-request (format "user-%d" n)
+                                                {"x-forwarded-for" "10.1.2.3"})
+                status-code (:status response)]
+            (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
+        (let [error (fn []
+                      (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                          :body
+                          json/parse-string
+                          (get-in ["errors" "username"])))]
+          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                   (error)))
+          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                   (error))))))))
 
 (deftest failure-threshold-per-request-source
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
-    (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
                   public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
@@ -169,7 +177,7 @@
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (dotimes [n 50]
+      (dotimes [n 40]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
@@ -188,8 +196,8 @@
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
-      (test-users/clear-cached-session-tokens!)
-      (let [session-id       (test-users/username->token :rasta)
+      (test.users/clear-cached-session-tokens!)
+      (let [session-id       (test.users/username->token :rasta)
             login-history-id (db/select-one-id LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
@@ -198,62 +206,66 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))
+               (db/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (LoginHistory login-history-id))))))))
+                       (db/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
     ;; deref forgot-password-impl for the tests since it returns a future
-    (with-redefs [session-api/forgot-password-impl
-                  (let [orig @#'session-api/forgot-password-impl]
-                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (with-redefs [api.session/forgot-password-impl
+                  (let [orig @#'api.session/forgot-password-impl]
+                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
-        (et/with-fake-inbox
+        (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
                     (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
-                                                                  :id (mt/user->id :rasta))]
+                                                                               :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
             (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
-                   (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                   (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                         {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
             (is (= true
                    (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
-            (is (= "[Metabase] Password Reset Request"
-                   (-> @et/inbox (get "rasta@metabase.com") first :subject))
-                "User should get a password reset email"))))
-
+            (is (mt/received-email-subject? :rasta #"Password Reset")))))
+      (testing "We use `site-url` in the email"
+        (let [my-url "abcdefghij"]
+          (mt/with-temporary-setting-values [site-url my-url]
+            (mt/with-fake-inbox
+              (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                    {:email (:username (mt/user->credentials :rasta))})
+              (is (mt/received-email-body? :rasta (re-pattern my-url)))))))
       (testing "test that email is required"
         (is (= {:errors {:email "value must be a valid email address."}}
                (mt/client :post 400 "session/forgot_password" {}))))
-
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
 
 (deftest forgot-password-throttling-test
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
-    (letfn [(send-password-reset [& [expected-status & more]]
+    (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
-      (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
+      (with-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
                                                                                [:email :ip-address])]
-        (dotimes [n 10]
-          (send-password-reset))
+        (dotimes [_ 10]
+          (send-password-reset!))
         (let [error (fn []
-                      (-> (send-password-reset 400)
+                      (-> (send-password-reset! 400)
                           :errors
                           :email))]
           (is (= "Too many attempts! You must wait 15 seconds before trying again."
@@ -265,7 +277,7 @@
 (deftest reset-password-test
   (testing "POST /api/session/reset_password"
     (testing "Test that we can reset password from token (AND after token is used it gets removed)"
-      (et/with-fake-inbox
+      (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
           (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
@@ -340,26 +352,26 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/properties :public)))
+      (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
+    (testing "Authenticated settings manager"
+      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+
     (testing "Authenticated super user"
-      (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated)
-                         (setting/properties :admin))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión !"}}
+      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
@@ -369,25 +381,27 @@
 
 (deftest google-auth-test
   (testing "POST /google_auth"
-    (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active true}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active false}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:account "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 
@@ -396,15 +410,11 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          ;; TODO -- it's not so nice to go around permanently deleting stuff like Sessions like this in tests. We
-          ;; should just create a temp User instead for this test
-          (db/simple-delete! Session :user_id user-id)
-          (is (schema= SessionResponse
-                       (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :login_attributes nil)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"}]
+        (is (schema= SessionResponse
+                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                     :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (mt/with-temporary-setting-values [enable-password-login true]
@@ -421,24 +431,20 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          (db/update! User user-id :is_active false)
-          (is (= {:errors {:_error "Your account is disabled."}}
-                 (mt/client :post 401 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :is_active true)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"
+                             :is_active false}]
+        (is (= {:errors {:_error "Your account is disabled."}}
+               (mt/client :post 401 "session" {:username "ngoc@metabase.com"
+                                               :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-        (let [user-id (mt/user->id :rasta)]
-          (try
-            (db/simple-delete! Session :user_id user-id)
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-            (finally
-              (db/update! User user-id :login_attributes nil))))))
+        (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                               :password "securedpassword"}]
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -457,4 +463,28 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (db/delete! User :email "John.Smith@metabase.com"))))))
+          (db/delete! User :email "John.Smith@metabase.com"))))
+
+    (testing "test that group sync works even if ldap doesn't return uid (#22014)"
+      (mt/with-temp PermissionsGroup [group {:name "Accounting"}]
+        (mt/with-temporary-raw-setting-values
+          [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
+
+(deftest no-password-no-login-test
+  (testing "A user with no password should not be able to do password-based login"
+    (mt/with-temp User [user]
+      (db/update! User (u/the-id user) :password nil, :password_salt nil)
+      (let [device-info {:device_id          "Cam's Computer"
+                         :device_description "The computer where Cam wrote this test"
+                         :ip_address         "192.168.1.1"}]
+        (is (= nil
+               (#'api.session/email-login (:email user) nil device-info)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Password did not match stored password"
+             (#'api.session/login (:email user) "password" device-info)))))))

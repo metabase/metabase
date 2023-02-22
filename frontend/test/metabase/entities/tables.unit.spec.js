@@ -1,6 +1,6 @@
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
-import { convertSavedQuestionToVirtualTable } from "metabase/lib/saved-questions";
+import { convertSavedQuestionToVirtualTable } from "metabase-lib/metadata/utils/saved-questions";
 
 describe("table entity", () => {
   describe("saved questions | reducer", () => {
@@ -51,29 +51,6 @@ describe("table entity", () => {
 
       expect(nextState).toEqual({
         [virtualTable.id]: virtualTable,
-      });
-    });
-
-    it("should update virtual questions", () => {
-      const { question, virtualTable } = getQuestion();
-
-      const nextState = Tables.reducer(
-        {
-          [virtualTable.id]: virtualTable,
-        },
-        getUpdateAction({
-          ...question,
-          name: "New name",
-          description: "New description",
-        }),
-      );
-
-      expect(nextState).toEqual({
-        [virtualTable.id]: {
-          ...virtualTable,
-          display_name: "New name",
-          description: "New description",
-        },
       });
     });
 

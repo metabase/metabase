@@ -2,12 +2,12 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b]
-            [clojure.tools.build.util.zip :as b.zip]
+            [clojure.tools.build.util.zip :as build.zip]
             [clojure.tools.namespace.dependency :as ns.deps]
             [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.namespace.parse :as ns.parse]
-            [hf.depstar.api :as d]
-            [metabuild-common.core :as c])
+            [hf.depstar.api :as depstar]
+            [metabuild-common.core :as u])
   (:import java.io.OutputStream
            java.net.URI
            [java.nio.file Files FileSystems OpenOption StandardOpenOption]
@@ -40,10 +40,10 @@
           (get-in basis [:classpath-args :extra-paths])))
 
 (defn clean! []
-  (c/step "Clean"
-    (c/step (format "Delete %s" class-dir)
+  (u/step "Clean"
+    (u/step (format "Delete %s" class-dir)
       (b/delete {:path class-dir}))
-    (c/step (format "Delete %s" uberjar-filename)
+    (u/step (format "Delete %s" uberjar-filename)
       (b/delete {:path uberjar-filename}))))
 
 ;; this topo sort order stuff is required for stuff to work correctly... I copied it from my Cloverage PR
@@ -69,63 +69,47 @@
         ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
     (->> (dependencies-graph ns-decls)
          ns.deps/topo-sort
-         (filter ns-symbols))))
+         (filter ns-symbols)
+         (cons 'metabase.bootstrap))))
 
 (defn compile-sources! [basis]
-  (c/step "Compile Clojure source files"
+  (u/step "Compile Clojure source files"
     (let [paths    (all-paths basis)
-          _        (c/announce "Compiling Clojure files in %s" (pr-str paths))
-          ns-decls (c/step "Determine compilation order for Metabase files"
+          _        (u/announce "Compiling Clojure files in %s" (pr-str paths))
+          ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
         (b/compile-clj {:basis      basis
                         :src-dirs   paths
                         :class-dir  class-dir
                         :ns-compile ns-decls})
-        (c/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
+        (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (defn copy-resources! [edition basis]
-  (c/step "Copy resources"
+  (u/step "Copy resources"
     ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
-      (c/step (format "Copy %s" path)
+      (u/step (format "Copy %s" path)
         (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
 
 (defn create-uberjar! [basis]
-  (c/step "Create uberjar"
+  (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (d/uber {:class-dir class-dir
-               :uber-file uberjar-filename
-               :basis     basis})
-      (c/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
+      (depstar/uber {:class-dir class-dir
+                     :uber-file uberjar-filename
+                     :basis     basis})
+      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries
   {"Manifest-Version" "1.0"
+   "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.core"
-   "Liquibase-Package" (str/join ","
-                                 ["liquibase.change"
-                                  "liquibase.changelog"
-                                  "liquibase.database"
-                                  "liquibase.datatype"
-                                  "liquibase.diff"
-                                  "liquibase.executor"
-                                  "liquibase.ext"
-                                  "liquibase.lockservice"
-                                  "liquibase.logging"
-                                  "liquibase.parser"
-                                  "liquibase.precondition"
-                                  "liquibase.sdk"
-                                  "liquibase.serializer"
-                                  "liquibase.snapshot"
-                                  "liquibase.sqlgenerator"
-                                  "liquibase.structure"
-                                  "liquibase.structurecompare"])})
+   "Main-Class"       "metabase.bootstrap"})
 
 (defn manifest ^Manifest []
   (doto (Manifest.)
-    (b.zip/fill-manifest! manifest-entries)))
+    (build.zip/fill-manifest! manifest-entries)))
 
 (defn write-manifest! [^OutputStream os]
   (.write (manifest) os)
@@ -135,7 +119,7 @@
 ;; https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
 ;; to do it by hand for the time being.
 (defn update-manifest! []
-  (c/step "Update META-INF/MANIFEST.MF"
+  (u/step "Update META-INF/MANIFEST.MF"
     (with-open [fs (FileSystems/newFileSystem (URI. (str "jar:file:" (.getAbsolutePath (io/file "target/uberjar/metabase.jar"))))
                                               Collections/EMPTY_MAP)]
       (let [manifest-path (.getPath fs "META-INF" (into-array String ["MANIFEST.MF"]))]
@@ -145,7 +129,7 @@
 
 ;; clojure -T:build uberjar :edition <edition>
 (defn uberjar [{:keys [edition], :or {edition :oss}}]
-  (c/step (format "Build %s uberjar" edition)
+  (u/step (format "Build %s uberjar" edition)
     (with-duration-ms [duration-ms]
       (clean!)
       (let [basis (create-basis edition)]
@@ -153,7 +137,7 @@
         (copy-resources! edition basis)
         (create-uberjar! basis)
         (update-manifest!))
-      (c/announce "Built target/uberjar/metabase.jar in %.1f seconds."
+      (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
                   (/ duration-ms 1000.0)))))
 
 ;; TODO -- add `jar` and `install` commands to install Metabase to the local Maven repo (?) could make it easier to

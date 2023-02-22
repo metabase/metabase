@@ -11,37 +11,34 @@
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [metabase.db :as mdb]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey]))
+  (:require
+   [clojure.string :as str]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [environ.core :as env]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s])
+  (:import
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:dynamic *quartz-scheduler*
-  "Override the global Quartz scheduler by binding this var."
-  nil)
-
-(defonce ^:private quartz-scheduler
+(defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
+  *quartz-scheduler*
   (atom nil))
 
-;; TODO - maybe we should make this a delay instead!
 (defn- scheduler
-  "Fetch the instance of our Quartz scheduler. Call this function rather than dereffing the atom directly because there
-  are a few places (e.g., in tests) where we swap the instance out."
-  ;; TODO - why can't we just swap the atom out in the tests?
+  "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
-  (or *quartz-scheduler*
-      @quartz-scheduler))
+  @*quartz-scheduler*)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -94,6 +91,7 @@
 
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider
+  (initialize [_])
   (getConnection [_]
     ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
     ;; when it's done
@@ -105,7 +103,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (some-> @@#'db/default-db-connection jdbc/get-connection))
+    (.getConnection mdb.connection/*application-db*))
   (shutdown [_]))
 
 (when-not *compile-files*
@@ -145,22 +143,37 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
-(defn start-scheduler!
-  "Start our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing."
+(defn- init-scheduler!
+  "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
+  standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
   (classloader/the-classloader)
-  (when-not @quartz-scheduler
+  (when-not @*quartz-scheduler*
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
-      (when (compare-and-set! quartz-scheduler nil new-scheduler)
+      (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (find-and-load-task-namespaces!)
-        (qs/start new-scheduler)
+        (qs/standby new-scheduler)
+        (log/info (trs "Task scheduler initialized into standby mode."))
         (init-tasks!)))))
+
+;;; this is a function mostly to facilitate testing.
+(defn- disable-scheduler? []
+  (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
+
+(defn start-scheduler!
+  "Start the task scheduler. Tasks do not run before calling this function."
+  []
+  (if (disable-scheduler?)
+    (log/warn (trs "Metabase task scheduler disabled. Scheduled tasks will not be ran."))
+    (do (init-scheduler!)
+        (qs/start (scheduler))
+        (log/info (trs "Task scheduler started")))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
   []
-  (let [[old-scheduler] (reset-vals! quartz-scheduler nil)]
+  (let [[old-scheduler] (reset-vals! *quartz-scheduler* nil)]
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 

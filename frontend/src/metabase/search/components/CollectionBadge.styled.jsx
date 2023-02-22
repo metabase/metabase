@@ -1,6 +1,6 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
@@ -19,8 +19,10 @@ export const CollectionLink = styled(Link)`
   }
 `;
 
-export const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon).attrs({
-  size: 13,
-})`
+export const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon)`
   padding-right: 2px;
 `;
+
+AuthorityLevelIcon.defaultProps = {
+  size: 13,
+};

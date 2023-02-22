@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ClauseStep from "./ClauseStep";
-
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import ClauseStep from "./ClauseStep";
 
 export default function ExpressionStep({
   color,
   query,
   updateQuery,
   isLastOpened,
+  reportTimezone,
   ...props
 }) {
   return (
@@ -24,16 +24,17 @@ export default function ExpressionStep({
           expression={expression}
           onChangeExpression={(newName, newExpression) =>
             expression
-              ? query
-                  .updateExpression(newName, newExpression, name)
-                  .update(updateQuery)
-              : query.addExpression(newName, newExpression).update(updateQuery)
+              ? updateQuery(
+                  query.updateExpression(newName, newExpression, name),
+                )
+              : updateQuery(query.addExpression(newName, newExpression))
           }
+          reportTimezone={reportTimezone}
         />
       )}
       isLastOpened={isLastOpened}
       onRemove={([name, expression]) =>
-        query.removeExpression(name).update(updateQuery)
+        updateQuery(query.removeExpression(name))
       }
     />
   );

@@ -1,9 +1,13 @@
 (ns metabase.driver.googleanalytics.metadata
-  (:require [metabase.driver.google :as google]
-            [metabase.driver.googleanalytics.client :as client])
-  (:import com.google.api.services.analytics.Analytics
-           [com.google.api.services.analytics.model Column Columns]
-           java.util.Map))
+  (:require
+   [metabase.driver.google :as google]
+   [metabase.driver.googleanalytics.client :as ga.client])
+  (:import
+   (com.google.api.services.analytics Analytics)
+   (com.google.api.services.analytics.model Column Columns)
+   (java.util Map)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private redundant-date-fields
   "Set of column IDs covered by `unit->ga-dimension` in the GA QP.
@@ -46,7 +50,7 @@
    (columns database {:status "PUBLIC", :type "DIMENSION"}))
 
   ([database attributes]
-   (set (for [^Column column (.getItems (fetch-columns (client/database->client database)))
+   (set (for [^Column column (.getItems (fetch-columns (ga.client/database->client database)))
               :when          (and (not (contains? redundant-date-fields (.getId column)))
                                   (column-has-attributes? column attributes))]
           column))))

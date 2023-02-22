@@ -1,10 +1,13 @@
 (ns metabase.plugins.dependencies
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private plugins-with-unsatisfied-deps
   (atom #{}))
@@ -50,7 +53,7 @@
          message)))
 
 (defmethod dependency-satisfied? :class
-  [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as dep}]
+  [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as _dep}]
   (try
     (Class/forName classname false (classloader/the-classloader))
     (catch ClassNotFoundException _
@@ -58,12 +61,12 @@
       false)))
 
 (defmethod dependency-satisfied? :plugin
-  [initialized-plugin-names {{plugin-name :name} :info, :as info} {dep-plugin-name :plugin}]
+  [initialized-plugin-names {{plugin-name :name} :info} {dep-plugin-name :plugin}]
   (log-once plugin-name (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
   ((set initialized-plugin-names) dep-plugin-name))
 
 (defmethod dependency-satisfied? :env-var
-  [_ {{plugin-name :name} :info, :as info} {env-var-name :env-var}]
+  [_ {{plugin-name :name} :info} {env-var-name :env-var}]
   (if (str/blank? (env/env (keyword env-var-name)))
     (do
       (log-once plugin-name (trs "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"

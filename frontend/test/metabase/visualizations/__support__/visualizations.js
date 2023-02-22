@@ -1,7 +1,7 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 
 export function makeCard(card) {
   return {
@@ -108,7 +108,10 @@ export const LineCard = (name, ...overrides) =>
           StringColumn({ name: name + "_col0" }),
           NumberColumn({ name: name + "_col1" }),
         ],
-        rows: [["a", 0], ["b", 1]],
+        rows: [
+          ["a", 0],
+          ["b", 1],
+        ],
       },
     },
     ...overrides,

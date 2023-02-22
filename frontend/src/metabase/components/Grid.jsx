@@ -1,21 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { GridItemRoot, GridRoot } from "./Grid.styled";
 
-export const GridItem = ({ children, width, px, py, ...props }) => (
-  <Box px={px} py={py} {...props} width={width}>
-    {children}
-  </Box>
-);
+export const Grid = props => <GridRoot {...props} />;
 
-GridItem.defaultProps = {
-  width: 1 / 4,
-  px: 1,
-  py: 1,
-};
-
-export const Grid = ({ children }) => (
-  <Flex mx={-1} style={{ flexWrap: "wrap" }}>
-    {children}
-  </Flex>
-);
+export const GridItem = props => <GridItemRoot {...props} />;

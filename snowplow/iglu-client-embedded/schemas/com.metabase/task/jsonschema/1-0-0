@@ -1,0 +1,79 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Task history",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "task",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "description": "Unique identifier for the TaskHistory within the Metabase instance",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "task_name": {
+      "description": "TaskHistory name",
+      "type": "string",
+      "maxLength": 512
+    },
+    "db_id": {
+      "description": "Database that the task was executed against",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "db_engine": {
+      "description": "The engine of the Database that the task was executed against",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 64
+    },
+    "started_at": {
+      "description": "The start time of the task",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "maxLength": 1024
+    },
+    "ended_at": {
+      "description": "The finished time of the task",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "maxLength": 1024
+    },
+    "duration": {
+      "description": "The duration of the task in milliseconds",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "task_details": {
+      "description": "the JSON-encoded details of the task",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2048
+    }
+  },
+  "required": [
+    "task_id",
+    "task_name",
+    "duration"
+  ],
+  "additionalProperties": true
+}

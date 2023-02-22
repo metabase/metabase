@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 const currentYearString = new Date().getFullYear().toString();
 
@@ -35,35 +35,29 @@ export function setAdHocFilter({
   timeBucket,
   includeCurrent = false,
 } = {}) {
+  cy.findByText("Relative dates...").click();
   if (condition) {
-    cy.get(".AdminSelect")
-      .contains("Previous")
-      .click();
-
-    popover()
-      .last()
-      .contains(condition)
-      .click();
+    cy.findByText(condition).click({ force: true });
+  } else {
+    cy.findByText("Past").click({ force: true });
   }
 
   if (quantity) {
-    cy.findByPlaceholderText("30")
-      .clear()
-      .type(quantity);
+    cy.findByPlaceholderText("30").clear().type(quantity);
   }
 
   if (timeBucket) {
-    cy.get(".AdminSelect")
-      .contains("Days")
-      .click();
+    cy.findAllByTestId("relative-datetime-unit").contains("days").click();
 
-    popover()
-      .last()
-      .contains(timeBucket)
-      .click();
+    popover().last().contains(timeBucket).click();
   }
 
-  includeCurrent && cy.findByText(/^Include/).click();
+  if (includeCurrent) {
+    popover().within(() => {
+      cy.icon("ellipsis").click();
+    });
+    cy.findByText(/^Include/).click();
+  }
 
   cy.button("Update filter").click();
 }

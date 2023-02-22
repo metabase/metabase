@@ -2,7 +2,7 @@
 
 import { combineReducers } from "redux";
 
-import commonReducers from "./reducers-common";
+import { PLUGIN_REDUCERS } from "metabase/plugins";
 
 /* admin */
 import admin from "metabase/admin/admin";
@@ -12,6 +12,11 @@ import * as setup from "metabase/setup/reducers";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/reducers";
+
+/* parameters */
+import * as parameters from "metabase/parameters/reducers";
+
+/* home page */
 import * as home from "metabase/home/reducers";
 
 /* query builder */
@@ -29,12 +34,15 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+import commonReducers from "./reducers-common";
+
 export default {
   ...commonReducers,
 
   // main app reducers
   alert,
   dashboard,
+  parameters: combineReducers(parameters),
   home: combineReducers(home),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
@@ -42,4 +50,5 @@ export default {
   revisions,
   setup: combineReducers(setup),
   admin,
+  plugins: combineReducers(PLUGIN_REDUCERS),
 };

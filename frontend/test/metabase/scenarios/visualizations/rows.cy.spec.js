@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
@@ -13,10 +13,11 @@ describe("scenarios > visualizations > rows", () => {
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
       () => {
-        cy.createNativeQuestion({
-          name: "14285",
-          native: {
-            query: `
+        cy.createNativeQuestion(
+          {
+            name: "14285",
+            native: {
+              query: `
               with temp as (
                 select 'a' col1, 25 col2 union all
                 select 'b', 10 union all
@@ -27,12 +28,12 @@ describe("scenarios > visualizations > rows", () => {
               ) select * from temp
               order by 2 desc
             `,
-            "template-tags": {},
+              "template-tags": {},
+            },
+            display: "row",
           },
-          display: "row",
-        }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.visit(`/question/${QUESTION_ID}`);
-        });
+          { visitQuestion: true },
+        );
 
         cy.get(".Visualization").within(() => {
           ["a", "b", "c", "d", "e", "f"].forEach(letter => {

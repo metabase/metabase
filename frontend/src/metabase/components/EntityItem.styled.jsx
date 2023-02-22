@@ -1,46 +1,72 @@
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-function getPinnedBackground(model) {
-  return model === "dashboard"
-    ? color("accent4")
-    : lighten(color("accent4"), 0.28);
+function getPinnedForeground(disabled) {
+  return disabled ? darken(color("border"), 0.38) : color("accent4");
 }
 
-function getPinnedForeground(model) {
-  return model === "dashboard" ? color("white") : color("accent4");
+function getForeground(model, disabled) {
+  return disabled
+    ? darken(color("border"), 0.38)
+    : model === "dataset"
+    ? color("accent2")
+    : color("brand");
 }
 
-function getBackground(model) {
-  return model === "dashboard" ? color("brand") : color("brand-light");
-}
-
-function getForeground(model) {
-  return model === "dashboard" ? color("white") : color("brand");
-}
+const getItemPadding = variant => {
+  switch (variant) {
+    case "list":
+      return "1rem";
+    case "small":
+      return "0.5rem 1rem";
+    default:
+      return "1rem 0";
+  }
+};
 
 export const EntityIconWrapper = styled(IconButtonWrapper)`
-  background-color: ${color("bg-medium")};
+  background-color: transparent;
   padding: 12px;
+  cursor: ${props => (props.disabled ? "default" : "pointer")};
 
   color: ${props =>
     props.isPinned
-      ? getPinnedForeground(props.model)
-      : getForeground(props.model)};
-
-  background-color: ${props =>
-    props.isPinned
-      ? getPinnedBackground(props.model)
-      : getBackground(props.model)};
+      ? getPinnedForeground(props.disabled)
+      : getForeground(props.disabled)};
 `;
 
-export const EntityItemWrapper = styled(Flex)`
+export const EntityItemWrapper = styled.div`
+  display: flex;
   align-items: center;
+  padding: ${props => getItemPadding(props.variant)};
+  color: ${props =>
+    props.disabled ? color("text-medium") : color("text-dark")};
+
   &:hover {
-    color: ${color("brand")};
+    color: ${props => (props.disabled ? color("text-medium") : color("brand"))};
   }
+`;
+
+export const EntityItemSpinner = styled(LoadingSpinner)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: ${color("brand")};
+`;
+
+export const EntityMenuContainer = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${color("text-medium")};
+`;
+
+export const EntityItemActions = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: 0.5rem;
 `;

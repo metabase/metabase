@@ -1,47 +1,52 @@
 (ns metabase-enterprise.serialization.load
   "Load entities serialized by `metabase-enterprise.serialization.dump`."
   (:refer-clojure :exclude [load])
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
-            [metabase.config :as config]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.util]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.setting :as setting]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [yaml.core :as yaml]
-            [yaml.reader :as y.reader])
-  (:import java.time.temporal.Temporal
-           java.util.UUID))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.names
+    :as names
+    :refer [fully-qualified-name->context]]
+   [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.setting :as setting]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [yaml.core :as yaml]
+   [yaml.reader :as y.reader])
+  (:import
+   (java.time.temporal Temporal)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- slurp-dir
   [path]
@@ -123,7 +128,7 @@
                 (vector? v)
                 (map (fn [x] (conj node x)) (range (count v)))
 
-                :default
+                :else
                 [])))
           (branch? [node] (-> (children node) seq boolean))]
     (->> (keys m)
@@ -149,7 +154,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.util/replace entity
+  (mbql.u/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -179,22 +184,24 @@
   [entity]
   (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
 
-(def ^:private default-user (delay
-                             (let [user (db/select-one-id User :is_superuser true)]
-                               (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
-                               user)))
+(def ^:private ^{:arglists '([])} default-user-id
+  (mdb.connection/memoize-for-application-db
+   (fn []
+     (let [user (db/select-one-id User :is_superuser true)]
+       (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
+       user))))
 
 (defn- terminal-dir
   "Return the last path component (presumably a dir)"
   [path]
-  (.getName (clojure.java.io/file path)))
+  (.getName (io/file path)))
 
 (defn- unresolved-names->string
-  ([entity]
-   (unresolved-names->string entity nil))
-  ([entity insert-id]
+  ([model]
+   (unresolved-names->string model nil))
+  ([model insert-id]
    (str
-    (when-let [nm (:name entity)] (str "\"" nm "\""))
+    (when-let [nm (:name model)] (str "\"" nm "\""))
     (when insert-id (format " (inserted as ID %d) " insert-id))
     "missing:\n  "
     (str/join
@@ -202,14 +209,15 @@
      (map
       (fn [[k v]]
         (format "at %s -> %s" (str/join "/" v) k))
-      (::unresolved-names entity))))))
+      (::unresolved-names model))))))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.
 
    Passing in parent entities as context instead of decoding them from the path each time,
    saves a lot of queriying."
-  (fn [path _]
+  {:arglists '([path context])}
+  (fn [path _context]
     (terminal-dir path)))
 
 (defn- load-dimensions
@@ -285,7 +293,7 @@
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)
-                 :creator_id @default-user)
+                 :creator_id (default-user-id))
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
@@ -295,7 +303,7 @@
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)
-                 :creator_id @default-user)
+                 :creator_id (default-user-id))
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
@@ -406,7 +414,7 @@
               (if (names/fully-qualified-field-name? f-str)
                 [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
                 [f-type f-str f-md]))
-            (resolve-field-id [{:keys [::mb.viz/table-column-field-ref] :as tbl-col}]
+            (resolve-field-id [tbl-col]
               (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
       (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
                                                (mapv resolve-field-id tbl-cols))))
@@ -438,7 +446,16 @@
                                               (-> dashboard
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
-                                                         :creator_id    @default-user))))
+                                                         :creator_id    (default-user-id)))))
+        ;; MEGA HACK -- if `load` is ran with `--mode update` we should delete any Cards that were removed from a
+        ;; Dashboard (according to #20786). However there are literally zero facilities for doing this sort of thing in
+        ;; the current dump/load codebase. So for now we'll just delete ALL DashboardCards for the dumped Dashboard when
+        ;; running with `--mode update` and recreate them from the serialized definitions. This is definitely a wack way
+        ;; of doing things but no one actually understands how this code is supposed to work so this will have to do
+        ;; until we can come in here and clean things up. -- Cam 2022-03-24
+        _               (when (and (= (:mode context) :update)
+                                   (seq dashboard-ids))
+                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
@@ -513,7 +530,7 @@
                       (for [pulse pulses]
                         (-> pulse
                             (assoc :collection_id (:collection context)
-                                   :creator_id    @default-user)
+                                   :creator_id    (default-user-id))
                             (dissoc :channels :cards))))
         pulse-cards (for [[cards pulse-id pulse-idx] (map vector cards pulse-ids (range 0 (count pulse-ids)))
                           card             cards
@@ -596,7 +613,7 @@
       (update :table_id (comp :table fully-qualified-name->context))
       (update :database_id (comp :database fully-qualified-name->context))
       (update :dataset_query mbql-fully-qualified-names->ids)
-      (assoc :creator_id    @default-user
+      (assoc :creator_id    (default-user-id)
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
       resolve-visualization-settings
@@ -604,7 +621,7 @@
           (-> card
               :dataset_query
               :type
-              mbql.util/normalize-token
+              mbql.u/normalize-token
               (= :query)) resolve-card-dataset-query
           (-> card
               :dataset_query
@@ -703,7 +720,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (-> parent-id Collection :location) parent-id "/")
+    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]
@@ -750,7 +767,7 @@
   (load-collections path context))
 
 (defn- prepare-snippet [context snippet]
-  (assoc snippet :creator_id    @default-user
+  (assoc snippet :creator_id    (default-user-id)
                  :collection_id (:collection context)))
 
 (defmethod load "snippets"
@@ -764,40 +781,8 @@
   [path context]
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)
           :when (or (= context :update)
-                    (nil? (setting/get-string k)))]
-    (setting/set-string! k v)))
-
-(defn- log-or-die
-  [on-error message]
-  (if (= on-error :abort)
-    (throw (Exception. (str message)))
-    (log/error message)))
-
-(defn load-dependencies
-  "Load a dump of dependencies."
-  [path context]
-  (let [fully-qualified-name->entity (comp (some-fn (comp Card :card)
-                                                    (comp Metric :metric)
-                                                    (comp Segment :segment)
-                                                    (comp Pulse :pulse))
-                                           fully-qualified-name->context)]
-    (maybe-upsert-many! context Dependency
-      (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
-        (let [model        (fully-qualified-name->entity model_id)
-              dependent-on (fully-qualified-name->entity dependent_on_id)]
-          (cond
-            (and model dependent-on)
-            {:model              (name model)
-             :model_id           (u/the-id model)
-             :dependent_on_model (name dependent-on)
-             :dependent_on_id    (u/the-id dependent-on)
-             :created_at         (java.util.Date.)}
-
-            (nil? model)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" model_id))
-
-            (nil? dependent-on)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" dependent_on_id))))))))
+                    (nil? (setting/get-value-of-type :string k)))]
+    (setting/set-value-of-type! :string k v)))
 
 (defn compatible?
   "Is dump at path `path` compatible with the currently running version of Metabase?"

@@ -3,11 +3,15 @@ import {
   openTable,
   popover,
   enterCustomColumnDetails,
-} from "__support__/e2e/cypress";
+  filter,
+  openOrdersTable,
+  visualize,
+  getNotebookStep,
+} from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > data type", () => {
   beforeEach(() => {
@@ -25,13 +29,46 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("CategoryTitle")
-      .click();
+    filter({ mode: "notebook" });
+
+    popover().findByText("CategoryTitle").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
     cy.findByPlaceholderText("Enter some text");
+  });
+
+  it("should understand date functions", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    addCustomColumns([
+      { name: "Year", formula: "year([Created At])" },
+      { name: "Quarter", formula: "quarter([Created At])" },
+      { name: "Month", formula: "month([Created At])" },
+      { name: "Week", formula: 'week([Created At], "iso")' },
+      { name: "Day", formula: "day([Created At])" },
+      { name: "Weekday", formula: "weekday([Created At])" },
+      { name: "Hour", formula: "hour([Created At])" },
+      { name: "Minute", formula: "minute([Created At])" },
+      { name: "Second", formula: "second([Created At])" },
+      {
+        name: "Datetime Add",
+        formula: 'datetimeAdd([Created At], 1, "month")',
+      },
+      {
+        name: "Datetime Subtract",
+        formula: 'datetimeSubtract([Created At], 1, "month")',
+      },
+      {
+        name: "ConvertTimezone 3 args",
+        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
+      },
+      {
+        name: "ConvertTimezone 2 args",
+        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
+      },
+    ]);
+
+    visualize();
   });
 
   it("should relay the type of a date field", () => {
@@ -40,15 +77,14 @@ describe("scenarios > question > custom column > data type", () => {
     enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("DoB")
-      .click();
+    filter({ mode: "notebook" });
+    popover().findByText("DoB").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 
   it("should handle CASE (metabase#13122)", () => {
@@ -60,15 +96,14 @@ describe("scenarios > question > custom column > data type", () => {
     });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("MiscDate")
-      .click();
+    filter({ mode: "notebook" });
+    popover().findByText("MiscDate").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 
   it("should handle COALESCE", () => {
@@ -80,17 +115,29 @@ describe("scenarios > question > custom column > data type", () => {
     });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("MiscDate")
-      .click();
+    filter({ mode: "notebook" });
+    popover().findByText("MiscDate").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 });
+
+function addCustomColumns(columns) {
+  cy.wrap(columns).each((column, index) => {
+    if (index) {
+      getNotebookStep("expression").within(() => cy.icon("add").click());
+    } else {
+      cy.findByText("Custom column").click();
+    }
+
+    enterCustomColumnDetails(column);
+    cy.button("Done").click();
+  });
+}
 
 function openCustomColumnInTable(table) {
   openTable({ table, mode: "notebook" });

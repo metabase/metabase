@@ -1,24 +1,29 @@
 (ns metabase-enterprise.serialization.names
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.util.i18n :as i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private root-collection-path "/collections/root")
 
@@ -31,22 +36,23 @@
   "Inverse of `safe-name`."
   codec/url-decode)
 
-(defmulti ^:private fully-qualified-name* type)
+(defmulti ^:private fully-qualified-name* mi/model)
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (memoize (fn
-             ([entity] (fully-qualified-name* entity))
-             ([model id]
-              (if (string? id)
-                id
-                (fully-qualified-name* (db/select-one model :id id)))))))
+  (mdb.connection/memoize-for-application-db
+   (fn
+     ([entity] (fully-qualified-name* entity))
+     ([model id]
+      (if (string? id)
+        id
+        (fully-qualified-name* (db/select-one model :id id)))))))
 
-(defmethod fully-qualified-name* (type Database)
+(defmethod fully-qualified-name* Database
   [db]
   (str "/databases/" (safe-name db)))
 
-(defmethod fully-qualified-name* (type Table)
+(defmethod fully-qualified-name* Table
   [table]
   (if (:schema table)
     (format "%s/schemas/%s/tables/%s"
@@ -57,17 +63,17 @@
             (->> table :db_id (fully-qualified-name Database))
             (safe-name table))))
 
-(defmethod fully-qualified-name* (type Field)
+(defmethod fully-qualified-name* Field
   [field]
   (if (:fk_target_field_id field)
     (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
     (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
 
-(defmethod fully-qualified-name* (type Metric)
+(defmethod fully-qualified-name* Metric
   [metric]
   (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (safe-name metric)))
 
-(defmethod fully-qualified-name* (type Segment)
+(defmethod fully-qualified-name* Segment
   [segment]
   (str (->> segment :table_id (fully-qualified-name Table)) "/segments/" (safe-name segment)))
 
@@ -76,30 +82,30 @@
                   (str ":" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
     (str "/collections/" ns-part (safe-name collection))))
 
-(defmethod fully-qualified-name* (type Collection)
+(defmethod fully-qualified-name* Collection
   [collection]
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(-> % Integer/parseInt Collection local-collection-name))
+                         (map #(local-collection-name (db/select-one Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 
-(defmethod fully-qualified-name* (type Dashboard)
+(defmethod fully-qualified-name* Dashboard
   [dashboard]
   (format "%s/dashboards/%s"
           (or (some->> dashboard :collection_id (fully-qualified-name Collection))
               root-collection-path)
           (safe-name dashboard)))
 
-(defmethod fully-qualified-name* (type Pulse)
+(defmethod fully-qualified-name* Pulse
   [pulse]
   (format "%s/pulses/%s"
           (or (some->> pulse :collection_id (fully-qualified-name Collection))
               root-collection-path)
           (safe-name pulse)))
 
-(defmethod fully-qualified-name* (type Card)
+(defmethod fully-qualified-name* Card
   [card]
   (format "%s/cards/%s"
           (or (some->> card
@@ -108,11 +114,11 @@
               root-collection-path)
           (safe-name card)))
 
-(defmethod fully-qualified-name* (type User)
+(defmethod fully-qualified-name* User
   [user]
   (str "/users/" (:email user)))
 
-(defmethod fully-qualified-name* (type NativeQuerySnippet)
+(defmethod fully-qualified-name* NativeQuerySnippet
   [snippet]
   (format "%s/snippets/%s"
           (or (some->> snippet :collection_id (fully-qualified-name Collection))
@@ -143,7 +149,6 @@
 
 (def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."
-  ;(memoize path->context*)
    path->context*)
 
 
@@ -193,11 +198,12 @@
     (assoc context :collection (db/select-one-id Collection
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
-                                 :location  (or (some-> context
-                                                        :collection
-                                                        Collection
-                                                        :location
-                                                        (str (:collection context) "/"))
+                                 :location  (or (letfn [(collection-location [id]
+                                                          (db/select-one-field :location Collection :id id))]
+                                                  (some-> context
+                                                          :collection
+                                                          collection-location
+                                                          (str (:collection context) "/")))
                                                 "/")))))
 
 (defmethod path->context* "dashboards"

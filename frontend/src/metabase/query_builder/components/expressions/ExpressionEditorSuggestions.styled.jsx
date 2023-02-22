@@ -1,31 +1,33 @@
-import styled from "styled-components";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import { alpha, color } from "metabase/lib/colors";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-export const UlStyled = styled.ul.attrs({ className: "pb1" })`
+export const ExpressionPopover = styled(TippyPopover)`
+  border-color: ${alpha("accent2", 0.2)};
+  border-radius: 0;
+`;
+
+export const ExpressionList = styled.ul`
   min-width: 150px;
   overflow-y: auto;
 `;
 
-const sectionTitleClassName =
-  "mx2 h6 text-uppercase text-bold text-medium py1 pt2";
+export const ExpressionListItem = styled.li`
+  display: flex;
+  align-items: center;
+  padding: 0.3125rem 0.875rem;
+  cursor: pointer;
 
-export const SectionTitle = styled.li.attrs({
-  className: sectionTitleClassName,
-})``;
-
-const listItemStyledClassName =
-  "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit";
-
-export const ListItemStyled = styled.li.attrs({
-  className: listItemStyledClassName,
-})`
-  padding-top: 5px;
-  padding-bottom: 5px;
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+  }
 
   ${({ isHighlighted }) =>
     isHighlighted &&
-    `
+    css`
       color: ${color("white")};
       background-color: ${color("brand")};
-  `})}
+    `}
 `;

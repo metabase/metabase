@@ -1,9 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { mockSettings } from "__support__/settings";
 import { msToMinutes, msToHours } from "metabase/lib/time";
-import MetabaseSettings from "metabase/lib/settings";
-import { QuestionCacheTTLField } from "./QuestionCacheTTLField";
+import QuestionCacheTTLField from "./QuestionCacheTTLField";
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
@@ -16,17 +16,10 @@ function setup({
 } = {}) {
   const onChange = jest.fn();
 
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return true;
-    }
-    if (key === "query-caching-ttl-ratio") {
-      return cacheTTLMultiplier;
-    }
-    if (key === "query-caching-min-ttl") {
-      return minCacheThreshold;
-    }
+  mockSettings({
+    "enable-query-caching": true,
+    "query-caching-ttl-ratio": cacheTTLMultiplier,
+    "query-caching-min-ttl": minCacheThreshold,
   });
 
   const question = {
@@ -68,8 +61,6 @@ function fillValue(input, value) {
   input.blur();
 }
 
-const DEFAULT_MODE_TEXT_TEST_ID = /radio-[0-9]+-default-name/;
-
 describe("QuestionCacheTTLField", () => {
   it("displays a placeholder if question is not cached", () => {
     setup();
@@ -83,9 +74,7 @@ describe("QuestionCacheTTLField", () => {
 
   it("displays default caching value if question is cached on a db level", () => {
     setup({ databaseCacheTTL: 32 });
-    expect(screen.queryByTestId(DEFAULT_MODE_TEXT_TEST_ID)).toHaveTextContent(
-      "Use default (32 hours)",
-    );
+    expect(screen.getByLabelText("Use default (32 hours)")).toBeInTheDocument();
   });
 
   it("displays default caching value if question is cached on an instance level", () => {
@@ -95,9 +84,8 @@ describe("QuestionCacheTTLField", () => {
       cacheTTLMultiplier: 100,
     });
     const expectedTTL = Math.round(msToHours(TEN_MINUTES * 100));
-    expect(screen.queryByTestId(DEFAULT_MODE_TEXT_TEST_ID)).toHaveTextContent(
-      `Use default (${expectedTTL} hours)`,
-    );
+    const expectedLabel = `Use default (${expectedTTL} hours)`;
+    expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument();
   });
 
   it("handles if cache duration is in minutes", () => {
@@ -107,9 +95,8 @@ describe("QuestionCacheTTLField", () => {
       cacheTTLMultiplier: 100,
     });
     const expectedTTL = Math.round(msToMinutes(14400 * 100));
-    expect(screen.queryByTestId(DEFAULT_MODE_TEXT_TEST_ID)).toHaveTextContent(
-      `Use default (${expectedTTL} minutes)`,
-    );
+    const expectedLabel = `Use default (${expectedTTL} minutes)`;
+    expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument();
   });
 
   it("calls onChange correctly when filling the input", () => {

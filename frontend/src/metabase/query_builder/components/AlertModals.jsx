@@ -5,17 +5,16 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components
-import Button from "metabase/components/Button";
-import SchedulePicker from "metabase/components/SchedulePicker";
+import Button from "metabase/core/components/Button";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -38,18 +37,18 @@ import {
 } from "metabase/pulse/selectors";
 
 // lib
+import MetabaseCookies from "metabase/lib/cookies";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+// types
+import { alertIsValid } from "metabase/lib/alert";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
-} from "metabase-lib/lib/Alert";
-import MetabaseCookies from "metabase/lib/cookies";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-// types
-import type { AlertType } from "metabase-lib/lib/Alert";
-import { alertIsValid } from "metabase/lib/alert";
+} from "metabase-lib/Alert";
+import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -63,24 +62,7 @@ const textStyle = {
   width: "162px",
 };
 
-@connect(
-  state => ({
-    question: getQuestion(state),
-    visualizationSettings: getVisualizationSettings(state),
-    isAdmin: getUserIsAdmin(state),
-    user: getUser(state),
-    hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
-    hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
-    hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
-  }),
-  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
-)
-export class CreateAlertModalContent extends Component {
-  props: {
-    onCancel: () => void,
-    onAlertCreated: () => void,
-  };
-
+class CreateAlertModalContentInner extends Component {
   constructor(props) {
     super();
 
@@ -115,16 +97,9 @@ export class CreateAlertModalContent extends Component {
   onAlertChange = alert => this.setState({ alert });
 
   onCreateAlert = async () => {
-    const {
-      question,
-      createAlert,
-      apiUpdateQuestion,
-      updateUrl,
-      onAlertCreated,
-    } = this.props;
+    const { question, createAlert, updateUrl, onAlertCreated } = this.props;
     const { alert } = this.state;
 
-    await apiUpdateQuestion(question);
     await createAlert(alert);
     await updateUrl(question.card(), { dirty: false });
 
@@ -207,11 +182,20 @@ export class CreateAlertModalContent extends Component {
   }
 }
 
-export class AlertEducationalScreen extends Component {
-  props: {
-    onProceed: () => void,
-  };
+export const CreateAlertModalContent = connect(
+  state => ({
+    question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
+    isAdmin: getUserIsAdmin(state),
+    user: getUser(state),
+    hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
+    hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
+    hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
+  }),
+  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
+)(CreateAlertModalContentInner);
 
+export class AlertEducationalScreen extends Component {
   render() {
     const { onProceed } = this.props;
 
@@ -290,25 +274,7 @@ export class AlertEducationalScreen extends Component {
   }
 }
 
-@connect(
-  state => ({
-    user: getUser(state),
-    isAdmin: getUserIsAdmin(state),
-    question: getQuestion(state),
-    visualizationSettings: getVisualizationSettings(state),
-  }),
-  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
-)
-export class UpdateAlertModalContent extends Component {
-  props: {
-    alert: any,
-    onCancel: boolean,
-    onAlertUpdated: any => void,
-    updateAlert: any => void,
-    deleteAlert: any => void,
-    isAdmin: boolean,
-  };
-
+class UpdateAlertModalContentInner extends Component {
   constructor(props) {
     super();
     this.state = {
@@ -347,14 +313,8 @@ export class UpdateAlertModalContent extends Component {
   };
 
   render() {
-    const {
-      onCancel,
-      question,
-      visualizationSettings,
-      alert,
-      user,
-      isAdmin,
-    } = this.props;
+    const { onCancel, question, visualizationSettings, alert, user, isAdmin } =
+      this.props;
     const { modifiedAlert } = this.state;
 
     const isCurrentUser = alert.creator.id === user.id;
@@ -395,9 +355,17 @@ export class UpdateAlertModalContent extends Component {
   }
 }
 
-export class DeleteAlertSection extends Component {
-  deleteModal: any;
+export const UpdateAlertModalContent = connect(
+  state => ({
+    user: getUser(state),
+    isAdmin: getUserIsAdmin(state),
+    question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
+  }),
+  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
+)(UpdateAlertModalContentInner);
 
+export class DeleteAlertSection extends Component {
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
     return this.props.alert.channels.map(c =>
@@ -425,7 +393,7 @@ export class DeleteAlertSection extends Component {
     const { onDeleteAlert } = this.props;
 
     return (
-      <div className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
+      <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
           className="text-error absolute top bg-white px1"
           style={{ marginTop: "-12px" }}
@@ -436,8 +404,9 @@ export class DeleteAlertSection extends Component {
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
-              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-              triggerElement="Delete this Alert"
+              as={Button}
+              triggerClasses="Button--danger flex-align-right flex-no-shrink align-self-end"
+              triggerElement={t`Delete this alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
@@ -449,7 +418,7 @@ export class DeleteAlertSection extends Component {
             </ModalWithTrigger>
           </div>
         </div>
-      </div>
+      </DangerZone>
     );
   }
 }
@@ -468,18 +437,7 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
-  null,
-)
-export class AlertEditForm extends Component {
-  props: {
-    alertType: AlertType,
-    alert: any,
-    onAlertChange: any => void,
-    isAdmin: boolean,
-  };
-
+class AlertEditFormInner extends Component {
   onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
@@ -516,6 +474,11 @@ export class AlertEditForm extends Component {
   }
 }
 
+export const AlertEditForm = connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)(AlertEditFormInner);
+
 export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
   const isTimeseries = alertType === ALERT_TYPE_TIMESERIES_GOAL;
   const isProgress = alertType === ALERT_TYPE_PROGRESS_BAR_GOAL;
@@ -535,9 +498,7 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
             ? t`Alert me when the line…`
             : t`Alert me when the progress bar…`
         }
-        trueText={
-          isTimeseries ? t`Goes above the goal line` : t`Reaches the goal`
-        }
+        trueText={isTimeseries ? t`Reaches the goal line` : t`Reaches the goal`}
         falseText={
           isTimeseries ? t`Goes below the goal line` : t`Goes below the goal`
         }
@@ -612,26 +573,7 @@ export class AlertEditSchedule extends Component {
   }
 }
 
-@User.loadList()
-@connect(
-  (state, props) => ({
-    user: getUser(state),
-    formInput: getPulseFormInput(state),
-  }),
-  {
-    fetchPulseFormInput,
-  },
-)
-export class AlertEditChannels extends Component {
-  props: {
-    onChannelsChange: any => void,
-    user: any,
-    users: any[],
-    // this stupidly named property contains different channel options, nothing else
-    formInput: any,
-    fetchPulseFormInput: () => Promise<void>,
-  };
-
+class AlertEditChannelsInner extends Component {
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }
@@ -676,12 +618,21 @@ export class AlertEditChannels extends Component {
   }
 }
 
+export const AlertEditChannels = _.compose(
+  User.loadList(),
+  connect(
+    (state, props) => ({
+      user: getUser(state),
+      formInput: getPulseFormInput(state),
+    }),
+    {
+      fetchPulseFormInput,
+    },
+  ),
+)(AlertEditChannelsInner);
+
 // TODO: Not sure how to translate text with formatting properly
-@connect(state => ({
-  question: getQuestion(state),
-  visualizationSettings: getVisualizationSettings(state),
-}))
-export class RawDataAlertTip extends Component {
+class RawDataAlertTipInner extends Component {
   render() {
     const display = this.props.question.display();
     const vizSettings = this.props.visualizationSettings;
@@ -708,6 +659,11 @@ export class RawDataAlertTip extends Component {
     );
   }
 }
+
+export const RawDataAlertTip = connect(state => ({
+  question: getQuestion(state),
+  visualizationSettings: getVisualizationSettings(state),
+}))(RawDataAlertTipInner);
 
 export const MultiSeriesAlertTip = () => (
   <div>{jt`${(

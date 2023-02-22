@@ -1,18 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import { t } from "ttag";
 
-import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
+import { SectionRoot } from "./QuestionLastUpdated.styled";
 
 export default function QuestionLastUpdated({ result, ...props }) {
   return result ? (
-    <Flex align="center" {...props}>
+    <SectionRoot {...props}>
       <Icon name="clock" mr={1} />
       {t`Updated ${moment(result.updated_at).fromNow()}`}
-    </Flex>
+    </SectionRoot>
   ) : null;
 }
 

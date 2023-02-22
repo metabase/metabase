@@ -4,23 +4,21 @@ import { Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import { List, WindowScroller } from "react-virtualized";
 import { capitalize } from "metabase/lib/formatting";
 
 import { entities as entityDefs } from "metabase/redux/entities";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import EntityForm from "metabase/entities/containers/EntityForm";
 
 const withPush = ComposedComponent =>
-  connect(
-    null,
-    { push },
-  )(ComposedComponent);
+  connect(null, { push })(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {
@@ -37,8 +35,6 @@ export default class EntitiesApp extends React.Component {
     );
   }
 }
-
-import { List, WindowScroller } from "react-virtualized";
 
 const EntityListApp = ({ params: { entityType } }) => (
   <EntityListLoader entityType={entityType} wrapped>

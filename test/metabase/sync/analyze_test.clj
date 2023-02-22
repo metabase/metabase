@@ -1,23 +1,26 @@
-(ns metabase.sync.analyze-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.classifiers.category :as classifiers.category]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+(ns ^:mb/once metabase.sync.analyze-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.classifiers.category :as classifiers.category]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+   [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -30,7 +33,7 @@
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (Table (data/id :venues)))
+        (analyze/analyze-table! (db/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -89,17 +92,17 @@
     (sync-survives-crash? classifiers.name/semantic-type-for-name-and-base-type)
     (sync-survives-crash? classifiers.category/infer-is-category-or-list)
     (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
-    (sync-survives-crash? classify-text-fingerprint/infer-semantic-type)))
+    (sync-survives-crash? classifiers.text-fingerprint/infer-semantic-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
     (sync-survives-crash? classifiers.name/infer-entity-type)))
 
 (defn- classified-semantic-type [values]
-  (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (:semantic_type (classify-text-fingerprint/infer-semantic-type
-                    field
-                    (transduce identity (fingerprinters/fingerprinter field) values)))))
+  (let [field (mi/instance Field {:base_type :type/Text})]
+    (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
+                     field
+                     (transduce identity (fingerprinters/fingerprinter field) values)))))
 
 (deftest classify-json-test
   (doseq [[group values->expected] {"When all the values are valid JSON dicts they're valid JSON"
@@ -161,14 +164,14 @@
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
   [table visibility-type]
-  ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                          :visibility_type visibility-type
-                                                                          :description     "What a nice table!"}))
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                             :visibility_type visibility-type
+                                                                             :description     "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  ((mt/user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive
@@ -183,7 +186,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (Database (:db_id table))))
+  (analyze/analyze-db! (db/select-one Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
@@ -221,7 +224,7 @@
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
     (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
           (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
@@ -243,7 +246,7 @@
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
     (mt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       ;; switch the table to visible (triggering a sync) and get the last sync time
       (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                                (latest-sync-time table))]
@@ -252,3 +255,24 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(deftest analyze-should-send-a-snowplow-event-test
+  (testing "the recorded event should include db-id and db-engine"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp* [Table [table  (fake-table)]
+                      Field [_field (fake-field table)]]
+        (analyze-table! table)
+        (is (= {:data {"task_id"    true
+                       "event"      "new_task_history"
+                       "started_at" true
+                       "ended_at"   true
+                       "duration"   true
+                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
+                       "db_id"      true
+                       "task_name"  "classify-tables"}
+                :user-id nil}
+               (-> (snowplow-test/pop-event-data-and-user-id!)
+                   last
+                   mt/boolean-ids-and-timestamps
+                   (update :data dissoc "task_details")
+                   (update-in [:data "duration"] some?))))))))

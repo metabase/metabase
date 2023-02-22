@@ -1,92 +1,76 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.api.card :as card-api]
-            [metabase.email :as email]
-            [metabase.email.messages :as messages]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.markdown :as markdown]
-            [metabase.pulse.parameters :as params]
-            [metabase.pulse.render :as render]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.server.middleware.session :as session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ui-logic :as ui]
-            [metabase.util.urls :as urls]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import metabase.models.card.CardInstance))
-
+  (:require
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.parameters :as params]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.util :as pu]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.retry :as retry]
+   [metabase.util.ui-logic :as ui-logic]
+   [metabase.util.urls :as urls]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
-;; TODO - this is probably something that could live somewhere else and just be reused
-;; TODO - this should be done async
-(defn execute-card
-  "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
-  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
-  {:pre [(or (integer? pulse-creator-id)
-             (= (:context options) :metabot))]}
-  (let [card-id (u/the-id card-or-id)]
-    (try
-      (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
-        (let [query         (assoc query :async? false)
-              process-query (fn []
-                              (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false})
-                                 (merge {:executed-by pulse-creator-id
-                                         :context     :pulse
-                                         :card-id     card-id}
-                                        options))))
-              result        (if pulse-creator-id
-                              (session/with-current-user pulse-creator-id
-                                (process-query))
-                              (process-query))]
-          {:card   card
-           :result result}))
-      (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-id))))))
+(defn- merge-default-values
+  "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
+  the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
+  wants to use it (see #20503 for more details) but this obviously isn't an option for Dashboard Subscriptions... so
+  go thru `parameters` and change `:default` to `:value` unless a `:value` is explicitly specified."
+  [parameters]
+  (for [{default-value :default, :as parameter} parameters]
+    (merge
+     (when default-value
+       {:value default-value})
+     (dissoc parameter :default))))
 
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
-    (let [card-id         (u/the-id card-or-id)
-          card            (Card :id card-id)
-          param-id->param (u/key-by :id parameters)
-          params          (for [mapping (:parameter_mappings dashcard)
-                                :when   (= (:card_id mapping) card-id)
-                                :let    [param (get param-id->param (:parameter_id mapping))]
-                                :when   param]
-                            (assoc param :target (:target mapping)))
-          result (session/with-current-user owner-id
-                   (card-api/run-query-for-card-async
-                    card-id :api
-                    :dashboard-id  (:id dashboard)
-                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                    :export-format :api
-                    :parameters    params
-                    :middleware    {:process-viz-settings? true
-                                    :js-int-to-string?     false}
-                    :run (fn [query info]
-                           (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
-      {:card card
+    (let [card-id (u/the-id card-or-id)
+          card    (db/select-one Card :id card-id)
+          result  (mw.session/with-current-user owner-id
+                    (qp.dashboard/run-query-for-dashcard-async
+                     :dashboard-id  (u/the-id dashboard)
+                     :card-id       card-id
+                     :dashcard-id   (u/the-id dashcard)
+                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                     :export-format :api
+                     :parameters    parameters
+                     :middleware    {:process-viz-settings? true
+                                     :js-int-to-string?     false}
+                     :run           (fn [query info]
+                                      (qp/process-query-and-save-with-max-results-constraints!
+                                       (assoc query :async? false)
+                                       info))))]
+      {:card     card
        :dashcard dashcard
-       :result result})
+       :result   result})
     (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
+      (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
 (defn- dashcard-comparator
   "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
@@ -96,18 +80,20 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
-(defn execute-dashboard
+(defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id      (u/the-id dashboard-or-id)
-        dashboard         (Dashboard :id dashboard-id)
+  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
+  (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
-        ordered-dashcards (sort dashcard-comparator dashcards)]
+        ordered-dashcards (sort dashcard-comparator dashcards)
+        parameters        (merge-default-values (params/parameters pulse dashboard))]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (params/parameters pulse dashboard))
-        ;; For virtual cards, return the viz settings map directly
-        (-> dashcard :visualization_settings)))))
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
+        ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
+        (-> dashcard
+            (params/process-virtual-dashcard parameters)
+            :visualization_settings)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -115,8 +101,8 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- CardInstance]
-  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+  [card :- (mi/InstanceOf Card)]
+  (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
@@ -128,38 +114,38 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
-(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
-  3000)
+(def ^:private block-text-length-limit 3000)
+(def ^:private attachment-text-length-limit 2000)
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
-  [mrkdwn]
-  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+  [mrkdwn limit]
+  (if (> (count mrkdwn) limit)
     (-> mrkdwn
-        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (subs 0 (dec limit))
         (str "…"))
     mrkdwn))
 
 (defn create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
-  (let [{channel-id :id} (slack/files-channel)]
+  (let [channel-id (slack/files-channel)]
     (->> (for [card-result card-results]
            (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
              (if (and card result)
                {:title           (or (-> dashcard :visualization_settings :card.title)
                                      card-name)
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id
                 :fallback        card-name}
-               (let [mrkdwn (markdown/process-markdown (:text card-result) :mrkdwn)]
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
-                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
+                                     :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))))
          (remove nil?))))
 
 (defn- subject
@@ -168,6 +154,12 @@
           (some :dashboard_id cards))
     name
     (trs "Pulse: {0}" name)))
+
+(defn- filter-text
+  [filter]
+  (truncate-mrkdwn
+   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   attachment-text-length-limit))
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -183,7 +175,7 @@
         filters         (params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
-                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
+                           :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -202,7 +194,8 @@
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
-  "Width of the rendered png of html to be sent to slack."
+  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
+  many columns) is truncated."
   1200)
 
 (defn create-and-upload-slack-attachments!
@@ -244,18 +237,19 @@
   (every? is-card-empty? results))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [goal-comparison      (if alert_above_goal <= >=)
-        goal-val             (ui/find-goal-value first-result)
-        comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
+  (let [goal-comparison      (if alert_above_goal >= <)
+        goal-val             (ui-logic/find-goal-value first-result)
+        comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
                       {:pulse  pulse
                        :result first-result})))
-    (some (fn [row]
-            (goal-comparison goal-val (comparison-col-rowfn row)))
-          (get-in first-result [:result :data :rows]))))
+    (boolean
+     (some (fn [row]
+             (goal-comparison (comparison-col-rowfn row) goal-val))
+           (get-in first-result [:result :data :rows])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -285,7 +279,7 @@
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
-  [{:keys [alert_condition] :as pulse} results]
+  [pulse results]
   (if (:skip_if_empty pulse)
     (not (are-all-cards-empty? results))
     true))
@@ -307,7 +301,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (Dashboard :id dashboard-id)]
+        dashboard        (db/select-one Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
@@ -319,7 +313,7 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [dashboard (Dashboard :id dashboard-id)]
+  (let [dashboard (db/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
@@ -339,7 +333,7 @@
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse channel results (ui/find-goal-value first-result))}))
+     :message      (messages/render-alert-email timezone pulse channel results (ui-logic/find-goal-value first-result))}))
 
 (defmethod notification [:alert :slack]
   [pulse results {{channel-id :channel} :details}]
@@ -367,15 +361,15 @@
 
 (defn- pulse->notifications
   "Execute the underlying queries for a sequence of Pulses and return the results as 'notification' maps."
-  [{:keys [cards dashboard_id], pulse-id :id, :as pulse}]
+  [{:keys [cards], pulse-id :id, :as pulse} dashboard]
   (results->notifications pulse
-                          (if dashboard_id
+                          (if dashboard
                             ;; send the dashboard
-                            (execute-dashboard pulse dashboard_id)
+                            (execute-dashboard pulse dashboard)
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [result (execute-card pulse (u/the-id card), :pulse-id pulse-id)]
+                                  :let  [result (pu/execute-card pulse (u/the-id card), :pulse-id pulse-id)]
                                   ;; some cards may return empty results, e.g. if the card has been archived
                                   :when result]
                               result))))
@@ -394,22 +388,100 @@
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
   (let [attachments (create-and-upload-slack-attachments! attachments)]
-    (slack/post-chat-message! channel-id message attachments)))
+    (try
+      (slack/post-chat-message! channel-id message attachments)
+      (catch ExceptionInfo e
+        ;; Token errors have already been logged and we should not retry.
+        (when-not (contains? (:errors (ex-data e)) :slack-token)
+          (throw e))))))
 
 (defmethod send-notification! :email
   [{:keys [subject recipients message-type message]}]
-  (email/send-message!
-    :subject      subject
-    :recipients   recipients
-    :message-type message-type
-    :message      message))
+  (try
+    (email/send-message-or-throw! {:subject      subject
+                                   :recipients   recipients
+                                   :message-type message-type
+                                   :message      message})
+    (catch ExceptionInfo e
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e)))))
+
+(declare ^:private reconfigure-retrying)
+
+(defsetting notification-retry-max-attempts
+  (deferred-tru "The maximum number of attempts for delivering a single notification.")
+  :type :integer
+  :default 7
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds when delivering notifications.")
+  :type :integer
+  :default 500
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-multiplier
+  (deferred-tru "The delay multiplier between attempts to deliver a single notification.")
+  :type :double
+  :default 2.0
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-randomization-factor
+  (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
+  :type :double
+  :default 0.1
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts to deliver a single notification.")
+  :type :integer
+  :default 30000
+  :on-change reconfigure-retrying)
+
+(defn- retry-configuration []
+  (cond-> {:max-attempts (notification-retry-max-attempts)
+           :initial-interval-millis (notification-retry-initial-interval)
+           :multiplier (notification-retry-multiplier)
+           :randomization-factor (notification-retry-randomization-factor)
+           :max-interval-millis (notification-retry-max-interval-millis)}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+
+(defn- make-retry-state
+  "Returns a notification sender wrapping [[send-notifications!]] retrying
+  according to `retry-configuration`."
+  []
+  (let [retry (retry/random-exponential-backoff-retry "send-notification-retry"
+                                                      (retry-configuration))]
+    {:retry retry
+     :sender (retry/decorate send-notification! retry)}))
+
+(defonce
+  ^{:private true
+    :doc "Stores the current retry state. Updated whenever the notification
+  retry settings change.
+  It starts with value `nil` but is set whenever the settings change or when
+  the first call with retry is made. (See #22790 for more details.)"}
+  retry-state
+  (atom nil))
+
+(defn- reconfigure-retrying [_old-value _new-value]
+  (log/info (trs "Reconfiguring notification sender"))
+  (reset! retry-state (make-retry-state)))
+
+(defn- send-notification-retrying!
+  "Like [[send-notification!]] but retries sending on errors according
+  to the retry settings."
+  [& args]
+  (when-not @retry-state
+    (compare-and-set! retry-state nil (make-retry-state)))
+  (apply (:sender @retry-state) args))
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
     ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
     ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
     (try
-      (send-notification! notification)
+      (send-notification-retrying! notification)
       (catch Throwable e
         (log/error e (trs "Error sending notification!"))))))
 
@@ -423,12 +495,13 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
+  [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [pulse (-> pulse
-                  pulse/map->PulseInstance
-                  ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
-                  ;; to fetch the Pulse.
-                  pulse/hydrate-notification
-                  (merge (when channel-ids {:channel-ids channel-ids})))]
-    (send-notifications! (pulse->notifications pulse))))
+  (let [dashboard (db/select-one Dashboard :id dashboard_id)
+        pulse     (-> (mi/instance Pulse pulse)
+                      ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
+                      ;; to fetch the Pulse.
+                      pulse/hydrate-notification
+                      (merge (when channel-ids {:channel-ids channel-ids})))]
+    (when (not (:archived dashboard))
+      (send-notifications! (pulse->notifications pulse dashboard)))))

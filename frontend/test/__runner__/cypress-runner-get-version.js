@@ -1,8 +1,9 @@
-const { printBold, printCyan, readFile } = require("./cypress-runner-utils.js");
+const fs = require("fs");
+const { printBold, printCyan } = require("./cypress-runner-utils.js");
 
 const getVersion = async () => {
   try {
-    const version = await readFile(
+    const version = fs.readFileSync(
       __dirname + "/../../../resources/version.properties",
     );
 

@@ -1,29 +1,28 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
-  (:require [clojure.tools.logging :as log]
-            [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
-            [metabase.models.table :refer [Table]]
-            [metabase.public-settings.premium-features :as settings.premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [pretty.core :as pretty]
-            [toucan.db :as db]))
+  (:require
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase.db.query :as mdb.query]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
 (defn- delete-gtaps-with-condition! [group-or-id condition]
   (when (seq condition)
     (let [conditions (into
                       [:and
-                       [:= :gtap.group_id (u/the-id group-or-id)]]
+                       [:= :sandboxes.group_id (u/the-id group-or-id)]]
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
-        (if-let [gtap-ids (not-empty (set (map :id (db/query
-                                                      {:select    [[:gtap.id :id]]
-                                                       :from      [[GroupTableAccessPolicy :gtap]]
-                                                       :left-join [[Table :table]
-                                                                   [:= :gtap.table_id :table.id]]
-                                                       :where     conditions}))))]
+        (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
+                                                    {:select    [[:sandboxes.id :id]]
+                                                     :from      [[:sandboxes]]
+                                                     :left-join [[:metabase_table :table]
+                                                                 [:= :sandboxes.table_id :table.id]]
+                                                     :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
             (db/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
@@ -33,7 +32,7 @@
                           {:group (u/the-id group-or-id), :conditions conditions}
                           e)))))))
 
-(defn- delete-gtaps-for-group-table! [{:keys [group-id table-id], :as context} changes]
+(defn- delete-gtaps-for-group-table! [{:keys [group-id table-id] :as _context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Table %d. Graph changes: %s"
              group-id table-id (pr-str changes))
   (cond
@@ -111,28 +110,15 @@
   (doseq [database-id (set (keys changes))]
     (delete-gtaps-for-group-database!
      {:group-id group-id, :database-id database-id}
-     (get-in changes [database-id :schemas]))))
+     (get-in changes [database-id :data :schemas]))))
 
-(defn- delete-gtaps-if-needed-after-permissions-change! [changes]
+(defenterprise delete-gtaps-if-needed-after-permissions-change!
+  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
+  longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
+  the `things-only-in-new` returned by `clojure.data/diff`."
+  :feature :sandboxes
+  [changes]
   (log/debug "Permissions updated, deleting unneeded GTAPs...")
   (doseq [group-id (set (keys changes))]
     (delete-gtaps-for-group! {:group-id group-id} (get changes group-id)))
   (log/debug "Done deleting unneeded GTAPs."))
-
-(def ^:private impl
-  (reify
-    delete-sandboxes/DeleteSandboxes
-    (delete-gtaps-if-needed-after-permissions-change!* [_ changes]
-      (delete-gtaps-if-needed-after-permissions-change! changes))
-
-    pretty/PrettyPrintable
-    (pretty [_]
-      `impl)))
-
-(def ee-strategy-impl
-  "EE impl for Sandbox (GTAP) deletion behavior. Don't use this directly."
-  (ee-strategy-impl/reify-ee-strategy-impl
-    #'settings.premium-features/enable-sandboxes?
-    impl
-    delete-sandboxes/oss-default-impl
-    delete-sandboxes/DeleteSandboxes))

@@ -1,67 +1,84 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import Toggle from "metabase/components/Toggle";
+import _ from "underscore";
+import MembershipSelect from "metabase/admin/people/components/MembershipSelect";
 
 import Group from "metabase/entities/groups";
 
-import { t } from "ttag";
-import _ from "underscore";
-
-import {
-  isDefaultGroup,
-  isAdminGroup,
-  canEditMembership,
-} from "metabase/lib/groups";
+import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {
   const adminGroup = _.find(groups, isAdminGroup);
   const defaultGroup = _.find(groups, isDefaultGroup);
 
   if (!value) {
-    value = [defaultGroup.id];
+    value = [{ id: defaultGroup.id, is_group_manager: false }];
   }
 
-  const selection = new Set(value);
-
-  function onGroupChange(group, selected) {
-    const newSelection = new Set(selection);
-    if (selected) {
-      newSelection.add(group.id);
-    } else {
-      newSelection.delete(group.id);
+  const memberships = value.reduce((acc, { id, ...membershipData }) => {
+    if (id != null) {
+      acc.set(id, membershipData);
     }
-    onChange(Array.from(newSelection));
-  }
+    return acc;
+  }, new Map());
 
-  const visibleGroups = _.filter(
-    groups,
-    g => canEditMembership(g) || isDefaultGroup(g),
-  );
-  const hadAdminGroup = !!adminGroup;
-  const hasNonAdminEditableGroups = _.any(
-    groups,
-    g => canEditMembership(g) && !isAdminGroup(g),
-  );
+  const isUserAdmin = memberships.has(adminGroup.id);
 
-  return hasNonAdminEditableGroups ? (
-    <GroupSelect
-      groups={visibleGroups}
-      selectedGroupIds={value}
-      onGroupChange={onGroupChange}
+  const handleAdd = (groupId, membershipData) => {
+    const updatedValue = Array.from(memberships.entries()).map(
+      ([id, membershipData]) => {
+        return {
+          id,
+          ...membershipData,
+        };
+      },
+    );
+
+    updatedValue.push({ id: groupId, ...membershipData });
+    onChange(updatedValue);
+  };
+
+  const handleRemove = groupId => {
+    const updatedValue = Array.from(memberships.entries())
+      .map(([id, membershipData]) => {
+        if (id === groupId) {
+          return null;
+        }
+
+        return {
+          id,
+          ...membershipData,
+        };
+      })
+      .filter(Boolean);
+
+    onChange(updatedValue);
+  };
+  const handleChange = (groupId, newMembershipData) => {
+    const updatedValue = Array.from(memberships.entries()).map(
+      ([id, membershipData]) => {
+        const data = groupId === id ? newMembershipData : membershipData;
+        return {
+          id,
+          ...data,
+        };
+      },
+    );
+
+    onChange(updatedValue);
+  };
+
+  return (
+    <MembershipSelect
+      groups={groups}
+      memberships={memberships}
+      onAdd={handleAdd}
+      onRemove={handleRemove}
+      onChange={handleChange}
+      isUserAdmin={isUserAdmin}
     />
-  ) : hadAdminGroup ? (
-    <div className="flex align-center">
-      <Toggle
-        value={selection.has(adminGroup.id)}
-        onChange={isAdmin => {
-          onGroupChange(adminGroup, isAdmin);
-        }}
-      />
-      <span className="ml2">{t`Make this user an admin`}</span>
-    </div>
-  ) : null;
+  );
 };
 
 export default Group.loadList()(FormGroupsWidget);

@@ -1,14 +1,19 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  HostingCTAContent,
+  HostingCTAIconContainer,
+  HostingCTARoot,
+  NewVersionContainer,
+} from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
   const currentVersion = formatVersion(MetabaseSettings.currentVersion());
@@ -63,7 +68,7 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
+      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
         <span className="text-white text-bold">
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
@@ -81,7 +86,7 @@ function NewVersionAvailable({ currentVersion }) {
         >
           {t`Update`}
         </ExternalLink>
-      </div>
+      </NewVersionContainer>
 
       <div
         className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
@@ -112,28 +117,20 @@ function HostingCTA() {
   }
 
   return (
-    <Flex
-      justifyContent="space-between"
-      alignItems="center"
-      className="rounded bg-light mt4 text-brand py2 px1"
-    >
-      <Flex>
-        <Flex
-          className="circular bg-medium align-center justify-center ml1 mr2"
-          width={52}
-          height={32}
-        >
+    <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
+      <HostingCTAContent>
+        <HostingCTAIconContainer className="circular bg-medium align-center justify-center ml1 mr2">
           <Icon name="cloud" size={24} />
-        </Flex>
+        </HostingCTAIconContainer>
         <div>
           <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
           <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
         </div>
-      </Flex>
-      <Box className="pr1">
+      </HostingCTAContent>
+      <div className="pr1">
         <HostingInfoLink text={t`Learn more`} />
-      </Box>
-    </Flex>
+      </div>
+    </HostingCTARoot>
   );
 }
 

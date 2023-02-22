@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.types :as types]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.types :as types]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
@@ -21,8 +23,9 @@
 
 (defmethod type-info :default [_] nil)
 
-(defmethod type-info (class Field) [this]
-  (let [field-info (select-keys this [:base_type :effective_type :coercion_strategy :semantic_type :database_type :name])]
+(defmethod type-info Field
+  [field]
+  (let [field-info (select-keys field [:base_type :effective_type :coercion_strategy :semantic_type :database_type :name])]
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
@@ -121,6 +124,12 @@
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
+    [:datetime-diff (x :guard string?) (y :guard string?) unit]
+    [:datetime-diff (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
+
+    [(clause :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) (field :guard string?) & args]
+    (into [clause (add-type-info (u.date/parse field) nil)] args)
+
     [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
      field
@@ -144,18 +153,13 @@
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
     (wrap-value-literals-in-mbql inner-query)))
 
-(defn- wrap-value-literals*
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
-
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
-  [qp]
-  (fn [query rff context]
-    (qp (wrap-value-literals* query) rff context)))
+  [{query-type :type, :as query}]
+  (if-not (= query-type :query)
+    query
+    (mbql.s/validate-query
+     (update query :query wrap-value-literals-in-mbql-query nil))))

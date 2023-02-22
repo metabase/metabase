@@ -1,8 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Flex } from "grid-styled";
 
 import EmptyState from "metabase/components/EmptyState";
+import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
 
 const propTypes = {
   icon: PropTypes.string.isRequired,
@@ -10,9 +10,9 @@ const propTypes = {
 };
 
 export const PermissionsEditorEmptyState = props => (
-  <Flex alignItems="center" mx="auto">
+  <EmptyStateRoot>
     <EmptyState {...props} />
-  </Flex>
+  </EmptyStateRoot>
 );
 
 PermissionsEditorEmptyState.propTypes = propTypes;

@@ -3,20 +3,18 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import cx from "classnames";
 import Utils from "metabase/lib/utils";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import SettingHeader from "../SettingHeader";
-
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 
-import cx from "classnames";
-
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import SettingHeader from "../SettingHeader";
 
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {
@@ -137,6 +135,10 @@ export default class CustomGeoJSONWidget extends Component {
 
   render() {
     const { setting } = this.props;
+
+    if (!setting.value || setting.is_env_setting) {
+      return null;
+    }
 
     return (
       <div className="flex-full">
@@ -270,7 +272,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
       {Object.entries(options).map(([name, values]) => (
         <Option key={name} value={name}>
           <div>
-            <div>{name}</div>
+            <div style={{ textAlign: "left" }}>{name}</div>
             <div
               className="mt1 h6"
               style={{
@@ -315,7 +317,7 @@ const EditMap = ({
   onCancel,
   onSave,
 }) => (
-  <div>
+  <div data-testid="edit-map-modal">
     <div className="flex">
       <div className="flex-no-shrink">
         <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
@@ -373,11 +375,15 @@ const EditMap = ({
           </SettingContainer>
         </div>
       </div>
-      <div className="flex-auto ml4 relative bordered rounded flex my4">
+      <div className="flex-auto ml4 relative bordered rounded flex my4 overflow-hidden">
         {geoJson || geoJsonLoading || geoJsonError ? (
-          <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
+          <LoadingAndErrorWrapper
+            className="flex full-height full-width"
+            loading={geoJsonLoading}
+            error={geoJsonError}
+          >
             {() => (
-              <div className="m4 spread relative">
+              <div className="spread relative">
                 <ChoroplethPreview geoJson={geoJson} />
               </div>
             )}

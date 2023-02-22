@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+import { t } from "ttag";
 import {
   compose,
   withAction,
@@ -8,17 +10,15 @@ import {
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { assocIn } from "icepick";
-import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
 
 import { POST, DELETE } from "metabase/lib/api";
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./dashboards/forms";
 
@@ -88,22 +88,21 @@ const Dashboards = createEntity({
       ]),
       withAnalytics("entities", "dashboard", "copy"),
     )(
-      (entityObject, overrides, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        const result = Dashboards.normalize(
-          await Dashboards.api.copy({
-            id: entityObject.id,
-            ...overrides,
-          }),
-        );
-        if (notify) {
-          dispatch(addUndo(notify));
-        }
-        dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-        return result;
-      },
+      (entityObject, overrides, { notify } = {}) =>
+        async (dispatch, getState) => {
+          const result = Dashboards.normalize(
+            await Dashboards.api.copy({
+              id: entityObject.id,
+              ...overrides,
+              is_deep_copy: !overrides.is_shallow_copy,
+            }),
+          );
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
+          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+          return result;
+        },
     ),
   },
 
@@ -135,7 +134,7 @@ const Dashboards = createEntity({
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: dashboard => ({ name: "dashboard" }),
+    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 

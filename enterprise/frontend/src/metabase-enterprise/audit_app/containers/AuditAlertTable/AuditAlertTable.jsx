@@ -16,7 +16,4 @@ const mapDispatchToProps = {
     push(`/admin/audit/subscriptions/alerts/${pulse_id}/delete`),
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(AuditEntitiesTable);
+export default connect(mapStateToProps, mapDispatchToProps)(AuditEntitiesTable);

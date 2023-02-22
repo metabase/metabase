@@ -1,6 +1,5 @@
+/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
-
-import * as React from "react";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
@@ -16,52 +15,6 @@ import ChartSettingColorPicker from "metabase/visualizations/components/settings
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-export type SettingId = string;
-
-export type Settings = {
-  [settingId: SettingId]: any,
-};
-
-export type SettingDefs = {
-  [settingId: SettingId]: SettingDef,
-};
-
-export type SettingDef = {
-  title?: string,
-  props?: { [key: string]: any },
-  default?: any,
-  hidden?: boolean,
-  disabled?: boolean,
-  getTitle?: (object: any, settings: Settings, extra: ExtraProps) => ?string,
-  getHidden?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
-  getDisabled?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
-  getProps?: (
-    object: any,
-    settings: Settings,
-    onChange: Function,
-    extra: ExtraProps,
-  ) => { [key: string]: any },
-  getDefault?: (object: any, settings: Settings, extra: ExtraProps) => any,
-  getValue?: (object: any, settings: Settings, extra: ExtraProps) => any,
-  isValid?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
-  widget?: string | React.Component,
-  writeDependencies?: SettingId[],
-  readDependencies?: SettingId[],
-};
-
-export type WidgetDef = {
-  id: SettingId,
-  value: any,
-  title: ?string,
-  hidden: boolean,
-  disabled: boolean,
-  props: { [key: string]: any },
-  widget?: React.Component,
-  onChange: (value: any) => void,
-};
-
-export type ExtraProps = { [key: string]: any };
 
 const WIDGETS = {
   input: ChartSettingInput,
@@ -79,10 +32,10 @@ const WIDGETS = {
 };
 
 export function getComputedSettings(
-  settingsDefs: SettingDefs,
-  object: any,
-  storedSettings: Settings,
-  extra?: ExtraProps = {},
+  settingsDefs,
+  object,
+  storedSettings,
+  extra = {},
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
@@ -99,13 +52,13 @@ export function getComputedSettings(
 }
 
 function getComputedSetting(
-  computedSettings: Settings, // MUTATED!
-  settingDefs: SettingDefs,
-  settingId: SettingId,
-  object: any,
-  storedSettings: Settings,
-  extra?: ExtraProps = {},
-): any {
+  computedSettings, // MUTATED!
+  settingDefs,
+  settingId,
+  object,
+  storedSettings,
+  extra = {},
+) {
   if (settingId in computedSettings) {
     return;
   }
@@ -160,36 +113,46 @@ function getComputedSetting(
 }
 
 function getSettingWidget(
-  settingDefs: SettingDefs,
-  settingId: SettingId,
-  storedSettings: Settings,
-  computedSettings: Settings,
-  object: any,
-  onChangeSettings: (settings: Settings) => void,
-  extra?: ExtraProps = {},
-): WidgetDef {
+  settingDefs,
+  settingId,
+  storedSettings,
+  computedSettings,
+  object,
+  onChangeSettings,
+  extra = {},
+) {
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = value => {
-    const newSettings = { [settingId]: value };
+    const newSettings = { [settingDef.writeSettingId || settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
+    }
+    for (const settingId of settingDef.eraseDependencies || []) {
+      newSettings[settingId] = null;
     }
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
+    marginBottom: settingDef.getMarginBottom
+      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      : settingDef.marginBottom,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
@@ -210,12 +173,12 @@ function getSettingWidget(
 }
 
 export function getSettingsWidgets(
-  settingDefs: SettingDefs,
-  storedSettings: Settings,
-  computedSettings: Settings,
-  object: any,
-  onChangeSettings: (settings: Settings) => void,
-  extra?: ExtraProps = {},
+  settingDefs,
+  storedSettings,
+  computedSettings,
+  object,
+  onChangeSettings,
+  extra = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
@@ -232,10 +195,7 @@ export function getSettingsWidgets(
     .filter(widget => widget.widget);
 }
 
-export function getPersistableDefaultSettings(
-  settingsDefs: SettingDefs,
-  completeSettings: Settings,
-): Settings {
+export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
   const persistableDefaultSettings = {};
   for (const settingId in settingsDefs) {
     const settingDef = settingsDefs[settingId];
@@ -246,10 +206,7 @@ export function getPersistableDefaultSettings(
   return persistableDefaultSettings;
 }
 
-export function updateSettings(
-  storedSettings: Settings,
-  changedSettings: Settings,
-): Settings {
+export function updateSettings(storedSettings, changedSettings) {
   for (const key of Object.keys(changedSettings)) {
     MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
   }
@@ -268,7 +225,7 @@ export function updateSettings(
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
-export function mergeSettings(first: Settings = {}, second: Settings = {}) {
+export function mergeSettings(first = {}, second = {}) {
   // Note: This hardcoded list of all nested settings is potentially fragile,
   // but both the list of nested settings and the keys used are very stable.
   const nestedSettings = ["series_settings", "column_settings"];

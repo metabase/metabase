@@ -1,7 +1,15 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 
-import MetabaseSettings from "metabase/lib/settings";
+import { renderWithProviders } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+
+import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockAdminState,
+  createMockAdminAppState,
+} from "metabase-types/store/mocks";
+
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
@@ -11,59 +19,78 @@ const REGULAR_ITEMS = [
   "About Metabase",
   "Sign out",
 ];
-const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin"];
-const HOSTED_ITEMS = [...ADMIN_ITEMS, "Manage Metabase Cloud"];
+const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin settings"];
+const HOSTED_ITEMS = [...ADMIN_ITEMS];
+
+const adminNavItem = {
+  name: `People`,
+  path: "/admin/people",
+  key: "people",
+};
+
+function setup({ isAdmin = false, isHosted = false }) {
+  const currentUser = createMockUser({ is_superuser: isAdmin });
+  const settings = mockSettings({ "is-hosted?": isHosted });
+
+  const admin = createMockAdminState({
+    app: createMockAdminAppState({
+      paths: isAdmin ? [adminNavItem] : [],
+    }),
+  });
+
+  return renderWithProviders(<ProfileLink user={currentUser} context="" />, {
+    storeInitialState: { admin, currentUser, settings },
+  });
+}
+
+function setupHosted(opts = {}) {
+  return setup({ ...opts, isHosted: true });
+}
 
 describe("ProfileLink", () => {
-  describe("options", () => {
-    ["regular", "hosted"].forEach(testCase => {
-      describe(`${testCase} instance`, () => {
-        beforeEach(() => {
-          jest.spyOn(MetabaseSettings, "isHosted");
-          MetabaseSettings.isHosted = jest.fn(() => false);
-        });
+  describe("self-hosted", () => {
+    it("should show the proper set of items for normal users", () => {
+      setup({ isAdmin: false });
 
-        afterEach(() => {
-          MetabaseSettings.isHosted.mockRestore();
-        });
+      fireEvent.click(screen.getByRole("img", { name: /gear/i }));
 
-        if (testCase === "hosted") {
-          beforeEach(() => {
-            MetabaseSettings.isHosted = jest.fn(() => true);
-          });
-        }
+      REGULAR_ITEMS.forEach(title => {
+        expect(screen.getByText(title)).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
+    });
 
-        describe("normal user", () => {
-          it("should show the proper set of items", () => {
-            const normalUser = { is_superuser: false };
-            render(<ProfileLink user={normalUser} context={""} />);
+    it("should show the proper set of items for admin users", () => {
+      setup({ isAdmin: true });
 
-            assertOn(REGULAR_ITEMS);
-          });
-        });
+      fireEvent.click(screen.getByRole("img", { name: /gear/i }));
 
-        describe("admin", () => {
-          it("should show the proper set of items", () => {
-            const admin = { is_superuser: true };
-            render(<ProfileLink user={admin} context={""} />);
+      ADMIN_ITEMS.forEach(title => {
+        expect(screen.getByText(title)).toBeInTheDocument();
+      });
+    });
+  });
 
-            testCase === "hosted"
-              ? assertOn(HOSTED_ITEMS)
-              : assertOn(ADMIN_ITEMS);
-          });
-        });
+  describe("hosted", () => {
+    it("should show the proper set of items for normal users", () => {
+      setupHosted({ isAdmin: false });
+
+      fireEvent.click(screen.getByRole("img", { name: /gear/i }));
+
+      REGULAR_ITEMS.forEach(title => {
+        expect(screen.getByText(title)).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
+    });
+
+    it("should show the proper set of items for admin users", () => {
+      setupHosted({ isAdmin: true });
+
+      fireEvent.click(screen.getByRole("img", { name: /gear/i }));
+
+      HOSTED_ITEMS.forEach(title => {
+        expect(screen.getByText(title)).toBeInTheDocument();
       });
     });
   });
 });
-
-function assertOn(items) {
-  const SETTINGS = screen.getByRole("img", { name: /gear/i });
-  fireEvent.click(SETTINGS);
-
-  items.forEach(title => {
-    screen.getByText(title);
-  });
-
-  expect(screen.getAllByRole("listitem").length).toEqual(items.length);
-}

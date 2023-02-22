@@ -2,11 +2,11 @@ import { assocIn } from "icepick";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
 
 import { createEntity } from "metabase/lib/entities";
 
 import { UserApi, SessionApi } from "metabase/services";
+import { generatePassword } from "metabase/lib/security";
 
 import forms from "./users/forms";
 
@@ -30,7 +30,7 @@ const Users = createEntity({
   path: "/api/user",
 
   objectSelectors: {
-    getName: user => user.common_name || `${user.first_name} ${user.last_name}`,
+    getName: user => user.common_name,
   },
 
   actionTypes: {
@@ -46,7 +46,7 @@ const Users = createEntity({
       if (!MetabaseSettings.isEmailConfigured()) {
         user = {
           ...user,
-          password: MetabaseUtils.generatePassword(),
+          password: generatePassword(),
         };
       }
       const result = await thunkCreator(user)(dispatch, getState);
@@ -61,7 +61,7 @@ const Users = createEntity({
     },
     update: thunkCreator => user => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
-      if (user.group_ids) {
+      if (user.user_group_memberships) {
         // group ids were just updated
         dispatch(loadMemberships());
       }
@@ -75,7 +75,7 @@ const Users = createEntity({
       await UserApi.send_invite({ id });
       return { type: RESEND_INVITE };
     },
-    passwordResetEmail: async ({ email }) => {
+    resetPasswordEmail: async ({ email }) => {
       MetabaseAnalytics.trackStructEvent(
         "People Admin",
         "Trigger User Password Reset",
@@ -83,10 +83,7 @@ const Users = createEntity({
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
-    passwordResetManual: async (
-      { id },
-      password = MetabaseUtils.generatePassword(),
-    ) => {
+    resetPasswordManual: async ({ id }, password = generatePassword()) => {
       MetabaseAnalytics.trackStructEvent(
         "People Admin",
         "Manual Password Reset",

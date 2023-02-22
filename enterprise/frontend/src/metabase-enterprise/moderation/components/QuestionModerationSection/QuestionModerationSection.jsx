@@ -9,8 +9,8 @@ import {
   removeCardReview,
 } from "metabase-enterprise/moderation/actions";
 
-import { BorderedModerationActions } from "./QuestionModerationSection.styled";
 import ModerationReviewBanner from "../ModerationReviewBanner/ModerationReviewBanner";
+import { VerifyButton as DefaultVerifyButton } from "./QuestionModerationSection.styled";
 
 const mapStateToProps = (state, props) => ({
   isModerator: getIsModerator(state, props),
@@ -25,27 +25,26 @@ export default connect(
   mapDispatchToProps,
 )(QuestionModerationSection);
 
+QuestionModerationSection.VerifyButton = DefaultVerifyButton;
+
 QuestionModerationSection.propTypes = {
   question: PropTypes.object.isRequired,
   verifyCard: PropTypes.func.isRequired,
   removeCardReview: PropTypes.func.isRequired,
   isModerator: PropTypes.bool.isRequired,
+  reviewBannerClassName: PropTypes.string,
+  VerifyButton: PropTypes.func,
 };
 
 function QuestionModerationSection({
   question,
-  verifyCard,
   removeCardReview,
   isModerator,
+  reviewBannerClassName,
 }) {
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
   );
-
-  const onVerify = () => {
-    const id = question.id();
-    verifyCard(id);
-  };
 
   const onRemoveModerationReview = () => {
     const id = question.id();
@@ -54,14 +53,11 @@ function QuestionModerationSection({
 
   return (
     <React.Fragment>
-      <BorderedModerationActions
-        moderationReview={latestModerationReview}
-        onVerify={isModerator && onVerify}
-      />
       {latestModerationReview && (
         <ModerationReviewBanner
+          className={reviewBannerClassName}
           moderationReview={latestModerationReview}
-          onRemove={isModerator && onRemoveModerationReview}
+          onRemove={isModerator ? onRemoveModerationReview : undefined}
         />
       )}
     </React.Fragment>

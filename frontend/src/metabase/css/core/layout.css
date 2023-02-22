@@ -67,7 +67,9 @@
 }
 
 .full,
-:local(.full) {
+.full-width,
+:local(.full),
+:local(.full-width) {
   width: 100%;
 }
 .half {

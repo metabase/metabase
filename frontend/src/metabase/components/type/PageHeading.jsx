@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 const PageHeading = styled.h1`
   font-weight: 900;

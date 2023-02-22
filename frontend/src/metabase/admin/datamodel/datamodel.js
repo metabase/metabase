@@ -24,7 +24,9 @@ export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";
 
 export const fetchRevisions = createThunkAction(
   FETCH_REVISIONS,
-  ({ entity, id }) => async () => RevisionsApi.get({ entity, id }),
+  ({ entity, id }) =>
+    async () =>
+      RevisionsApi.get({ entity, id }),
 );
 
 // reducers

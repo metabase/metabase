@@ -1,11 +1,15 @@
 (ns metabase.events.activity-feed-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.activity-feed :as events.activity-feed]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.activity-feed :as events.activity-feed]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- activity
   ([topic]
@@ -14,9 +18,9 @@
   ([topic model-id]
    (mt/derecordize
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    topic
-      :model_id model-id
-      {:order-by [[:id :desc]]}))))
+                   :topic    topic
+                   :model_id model-id
+                   {:order-by [[:id :desc]]}))))
 
 (deftest card-create-test
   (testing :card-create
@@ -54,31 +58,37 @@
 
 (deftest card-update-event-test
   (testing :card-update
-    (mt/with-temp Card [card {:name "My Cool Card"}]
-      (mt/with-model-cleanup [Activity]
-        (events.activity-feed/process-activity-event! {:topic :card-update, :item card})
-        (is (= {:topic       :card-update
-                :user_id     (mt/user->id :rasta)
-                :model       "card"
-                :model_id    (:id card)
-                :database_id nil
-                :table_id    nil
-                :details     {:name "My Cool Card", :description nil}}
-               (activity "card-update" (:id card))))))))
+    (doseq [dataset? [false true]]
+      (testing (if dataset? "Dataset" "Card")
+        (mt/with-temp Card [card {:name "My Cool Card" :dataset dataset?}]
+          (mt/with-model-cleanup [Activity]
+            (events.activity-feed/process-activity-event! {:topic :card-update, :item card})
+            (is (= {:topic       :card-update
+                    :user_id     (mt/user->id :rasta)
+                    :model       (if dataset? "dataset" "card")
+                    :model_id    (:id card)
+                    :database_id nil
+                    :table_id    nil
+                    :details     (cond-> {:name "My Cool Card", :description nil}
+                                   dataset? (assoc :original-model "card"))}
+                   (activity "card-update" (:id card))))))))))
 
 (deftest card-delete-event-test
   (testing :card-delete
-    (mt/with-temp Card [card {:name "My Cool Card"}]
-      (mt/with-model-cleanup [Activity]
-        (events.activity-feed/process-activity-event! {:topic :card-delete, :item card})
-        (is (= {:topic       :card-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "card"
-                :model_id (:id card)
-                :database_id nil
-                :table_id    nil
-                :details     {:name "My Cool Card", :description nil}}
-               (activity "card-delete" (:id card))))))))
+    (doseq [dataset? [false true]]
+      (testing (if dataset? "Dataset" "Card")
+        (mt/with-temp Card [card {:name "My Cool Card", :dataset dataset?}]
+          (mt/with-model-cleanup [Activity]
+            (events.activity-feed/process-activity-event! {:topic :card-delete, :item card})
+            (is (= {:topic       :card-delete
+                    :user_id     (mt/user->id :rasta)
+                    :model       (if dataset? "dataset" "card")
+                    :model_id (:id card)
+                    :database_id nil
+                    :table_id    nil
+                    :details     (cond-> {:name "My Cool Card", :description nil}
+                                   dataset? (assoc :original-model "card"))}
+                   (activity "card-delete" (:id card))))))))))
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create

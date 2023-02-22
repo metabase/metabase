@@ -9,7 +9,7 @@ import {
   COLUMN_SHOW_TOTALS,
 } from "metabase/lib/data_grid";
 
-import { TYPE } from "metabase/lib/types";
+import { TYPE } from "metabase-lib/types/constants";
 
 const dimension = i => ({
   name: "D" + i,
@@ -169,7 +169,13 @@ describe("data_grid", () => {
       columns,
       rows,
       values,
-      { collapsedRows = [], columnSorts = [], columnShowTotals = [] } = {},
+      {
+        collapsedRows = [],
+        columnSorts = [],
+        columnShowTotals = [],
+        showColumnTotals = true,
+        showRowTotals = true,
+      } = {},
     ) => {
       const settings = {
         column: column => {
@@ -185,6 +191,8 @@ describe("data_grid", () => {
           indexes => indexes.map(index => ["fake field ref", index]),
         ),
         [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
+        "pivot.show_row_totals": showRowTotals,
+        "pivot.show_column_totals": showColumnTotals,
       };
       data = {
         ...data,
@@ -204,13 +212,9 @@ describe("data_grid", () => {
       ["b", "y", 5],
       ["b", "z", 6],
     ]);
-    it("should produce multi-level top header", () => {
-      const {
-        topHeaderItems,
-        leftHeaderItems,
-        rowCount,
-        columnCount,
-      } = multiLevelPivotForIndexes(data, [0, 1], [], [2]);
+    it("should produce multi-level top header with row totals", () => {
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(data, [0, 1], [], [2]);
       expect(getPathsAndValues(topHeaderItems)).toEqual([
         { value: "a", path: ["a"] },
         { value: "x", path: ["a", "x"] },
@@ -226,13 +230,24 @@ describe("data_grid", () => {
       expect(rowCount).toEqual(1);
       expect(columnCount).toEqual(7);
     });
-    it("should produce multi-level left header", () => {
-      const {
-        topHeaderItems,
-        leftHeaderItems,
-        rowCount,
-        columnCount,
-      } = multiLevelPivotForIndexes(data, [], [0, 1], [2]);
+
+    it("should produce multi-level top header without row totals", () => {
+      const { topHeaderItems } = multiLevelPivotForIndexes(
+        data,
+        [0, 1],
+        [],
+        [2],
+        { showColumnTotals: true, showRowTotals: false },
+      );
+      const pathsAndValues = getPathsAndValues(topHeaderItems);
+      expect(pathsAndValues[pathsAndValues.length - 1].value).not.toEqual(
+        "Row totals",
+      );
+    });
+
+    it("should produce multi-level left header with totals", () => {
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(data, [], [0, 1], [2]);
       expect(getPathsAndValues(leftHeaderItems)).toEqual([
         { value: "a", path: ["a"] },
         { value: "x", path: ["a", "x"] },
@@ -250,6 +265,26 @@ describe("data_grid", () => {
       expect(rowCount).toEqual(9);
       expect(columnCount).toEqual(1);
     });
+
+    it("should produce multi-level left header without totals", () => {
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+          showColumnTotals: false,
+        });
+      expect(getPathsAndValues(leftHeaderItems)).toEqual([
+        { value: "a", path: ["a"] },
+        { value: "x", path: ["a", "x"] },
+        { value: "y", path: ["a", "y"] },
+        { value: "z", path: ["a", "z"] },
+        { value: "b", path: ["b"] },
+        { value: "x", path: ["b", "x"] },
+        { value: "y", path: ["b", "y"] },
+        { value: "z", path: ["b", "z"] },
+      ]);
+      expect(getValues(topHeaderItems)).toEqual(["Metric"]);
+      expect(rowCount).toEqual(6);
+      expect(columnCount).toEqual(1);
+    });
     it("should allow unspecified values", () => {
       const data = makePivotData([
         ["a", "x", 1],
@@ -257,11 +292,8 @@ describe("data_grid", () => {
         ["b", "x", 3],
         // ["b", "y", ...], not present
       ]);
-      const {
-        topHeaderItems,
-        leftHeaderItems,
-        getRowSection,
-      } = multiLevelPivotForIndexes(data, [0], [1], [2]);
+      const { topHeaderItems, leftHeaderItems, getRowSection } =
+        multiLevelPivotForIndexes(data, [0], [1], [2]);
       expect(getValues(leftHeaderItems)).toEqual(["x", "y", "Grand totals"]);
       expect(getValues(topHeaderItems)).toEqual(["a", "b", "Row totals"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1"]);
@@ -278,11 +310,8 @@ describe("data_grid", () => {
         ],
       );
 
-      const {
-        topHeaderItems,
-        leftHeaderItems,
-        getRowSection,
-      } = multiLevelPivotForIndexes(data, [0], [1], [2, 3]);
+      const { topHeaderItems, leftHeaderItems, getRowSection } =
+        multiLevelPivotForIndexes(data, [0], [1], [2, 3]);
       expect(getValues(topHeaderItems)).toEqual(["a", "Metric 1", "Metric 2"]);
       expect(getValues(leftHeaderItems)).toEqual(["b"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1", "2"]);
@@ -313,12 +342,8 @@ describe("data_grid", () => {
         ],
       );
 
-      const {
-        rowCount,
-        columnCount,
-        topHeaderItems,
-        leftHeaderItems,
-      } = multiLevelPivotForIndexes(data, [], [0, 1, 2], [3]);
+      const { rowCount, columnCount, topHeaderItems, leftHeaderItems } =
+        multiLevelPivotForIndexes(data, [], [0, 1, 2], [3]);
       expect(getValues(topHeaderItems)).toEqual(["Metric"]);
       expect(getPathsAndValues(leftHeaderItems)).toEqual([
         { path: ["a1"], value: "a1" },
@@ -372,11 +397,8 @@ describe("data_grid", () => {
         ],
       );
 
-      const {
-        getRowSection,
-        topHeaderItems,
-        leftHeaderItems,
-      } = multiLevelPivotForIndexes(data, [0], [1], [2]);
+      const { getRowSection, topHeaderItems, leftHeaderItems } =
+        multiLevelPivotForIndexes(data, [0], [1], [2]);
       expect(getValues(topHeaderItems)).toEqual(["1  –  11"]);
       expect(getValues(leftHeaderItems)).toEqual(["January 1, 2020, 12:00 AM"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1,000"]);
@@ -455,11 +477,8 @@ describe("data_grid", () => {
         rows,
         cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
       };
-      const {
-        getRowSection,
-        rowCount,
-        columnCount,
-      } = multiLevelPivotForIndexes(data, [], [0, 1], [2]);
+      const { getRowSection, rowCount, columnCount } =
+        multiLevelPivotForIndexes(data, [], [0, 1], [2]);
       expect(rowCount).toEqual(7);
       expect(columnCount).toEqual(1);
       expect(_.range(rowCount).map(i => getRowSection(0, i)[0].value)).toEqual([
@@ -510,7 +529,14 @@ describe("data_grid", () => {
       });
 
       it("should sort letters with accents correctly", () => {
-        const data = makePivotData([["a", 0], ["à", 0], ["b", 0]], [D1, M]);
+        const data = makePivotData(
+          [
+            ["a", 0],
+            ["à", 0],
+            ["b", 0],
+          ],
+          [D1, M],
+        );
 
         let { leftHeaderItems } = multiLevelPivotForIndexes(
           data,
@@ -535,7 +561,14 @@ describe("data_grid", () => {
           source: "breakout",
         };
 
-        const data = makePivotData([[0, 0], [1, 0], [2, 0]], [D, M]);
+        const data = makePivotData(
+          [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+          ],
+          [D, M],
+        );
 
         let { leftHeaderItems } = multiLevelPivotForIndexes(
           data,
@@ -578,25 +611,19 @@ describe("data_grid", () => {
         cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
       };
       it("hides single collapsed rows", () => {
-        const {
-          getRowSection,
-          leftHeaderItems,
-          rowCount,
-        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], {
-          collapsedRows: ['["a"]'],
-        });
+        const { getRowSection, leftHeaderItems, rowCount } =
+          multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+            collapsedRows: ['["a"]'],
+          });
         expect(rowCount).toEqual(5);
         expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
         expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
       });
       it("hides collapsed columns", () => {
-        const {
-          getRowSection,
-          leftHeaderItems,
-          rowCount,
-        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], {
-          collapsedRows: ["1"],
-        });
+        const { getRowSection, leftHeaderItems, rowCount } =
+          multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+            collapsedRows: ["1"],
+          });
         expect(rowCount).toEqual(3);
         expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
         expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
@@ -661,11 +688,8 @@ describe("data_grid", () => {
         rows,
         cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
       };
-      const {
-        rowCount,
-        columnCount,
-        getRowSection,
-      } = multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4]);
+      const { rowCount, columnCount, getRowSection } =
+        multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4]);
       const firstColumn = ["1", "2", "3", "3", "4", "7", "10"];
       const lastColumn = ["1", "2", "3", "3", "4", "7", "10"];
       expect(_.range(rowCount).map(i => getRowSection(0, i)[0].value)).toEqual(

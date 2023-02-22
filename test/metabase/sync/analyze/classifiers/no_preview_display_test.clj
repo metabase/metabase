@@ -1,11 +1,13 @@
 (ns metabase.sync.analyze.classifiers.no-preview-display-test
   "Tests for the category classifier."
-  (:require [clojure.test :refer :all]
-            [metabase.models.field :as field]
-            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]))
 
 (def ^:private long-text-field
-  (field/map->FieldInstance
+  (mi/instance Field
    {:database_type       "VARCHAR"
     :semantic_type       nil
     :name                "longfield"
@@ -28,7 +30,7 @@
   (testing "Leave short text fields intact"
     (is (= nil
            (:preview_display
-            (no-preview-display/infer-no-preview-display
+            (classifiers.no-preview-display/infer-no-preview-display
              long-text-field
              (-> long-text-field
                  :fingerprint
@@ -38,13 +40,13 @@
   (testing "Don't preview generic long text fields"
     (is (= false
            (:preview_display
-            (no-preview-display/infer-no-preview-display
+            (classifiers.no-preview-display/infer-no-preview-display
              long-text-field (:fingerprint long-text-field)))))))
 
 (deftest semantic-type-test
   (testing "If the field has a semantic type, show it regardless of it's length"
     (is (= nil
            (:preview_display
-            (no-preview-display/infer-no-preview-display
+            (classifiers.no-preview-display/infer-no-preview-display
              (assoc long-text-field :semantic_type :type/Name)
              (:fingerprint long-text-field)))))))

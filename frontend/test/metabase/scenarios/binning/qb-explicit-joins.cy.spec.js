@@ -1,15 +1,20 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  visualize,
+  changeBinningForDimension,
+  summarize,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS_ID,
-  ORDERS,
-  PEOPLE_ID,
-  PEOPLE,
-  PRODUCTS_ID,
-  PRODUCTS,
-} = SAMPLE_DATASET;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
+/**
+ * The list of issues this spec covers:
+ *  - metabase#15446
+ *  -
+ */
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
     restore();
@@ -54,87 +59,86 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  context("via simple question", () => {
+  context("via simple mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
-      cy.findByText("Summarize").click();
-      cy.wait("@dataset");
+
+      visualize();
+      summarize();
     });
 
     it("should work for time series", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
+      changeBinningForDimension({
+        name: "People → Birth Date",
+        fromBinning: "by month",
+        toBinning: "Year",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Year",
+      assertQueryBuilderState({
         columnType: "time",
         title: "Count by People → Birth Date: Year",
         values: ["1960", "1965", "2000"],
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
-      cy.get(".axis.x").within(() => {
-        cy.findByText("Q1 - 1960");
-        cy.findByText("Q1 - 1965");
-        cy.findByText("Q1 - 2000");
-      });
+      cy.get(".axis.x")
+        .should("contain", "Q1 - 1960")
+        .and("contain", "Q1 - 1965")
+        .and("contain", "Q1 - 2000");
     });
 
     it("should work for number", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+      changeBinningForDimension({
+        name: "Products → Price",
+        fromBinning: "Auto bin",
+        toBinning: "50 bins",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "50 bins",
+      assertQueryBuilderState({
         title: "Count by Products → Price: 50 bins",
         values: ["14", "18", "20", "100"],
       });
     });
 
     it("should work for longitude", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+      changeBinningForDimension({
+        name: "People → Longitude",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Bin every 20 degrees",
+      assertQueryBuilderState({
         title: "Count by People → Longitude: 20°",
         values: ["180° W", "160° W", "60° W"],
       });
     });
   });
 
-  context("via custom question", () => {
+  context("via notebook mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
 
-      cy.findByText("Summarize").click();
       cy.findByText("Pick the metric you want to see").click();
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
     });
 
     it("should work for time series", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
+      changeBinningForDimension({
+        name: "People → Birth Date",
+        fromBinning: "by month",
+        toBinning: "Year",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Year",
+      assertQueryBuilderState({
         columnType: "time",
         mode: "notebook",
         title: "Count by People → Birth Date: Year",
@@ -142,26 +146,24 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
-      cy.get(".axis.x").within(() => {
-        cy.findByText("Q1 - 1960");
-        cy.findByText("Q1 - 1965");
-        cy.findByText("Q1 - 2000");
-      });
+      cy.get(".axis.x")
+        .should("contain", "Q1 - 1960")
+        .and("contain", "Q1 - 1965")
+        .and("contain", "Q1 - 2000");
     });
 
     it("should work for number", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+      changeBinningForDimension({
+        name: "Products → Price",
+        fromBinning: "Auto bin",
+        toBinning: "50 bins",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "50 bins",
+      assertQueryBuilderState({
         mode: "notebook",
         title: "Count by Products → Price: 50 bins",
         values: ["14", "18", "20", "100"],
@@ -169,12 +171,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for longitude", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+      changeBinningForDimension({
+        name: "People → Longitude",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Bin every 20 degrees",
+      assertQueryBuilderState({
         mode: "notebook",
         title: "Count by People → Longitude: 20°",
         values: ["180° W", "160° W", "60° W"],
@@ -184,10 +187,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
+      visualize();
     });
 
     it("should work for time series", () => {
@@ -199,22 +202,24 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
 
-      cy.findByText("January, 1960");
-      cy.findByText("January, 1965");
+      cy.get(".axis.x", { timeout: 1000 })
+        .should("contain", "January, 1960")
+        .and("contain", "January, 1965")
+        .and("contain", "January, 2000");
 
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       cy.findByText("Quarter").click();
 
       // Reproduces metabase#16693
       cy.findByText("Count by People → Birth Date: Quarter");
 
-      cy.findByText("Q1 - 1960");
-      cy.findByText("Q1 - 1965");
+      cy.get(".axis.x")
+        .should("contain", "Q1 - 1960")
+        .and("contain", "Q1 - 1965")
+        .and("contain", "Q1 - 2000");
     });
 
     it("should work for number", () => {
@@ -252,27 +257,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   });
 });
 
-function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findByText(column)
-    .closest(".List-item")
-    .should("be.visible")
-    .as("targetListItem");
-
-  cy.get("@targetListItem")
-    .find(".Field-extra")
-    .as("listItemSelectedBinning")
-    .should("contain", bucket)
-    .click();
-}
-
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {
@@ -281,25 +269,20 @@ function waitAndAssertOnRequest(requestAlias) {
   });
 }
 
-function chooseBucketAndAssert({
-  bucketSize,
+function assertQueryBuilderState({
   columnType,
   title,
   mode = null,
   values,
 } = {}) {
-  popover()
-    .last()
-    .within(() => {
-      cy.findByText(bucketSize).click();
-    });
-
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   const visualizaitonSelector = columnType === "time" ? "circle" : ".bar";
   cy.get(visualizaitonSelector);
 
   cy.findByText(title);
+
+  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
 
   values &&
     cy.get(".axis.x").within(() => {

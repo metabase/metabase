@@ -1,6 +1,6 @@
-import { metadata, ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { metadata, ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
-import { drillDownForDimensions } from "metabase/modes/lib/drilldown";
+import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 
 describe("drilldown", () => {
   describe("drillDownForDimensions", () => {
@@ -159,15 +159,5 @@ describe("drilldown", () => {
         ],
       });
     });
-
-    // it("should return breakout by state for breakout by country", () => {
-    //   const drillDown = drillDownForDimensions([
-    //     { column: col(PEOPLE.STATE.id) }
-    //   ], metadata);
-    //   expect(drillDown).toEqual({ breakouts: [
-    //     ["field", PEOPLE.LATITUDE.id, {"binning": {"strategy": "bin-width", "bin-width": 1}}],
-    //     ["field", PEOPLE.LONGITUDE.id, {"binning": {"strategy": "bin-width", "bin-width": 1}}]
-    //   ]});
-    // });
   });
 });

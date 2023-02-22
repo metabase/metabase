@@ -1,99 +1,39 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
+import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-import type { Column } from "metabase-types/types/Dataset";
 // for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
-type Value = number;
-type Row = Value[];
-
-type ColumnName = string;
-type Color = string;
-
-type Operator =
-  | "<"
-  | ">"
-  | "<="
-  | ">="
-  | "="
-  | "!="
-  | "is-null"
-  | "not-null"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with";
-
-type SingleFormat = {
-  type: "single",
-  columns: ColumnName[],
-  color: Color,
-  operator: Operator,
-  value: number | string,
-  highlight_row: boolean,
-};
-
-type RangeFormat = {
-  type: "range",
-  columns: ColumnName[],
-  colors: Color[],
-  min_type: null | "all" | "custom",
-  min_value: number,
-  max_type: null | "all" | "custom",
-  max_value: number,
-};
-
-type Format = SingleFormat | RangeFormat;
-
-type Settings = {
-  "table.column_formatting": Format[],
-  "table.pivot"?: boolean,
-};
-
-type Formatter = (value: number) => ?Color;
-type RowFormatter = (row: number[], colIndexes: ColumnIndexes) => ?Color;
-
-type FormatterFactory = (value: number | string, color: Color) => Formatter;
-
-type BackgroundGetter = (
-  value: number,
-  rowIndex: number,
-  colName: ColumnName,
-) => ?Color;
-
-type ColumnIndexes = {
-  [key: ColumnName]: number,
-};
-type ColumnExtents = {
-  [key: ColumnName]: [number, number],
-};
 
 export function makeCellBackgroundGetter(
-  rows: Row[],
-  cols: Column[],
-  settings: Settings,
-): BackgroundGetter {
-  const formats = settings["table.column_formatting"] || [];
-  const pivot = settings["table.pivot"];
+  rows,
+  cols,
+  formattingSettings,
+  isPivoted,
+) {
   let formatters = {};
   let rowFormatters = [];
   const colIndexes = getColumnIndexesByName(cols);
   try {
-    const columnExtents = computeColumnExtents(formats, rows, colIndexes);
-    formatters = compileFormatters(formats, columnExtents);
-    rowFormatters = compileRowFormatters(formats, columnExtents);
+    const columnExtents = computeColumnExtents(
+      formattingSettings,
+      rows,
+      colIndexes,
+    );
+    formatters = compileFormatters(formattingSettings, columnExtents);
+    rowFormatters = compileRowFormatters(formattingSettings, columnExtents);
   } catch (e) {
     console.error("Unexpected error compiling column formatters: ", e);
   }
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function(value: Value, rowIndex: number, colName: ColumnName) {
+    return function (value, rowIndex, colName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -105,7 +45,7 @@ export function makeCellBackgroundGetter(
         }
       }
       // don't highlight row for pivoted tables
-      if (!pivot) {
+      if (!isPivoted) {
         for (let i = 0; i < rowFormatters.length; i++) {
           const rowFormatter = rowFormatters[i];
           const color = rowFormatter(rows[rowIndex], colIndexes);
@@ -127,9 +67,12 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
-export const OPERATOR_FORMATTER_FACTORIES: {
-  [Operator]: FormatterFactory,
-} = {
+export const canCompareSubstrings = (a, b) =>
+  typeof a === "string" && typeof b === "string" && !!a.length && !!b.length;
+
+export const isEmptyString = val => typeof val === "string" && !val.length;
+
+export const OPERATOR_FORMATTER_FACTORIES = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
   "<=": (value, color) => v =>
@@ -138,34 +81,27 @@ export const OPERATOR_FORMATTER_FACTORIES: {
     typeof value === "number" && v >= value ? color : null,
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => v => (v === value ? color : null),
-  "!=": (value, color) => v => (v !== value ? color : null),
-  "is-null": (_value, color) => v => (v === null ? color : null),
-  "not-null": (_value, color) => v => (v !== null ? color : null),
+  "=": (value, color) => v => v === value ? color : null,
+  "!=": (value, color) => v =>
+    !isEmptyString(value) && v !== value ? color : null,
+  "is-null": (_value, color) => v => v === null ? color : null,
+  "not-null": (_value, color) => v => v !== null ? color : null,
   contains: (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) >= 0 ? color : null,
   "does-not-contain": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) < 0 ? color : null,
   "starts-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.startsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.startsWith(value) ? color : null,
   "ends-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.endsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.endsWith(value) ? color : null,
 };
 
 export function compileFormatter(
-  format: Format,
-  columnName: ?ColumnName,
-  columnExtents: ?ColumnExtents,
-  isRowFormatter: boolean = false,
-): ?Formatter {
+  format,
+  columnName,
+  columnExtents,
+  isRowFormatter = false,
+) {
   if (format.type === "single") {
     let { operator, value, color } = format;
     color = alpha(color, isRowFormatter ? ROW_ALPHA : CELL_ALPHA);
@@ -205,7 +141,7 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => roundColor(scale(value));
+    return value => getSafeColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
@@ -214,7 +150,7 @@ export function compileFormatter(
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
 // be a Java `List` rather than a JavaScript Array when used in Pulse formatting
-function extent(rows: Row[], colIndex: number) {
+function extent(rows, colIndex) {
   let min = Infinity;
   let max = -Infinity;
   const length = rows.length;
@@ -243,7 +179,7 @@ function computeColumnExtents(formats, rows, colIndexes) {
   return columnExtents;
 }
 
-function compileFormatters(formats: Format[], columnExtents: ColumnExtents) {
+function compileFormatters(formats, columnExtents) {
   const formatters = {};
   formats.forEach(format => {
     format.columns.forEach(columnName => {
@@ -256,7 +192,7 @@ function compileFormatters(formats: Format[], columnExtents: ColumnExtents) {
   return formatters;
 }
 
-function compileRowFormatters(formats: Format[]): RowFormatter[] {
+function compileRowFormatters(formats) {
   const rowFormatters = [];
   formats
     .filter(format => format.type === "single" && format.highlight_row)

@@ -1,6 +1,5 @@
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-
-import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 const query = ORDERS.query();
 
@@ -30,6 +29,11 @@ describe("Filter", () => {
         expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(
           false,
         );
+      });
+      it("should return false with a null operator", () => {
+        expect(
+          filter([null, ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
+        ).toBe(false);
       });
       it("should return true for a filter with an expression for the field", () => {
         expect(

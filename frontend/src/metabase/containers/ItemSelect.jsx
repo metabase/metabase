@@ -6,9 +6,17 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 const MIN_POPOVER_WIDTH = 300;
+
+const typeNameMap = {
+  card: () => t`question`,
+  dataset: () => t`model`,
+  table: () => t`table`,
+  dashboard: () => t`dashboard`,
+  page: () => t`page`,
+};
 
 export default (PickerComponent, NameComponent, type) =>
   class ItemSelect extends React.Component {
@@ -28,7 +36,7 @@ export default (PickerComponent, NameComponent, type) =>
     };
 
     static defaultProps = {
-      placeholder: t`Select a ${type}`,
+      placeholder: t`Select a ${typeNameMap[type]?.() ?? type}`,
       inheritWidth: true,
     };
 

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 export const component = ModalContent;
 export const category = "modal";

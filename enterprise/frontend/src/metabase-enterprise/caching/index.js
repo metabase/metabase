@@ -2,10 +2,14 @@ import React from "react";
 import { t, jt } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
-import Link from "metabase/components/Link";
-import { CacheTTLField } from "./components/CacheTTLField";
-import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
-import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
+import Link from "metabase/core/components/Link";
+import CacheTTLField from "./components/CacheTTLField";
+import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
+import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
+import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
+import QuestionCacheSection from "./components/QuestionCacheSection";
+import DashboardCacheSection from "./components/DashboardCacheSection";
+
 import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,
@@ -41,6 +45,7 @@ if (hasPremiumFeature("advanced_config")) {
     descriptionPosition: "bottom",
     validate: validateCacheTTL,
     normalize: normalizeCacheTTL,
+    visibleIf: { "advanced-options": true },
   };
 
   PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;
@@ -48,4 +53,8 @@ if (hasPremiumFeature("advanced_config")) {
   PLUGIN_FORM_WIDGETS.questionCacheTTL = QuestionCacheTTLField;
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
+  PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
+  PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
+  PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
+  PLUGIN_CACHING.isEnabled = () => true;
 }

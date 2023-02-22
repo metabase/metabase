@@ -1,4 +1,4 @@
-import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
 const created = ORDERS.CREATED_AT.dimension().mbql();
 const total = ORDERS.TOTAL.dimension().mbql();
@@ -45,6 +45,7 @@ const expression = [
   ["[User ID]", userId, "field name with spaces"],
   ["[foo]", ["expression", "foo"], "named expression"],
   ["[User → Name]", userName, "foriegn key"],
+  ["now", ["now"], "function with zero arguments"],
   ["trim([User → Name])", ["trim", userName], "function with one argument"],
   [
     'coalesce([User → Name], ",")',
@@ -60,7 +61,10 @@ const expression = [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [
       "case",
-      [[[">", total, 10], "GOOD"], [["<", total, 5], "BAD"]],
+      [
+        [[">", total, 10], "GOOD"],
+        [["<", total, 5], "BAD"],
+      ],
       { default: "OK" },
     ],
     "case statement with default",

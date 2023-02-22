@@ -1,11 +1,12 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint
   "Logic for inferring the semantic types of *Text* fields based on their TextFingerprints.
    These tests only run against Fields that *don't* have existing semantic types."
-  (:require [clojure.tools.logging :as log]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)

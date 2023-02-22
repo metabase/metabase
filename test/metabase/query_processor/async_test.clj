@@ -1,8 +1,9 @@
 (ns metabase.query-processor.async-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.test :as mt]
-            [metabase.test.util.async :as tu.async]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.test :as mt]
+   [metabase.test.util.async :as tu.async]))
 
 (deftest async-result-metadata-test
   (testing "Should be able to get result metadata async"
@@ -28,6 +29,7 @@
                :table_id          (mt/id :venues)
                :settings          nil
                :source            :fields
+               :nfc_path          nil
                :parent_id         nil
                :visibility_type   :normal
                :id                (mt/id :venues :name)

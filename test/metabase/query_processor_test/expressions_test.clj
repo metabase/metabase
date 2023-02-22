@@ -1,17 +1,16 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -87,8 +86,6 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
-
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     ;; bigquery doesn't let you have hypthens in field, table, etc names
@@ -133,7 +130,16 @@
                (mt/run-mbql-query venues
                  {:expressions {:x [:+ $price $id]}
                   :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))))
+                  :order-by    [[:desc [:expression :x]]]})))))
+    (testing "Can we refer to expressions inside an ORDER BY clause with a secondary order by?"
+      (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
+              [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
+              [77 "Sushi Nakazawa" 40 40.7318 -74.0045 4 81.0]]
+             (mt/formatted-rows [int str int 4.0 4.0 int float]
+               (mt/run-mbql-query venues
+                 {:expressions {:x [:+ $price $id]}
+                  :limit       3
+                  :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
 
 (deftest aggregate-breakout-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -185,9 +191,9 @@
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
      (mt/$ids ~'bird-count
-       (calculate-bird-scarcity* ~formula ~filter-clause))))
+              (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
                          ;; therefore a different macro is tested in bigquery driver tests
@@ -198,12 +204,11 @@
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity $count))))
 
-    (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
-                  "where that was attempted")
-      (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
-             (calculate-bird-scarcity [:/ 100.0 $count]
-                                      [:!= $count nil]))))
-
+    (testing (str "do expressions automatically handle division by zero? Should return `nil` "
+                    "in the results for places where that was attempted")
+        (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
+               (calculate-bird-scarcity [:/ 100.0 $count]
+                                        [:!= $count nil]))))
 
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
@@ -214,16 +219,20 @@
                                        [:!= $count 0]]))))
 
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
-      (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count]))))
+        (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ 100.0 $count]))))
+
+    (testing "can we handle dividing by literal 0?"
+        (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ $count 0]))))
 
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
-      (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+        (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ 100.0 $count $count]))))
 
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
-      (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+        (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
 
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
@@ -238,7 +247,6 @@
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
              (calculate-bird-scarcity [:- 10 $count]))))
 
-
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
@@ -250,15 +258,15 @@
 
 (defn- robust-dates
   [strs]
-  ;; TIMEZONE FIXME — SQLite shouldn't return strings. And for whatever weird reason it's truncating to date as well?
+  ;; TIMEZONE FIXME — SQLite shouldn't return strings.
   (let [format-fn (if (= driver/*driver* :sqlite)
-                    #(u.date/format-sql (t/local-date-time (t/local-date %) (t/local-time 0)))
+                    #(u.date/format-sql (t/local-date-time %))
                     u.date/format)]
     (for [s strs]
       [(format-fn (u.date/parse s "UTC"))])))
 
 (deftest temporal-arithmetic-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (testing "Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions"
       (is (= (robust-dates
               ["2014-09-02T13:45:00"
@@ -290,7 +298,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
@@ -313,30 +321,55 @@
 ;;; |                                                 MISC BUG FIXES                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; need more fields than seq chunking size
+(defrecord ^:private NoLazinessDatasetDefinition [num-fields])
+
+(defn- no-laziness-dataset-definition-field-names [num-fields]
+  (for [i (range num-fields)]
+    (format "field_%04d" i)))
+
+(defmethod mt/get-dataset-definition NoLazinessDatasetDefinition
+  [{:keys [num-fields]}]
+  (mt/dataset-definition
+   (format "no-laziness-%d" num-fields)
+   ["lots-of-fields"
+    (concat
+     [{:field-name "a", :base-type :type/Integer}
+      {:field-name "b", :base-type :type/Integer}]
+     (for [field (no-laziness-dataset-definition-field-names num-fields)]
+       {:field-name (name field), :base-type :type/Integer}))
+    ;; one row
+    [(range (+ num-fields 2))]]))
+
+(defn- no-laziness-dataset-definition [num-fields]
+  (->NoLazinessDatasetDefinition num-fields))
+
 ;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
-  (one-off-dbs/with-blank-db
-    (let [ ;; need more fields than seq chunking size
-          fields (repeatedly 1000 gensym)]
-      (doseq [statement ["drop table if exists \"LOTS_OF_FIELDS\";"
-                         (format "create table \"LOTS_OF_FIELDS\" (a integer, b integer, %s);"
-                                 (str/join ", " (for [field-name fields]
-                                                  (str (name field-name) " integer"))))
-                         (format "insert into \"LOTS_OF_FIELDS\" values(%s);"
-                                 (str/join "," (range (+ (count fields) 2))))]]
-        (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
-      (is (= 1
-             (->> (mt/run-mbql-query lots_of_fields
-                    {:expressions {:c [:+ [:field (mt/id :lots_of_fields :a) nil]
-                                       [:field (mt/id :lots_of_fields :b) nil]]}
-                     :fields      (concat [[:expression :c]]
-                                          (for [field fields]
-                                            [:field (mt/id :lots_of_fields (keyword field)) nil]))})
-                  (mt/formatted-rows [int])
-                  ffirst))))))
+  ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
+  ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
+  #_{:clj-kondo/ignore [:unused-binding]}
+  (let [dataset-def (no-laziness-dataset-definition 300)]
+    (mt/dataset dataset-def
+      (let [query (mt/mbql-query lots-of-fields
+                    {:expressions {:c [:+
+                                       [:field (mt/id :lots-of-fields :a) nil]
+                                       [:field (mt/id :lots-of-fields :b) nil]]}
+                     :fields      (into [[:expression "c"]]
+                                        (for [{:keys [id]} (db/select [Field :id]
+                                                             :table_id (mt/id :lots-of-fields)
+                                                             :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                                                  (mt/id :lots-of-fields :b)}]
+                                                             {:order-by [[:name :asc]]})]
+                                          [:field id nil]))})]
+        (db/with-call-counting [call-count-fn]
+          (mt/with-native-query-testing-context query
+            (is (= 1
+                   (-> (qp/process-query query) mt/rows ffirst))))
+          (testing "# of app DB calls should not be some insane number"
+            (is (< (call-count-fn) 20))))))))
 
 (deftest expression-with-slashes
   (mt/test-drivers (disj
@@ -375,14 +408,16 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
       (mt/dataset sample-dataset
-        (is (= [["Doohickey2" 42]]
-               (mt/formatted-rows [str int]
-                 (mt/run-mbql-query products
-                   {:expressions {:CATEGORY [:concat $category "2"]}
-                    :breakout    [:expression :CATEGORY]
-                    :aggregation [:count]
-                    :order-by    [[:asc [:expression :CATEGORY]]]
-                    :limit       1}))))))))
+        (let [query (mt/mbql-query products
+                      {:expressions {:CATEGORY [:concat $category "2"]}
+                       :breakout    [:expression :CATEGORY]
+                       :aggregation [:count]
+                       :order-by    [[:asc [:expression :CATEGORY]]]
+                       :limit       1})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey2" 42]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
 
 (deftest fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
@@ -407,10 +442,9 @@
       (mt/dataset test-data
         (let [r-word  "r_word"
               no-sp   "no_spaces"
-              id      (mt/id :venues :id)
               results (mt/run-mbql-query venues
-                        {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
-                                        no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
+                        {:expressions  {r-word [:regex-match-first $name "^R[^ ]+"]
+                                        no-sp  [:replace $name " " ""]}
                          :source-query {:source-table $$venues}
                          :fields       [$name [:expression r-word] [:expression no-sp]]
                          :filter       [:= $id 1 95]
@@ -424,9 +458,56 @@
 (deftest expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
-      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
-             (mt/formatted-rows [int str int 4.0 4.0 int int]
-               (mt/run-mbql-query venues
-                 {:expressions {(keyword "Refund Amount (?)") [:* $price -1]}
-                  :limit       1
-                  :order-by    [[:asc $id]]})))))))
+      (let [query (mt/mbql-query venues
+                   {:expressions {"Refund Amount (?)" [:* $price -1]}
+                    :limit       1
+                    :order-by    [[:asc $id]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int]
+                   (qp/process-query query)))))))))
+
+(deftest join-table-on-itself-with-custom-column-test
+  (testing "Should be able to join a source query against itself using an expression (#17770)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query nil
+                      {:source-query {:source-query {:source-table $$products
+                                                     :aggregation  [[:count]]
+                                                     :breakout     [$products.category]}
+                                      :expressions  {:CC [:+ 1 1]}}
+                       :joins        [{:source-query {:source-query {:source-table $$products
+                                                                     :aggregation  [[:count]]
+                                                                     :breakout     [$products.category]}
+                                                      :expressions  {:CC [:+ 1 1]}}
+                                       :alias        "Q1"
+                                       :condition    [:=
+                                                      [:field "CC" {:base-type :type/Integer}]
+                                                      [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                       :fields       :all}]
+                       :order-by     [[:asc $products.category]
+                                      [:desc [:field "count" {:base-type :type/Integer}]]
+                                      [:asc &Q1.products.category]]
+                       :limit        1})]
+          (mt/with-native-query-testing-context query
+            ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
+            (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
+                   (mt/formatted-rows [str int int str int int]
+                     (qp/process-query query))))))))))
+
+(deftest nested-expressions-with-existing-names-test
+  (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
+      (mt/dataset sample-dataset
+        (doseq [expression-name ["PRICE" "price"]]
+          (testing (format "Expression name = %s" (pr-str expression-name))
+            (let [query (mt/mbql-query products
+                          {:source-query {:source-table $$products
+                                          :expressions  {expression-name [:+ $price 2]}
+                                          :fields       [$id $price [:expression expression-name]]
+                                          :order-by     [[:asc $id]]
+                                          :limit        2}})]
+              (mt/with-native-query-testing-context query
+                (is (= [[1 29.46 31.46] [2 70.08 72.08]]
+                       (mt/formatted-rows [int 2.0 2.0]
+                         (qp/process-query query))))))))))))

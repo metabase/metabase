@@ -3,12 +3,13 @@ import d3 from "d3";
 import { t } from "ttag";
 import crossfilter from "crossfilter";
 
-import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";
+import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";
 
 export const MAX_SERIES = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
+const SPLIT_AXIS_MAX_DEPTH = 8;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
 // are able to avoid circular dependency errors in e2e tests
@@ -59,14 +60,24 @@ export function getAvailableCanvasWidth(element) {
   return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
 
-function generateSplits(list, left = [], right = []) {
+function generateSplits(list, left = [], right = [], depth = 0) {
   // NOTE: currently generates all permutations, some of which are equivalent
-  if (list.length === 0) {
+  if (list.length === 0 || depth > SPLIT_AXIS_MAX_DEPTH) {
     return [[left, right]];
   } else {
     return [
-      ...generateSplits(list.slice(1), left.concat([list[0]]), right),
-      ...generateSplits(list.slice(1), left, right.concat([list[0]])),
+      ...generateSplits(
+        list.slice(1),
+        left.concat([list[0]]),
+        right,
+        depth + 1,
+      ),
+      ...generateSplits(
+        list.slice(1),
+        left,
+        right.concat([list[0]]),
+        depth + 1,
+      ),
     ];
   }
 }
@@ -100,8 +111,14 @@ export function computeSplit(extents, left = [], right = []) {
   const favorUnsplit = right.length > 0;
 
   const cost = split =>
-    axisCost(split[0].map(i => extents[i]), favorUnsplit) +
-    axisCost(split[1].map(i => extents[i]), favorUnsplit);
+    axisCost(
+      split[0].map(i => extents[i]),
+      favorUnsplit,
+    ) +
+    axisCost(
+      split[1].map(i => extents[i]),
+      favorUnsplit,
+    );
 
   const splits = generateSplits(unassigned, left, right);
 
@@ -153,7 +170,7 @@ export function isSameSeries(seriesA, seriesB) {
       const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
-      return acc && (sameData && sameDisplay && sameVizSettings);
+      return acc && sameData && sameDisplay && sameVizSettings;
     }, true)
   );
 }
@@ -169,9 +186,8 @@ export function colorShade(hex, shade = 0) {
   if (!match) {
     return hex;
   }
-  const components = (match[1] != null
-    ? match.slice(1, 4)
-    : match.slice(4, 7)
+  const components = (
+    match[1] != null ? match.slice(1, 4) : match.slice(4, 7)
   ).map(d => parseInt(d, 16));
   const min = Math.min(...components);
   const max = Math.max(...components);
@@ -206,7 +222,10 @@ const extentCache = new WeakMap();
 export function getColumnExtent(cols, rows, index) {
   const col = cols[index];
   if (!extentCache.has(col)) {
-    extentCache.set(col, d3.extent(rows, row => row[index]));
+    extentCache.set(
+      col,
+      d3.extent(rows, row => row[index]),
+    );
   }
   return extentCache.get(col);
 }
@@ -335,3 +354,39 @@ export function computeMaxDecimalsForValues(values, options) {
     return undefined;
   }
 }
+
+export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
+  if (!prevColumns || prevColumns.length === 0) {
+    return newColumns;
+  }
+
+  const newSet = new Set(newColumns);
+  const prevSet = new Set(prevColumns);
+
+  const addedColumns = newColumns.filter(column => !prevSet.has(column));
+  const prevOrderedColumnsExceptRemoved = prevColumns.map(column =>
+    newSet.has(column) ? column : null,
+  );
+
+  const mergedColumnsResult = [];
+
+  while (
+    prevOrderedColumnsExceptRemoved.length > 0 ||
+    addedColumns.length > 0
+  ) {
+    const column = prevOrderedColumnsExceptRemoved.shift();
+
+    if (column != null) {
+      mergedColumnsResult.push(column);
+      continue;
+    }
+
+    const addedColumn = addedColumns.shift();
+
+    if (addedColumn != null) {
+      mergedColumnsResult.push(addedColumn);
+    }
+  }
+
+  return mergedColumnsResult;
+};

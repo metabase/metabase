@@ -1,8 +1,9 @@
 (ns metabase.query-processor-test.constraints-test
   "Test for MBQL `:constraints`"
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
 
 (defn- mbql-query []
   (mt/mbql-query venues
@@ -10,7 +11,7 @@
      :order-by [[:asc $id]]}))
 
 (defn- native-query []
-  (qp/query->native (mbql-query)))
+  (qp/compile (mbql-query)))
 
 (deftest max-results-test
   (mt/test-drivers (mt/normal-drivers)

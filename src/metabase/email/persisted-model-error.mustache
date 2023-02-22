@@ -1,0 +1,109 @@
+{{> metabase/email/_header }}
+  <div class="card-container">
+    <h2
+      style="margin: 0; padding: 0; font-weight: 700; font-size: 1.5em; color: {{colorTextDark}}; line-height: 1.5em;"
+    >
+      Model refresh for {{database-name}} failed
+    </h2>
+    {{#errors}}
+    {{^is-not-first}}
+      <div>
+    {{/is-not-first}}
+    {{#is-not-first}}
+      <div class="padded-section">
+    {{/is-not-first}}
+      <p
+      style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};"
+    >
+      We ran into some trouble refreshing the model {{card-name}}. You can
+      see the error description below:
+    </p>
+    <code
+      style="display: block; background-color: #F9FBFC; color: {{colorTextDark}}; border-radius: 4px; padding: 1.375rem 2.25em; margin-top: 1.125em; margin-bottom: 1.125em;"
+    >
+      {{error}}
+    </code>
+    <table
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      width="100%"
+      style="border-collapse: separate; border-spacing: 0 2em;"
+    >
+      <tr>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+        >
+          Model name
+        </td>
+        <td>
+          <a
+            href="{{card-url}}"
+            style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
+          >
+            {{card-name}}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+        >
+          Collection
+        </td>
+        <td>
+          <a
+            href="{{collection-url}}"
+            style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
+          >
+            {{collection-name}}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+        >
+          Last run at
+        </td>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
+        >
+          {{last-run-at}}
+        </td>
+      </tr>
+      <tr>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+        >
+          Last run trigger
+        </td>
+        <td
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
+        >
+          {{last-run-trigger}}
+        </td>
+      </tr>
+    </table>
+
+    <div style="text-align: center;">
+      <a
+        href="{{caching-log-details-url}}"
+        style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+      >
+        Review in Tools page
+      </a>
+    </div>
+    </div>
+    {{/errors}}
+    <div
+      style="height: 1px; width: 100%; background-color: #F0F0F0; margin-top: 2em;"
+    ></div>
+    <p
+      style="font-size: 0.875em; font-weight: 600; line-height: 1.375em; color: #A4ADCA; margin-top: 1em;"
+    >
+      If you run into any issues, check out our
+      <a href="https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html" style="color: #A4ADCA;">troubleshooting</a> guides.
+    </p>
+  </div>
+{{> metabase/email/_footer }}

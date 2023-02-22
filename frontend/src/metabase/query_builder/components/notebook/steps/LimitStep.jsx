@@ -3,8 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 
-import Input from "metabase/components/Input";
-
+import LimitInput from "metabase/query_builder/components/LimitInput";
 import { NotebookCell } from "../NotebookCell";
 
 export default function LimitStep({
@@ -16,7 +15,7 @@ export default function LimitStep({
 }) {
   return (
     <NotebookCell color={color}>
-      <Input
+      <LimitInput
         small
         className="mb1"
         type="number"
@@ -25,7 +24,7 @@ export default function LimitStep({
         onChange={e => {
           const limit = parseInt(e.target.value, 0);
           if (limit >= 1) {
-            query.updateLimit(limit).update(updateQuery);
+            updateQuery(query.updateLimit(limit));
           }
         }}
       />

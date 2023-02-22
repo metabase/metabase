@@ -2,11 +2,13 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [metabase.util.ssh :as ssh]))
+
+(set! *warn-on-reflection* true)
 
 (defn details->url
   "Helper for building a Druid URL.
@@ -18,7 +20,6 @@
 
 (defn- do-request
   "Perform a JSON request using `request-fn` against `url`.
-   Tho
 
      (do-request http/get \"http://my-json-api.net\")"
   [request-fn url & {:as options}]
@@ -39,7 +40,7 @@
                             e)))))
       (catch Throwable e
         (let [response (u/ignore-exceptions
-                         (when-let [body (:body (:object (ex-data e)))]
+                         (when-let [body (:body (ex-data e))]
                            (json/parse-string body keyword)))]
           (throw (ex-info (or (:errorMessage response)
                               (.getMessage e))

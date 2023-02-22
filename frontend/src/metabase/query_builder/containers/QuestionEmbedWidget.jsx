@@ -11,8 +11,9 @@ import EmbedModalContent from "metabase/public/components/widgets/EmbedModalCont
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
-import { getParametersFromCard } from "metabase/meta/Card";
 import {
   createPublicLink,
   deletePublicLink,
@@ -27,11 +28,16 @@ const QuestionEmbedWidgetPropTypes = {
   deletePublicLink: PropTypes.func,
   updateEnableEmbedding: PropTypes.func,
   updateEmbeddingParams: PropTypes.func,
+  metadata: PropTypes.object,
 };
 
 const QuestionEmbedWidgetTriggerPropTypes = {
   onClick: PropTypes.func,
 };
+
+const mapStateToProps = (state, props) => ({
+  metadata: getMetadata(state),
+});
 
 const mapDispatchToProps = {
   createPublicLink,
@@ -40,11 +46,7 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
-export default class QuestionEmbedWidget extends Component {
+class QuestionEmbedWidget extends Component {
   render() {
     const {
       className,
@@ -53,6 +55,7 @@ export default class QuestionEmbedWidget extends Component {
       deletePublicLink,
       updateEnableEmbedding,
       updateEmbeddingParams,
+      metadata,
       ...props
     } = this.props;
     return (
@@ -61,7 +64,7 @@ export default class QuestionEmbedWidget extends Component {
         className={className}
         resource={card}
         resourceType="question"
-        resourceParameters={getParametersFromCard(card)}
+        resourceParameters={getCardUiParameters(card, metadata)}
         onCreatePublicLink={() => createPublicLink(card)}
         onDisablePublicLink={() => deletePublicLink(card)}
         onUpdateEnableEmbedding={enableEmbedding =>
@@ -85,12 +88,21 @@ export default class QuestionEmbedWidget extends Component {
     isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
     isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
   }) {
+    if (question.isDataset()) {
+      return false;
+    }
+
     return (
       (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
       (isEmbeddingEnabled && isAdmin)
     );
   }
 }
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(QuestionEmbedWidget);
 
 export function QuestionEmbedWidgetTrigger({ onClick }) {
   return (

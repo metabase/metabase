@@ -1,7 +1,8 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, filter, visitQuestion } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > databases > table", () => {
   beforeEach(() => {
@@ -9,13 +10,13 @@ describe("scenarios > admin > databases > table", () => {
     cy.signInAsAdmin();
   });
 
-  it("should see four tables in sample database", () => {
-    cy.visit("/admin/datamodel/database/1");
-    cy.get(".AdminList-item").should("have.length", 4);
+  it("should see 8 tables in sample database", () => {
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    cy.get(".AdminList-item").should("have.length", 8);
   });
 
   it("should be able to see details of each table", () => {
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     cy.findByText(
       "Select any table to see its schema and add or edit metadata.",
     );
@@ -26,7 +27,7 @@ describe("scenarios > admin > databases > table", () => {
       "Select any table to see its schema and add or edit metadata.",
     ).should("not.exist");
     cy.get(
-      "input[value='This is a confirmed order for a product from a user.']",
+      "input[value='Confirmed Sample Company orders for a product, from a user.']",
     );
   });
 
@@ -39,7 +40,7 @@ describe("scenarios > admin > databases > table", () => {
 
   describe("in orders table", () => {
     beforeEach(() => {
-      cy.visit("/admin/datamodel/database/1/table/2");
+      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
     });
 
     it("should see multiple fields", () => {
@@ -67,8 +68,8 @@ describe("scenarios > admin > databases > table", () => {
   describe.skip("turning table visibility off shouldn't prevent editing related question (metabase#15947)", () => {
     it("simple question (metabase#15947-1)", () => {
       turnTableVisibilityOff(ORDERS_ID);
-      cy.visit("/question/1");
-      cy.findByText("Filter");
+      visitQuestion(1);
+      filter();
     });
 
     it("question with joins (metabase#15947-2)", () => {

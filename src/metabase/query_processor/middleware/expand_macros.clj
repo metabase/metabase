@@ -6,16 +6,18 @@
 
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
-  (:require [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    SEGMENTS                                                    |
@@ -60,12 +62,12 @@
 (s/defn ^:private metric-clauses->id->info :- {su/IntGreaterThanZero MetricInfo}
   [metric-clauses :- [mbql.s/metric]]
   (when (seq metric-clauses)
-    (u/key-by :id (for [metric (db/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
-                        :let   [errors (u/prog1 (metric-info-validation-errors metric)
-                                         (when <>
-                                           (log/warn (trs "Invalid metric: {0} reason: {1}" metric <>))))]
-                        :when  (not errors)]
-                    metric))))
+    (m/index-by :id (for [metric (db/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
+                          :let   [errors (u/prog1 (metric-info-validation-errors metric)
+                                           (when <>
+                                             (log/warn (trs "Invalid metric: {0} reason: {1}" metric <>))))]
+                          :when  (not errors)]
+                      metric))))
 
 (s/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
   [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
@@ -170,15 +172,10 @@
       expand-metrics
       expand-segments))
 
-(defn- expand-macros*
+(defn expand-macros
+  "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
+  their contents."
   [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (expand-metrics-and-segments query)))
-
-(defn expand-macros
-  "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
-  their contents."
-  [qp]
-  (fn [query rff context]
-    (qp (expand-macros* query) rff context)))

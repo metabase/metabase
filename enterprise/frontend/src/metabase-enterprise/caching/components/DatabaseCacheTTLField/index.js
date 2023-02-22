@@ -1,1 +1,1 @@
-export * from "./DatabaseCacheTTLField";
+export { default } from "./DatabaseCacheTTLField";

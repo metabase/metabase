@@ -1,33 +1,34 @@
 (ns metabase-enterprise.serialization.upsert
   "Upsert-or-skip functionality for our models."
-  (:require [cheshire.core :as json]
-            [clojure.data :as diff]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.names :refer [name-for-logging]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [trs]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data :as data]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.names :refer [name-for-logging]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan.db :as db]
+   [toucan2.tools.after :as t2.after]))
 
 (def ^:private identity-condition
   {Database            [:name :engine]
@@ -41,7 +42,6 @@
    DashboardCardSeries [:dashboardcard_id :card_id]
    FieldValues         [:field_id]
    Dimension           [:field_id :human_readable_field_id]
-   Dependency          [:model_id :model :dependent_on_model :dependent_on_id]
    Setting             [:key]
    Pulse               [:name :collection_id]
    PulseCard           [:pulse_id :card_id]
@@ -64,7 +64,7 @@
 
 (defn- has-post-insert?
   [model]
-  (not= (find-protocol-method models/IModel :post-insert model) identity))
+  (not (methodical/is-default-primary-method? t2.after/each-row-fn [:toucan.query-type/insert.* model])))
 
 (defmacro with-error-handling
   "Execute body and catch and log any exceptions doing so throws."
@@ -99,8 +99,8 @@
 
 (defn- group-by-action
   "Return `entities` grouped by the action that needs to be done given the `context`."
-  [{:keys [mode on-error]} model entities]
-  (let [same?                        (comp nil? second diff/diff)]
+  [{:keys [mode]} model entities]
+  (let [same? (comp nil? second data/diff)]
     (->> entities
          (map-indexed (fn [position entity]
                         [position
@@ -139,7 +139,6 @@
         (log/info (trs "Skipping {0} (nothing to update)" (name-for-logging (name model) existing)))))
     (doseq [[_ _ existing] update]
       (log/info (trs "Updating {0}" (name-for-logging (name model) existing))))
-
     (->> (concat (for [[position _ existing] skip]
                    [(u/the-id existing) position])
                  (map vector (map post-insert-fn

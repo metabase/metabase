@@ -1,14 +1,13 @@
 import {
   restore,
-  mockSessionProperty,
   visitAlias,
   popover,
   filterWidget,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18061",
@@ -54,14 +53,29 @@ const dashboardDetails = { name: "18061D", parameters: [filter] };
 
 describe("issue 18061", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id, card_id } = dashboardCard;
+
+        // Enable sharing
+        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(`/public/dashboard/${uuid}`).as("publicLink");
+          },
+        );
+
+        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
+        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
+
+        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+        ).as("dashCardQuery");
+        cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
 
         const mapFilterToCard = {
           parameter_mappings: [
@@ -74,15 +88,6 @@ describe("issue 18061", () => {
         };
 
         cy.editDashboardCard(dashboardCard, mapFilterToCard);
-
-        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
-        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
-
-        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-        cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
-
-        // Enable sharing
-        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
       },
     );
   });
@@ -96,15 +101,10 @@ describe("issue 18061", () => {
 
       cy.window().then(w => (w.beforeReload = true));
 
-      cy.icon("filter")
-        .parent()
-        .contains("1")
-        .click();
+      cy.icon("filter").parent().contains("1").click();
       cy.findByText("ID is less than 3").click();
 
-      popover()
-        .find("input")
-        .type("{backspace}2");
+      popover().find("input").type("{backspace}2");
 
       cy.button("Update filter").click();
 
@@ -121,11 +121,11 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-2)", () => {
       visitAlias("@dashboardUrl");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
 
       addFilter("Twitter");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -134,37 +134,22 @@ describe("issue 18061", () => {
 
   context("scenario 3: publicly shared dashboard with a filter", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
-      visitAlias("@dashboardUrl");
-      cy.wait("@cardQuery");
-
-      cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
-
-      cy.findByText("Public link")
-        .parent()
-        .find("input")
-        .invoke("val")
-        .then($value => {
-          cy.visit($value);
-        });
-
-      cy.get(".PinMap");
-
-      addFilter("Twitter");
-
-      cy.location("search").should("eq", "?category=Twitter");
+      visitAlias("@publicLink");
 
       cy.findByText("18061D");
       cy.findByText("18061");
       cy.get(".PinMap");
+
+      addFilter("Twitter");
+      cy.location("search").should("eq", "?category=Twitter");
+      cy.findAllByTestId("no-results-image");
+      cy.get(".PinMap").should("not.exist");
     });
   });
 });
 
 function addFilter(filter) {
   filterWidget().click();
-  popover()
-    .contains(filter)
-    .click();
+  popover().contains(filter).click();
   cy.button("Add filter").click();
 }

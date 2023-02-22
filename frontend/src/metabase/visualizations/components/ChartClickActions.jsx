@@ -3,24 +3,23 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import "./ChartClickActions.css";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getEventTarget } from "metabase/lib/dom";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
-import type {
-  ClickObject,
-  ClickAction,
-} from "metabase-types/types/Visualization";
-
-import cx from "classnames";
-import _ from "underscore";
+import {
+  ClickActionButton,
+  FlexTippyPopover,
+} from "./ChartClickActions.styled";
 
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
@@ -67,6 +66,9 @@ const SECTIONS = {
   auto: {
     icon: "bolt",
   },
+  info: {
+    icon: "info",
+  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
@@ -76,21 +78,8 @@ Object.values(SECTIONS).map((section, index) => {
 const getGALabelForAction = action =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-type Props = {
-  clicked: ?ClickObject,
-  clickActions: ?(ClickAction[]),
-  onChangeCardAndRun: Object => void,
-  onClose: () => void,
-};
-
-type State = {
-  popoverAction: ?ClickAction,
-};
-
-@connect()
-export default class ChartClickActions extends Component {
-  props: Props;
-  state: State = {
+class ChartClickActions extends Component {
+  state = {
     popoverAction: null,
   };
 
@@ -101,7 +90,7 @@ export default class ChartClickActions extends Component {
     }
   };
 
-  handleClickAction = (action: ClickAction) => {
+  handleClickAction = action => {
     const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
       MetabaseAnalytics.trackStructEvent(
@@ -128,8 +117,26 @@ export default class ChartClickActions extends Component {
     }
   };
 
+  getPopoverReference = clicked => {
+    if (clicked.element) {
+      if (clicked.element.firstChild instanceof HTMLElement) {
+        return clicked.element.firstChild;
+      } else {
+        return clicked.element;
+      }
+    } else if (clicked.event) {
+      return getEventTarget(clicked.event);
+    }
+  };
+
   render() {
-    const { clicked, clickActions, onChangeCardAndRun } = this.props;
+    const {
+      clicked,
+      clickActions,
+      onChangeCardAndRun,
+      series,
+      onUpdateVisualizationSettings,
+    } = this.props;
 
     if (!clicked || !clickActions || clickActions.length === 0) {
       return null;
@@ -216,6 +223,9 @@ export default class ChartClickActions extends Component {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onResize={() => {
+            this.instance?.popperInstance?.update();
+          }}
           onChangeCardAndRun={({ nextCard }) => {
             if (popoverAction) {
               MetabaseAnalytics.trackStructEvent(
@@ -234,13 +244,19 @@ export default class ChartClickActions extends Component {
             );
             this.close();
           }}
+          series={series}
+          onChange={onUpdateVisualizationSettings}
         />
       );
     }
 
     const groupedClickActions = _.groupBy(clickActions, "section");
-    if (groupedClickActions["sum"] && groupedClickActions["sum"].length === 1) {
+
+    if (groupedClickActions?.["sum"]?.length === 1) {
       // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
+      if (!groupedClickActions?.["summarize"]) {
+        groupedClickActions["summarize"] = [];
+      }
       groupedClickActions["summarize"].push({
         ...groupedClickActions["sum"][0],
         buttonType: "horizontal",
@@ -248,12 +264,9 @@ export default class ChartClickActions extends Component {
       });
       delete groupedClickActions["sum"];
     }
-    if (
-      clicked.column &&
-      clicked.column.source === "native" &&
-      groupedClickActions["sort"]
-    ) {
-      // restyle the Formatting action for SQL columns
+    const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
+    if (hasOnlyOneSortAction) {
+      // restyle the Formatting action when there is only one option
       groupedClickActions["sort"][0] = {
         ...groupedClickActions["sort"][0],
         buttonType: "horizontal",
@@ -264,10 +277,17 @@ export default class ChartClickActions extends Component {
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
       .value();
 
+    const hasOnlyOneSection = sections.length === 1;
+
+    const popoverAnchor = this.getPopoverReference(clicked);
+
     return (
-      <Popover
-        target={clicked.element}
-        targetEvent={clicked.event}
+      <FlexTippyPopover
+        reference={popoverAnchor}
+        visible={!!popoverAnchor}
+        onShow={instance => {
+          this.instance = instance;
+        }}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
             "Action",
@@ -275,136 +295,120 @@ export default class ChartClickActions extends Component {
           );
           this.close();
         }}
-        verticalAttachments={["top", "bottom"]}
-        horizontalAttachments={["left", "center", "right"]}
-        sizeToFit
-        pinInitialAttachment
-      >
-        {popover ? (
-          popover
-        ) : (
-          <div className="text-bold px2 pt2 pb1">
-            <div className="p1">
-              <input
-                id="pointInfo"
-                className="p1 bg-white bg-brand token-blue"
-                placeholder="Comment"
-                data-clickedkey={clickedKey}
-                data-clickedvalue={clickedValue}
-                data-tablexaxis={tablexAxis}
-                data-tableyaxis={tableyAxis}
-              />
-              <input
-                className="ml1 p1 bg-white bg-brand token-blue"
-                id="pointInfoOk"
-                onClick={handlePointSave}
-                type="button"
-                value="Save"
-              />
-            </div>
-            {sections.map(([key, actions]) => (
-              <div
-                key={key}
-                className={cx(
-                  "pb1",
-                  { pb2: SECTIONS[key].icon === "bolt" },
-                  {
-                    ml1:
-                      SECTIONS[key].icon === "bolt" ||
-                      SECTIONS[key].icon === "sum" ||
-                      SECTIONS[key].icon === "breakout",
-                  },
-                )}
-              >
-                {SECTIONS[key].icon === "sum" && (
-                  <p className="mt0 text-medium text-small">{t`Summarize`}</p>
-                )}
-                {SECTIONS[key].icon === "breakout" && (
-                  <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
-                )}
-                {SECTIONS[key].icon === "bolt" && (
-                  <p className="mt2 text-medium text-small">
-                    {t`Automatic explorations`}
-                  </p>
-                )}
-                {SECTIONS[key].icon === "funnel_outline" && (
-                  <p className="mt0 text-dark text-small">
-                    {t`Filter by this value`}
-                  </p>
-                )}
-
+        placement="bottom-start"
+        offset={[0, 8]}
+        popperOptions={{
+          flip: true,
+          modifiers: [
+            {
+              name: "preventOverflow",
+              options: {
+                padding: 16,
+              },
+            },
+          ],
+        }}
+        content={
+          popover ? (
+            popover
+          ) : (
+            <div className="text-bold px2 pt2 pb1">
+              {sections.map(([key, actions]) => (
                 <div
+                  key={key}
                   className={cx(
-                    "flex",
+                    "pb1",
+                    { pb2: SECTIONS[key].icon === "bolt" },
                     {
-                      "justify-end": SECTIONS[key].icon === "gear",
+                      ml1:
+                        SECTIONS[key].icon === "bolt" ||
+                        SECTIONS[key].icon === "sum" ||
+                        SECTIONS[key].icon === "breakout" ||
+                        (SECTIONS[key].icon === "funnel_outline" &&
+                          !hasOnlyOneSection),
                     },
-                    {
-                      "align-center justify-center":
-                        SECTIONS[key].icon === "gear",
-                    },
-                    { "flex-column my1": SECTIONS[key].icon === "summarize" },
                   )}
                 >
-                  {actions.map((action, index) => (
-                    <ChartClickAction
-                      key={index}
-                      action={action}
-                      isLastItem={index === actions.length - 1}
-                      handleClickAction={this.handleClickAction}
-                    />
-                  ))}
+                  {SECTIONS[key].icon === "sum" && (
+                    <p className="mt0 text-medium text-small">{t`Summarize`}</p>
+                  )}
+                  {SECTIONS[key].icon === "breakout" && (
+                    <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
+                  )}
+                  {SECTIONS[key].icon === "bolt" && (
+                    <p className="mt2 text-medium text-small">
+                      {t`Automatic explorations`}
+                    </p>
+                  )}
+                  {SECTIONS[key].icon === "funnel_outline" && (
+                    <p
+                      className={cx(
+                        "text-small",
+                        hasOnlyOneSection ? "mt0" : "mt2",
+                        hasOnlyOneSection ? "text-dark" : "text-medium",
+                      )}
+                    >
+                      {t`Filter by this value`}
+                    </p>
+                  )}
+
+                  <div
+                    className={cx(
+                      "flex",
+                      {
+                        "justify-end": SECTIONS[key].icon === "gear",
+                      },
+                      {
+                        "align-center justify-center":
+                          SECTIONS[key].icon === "gear",
+                      },
+                      { "flex-column my1": SECTIONS[key].icon === "summarize" },
+                    )}
+                  >
+                    {actions.map((action, index) => (
+                      <ChartClickAction
+                        key={index}
+                        action={action}
+                        isLastItem={index === actions.length - 1}
+                        handleClickAction={this.handleClickAction}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Popover>
+              ))}
+            </div>
+          )
+        }
+        {...popoverAction?.popoverProps}
+      />
     );
   }
 }
 
-export const ChartClickAction = ({
-  action,
-  isLastItem,
-  handleClickAction,
-}: {
-  action: any,
-  isLastItem: any,
-  handleClickAction: any,
-}) => {
+export default connect()(ChartClickActions);
+
+export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // This is where all the different action button styles get applied.
   // Some of them have bespoke classes defined in ChartClickActions.css,
   // like for cases when we needed to really dial in the spacing.
-  const className = cx("cursor-pointer no-decoration", {
-    "text-center sort token-blue mr1 bg-brand-hover":
-      action.buttonType === "sort",
-    "formatting-button flex-align-right text-brand-hover text-light":
-      action.buttonType === "formatting",
-    "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
-      action.buttonType === "horizontal",
-    "text-small token token-blue text-white-hover bg-brand-hover mr1":
-      action.buttonType === "token",
-    "token token-filter text-small text-white-hover mr1":
-      action.buttonType === "token-filter",
+  const className = cx("no-decoration", {
+    "cursor-pointer": action.buttonType !== "info",
+    sort: action.buttonType === "sort",
+    "formatting-button": action.buttonType === "formatting",
+    "horizontal-button": action.buttonType === "horizontal",
   });
-  // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
-  // for now since on dashboards currently they need to go through
-  // navigateToNewCardFromDashboard to merge in parameters.,
-  // Also need to sort out proper logic in QueryBuilder's UNSAFE_componentWillReceiveProps
-  // if (action.question) {
-  //   return (
-  //     <Link to={action.question().getUrl()} className={className}>
-  //       {action.title}
-  //     </Link>
-  //   );
-  // } else
   if (action.url) {
     return (
-      <div>
-        <Link
-          to={action.url()}
+      <div
+        className={cx({
+          full: action.buttonType === "horizontal",
+        })}
+      >
+        <ClickActionButton
+          as={Link}
           className={className}
+          to={action.url()}
+          type={action.buttonType}
           onClick={() =>
             MetabaseAnalytics.trackStructEvent(
               "Actions",
@@ -414,7 +418,7 @@ export const ChartClickAction = ({
           }
         >
           {action.title}
-        </Link>
+        </ClickActionButton>
       </div>
     );
   } else if (
@@ -423,8 +427,9 @@ export const ChartClickAction = ({
   ) {
     return (
       <Tooltip tooltip={action.tooltip}>
-        <div
+        <ClickActionButton
           className={cx(className, "flex flex-row align-center")}
+          type={action.buttonType}
           onClick={() => handleClickAction(action)}
         >
           {action.icon && (
@@ -437,15 +442,16 @@ export const ChartClickAction = ({
               name={action.icon}
             />
           )}
-        </div>
+        </ClickActionButton>
       </Tooltip>
     );
   } else {
     return (
-      <div
+      <ClickActionButton
         className={cx(className, {
           mb1: action.buttonType === "horizontal" && !isLastItem,
         })}
+        type={action.buttonType}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
@@ -456,7 +462,7 @@ export const ChartClickAction = ({
           />
         )}
         {action.title && action.title}
-      </div>
+      </ClickActionButton>
     );
   }
 };

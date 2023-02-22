@@ -1,20 +1,23 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
-  (:require [clojure.data.csv :as csv]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.util :as u]
-            [metabase.util.files :as files]))
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -38,7 +41,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []
-  (tx/db-test-env-var-or-throw :vertica :db "docker"))
+  (tx/db-test-env-var-or-throw :vertica :db "VMart"))
 
 (def ^:private db-connection-details
   (delay {:host     (tx/db-test-env-var-or-throw :vertica :host "localhost")
@@ -112,7 +115,7 @@
                          :field-definitions [{:field-name "vendor"
                                               :base-type  :type/Text}]
                          :rows              [["Pouros, Nitzsche and Mayer"]]}
-          temp-filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-csv-test.csv"))]
+          temp-filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "vertica-csv-test.csv"))]
       (dump-table-rows-to-csv! table-def temp-filename)
       (is (= ["id,vendor"
               "1,Pouros\\, Nitzsche and Mayer"]
@@ -120,7 +123,7 @@
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name rows], :as tabledef} filename]
+  [_driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
   (let [table-identifier (sql.tx/qualify-and-quote :vertica database-name table-name)]
     (with-open [conn (jdbc/get-connection (dbspec))]
       (letfn [(execute! [sql]
@@ -147,7 +150,7 @@
           (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
                                                        (format "SELECT count(*) FROM %s;" table-identifier))]
             (when-not (= actual-num-rows (count rows))
-              (throw (ex-info (format "Expected count(*) to return %d, but only got" (count rows) actual-num-rows)
+              (throw (ex-info (format "Expected count(*) to return %d, but only got %d" (count rows) actual-num-rows)
                               {:inserted-rows (take 100 (actual-rows))}))))
           ;; success!
           :ok

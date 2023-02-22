@@ -3,8 +3,7 @@ import PropTypes from "prop-types";
 
 import TextDiff from "./TextDiff";
 import QueryDiff from "./QueryDiff";
-
-import Icon from "metabase/components/Icon";
+import { EditIcon, ErrorIcon, SuccessIcon } from "./RevisionDiff.styled";
 
 export default class RevisionDiff extends Component {
   static propTypes = {
@@ -21,12 +20,12 @@ export default class RevisionDiff extends Component {
 
     let icon;
     if (before != null && after != null) {
-      icon = <Icon name="pencil" className="text-brand" size={16} />;
+      icon = <EditIcon name="pencil" size={16} />;
     } else if (before != null) {
-      icon = <Icon name="add" className="text-error" size={16} />;
+      icon = <ErrorIcon name="add" size={16} />;
     } else {
       // TODO: "minus" icon
-      icon = <Icon name="add" className="text-green" size={16} />;
+      icon = <SuccessIcon name="add" size={16} />;
     }
 
     return (

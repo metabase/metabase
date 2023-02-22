@@ -1,21 +1,26 @@
 (ns metabase.query-processor.streaming.xlsx
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [java-time :as t]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.streaming.common :as common]
-            [metabase.query-processor.streaming.interface :as i]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.shared.util.currency :as currency]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]])
-  (:import java.io.OutputStream
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
-           org.apache.poi.ss.util.CellRangeAddress
-           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time :as t]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.util.currency :as currency]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (java.io OutputStream)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook)
+   (org.apache.poi.ss.util CellRangeAddress)
+   (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -24,6 +29,7 @@
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
+    ::mb.viz/number-separators
     ::mb.viz/currency
     ::mb.viz/currency-style
     ::mb.viz/currency-in-header
@@ -95,6 +101,7 @@
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
+                     ::mb.viz/number-separators
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
@@ -111,10 +118,15 @@
               merged-settings (if is-currency?
                                 (merge-global-settings format-settings :type/Currency)
                                 format-settings)
+              base-string     (if (= (::mb.viz/number-separators format-settings) ".")
+                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; number separator settings, since custom separators are not supported in XLSX.
+                                "###0"
+                                "#,##0")
               base-strings    (if (default-number-format? merged-settings)
                                 ;; [int-format, float-format]
-                                ["#,##0", "#,##0.##"]
-                                (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+                                [base-string (str base-string ".##")]
+                                (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = (::mb.viz/number-style merged-settings)
             "percent"
             (map #(str % "%") base-strings)
@@ -149,64 +161,90 @@
   (let [separator (::mb.viz/date-separator format-settings "/")]
     (str/replace format-string "/" separator)))
 
-(defn- add-time-format
-  [format-settings format-string]
+(defn- time-format
+  [format-settings]
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
-                           "minutes"
-                           "h:mm"
+                               "minutes"
+                               "h:mm"
 
-                           "seconds"
-                           "h:mm:ss"
+                               "seconds"
+                               "h:mm:ss"
 
-                           "milliseconds"
-                           "h:mm:ss.000"
+                               "milliseconds"
+                               "h:mm:ss.000"
 
-                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
-                           ;; defaulting to "minutes"
-                           nil
-                           nil)
-        time-format      (when base-time-format
-                           (condp = (::mb.viz/time-style format-settings "h:mm A")
-                             "HH:mm"
-                             (str "h" base-time-format)
+                               ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                               ;; defaulting to "minutes"
+                               nil
+                               nil)]
+    (when base-time-format
+      (condp = (::mb.viz/time-style format-settings "h:mm A")
+        "HH:mm"
+        (str "h" base-time-format)
 
-                             ;; Deprecated time style which should be already converted to HH:mm when viz settings are
-                             ;; normalized, but we'll handle it here too just in case. (#18112)
-                             "k:mm"
-                             (str "h" base-time-format)
+        ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+        ;; normalized, but we'll handle it here too just in case. (#18112)
+        "k:mm"
+        (str "h" base-time-format)
 
-                             "h:mm A"
-                             (str base-time-format " am/pm")
+        "h:mm A"
+        (str base-time-format " am/pm")
 
-                             "h A"
-                             "h am/pm"))]
-    (if time-format
+        "h A"
+        "h am/pm"))))
+
+(defn- add-time-format
+  "Adds the appropriate time setting to a date format string if necessary, producing a datetime format string."
+  [format-settings unit format-string]
+  (if (or (not unit) (mbql.s/time-bucketing-units unit))
+    (if-let [time-format (time-format format-settings)]
       (str format-string ", " time-format)
-      format-string)))
+      format-string)
+    format-string))
+
+(defn- month-style
+  "For a given date format, returns the format to use in exports if :unit is :month"
+  [date-format]
+  (case date-format
+    "m/d/yyyy" "m/yyyy"
+    "yyyy/m/d" "yyyy/m"
+    ;; Default for all other styles
+    "mmmm, yyyy"))
+
+(defn- date-format
+  [format-settings unit]
+  (let [base-style (u/lower-case-en (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+        unit-style (case unit
+                     :month (month-style base-style)
+                     :year "yyyy"
+                     base-style)]
+    (->> unit-style
+         (abbreviate-date-names format-settings)
+         (replace-date-separators format-settings))))
 
 (defn- datetime-format-string
-  [format-settings]
-  (let [merged-settings (merge-global-settings format-settings :type/Temporal)
-        date-style      (::mb.viz/date-style merged-settings "mmmm d, yyyy")]
-    (->> date-style
-         str/lower-case
-         (abbreviate-date-names merged-settings)
-         (replace-date-separators merged-settings)
-         (add-time-format merged-settings))))
+  ([format-settings]
+   (datetime-format-string format-settings nil))
+
+  ([format-settings unit]
+   (let [merged-settings (merge-global-settings format-settings :type/Temporal)]
+     (->> (date-format merged-settings unit)
+          (add-time-format merged-settings unit)))))
 
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings semantic-type]
+  [format-settings {semantic-type :semantic_type, effective-type :effective_type, unit :unit}]
   (u/one-or-many
    (cond
      ;; Primary key or foreign key
      (isa? semantic-type :Relation/*)
      "0"
 
-     (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-         (isa? semantic-type :type/Temporal))
-     (datetime-format-string format-settings)
+     (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+              (isa? semantic-type :type/Temporal))
+          (isa? effective-type :type/Temporal))
+     (datetime-format-string format-settings unit)
 
      (or (some #(contains? number-setting-keys %) (keys format-settings))
          (isa? semantic-type :type/Currency))
@@ -226,9 +264,9 @@
 ;;; |                                             XLSX export logic                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod i/stream-options :xlsx
+(defmethod qp.si/stream-options :xlsx
   ([_]
-   (i/stream-options :xlsx "query_result"))
+   (qp.si/stream-options :xlsx "query_result"))
   ([_ filename-prefix]
    {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     :write-keepalive-newlines? false
@@ -257,8 +295,7 @@
                                    {::mb.viz/column-name (:name col)})
                    id-or-name    (first (vals settings-key))
                    settings      (get col-settings settings-key)
-                   semantic-type (:semantic_type col)
-                   format-strings (format-settings->format-strings settings semantic-type)]
+                   format-strings (format-settings->format-strings settings col)]
                (when (seq format-strings)
                  {id-or-name
                   (map
@@ -274,8 +311,8 @@
   to format strings."
   (memoize
    (fn [^Workbook workbook cols col-settings]
-     (let [data-format   (. workbook createDataFormat)
-           col-styles    (column-style-delays workbook data-format col-settings cols)]
+     (let [data-format (. workbook createDataFormat)
+           col-styles  (column-style-delays workbook data-format col-settings cols)]
        (into col-styles
              (for [[name-keyword format-string] (seq (default-format-strings))]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
@@ -343,11 +380,13 @@
 
 (defmethod set-cell! Number
   [^Cell cell value id-or-name]
-  (.setCellValue cell (double value))
-  (let [styles         (u/one-or-many (cell-style id-or-name))]
-    (if (rounds-to-int? value)
-      (.setCellStyle cell (or (first styles) (cell-style :integer)))
-      (.setCellStyle cell (or (second styles) (cell-style :float))))))
+  (let [v (double value)]
+    (.setCellValue cell v)
+    (when (u/real-number? v)
+      (let [styles (u/one-or-many (cell-style id-or-name))]
+        (if (rounds-to-int? v)
+          (.setCellStyle cell (or (first styles) (cell-style :integer)))
+          (.setCellStyle cell (or (second styles) (cell-style :float))))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]
@@ -394,7 +433,7 @@
             parsed-value (if (and *parse-temporal-string-values* (string? value))
                            (try (u.date/parse value)
                                 ;; Fallback to plain string value if it couldn't be parsed
-                                (catch java.time.format.DateTimeParseException _ value))
+                                (catch Exception _ value))
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
@@ -403,7 +442,9 @@
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings]
   (for [col ordered-cols]
-    (let [id-or-name       (or (:id col) (:name col))
+    (let [id-or-name       (or (and (:remapped_from col) (:fk_field_id col))
+                               (:id col)
+                               (:name col))
           format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
                                (get col-settings {::mb.viz/column-name id-or-name}))
           is-currency?     (or (isa? (:semantic_type col) :type/Currency)
@@ -449,11 +490,11 @@
     (.setAutoFilter ^SXSSFSheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
     (.createFreezePane ^SXSSFSheet sheet 0 1)))
 
-(defmethod i/streaming-results-writer :xlsx
+(defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook            (SXSSFWorkbook.)
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
-    (reify i/StreamingResultsWriter
+    (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
@@ -476,6 +517,8 @@
         (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
           ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
           (autosize-columns! sheet))
-        (spreadsheet/save-workbook-into-stream! os workbook)
-        (.dispose workbook)
-        (.close os)))))
+        (try
+          (spreadsheet/save-workbook-into-stream! os workbook)
+          (finally
+            (.dispose workbook)
+            (.close os)))))))

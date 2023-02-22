@@ -1,0 +1,9 @@
+{:hooks
+ {:analyze-call
+  {better-cond.core/cond better-cond.core/cond-hook
+   better-cond.core/defnc better-cond.core/defnc-hook
+   better-cond.core/defnc- better-cond.core/defnc-hook
+   better-cond.core/if-let better-cond.core/if-let-hook
+   better-cond.core/if-some better-cond.core/if-let-hook
+   better-cond.core/when-let better-cond.core/when-let-hook
+   better-cond.core/when-some better-cond.core/when-let-hook}}}

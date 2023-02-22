@@ -12,5 +12,5 @@
   color: white;
 }
 .formatting-button {
-  color: color(var(--color-text-light) alpha(-35%));
+  color: color-mod(var(--color-text-light) alpha(-35%));
 }

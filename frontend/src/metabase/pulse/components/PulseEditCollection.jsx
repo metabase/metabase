@@ -1,18 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 import { t } from "ttag";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
+import { CollectionSelectContainer } from "./PulseEditCollection.styled";
 
 export default class PulseEditCollection extends React.Component {
   render() {
     const { pulse, setPulse } = this.props;
     return (
-      <Box>
+      <div>
         <h2>{t`Which collection should this pulse live in?`}</h2>
 
-        <Box my={2} width={400}>
+        <CollectionSelectContainer>
           <CollectionSelect
             value={pulse.collection_id}
             onChange={collection_id =>
@@ -22,8 +22,8 @@ export default class PulseEditCollection extends React.Component {
               })
             }
           />
-        </Box>
-      </Box>
+        </CollectionSelectContainer>
+      </div>
     );
   }
 }

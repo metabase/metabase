@@ -1,17 +1,20 @@
 (ns metabase.server.request.util
   "Utility functions for Ring requests."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [user-agent :as user-agent]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [user-agent :as user-agent]))
+
+(set! *warn-on-reflection* true)
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -30,16 +33,14 @@
 
 (defn cacheable?
   "Can the ring request be permanently cached?"
-  [{:keys [request-method uri query-string], :as request}]
+  [{:keys [request-method uri query-string], :as _request}]
   (and (= request-method :get)
        (or
         ;; match requests that are js/css and have a cache-busting query string
         (and query-string
              (re-matches #"^/app/dist/.*\.(js|css)$" uri))
         ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
-        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri)
-        ;; GeoJSON proxy requests should also be cached
-        (re-matches #"^/api/geojson/.*" uri))))
+        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri))))
 
 (defn https?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
@@ -52,28 +53,23 @@
     ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
     ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
     (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-    (= "https" (str/lower-case (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+    (= "https" (u/lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
 
     ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
     ;; will be set to `on` if the original request was over HTTPS.
     (or x-forwarded-ssl front-end-https)
-    (= "on" (str/lower-case (or x-forwarded-ssl front-end-https)))
+    (= "on" (u/lower-case-en (or x-forwarded-ssl front-end-https)))
 
     ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
     ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
     ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
     origin
-    (str/starts-with? (str/lower-case origin) "https")
+    (str/starts-with? (u/lower-case-en origin) "https")
 
     ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
     ;; front of us), we can look directly at the scheme of the request sent to Jetty.
     scheme
     (= scheme :https)))
-
-(defn protocol
-  "Protocol of this request, either `:http` or `:https`."
-  [request]
-  (if (https? request) :https :http))
 
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
@@ -103,7 +99,7 @@
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
-                        (log/warn (trs "Login in request is missing device ID information")))
+                        (log/warn (trs "Login request is missing device ID information")))
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")))
         ip-address  (or (ip-address request)
@@ -132,7 +128,7 @@
                              (tru "Unknown browser"))]
         (format "%s (%s/%s)" device-type browser-name os-name)))))
 
-(defn- describe-location [{:keys [city region country], :as info}]
+(defn- describe-location [{:keys [city region country]}]
   (when-let [info (not-empty (remove str/blank? [city region country]))]
     (str/join ", " info)))
 
@@ -153,18 +149,17 @@
   [ip-addresses :- [s/Str]]
   (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
     (when (seq ip-addresses)
-      (try
-        (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
-          (try
-            (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                              :socket-timeout     gecode-ip-address-timeout-ms
-                                              :connection-timeout gecode-ip-address-timeout-ms})
-                               :body
-                               (json/parse-string true))]
-              (into {} (for [info response]
-                         [(:ip info) {:description (or (describe-location info)
-                                                       "Unknown location")
-                                      :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-            (catch Throwable e
-              (log/error e (trs "Error geocoding IP addresses") {:url url})
-              nil)))))))
+      (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
+        (try
+          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                            :socket-timeout     gecode-ip-address-timeout-ms
+                                            :connection-timeout gecode-ip-address-timeout-ms})
+                             :body
+                             (json/parse-string true))]
+            (into {} (for [info response]
+                       [(:ip info) {:description (or (describe-location info)
+                                                     "Unknown location")
+                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+          (catch Throwable e
+            (log/error e (trs "Error geocoding IP addresses") {:url url})
+            nil))))))

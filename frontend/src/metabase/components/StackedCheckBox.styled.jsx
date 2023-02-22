@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import CheckBox from "metabase/components/CheckBox";
+import styled from "@emotion/styled";
+import CheckBox from "metabase/core/components/CheckBox";
 import { color } from "metabase/lib/colors";
 
 export const StackedCheckBoxRoot = styled.div`

@@ -1,61 +1,34 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 
+import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-
-import screenfull from "screenfull";
-
-import type { LocationDescriptor } from "metabase-types/types";
-
-type Props = {
-  dashboardId: string,
-  fetchDashboard: (dashboardId: string) => Promise<any>,
-  fetchDashboardCardData: () => void,
-
-  location: LocationDescriptor,
-  replace: (location: LocationDescriptor) => void,
-};
-
-type State = {
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  refreshPeriod: ?number,
-  hideParameters: ?string,
-};
 
 const TICK_PERIOD = 1; // seconds
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
  */
-export default (ComposedComponent: React.Class) =>
-  connect(
-    null,
-    { replace },
-  )(
+export default ComposedComponent =>
+  connect(null, { replace })(
     class extends Component {
       static displayName =
         "DashboardControls[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      props: Props;
-      state: State = {
+      state = {
         isFullscreen: false,
-        isNightMode: false,
+        theme: null,
 
         refreshPeriod: null,
 
         hideParameters: null,
       };
-
-      _interval: ?number;
-
-      _refreshElapsed: ?number;
-      _refreshElapsedHook: ?Function;
 
       UNSAFE_componentWillMount() {
         if (screenfull.enabled) {
@@ -92,7 +65,7 @@ export default (ComposedComponent: React.Class) =>
             ? null
             : options.refresh,
         );
-        this.setNightMode(options.theme === "night" || options.night); // DEPRECATED: options.night
+        this.setTheme(options.theme);
         this.setFullscreen(options.fullscreen);
         this.setHideParameters(options.hide_parameters);
       };
@@ -110,14 +83,16 @@ export default (ComposedComponent: React.Class) =>
         };
         setValue("refresh", this.state.refreshPeriod);
         setValue("fullscreen", this.state.isFullscreen);
-        setValue("theme", this.state.isNightMode ? "night" : null);
+        setValue("theme", this.state.theme);
 
         delete options.night; // DEPRECATED: options.night
 
-        // Delete the "add card to dashboard" parameter if it's present because we don't
-        // want to add the card again on page refresh. The `add` parameter is already handled in
-        // DashboardApp before this method is called.
+        // Delete the "add card to dashboard" and "editing mode" parameters
+        // if they are present because we do not want to add the card again on
+        // page refresh. The parameters are already handled in DashboardApp
+        // before this method is called.
         delete options.add;
+        delete options.edit;
 
         let hash = stringifyHashOptions(options);
         hash = hash ? "#" + hash : "";
@@ -151,9 +126,14 @@ export default (ComposedComponent: React.Class) =>
         }
       };
 
+      // Preserve existing behavior, while keeping state in a new `theme` key
       setNightMode = isNightMode => {
-        isNightMode = !!isNightMode;
-        this.setState({ isNightMode });
+        const theme = isNightMode ? "night" : null;
+        this.setState({ theme });
+      };
+
+      setTheme = theme => {
+        this.setState({ theme });
       };
 
       setFullscreen = async (isFullscreen, browserFullscreen = true) => {
@@ -237,6 +217,8 @@ export default (ComposedComponent: React.Class) =>
           <ComposedComponent
             {...this.props}
             {...this.state}
+            isNightMode={this.state.theme === "night"}
+            hasNightModeToggle={this.state.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
             updateDashboardParams={this.updateDashboardParams}

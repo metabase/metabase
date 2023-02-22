@@ -1,8 +1,14 @@
 (ns metabase.setup
-  (:require [environ.core :refer [env]]
-            [metabase.models.setting :refer [defsetting set-string! Setting]]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [environ.core :as env]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.setting :as setting :refer [defsetting Setting]]
+   [metabase.models.user :refer [User]]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
@@ -22,12 +28,29 @@
   []
   ;; fetch the value directly from the DB; *do not* rely on cached value, in case a different instance came along and
   ;; already created it
-  (let [mb-setup-token (env :mb-setup-token)]
-    (or (when mb-setup-token (set-string! :setup-token mb-setup-token))
-        (db/select-one-field :value Setting :key "setup-token")
-        (set-string! :setup-token (str (UUID/randomUUID))))))
+  ;;
+  ;; TODO -- 95% sure we can just use [[setup-token]] directly now and not worry about manually fetching the env var
+  ;; value or setting DB values and the like
+  (or (when-let [mb-setup-token (env/env :mb-setup-token)]
+        (setting/set-value-of-type! :string :setup-token mb-setup-token))
+      (db/select-one-field :value Setting :key "setup-token")
+      (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
-(defn clear-token!
-  "Clear the setup token if it exists and reset it to `nil`."
-  []
-  (set-string! :setup-token nil))
+(defsetting has-user-setup
+  "A value that is true iff the metabase instance has one or more users registered."
+  :visibility :public
+  :type       :boolean
+  :setter     :none
+  ;; Once a User is created it's impossible for this to ever become falsey -- deleting the last User is disallowed.
+  ;; After this returns true once the result is cached and it will continue to return true forever without any
+  ;; additional DB hits.
+  ;;
+  ;; This is keyed by the unique identifier for the application database, to support resetting it in tests or swapping
+  ;; it out in the REPL
+  :getter     (let [app-db-id->user-exists? (atom {})]
+                (fn []
+                  (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
+                      (let [exists? (db/exists? User)]
+                        (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
+                        exists?))))
+  :doc        false)

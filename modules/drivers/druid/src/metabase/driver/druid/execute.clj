@@ -13,6 +13,8 @@
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
   timestamps from Druid are already in UTC and don't need to be converted"
@@ -41,7 +43,7 @@
 ;;
 ;; We can remove this at some point in the future when everyone is using Druid 0.17.0 or above.
 (defmethod post-process ::druid.qp/select
-  [_ projections _ [{{:keys [events]} :result} first-result]]
+  [_ projections _ [{{:keys [events]} :result}]]
   {:projections projections
    :results     (for [event (map :event events)]
                   (update event :timestamp u.date/parse))})
@@ -125,7 +127,7 @@
   (vec (remove #(re-find #"^___" (name %)) columns)))
 
 (defn- reduce-results
-  [{{:keys [query mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
+  [{{:keys [mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
   (let [col-names          (if mbql?
                              (->> projections
                                   remove-bonus-keys
@@ -143,10 +145,9 @@
 (defn execute-reducible-query
   "Execute a query for a Druid DB."
   [execute*
-   {database-id                                  :database
-    {:keys [query query-type mbql? projections]} :native
-    middleware                                   :middleware
-    :as                                          mbql-query}
+   {{:keys [query query-type projections]} :native
+    middleware                             :middleware
+    :as                                    mbql-query}
    respond]
   {:pre [query]}
   (let [details    (:details (qp.store/database))
@@ -158,7 +159,7 @@
         results    (try
                      (execute* details query)
                      (catch Throwable e
-                       (throw (ex-info (tru "Error executing query")
+                       (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                        {:type  qp.error-type/db
                                         :query query}
                                        e))))

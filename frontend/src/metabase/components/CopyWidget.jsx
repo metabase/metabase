@@ -1,18 +1,9 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
 import cx from "classnames";
-
-import CopyButton from "./CopyButton";
-
-type Props = {
-  value: string,
-  onChange?: (value: string) => void,
-  style?: Object,
-};
+import { CopyWidgetButton } from "./CopyWidget.styled";
 
 export default class CopyWidget extends Component {
-  props: Props;
-
   render() {
     const { value, onChange, style, ...props } = this.props;
     return (
@@ -29,19 +20,10 @@ export default class CopyWidget extends Component {
           }
           value={value}
           onChange={onChange}
+          readOnly={value && !onChange}
           {...props}
         />
-        <CopyButton
-          value={value}
-          className="absolute top bottom right Form-input-border p1 flex align-center text-brand bg-brand-hover text-white-hover"
-          style={{
-            borderBottomLeftRadius: 0,
-            borderTopLeftRadius: 0,
-            borderTop: "none",
-            borderRight: "none",
-            borderBottom: "none",
-          }}
-        />
+        <CopyWidgetButton value={value} />
       </div>
     );
   }

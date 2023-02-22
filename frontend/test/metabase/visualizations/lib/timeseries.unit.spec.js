@@ -6,9 +6,8 @@ import {
 } from "metabase/visualizations/lib/timeseries";
 import { getVisualizationTransformed } from "metabase/visualizations";
 
+import { TYPE } from "metabase-lib/types/constants";
 import { StringColumn, NumberColumn } from "../__support__/visualizations";
-
-import { TYPE } from "metabase/lib/types";
 
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {
@@ -154,6 +153,34 @@ describe("visualization.lib.timeseries", () => {
         expect(interval).toBe(expectedInterval);
         expect(count).toBe(expectedCount);
       });
+    });
+
+    const units = ["minute", "hour", "day", "week", "month", "year"];
+
+    units.forEach(testUnit => {
+      it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
+        const { interval, count } = computeTimeseriesDataInverval(
+          [
+            new Date("2019-01-01").toISOString(),
+            new Date("2020-01-01").toISOString(),
+          ],
+          testUnit,
+        );
+        expect(interval).toBe(testUnit);
+        expect(count).toBe(1);
+      });
+    });
+
+    it("should return 3 months for quarter interval", () => {
+      const { interval, count } = computeTimeseriesDataInverval(
+        [
+          new Date("2019-01-01").toISOString(),
+          new Date("2020-01-01").toISOString(),
+        ],
+        "quarter",
+      );
+      expect(interval).toBe("month");
+      expect(count).toBe(3);
     });
   });
 

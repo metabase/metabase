@@ -4,9 +4,10 @@ import {
   addPostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
-} from "__support__/e2e/cypress";
+  setupWritableDB,
+} from "__support__/e2e/helpers";
 
-describe("qa databases snapshots", () => {
+describe("qa databases snapshots", { tags: "@external" }, () => {
   beforeEach(() => {
     restoreAndAuthenticate();
   });
@@ -14,16 +15,33 @@ describe("qa databases snapshots", () => {
   it("creates snapshots for supported qa databases", () => {
     addPostgresDatabase();
     snapshot("postgres-12");
-
-    restoreAndAuthenticate();
-
-    addMongoDatabase();
-    snapshot("mongo-4");
+    deleteDatabase("postgresID");
 
     restoreAndAuthenticate();
 
     addMySQLDatabase();
     snapshot("mysql-8");
+    deleteDatabase("mysqlID");
+
+    restoreAndAuthenticate();
+
+    addMongoDatabase();
+    snapshot("mongo-4");
+    deleteDatabase("mongoID");
+
+    restoreAndAuthenticate();
+
+    setupWritableDB("mysql");
+    addMySQLDatabase("Writable MySQL8", true);
+    snapshot("mysql-writable");
+    deleteDatabase("mysqlID");
+
+    restoreAndAuthenticate();
+
+    setupWritableDB("postgres");
+    addPostgresDatabase("Writable Postgres12", true);
+    snapshot("postgres-writable");
+    deleteDatabase("postgresID");
 
     restore("blank");
   });
@@ -32,4 +50,10 @@ describe("qa databases snapshots", () => {
 function restoreAndAuthenticate() {
   restore("default");
   cy.signInAsAdmin();
+}
+
+function deleteDatabase(idAlias) {
+  cy.get("@" + idAlias).then(id => {
+    return cy.request("DELETE", `/api/database/${id}`);
+  });
 }

@@ -1,20 +1,21 @@
-(ns ^:deprecated metabase.sync-test
+(ns ^:deprecated ^:mb/once metabase.sync-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces.
 
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.u]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :as mock.util]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -39,7 +40,8 @@
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 2}}}
+                        :database-position 2}}
+             :description nil}
    "studio" {:name   "studio"
              :schema nil
              :fields #{{:name              "studio"
@@ -50,7 +52,8 @@
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 1}}}})
+                        :database-position 1}}
+             :description ""}})
 
 (driver/register! ::sync-test, :abstract? true)
 
@@ -81,7 +84,7 @@
 
 (defmethod driver/execute-reducible-query ::sync-test
   [_ query _ respond]
-  (mock.u/mock-execute-reducible-query query respond))
+  (mock.util/mock-execute-reducible-query query respond))
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
@@ -139,7 +142,7 @@
     :display_name       "Studio"
     :database_type      "VARCHAR"
     :base_type          :type/Text
-    :effective_type          :type/Text
+    :effective_type     :type/Text
     :fk_target_field_id true
     :semantic_type      :type/FK
     :database_position  2
@@ -155,7 +158,8 @@
     :effective_type    :type/Text
     :semantic_type     :type/Title
     :database_position 1
-    :position          1}))
+    :position          1
+    :has_field_values  :auto-list}))
 
 (defn- field:studio-name []
   (merge
@@ -167,7 +171,8 @@
     :effective_type    :type/Text
     :semantic_type     :type/Name
     :database_position 1
-    :position          1}))
+    :position          1
+    :has_field_values  :auto-list}))
 
 ;; `studio.studio`? huh?
 (defn- field:studio-studio []
@@ -185,22 +190,23 @@
 (deftest sync-database-test
   (mt/with-temp Database [db {:engine ::sync-test}]
     (sync/sync-database! db)
-    (sync/sync-database! db)
     (let [[movie studio] (mapv table-details (db/select Table :db_id (u/the-id db) {:order-by [:name]}))]
       (testing "`movie` Table"
         (is (= (merge
                 (table-defaults)
-                {:schema       "default"
-                 :name         "movie"
-                 :display_name "Movie"
-                 :fields       [(field:movie-id) (field:movie-studio) (field:movie-title)]})
+                {:schema              "default"
+                 :name                "movie"
+                 :display_name        "Movie"
+                 :initial_sync_status "complete"
+                 :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]})
                movie)))
       (testing "`studio` Table"
         (is (= (merge
                 (table-defaults)
-                {:name         "studio"
-                 :display_name "Studio"
-                 :fields       [(field:studio-name) (field:studio-studio)]})
+                {:name                "studio"
+                 :display_name        "Studio"
+                 :initial_sync_status "complete"
+                 :fields              [(field:studio-name) (field:studio-studio)]})
                studio)))))
   (testing "Returns results from sync-database step"
     (mt/with-temp Database [db {:engine ::sync-test}]
@@ -218,10 +224,12 @@
              :name         "movie"
              :display_name "Movie"
              :fields       [(field:movie-id)
-                            (assoc (field:movie-studio) :fk_target_field_id false :semantic_type nil)
+                            (assoc (field:movie-studio)
+                                   :fk_target_field_id false
+                                   :semantic_type nil
+                                   :has_field_values :auto-list)
                             (field:movie-title)]})
-           (table-details (Table (:id table)))))))
-
+           (table-details (db/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

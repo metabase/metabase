@@ -14,26 +14,31 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test :as sql.qp.test]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.format-rows :as format-rows]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime]
-           org.joda.time.DateTime))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
+   [metabase.util.regex :as u.regex]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [toucan.db :as db])
+  (:import [java.time LocalDate LocalDateTime]))
+
+(set! *warn-on-reflection* true)
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -272,7 +277,7 @@
   ;; timezone
   ;;
   ;; TIMEZONE FIXME
-  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/jvm-timezone-setting)
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -524,7 +529,7 @@
     ;; timezone
     ;;
     ;; TIMEZONE FIXME
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica})
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/jvm-timezone-setting)
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
@@ -693,8 +698,7 @@
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
   ;; timezone (TIMEZONE FIXME)
   (testing "JVM timezone set to Pacific"
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery
-                                                 :bigquery-cloud-sdk})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery-cloud-sdk})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-week u.date/parse
@@ -723,6 +727,47 @@
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
+
+
+(defn- fmt-str-or-int
+  [x]
+  (if (string? x)
+    (str x)
+    (int x)))
+
+(deftest week-of-year-and-week-count-should-be-consistent-test
+  (testing "consistent break out between weeks and week-of-year #4910"
+    (mt/test-drivers (mt/normal-drivers)
+      ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
+      ;; breakout by week-of-year will have first row is the 1st week of year
+      (mt/with-temporary-setting-values [start-of-week :tuesday]
+        (mt/dataset sample-dataset
+          (letfn [(test-break-out [unit]
+                    (->> (mt/mbql-query orders
+                           {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                            :breakout    [:field $created_at {:temporal-unit unit}]
+                            :aggregation [[:count]]})
+                         mt/process-query
+                         (mt/formatted-rows [fmt-str-or-int int])))]
+            (testing "count result should be the same between week and week-of-year"
+              (is (= (map second (test-break-out :week))
+                     (map second (test-break-out :week-of-year))))
+              (is (= [127 124 136]
+                     (->> (test-break-out :week)
+                          (map second)
+                          (take 3)))))
+            (testing "make sure all drivers returns the same week column"
+              (is (= (case driver/*driver*
+                       :sqlite ["2019-01-01 00:00:00" "2019-01-08 00:00:00" "2019-01-15 00:00:00"]
+                       ["2019-01-01T00:00:00Z" "2019-01-08T00:00:00Z" "2019-01-15T00:00:00Z"])
+                     (->> (test-break-out :week)
+                          (map first)
+                          (take 3)))))
+            (testing "make sure all drivers returns the same week-of-year column"
+              (is (= [1 2 3]
+                     (->> (test-break-out :week-of-year)
+                          (map first)
+                          (take 3)))))))))))
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
@@ -843,11 +888,12 @@
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
-    (mt/dataset-definition (str "checkins_interval_" interval-seconds)
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
-       (vec (for [i (range -15 15)]
+    (mt/dataset-definition
+     (str "checkins_interval_" interval-seconds)
+     ["checkins"
+      [{:field-name "timestamp"
+        :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
+      (mapv (fn [i]
               ;; TIMESTAMP FIXME — not sure if still needed
               ;;
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
@@ -858,13 +904,16 @@
                                  ;;
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                             (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                             (* i interval-seconds)
-                                                             :second)
+                                 (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
+                          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+                            (sql.qp/compiled
+                             (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                                (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                                (* i interval-seconds)
+                                                                :second)))
                           (u.date/add :second (* i interval-seconds)))
-                 (assert <>))]))])))
+                 (assert <>))])
+            (range -15 15))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]
   (TimestampDatasetDef. interval-seconds))
@@ -901,7 +950,7 @@
     ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
-        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
         (db/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
@@ -912,21 +961,22 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
-;;        are ran and loading data into these DBs is mind-bogglingly slow.
+;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
+;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
+;;        deleting data is not easy.
 ;;
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
 (deftest count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -945,7 +995,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -977,7 +1027,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1005,7 +1055,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -1032,10 +1082,11 @@
                                   [:= [:field $timestamp nil] "2019-01-16"]
                                   [:= [:field $id nil] 6]]})))))))
 
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
-        (is (= ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+        (is (=
+             ;; Mongo returns empty row for count = 0. We should fix that (#5419)
              (case driver/*driver*
                :mongo []
                [[0]])
@@ -1067,30 +1118,31 @@
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
-    (mt/test-drivers (mt/normal-drivers)
-      (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-        (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
-          (mt/with-temporary-setting-values [report-timezone tz]
-            (testing (format "\nunit = %s" unit)
-              (is (= expected-count (count-of-checkins unit filter-value))
-                  (format
-                    "count of rows where (= (%s date) %s) should be %d"
-                    (name unit)
-                    filter-value
-                    expected-count)))))))))
+    (mt/with-temporary-setting-values [start-of-week :sunday]
+      (mt/test-drivers (mt/normal-drivers)
+        (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
+          (doseq [tz [nil "UTC"]]         ;iterate on at least two report time zones to suss out bugs related to that
+            (mt/with-temporary-setting-values [report-timezone tz]
+              (testing (format "\nunit = %s" unit)
+                (is (= expected-count (count-of-checkins unit filter-value))
+                    (format
+                     "count of rows where (= (%s date) %s) should be %d"
+                     (name unit)
+                     filter-value
+                     expected-count))))))))))
 
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT count(*) AS \"count\" "
+    (is (= (str "SELECT COUNT(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
                 "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
+                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
                 ")")
            (:query
-            (qp/query->native
+            (qp/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
@@ -1101,23 +1153,23 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
                   " AND "
-                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
+                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
-             (sql.qp.test/pretty-sql
+             (sql.qp-test-util/pretty-sql
               (:query
-               (qp/query->native
+               (qp/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
-                   :breakout [[:datetime-field $date :day]]})))))))))
+                   :breakout [!day.date]})))))))))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
-      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as day "
+      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
                                                         "FROM checkins "
                                                         "[[WHERE {{date_range}}]] "
                                                         "ORDER BY \"TIMESTAMP\" ASC "
@@ -1126,6 +1178,7 @@
                                                     {:name         "date_range"
                                                      :display-name "Date Range"
                                                      :type         :dimension
+                                                     :widget-type  :date/all-options
                                                      :dimension    (mt/$ids $checkins.timestamp)}}
                                     :parameters    [{:type   :date/range
                                                      :name   "created_at"
@@ -1160,3 +1213,74 @@
                        {:aggregation [[:count]]
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+
+(deftest first-day-of-week-for-day-of-week-bucketing-test
+  (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [!day-of-week.date]})]
+        (doseq [[first-day-of-week expected-rows] {:sunday    [[1 135] [2 143] [3 153] [4 136] [5 139] [6 160] [7 134]]
+                                                   :monday    [[1 143] [2 153] [3 136] [4 139] [5 160] [6 134] [7 135]]
+                                                   :tuesday   [[1 153] [2 136] [3 139] [4 160] [5 134] [6 135] [7 143]]
+                                                   :wednesday [[1 136] [2 139] [3 160] [4 134] [5 135] [6 143] [7 153]]
+                                                   :thursday  [[1 139] [2 160] [3 134] [4 135] [5 143] [6 153] [7 136]]
+                                                   :friday    [[1 160] [2 134] [3 135] [4 143] [5 153] [6 136] [7 139]]
+                                                   :saturday  [[1 134] [2 135] [3 143] [4 153] [5 136] [6 139] [7 160]]}]
+          (mt/with-temporary-setting-values [start-of-week first-day-of-week]
+            (mt/with-native-query-testing-context query
+              (is (= expected-rows
+                     (mt/formatted-rows [int int] (qp/process-query query)))))))))))
+
+(deftest filter-by-current-quarter-test
+  ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
+  (mt/test-drivers (disj (mt/normal-drivers) :oracle)
+    (testing "Should be able to filter by current quarter (#20683)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter [:= !quarter.date [:relative-datetime :now]]})]
+        (mt/with-native-query-testing-context query
+          ;; this isn't expected to return anything; for now it's enough just to make sure that the query doesn't fail.
+          (is (=
+               ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+               (case driver/*driver*
+                 :mongo []
+                 [[0]])
+               (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
+(deftest june-31st-test
+  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
+      ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
+      ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
+      ;; `:relative-datetime` expression and do this directly in MBQL.
+      (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-initialized-driver %) :sql)
+                               (mt/normal-drivers))
+        (doseq [[n unit] [[3 :month]
+                          [1 :quarter]]
+                t        [#t "2022-03-31"
+                          #t "2022-03-31T00:00:00"
+                          #t "2022-03-31T00:00:00-00:00"]]
+          (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
+            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+              (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                    checkins     (mt/with-everything-store
+                                   (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                    honeysql     {:select [[june-31 :june_31]]
+                                  :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
+                    honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                    [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                    query        (mt/native-query {:query sql, :params args})]
+                (mt/with-native-query-testing-context query
+                  (is (re= (u.regex/rx #"^2022-"
+                                       ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
+                                       ;; guess you could make a case for either June 30th or July 1st. I don't really know
+                                       ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
+                                       ;; main thing here is that it's not barfing.
+                                       [:or [:and "06-" [:or "29" "30"]] "07-01"]
+                                       ;; We also don't really care if this is returned as a date or a timestamp with or
+                                       ;; without time zone.
+                                       [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
+                           (first (mt/first-row (qp/process-query query))))))))))))))

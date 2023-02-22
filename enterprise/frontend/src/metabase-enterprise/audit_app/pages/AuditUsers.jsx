@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
@@ -7,11 +9,7 @@ import AuditTableWithSearch from "../containers/AuditTableWithSearch";
 
 import * as UsersCards from "../lib/cards/users";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditUsers = (props: Props) => (
+const AuditUsers = props => (
   <AuditContent {...props} title="Team members" tabs={AuditUsers.tabs} />
 );
 
@@ -27,7 +25,7 @@ const AuditUsersOverviewTab = () => (
 
 const AuditUsersAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Member name`}
+    placeholder={t`Member name`}
     table={UsersCards.table()}
   />
 );
@@ -37,9 +35,9 @@ const AuditUsersAuditLogTab = () => (
 );
 
 AuditUsers.tabs = [
-  { path: "overview", title: "Overview", component: AuditUsersOverviewTab },
-  { path: "all", title: "All members", component: AuditUsersAllTab },
-  { path: "log", title: "Audit log", component: AuditUsersAuditLogTab },
+  { path: "overview", title: t`Overview`, component: AuditUsersOverviewTab },
+  { path: "all", title: t`All members`, component: AuditUsersAllTab },
+  { path: "log", title: t`Audit log`, component: AuditUsersAuditLogTab },
 ];
 
 export default AuditUsers;

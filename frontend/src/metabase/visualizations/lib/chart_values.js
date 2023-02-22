@@ -1,8 +1,31 @@
 import _ from "underscore";
 
-import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
+import { compact_currency_options_js } from "cljs/metabase.shared.formatting.numbers";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
+
+const sumY = data => data.reduce((sum, [, y]) => sum + y, 0);
+
+const calculateMultiseriesYValues = data => {
+  const [positiveData, negativeData] = _.partition(
+    data.filter(([, y]) => y != null),
+    ([, y]) => y >= 0,
+  );
+
+  const yPositive = positiveData.length > 0 ? sumY(positiveData) : null;
+  const yNegative = negativeData.length > 0 ? sumY(negativeData) : null;
+
+  const yTotal =
+    yPositive != null || yNegative != null
+      ? yPositive ?? 0 + yNegative ?? 0
+      : null;
+
+  return {
+    yPositive,
+    yNegative,
+    yTotal,
+  };
+};
 
 /*
 There's a lot of messy logic in this function. Its purpose is to place text labels at the appropriate place over a chart.
@@ -61,10 +84,7 @@ export function onRenderValueLabels(
   const barCount = displays.filter(isBarLike).length;
   if (barCount > 0) {
     barWidth = parseFloat(
-      chart
-        .svg()
-        .select("rect.bar")[0][0]
-        .getAttribute("width"),
+      chart.svg().select("rect.bar")[0][0].getAttribute("width"),
     );
   }
 
@@ -89,38 +109,35 @@ export function onRenderValueLabels(
       .values()
       .map(data => {
         const [[x]] = data;
-        const yp = data
-          .filter(([, y]) => y >= 0)
-          .reduce((sum, [, y]) => sum + y, 0);
-        const yn = data
-          .filter(([, y]) => y < 0)
-          .reduce((sum, [, y]) => sum + y, 0);
+        const { yPositive, yNegative, yTotal } =
+          calculateMultiseriesYValues(data);
 
         if (!isStacked) {
-          return [[x, yp + yn, 1]];
-        } else if (yp !== yn) {
-          return [[x, yp, 2], [x, yn, 2]];
+          return [[x, yTotal, 1]];
+        } else if (yPositive !== yNegative) {
+          return [
+            yPositive != null ? [x, yPositive, 2] : null,
+            yNegative != null ? [x, yNegative, 2] : null,
+          ].filter(Boolean);
         } else {
-          return [[x, yp, 1]];
+          return [[x, yTotal, 1]];
         }
       })
       .flatten(1)
       .value();
 
-    data = data
-      .map(([x, y, step], i) => {
-        const isLocalMin =
-          // first point or prior is greater than y
-          (i < step || data[i - step][1] > y) &&
-          // last point point or next is greater than y
-          (i >= data.length - step || data[i + step][1] > y);
-        const showLabelBelow = isLocalMin && display === "line";
-        const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
-        const hidden =
-          !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
-        return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
-      })
-      .filter(d => !(display === "bar" && d.y === 0));
+    data = data.map(([x, y, step], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i < step || data[i - step][1] > y) &&
+        // last point point or next is greater than y
+        (i >= data.length - step || data[i + step][1] > y);
+      const showLabelBelow = isLocalMin && display === "line";
+      const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
+      const hidden =
+        !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
+      return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
+    });
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;
@@ -165,10 +182,9 @@ export function onRenderValueLabels(
         // We include compact currency options here for both compact and
         // non-compact formatting. This prevents auto's logic from depending on
         // those settings.
-        ...COMPACT_CURRENCY_OPTIONS,
-        // We need this to ensure the settings are used. Otherwise, a cached
-        // _numberFormatter would take precedence.
-        _numberFormatter: undefined,
+        minimum_fraction_digits: 2,
+        maximum_fraction_digits: 2,
+        ...compact_currency_options_js,
       };
       const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
@@ -280,11 +296,7 @@ export function onRenderValueLabels(
         return transforms.join(" ");
       });
 
-    // Labels are either white inside the bar or black with white outline.
-    // For outlined labels, Safari had an issue with rendering paint-order: stroke.
-    // To work around that, we create two text labels: one for the the black text
-    // and another for the white outline behind it.
-    ["value-label-outline", "value-label", "value-label-white"].forEach(klass =>
+    ["value-label", "value-label-white"].forEach(klass =>
       labelGroups
         .append("text")
         // only create labels for the correct class(es) given the type of label
@@ -317,7 +329,7 @@ export function onRenderValueLabels(
     addLabels(sample, compactForSeries[index]);
     const totalWidth = chart
       .svg()
-      .selectAll(".value-label-outline")
+      .selectAll(".value-label, .value-label-white")
       .flat()
       .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
     const labelWidth = totalWidth / sample.length + LABEL_PADDING;
@@ -378,10 +390,5 @@ export function onRenderValueLabels(
     ),
   );
 
-  moveToFront(
-    chart
-      .svg()
-      .select(".value-labels")
-      .node().parentNode,
-  );
+  moveToFront(chart.svg().select(".value-labels").node().parentNode);
 }

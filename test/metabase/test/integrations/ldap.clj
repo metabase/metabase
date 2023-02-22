@@ -1,11 +1,15 @@
 (ns metabase.test.integrations.ldap
-  (:require [clojure.java.io :as io]
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
-  (:import [com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig]
-           com.unboundid.ldap.sdk.schema.Schema
-           com.unboundid.ldif.LDIFReader
-           [java.io File FileNotFoundException]))
+  (:require
+   [clojure.java.io :as io]
+   [metabase.test.util :as tu]
+   [metabase.util :as u])
+  (:import
+   (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
+   (com.unboundid.ldap.sdk.schema Schema)
+   (com.unboundid.ldif LDIFReader)
+   (java.io File FileNotFoundException)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic ^InMemoryDirectoryServer *ldap-server*
   "An in-memory LDAP testing server."
@@ -33,6 +37,15 @@
   []
   (.getListenPort *ldap-server*))
 
+(defn get-ldap-details []
+  {:host       "localhost"
+   :port       (get-ldap-port)
+   :bind-dn    "cn=Directory Manager"
+   :password   "password"
+   :security   :none
+   :user-base  "dc=metabase,dc=com"
+   :group-base "dc=metabase,dc=com"})
+
 (defn get-default-schema
   "Get the default schema for the directory server."
   []
@@ -45,15 +58,15 @@
   [f options]
   (binding [*ldap-server* (start-ldap-server! options)]
     (try
-      (tu/with-temporary-setting-values [ldap-enabled    true
-                                         ldap-host       "localhost"
+      (tu/with-temporary-setting-values [ldap-host       "localhost"
                                          ldap-port       (get-ldap-port)
                                          ldap-bind-dn    "cn=Directory Manager"
                                          ldap-password   "password"
                                          ldap-user-base  "dc=metabase,dc=com"
                                          ldap-group-sync true
                                          ldap-group-base "dc=metabase,dc=com"]
-        (f))
+         (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
+          (f)))
       (finally (.shutDown *ldap-server* true)))))
 
 (defmacro with-ldap-server

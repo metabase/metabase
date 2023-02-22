@@ -3,29 +3,57 @@ import PropTypes from "prop-types";
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-import { BadgeIcon, MaybeLink } from "./Badge.styled";
+import { BadgeIcon, BadgeText, MaybeLink } from "./Badge.styled";
+
+const iconProp = PropTypes.oneOfType([
+  PropTypes.string,
+  PropTypes.shape(iconPropTypes),
+]);
 
 const propTypes = {
   to: PropTypes.string,
-  icon: PropTypes.shape(iconPropTypes),
+  icon: iconProp,
+  inactiveColor: PropTypes.string,
   activeColor: PropTypes.string,
+  isSingleLine: PropTypes.bool,
   onClick: PropTypes.func,
   children: PropTypes.node,
 };
 
 const DEFAULT_ICON_SIZE = 12;
 
-function Badge({ icon, activeColor = "brand", children, ...props }) {
-  const extraIconProps = {};
-  if (icon && !icon.size && !icon.width && !icon.height) {
-    extraIconProps.size = DEFAULT_ICON_SIZE;
+function getIconProps(iconProp) {
+  if (!iconProp) {
+    return;
   }
+  const props = typeof iconProp === "string" ? { name: iconProp } : iconProp;
+  if (!props.size && !props.width && !props.height) {
+    props.size = DEFAULT_ICON_SIZE;
+  }
+  return props;
+}
+
+function Badge({
+  icon,
+  inactiveColor = "text-medium",
+  activeColor = "brand",
+  isSingleLine,
+  children,
+  ...props
+}) {
   return (
-    <MaybeLink activeColor={activeColor} {...props}>
-      {icon && (
-        <BadgeIcon {...icon} {...extraIconProps} hasMargin={!!children} />
+    <MaybeLink
+      inactiveColor={inactiveColor}
+      activeColor={activeColor}
+      isSingleLine={isSingleLine}
+      {...props}
+    >
+      {icon && <BadgeIcon {...getIconProps(icon)} $hasMargin={!!children} />}
+      {children && (
+        <BadgeText className="text-wrap" isSingleLine={isSingleLine}>
+          {children}
+        </BadgeText>
       )}
-      {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
   );
 }

@@ -1,10 +1,11 @@
 (ns build-drivers.build-driver
-  (:require [build-drivers.common :as c]
-            [build-drivers.compile-source-files :as compile-source-files]
-            [build-drivers.copy-source-files :as copy-source-files]
-            [build-drivers.create-uberjar :as create-uberjar]
-            [build-drivers.verify :as verify]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [build-drivers.compile-source-files :as compile-source-files]
+   [build-drivers.copy-source-files :as copy-source-files]
+   [build-drivers.create-uberjar :as create-uberjar]
+   [build-drivers.verify :as verify]
+   [metabuild-common.core :as u]))
 
 (defn clean! [driver]
   (u/step "Clean"

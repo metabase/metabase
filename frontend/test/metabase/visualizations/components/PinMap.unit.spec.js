@@ -5,7 +5,12 @@ describe("PinMap", () => {
     const onUpdateWarnings = jest.fn();
     const data = {
       cols: ["lat", "lng", "metric"].map(name => ({ name })),
-      rows: [[null, 0, 0], [0, null, 0], [0, 0, null], [0, 0, 0]],
+      rows: [
+        [null, 0, 0],
+        [0, null, 0],
+        [0, 0, null],
+        [0, 0, 0],
+      ],
     };
     const props = {
       settings: {

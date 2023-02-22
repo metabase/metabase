@@ -1,12 +1,20 @@
 (ns metabase.logger
-  (:require [amalloy.ring-buffer :refer [ring-buffer]]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
-            [metabase.config :refer [local-process-uuid]])
-  (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j.core Appender Filter Layout LogEvent LoggerContext]
-           org.apache.logging.log4j.core.config.LoggerConfig
-           org.apache.logging.log4j.LogManager))
+  "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
+  logging options are set in [[metabase.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the logger
+  that clojure.tools.logging uses."
+  (:require
+   [amalloy.ring-buffer :refer [ring-buffer]]
+   [clj-time.coerce :as time.coerce]
+   [clj-time.format :as time.format]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader])
+  (:import
+   (org.apache.commons.lang3.exception ExceptionUtils)
+   (org.apache.logging.log4j LogManager)
+   (org.apache.logging.log4j.core Appender LogEvent LoggerContext)
+   (org.apache.logging.log4j.core.config LoggerConfig)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const max-log-entries 2500)
 
@@ -18,14 +26,14 @@
   (reverse (seq @messages*)))
 
 (defn- event->log-data [^LogEvent event]
-  {:timestamp    (time/unparse (time/formatter :date-time)
-                               (coerce/from-long (.getTimeMillis event)))
+  {:timestamp    (time.format/unparse (time.format/formatter :date-time)
+                                      (time.coerce/from-long (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
    :msg          (.getMessage event)
    :exception    (when-let [throwable (.getThrown event)]
                    (seq (ExceptionUtils/getStackFrames throwable)))
-   :process_uuid local-process-uuid})
+   :process_uuid config/local-process-uuid})
 
 (defn- metabase-appender ^Appender []
   (let [^org.apache.logging.log4j.core.Filter filter                   nil
@@ -42,14 +50,11 @@
 (when-not *compile-files*
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
-    (let [^LoggerContext ctx                           (LogManager/getContext true)
-          root-logger                                  (LogManager/getRootLogger)
-          config                                       (.getConfiguration ctx)
-          appender                                     (metabase-appender)
-          ^org.apache.logging.log4j.Level level        nil
-          ^org.apache.logging.log4j.core.Filter filter nil]
+    (let [^LoggerContext ctx (LogManager/getContext (classloader/the-classloader) false)
+          config             (.getConfiguration ctx)
+          appender           (metabase-appender)]
       (.start appender)
       (.addAppender config appender)
       (doseq [[_ ^LoggerConfig logger-config] (.getLoggers config)]
-        (.addAppender logger-config appender level filter))
-      (.updateLoggers ctx))))
+        (.addAppender logger-config appender (.getLevel logger-config) (.getFilter logger-config))
+        (.updateLoggers ctx)))))

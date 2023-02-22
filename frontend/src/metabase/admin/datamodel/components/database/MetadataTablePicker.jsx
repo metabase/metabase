@@ -1,22 +1,18 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import _ from "underscore";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 
-import Tables from "metabase/entities/tables";
+const RELOAD_INTERVAL = 2000;
 
-import _ from "underscore";
-
-@Tables.loadList({
-  query: (state, { databaseId }) => ({
-    dbId: databaseId,
-    include_hidden: true,
-  }),
-  selectorName: "getListUnfiltered",
-})
-export default class MetadataTablePicker extends Component {
+class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -68,3 +64,29 @@ export default class MetadataTablePicker extends Component {
     );
   }
 }
+
+export default _.compose(
+  Databases.load({
+    id: (state, { databaseId }) =>
+      databaseId !== SAVED_QUESTIONS_VIRTUAL_DB_ID ? databaseId : undefined,
+  }),
+  Tables.loadList({
+    query: (state, { databaseId }) => ({
+      dbId: databaseId,
+      include_hidden: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    }),
+    reloadInterval: (state, { database }, tables = []) => {
+      if (
+        database &&
+        isSyncInProgress(database) &&
+        tables.some(t => isSyncInProgress(t))
+      ) {
+        return RELOAD_INTERVAL;
+      } else {
+        return 0;
+      }
+    },
+    selectorName: "getListUnfiltered",
+  }),
+)(MetadataTablePicker);

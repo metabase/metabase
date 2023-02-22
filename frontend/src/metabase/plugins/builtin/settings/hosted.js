@@ -6,9 +6,7 @@ import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { SettingsCloudStoreLink } from "../../components/SettingsCloudStoreLink";
 
 if (MetabaseSettings.isHosted()) {
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-    _.omit(sections, ["email", "updates"]),
-  );
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => _.omit(sections, ["updates"]));
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["general", "settings"], settings =>

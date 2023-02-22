@@ -1,12 +1,16 @@
 (ns metabase.server.middleware.exceptions
   "Ring middleware for handling Exceptions thrown in API request handler functions."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.util.i18n :as ui18n :refer [trs]])
-  (:import java.sql.SQLException
-           org.eclipse.jetty.io.EofException))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.server.middleware.security :as mw.security]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql SQLException)
+   (org.eclipse.jetty.io EofException)))
+
+(set! *warn-on-reflection* true)
 
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
@@ -43,11 +47,12 @@
 (defmethod api-exception-response Throwable
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type)
+        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace)
         body                            (cond
-                                          (and status-code (empty? other-info))
-                                          ;; If status code was specified but other data wasn't, it's something like a
-                                          ;; 404. Return message as the (plain-text) body.
+                                          (and status-code (not= status-code 500) (empty? other-info))
+                                          ;; If status code was specified (but not a 500 -- an unexpected error, and
+                                          ;; other data wasn't, it's something like a 404. Return message as
+                                          ;; the (plain-text) body.
                                           (.getMessage e)
 
                                           ;; if the response includes `:errors`, (e.g., it's something like a generic
@@ -74,7 +79,7 @@
                                                         #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException
-  [e]
+  [_e]
   (log/info (trs "Request canceled before finishing."))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
@@ -82,7 +87,7 @@
   "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
   Stacktrace page, which is not so useful for our frontend."
   [handler]
-  (fn [request respond raise]
+  (fn [request respond _raise]
     (handler
      request
      respond

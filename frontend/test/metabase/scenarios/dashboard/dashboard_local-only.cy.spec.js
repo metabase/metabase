@@ -1,7 +1,7 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, filterWidget } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("LOCAL TESTING ONLY > dashboard", () => {
   beforeEach(() => {
@@ -44,6 +44,10 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         // Add card to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 12,
+          size_y: 9,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect filter to the card
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -53,8 +57,8 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 9,
+                size_x: 12,
+                size_y: 9,
                 visualization_settings: {},
                 parameter_mappings: [
                   {
@@ -69,9 +73,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         });
 
         cy.visit(`/dashboard/${DASHBOARD_ID}?location=AK&location=CA`);
-        filterWidget()
-          .contains(/\{0\}/)
-          .should("not.exist");
+        filterWidget().contains(/\{0\}/).should("not.exist");
       });
     });
   });

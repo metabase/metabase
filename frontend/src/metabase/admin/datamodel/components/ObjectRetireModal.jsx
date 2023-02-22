@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import ActionButton from "metabase/components/ActionButton";
-import ModalContent from "metabase/components/ModalContent";
 import { t } from "ttag";
 import cx from "classnames";
+import ActionButton from "metabase/components/ActionButton";
+import ModalContent from "metabase/components/ModalContent";
 
 export default class ObjectRetireModal extends Component {
   constructor(props, context) {

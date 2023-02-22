@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   getDatas,
@@ -47,20 +47,20 @@ describe("getXValues", () => {
   });
 
   it("should correctly merge multiple series of ascending numbers", () => {
-    expect(getXValuesForRows([[[2], [11], [12]], [[1], [2], [11]]])).toEqual([
-      1,
-      2,
-      11,
-      12,
-    ]);
+    expect(
+      getXValuesForRows([
+        [[2], [11], [12]],
+        [[1], [2], [11]],
+      ]),
+    ).toEqual([1, 2, 11, 12]);
   });
   it("should correctly merge multiple series of descending numbers", () => {
-    expect(getXValuesForRows([[[12], [11], [2]], [[11], [2], [1]]])).toEqual([
-      12,
-      11,
-      2,
-      1,
-    ]);
+    expect(
+      getXValuesForRows([
+        [[12], [11], [2]],
+        [[11], [2], [1]],
+      ]),
+    ).toEqual([12, 11, 2, 1]);
   });
   it("should use raw row ordering rather than broken out series", () => {
     const series = [
@@ -73,6 +73,12 @@ describe("getXValues", () => {
     ];
     const settings = {};
     expect(getXValues({ settings, series })).toEqual(["d", "c", "b", "a"]);
+  });
+  it("should return empty array when data has no rows and columns", () => {
+    const series = [{ data: { rows: [], cols: [] } }];
+    series._raw = [{ data: { rows: [], cols: [] } }];
+
+    expect(getXValues({ settings: {}, series })).toEqual([]);
   });
   it("should use the correct column as the dimension for raw series", () => {
     const series = [
@@ -114,7 +120,10 @@ describe("getXValues", () => {
   it("should sort values according to parsed value", () => {
     expect(
       getXValuesForRows(
-        [[["2019-W33"], ["2019-08-13"]], [["2019-08-11"], ["2019-W33"]]],
+        [
+          [["2019-W33"], ["2019-08-13"]],
+          [["2019-08-11"], ["2019-W33"]],
+        ],
         { "graph.x_axis.scale": "timeseries" },
       ).map(x => x.format()),
     ).toEqual([

@@ -1,5 +1,0 @@
-{:paths
- ["src" "resources"]
-
- :deps
- {com.google.api-client/google-api-client {:mvn/version "1.30.7"}}}

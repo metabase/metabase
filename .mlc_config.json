@@ -1,0 +1,15 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://downloads.metabase.com"
+    },
+    {
+      "pattern": "^https://docs.cypress.io/"
+    }
+  ],
+  "timeout": "180s",
+  "retryOn429": true,
+  "retryCount": 5,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206]
+}

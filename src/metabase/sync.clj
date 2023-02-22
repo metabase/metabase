@@ -8,17 +8,19 @@
 
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
-  (:require [metabase.driver.util :as driver.u]
-            [metabase.models.field :as field]
-            [metabase.models.table :as table]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.fingerprint :as fingerprint]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [schema.core :as s])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
+   [metabase.models.table :as table]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [schema.core :as s])
+  (:import
+   (java.time.temporal Temporal)))
 
 (def SyncDatabaseResults
   "Schema for results returned from `sync-database!`"
@@ -35,7 +37,6 @@
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  {:style/indent 1}
   ([database]
    (sync-database! database nil))
 
@@ -59,10 +60,9 @@
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (let [database (table/database table)]
-    (sync-metadata/sync-table-metadata! table)
-    (analyze/analyze-table! table)
-    (field-values/update-field-values-for-table! table)))
+  (sync-metadata/sync-table-metadata! table)
+  (analyze/analyze-table! table)
+  (field-values/update-field-values-for-table! table))
 
 (s/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning

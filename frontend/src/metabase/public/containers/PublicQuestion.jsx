@@ -1,27 +1,16 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
+import { updateIn } from "icepick";
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
-import type { Card } from "metabase-types/types/Card";
-import type { Dataset } from "metabase-types/types/Dataset";
-import type { ParameterValues } from "metabase-types/types/Parameter";
-
-import {
-  getParameterValuesBySlug,
-  getParameterValuesByIdFromQueryParams,
-} from "metabase/meta/Parameter";
-import {
-  getParametersFromCard,
-  getValueAndFieldIdPopulatedParametersFromCard,
-  applyParameters,
-} from "metabase/meta/Card";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
 import {
   PublicApi,
@@ -36,24 +25,12 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
-
-import { updateIn } from "icepick";
-
-type Props = {
-  params: { uuid?: string, token?: string },
-  location: { query: { [key: string]: string } },
-  width: number,
-  height: number,
-  setErrorPage: (error: { status: number }) => void,
-  addParamValues: any => void,
-  addFields: any => void,
-};
-
-type State = {
-  card: ?Card,
-  result: ?Dataset,
-  parameterValues: ParameterValues,
-};
+import Question from "metabase-lib/Question";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import { applyParameters } from "metabase-lib/queries/utils/card";
+import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
@@ -65,17 +42,8 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
-@title(({ card }) => card && card.name)
-@ExplicitSize()
-export default class PublicQuestion extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+class PublicQuestion extends Component {
+  constructor(props) {
     super(props);
     this.state = {
       card: null,
@@ -90,7 +58,6 @@ export default class PublicQuestion extends Component {
       setErrorPage,
       params: { uuid, token },
       location: { query },
-      metadata,
     } = this.props;
 
     if (uuid) {
@@ -110,15 +77,17 @@ export default class PublicQuestion extends Component {
       }
 
       if (card.param_values) {
-        this.props.addParamValues(card.param_values);
+        await this.props.addParamValues(card.param_values);
       }
       if (card.param_fields) {
-        this.props.addFields(card.param_fields);
+        await this.props.addFields(card.param_fields);
       }
 
-      const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+      const parameters = getCardUiParameters(
         card,
-        metadata,
+        this.props.metadata,
+        {},
+        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -151,7 +120,7 @@ export default class PublicQuestion extends Component {
     );
   };
 
-  run = async (): void => {
+  run = async () => {
     const {
       setErrorPage,
       params: { uuid, token },
@@ -162,7 +131,7 @@ export default class PublicQuestion extends Component {
       return;
     }
 
-    const parameters = getParametersFromCard(card);
+    const parameters = card.parameters || getParametersFromCard(card);
 
     try {
       this.setState({ result: null });
@@ -170,14 +139,20 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          EmbedApi.cardQuery,
+          card,
+        )({
           token,
           ...getParameterValuesBySlug(parameters, parameterValues),
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(card, parameters, parameterValues);
-        newResult = await maybeUsePivotEndpoint(PublicApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          PublicApi.cardQuery,
+          card,
+        )({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
         });
@@ -198,6 +173,7 @@ export default class PublicQuestion extends Component {
       metadata,
     } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
+    const question = new Question(card, metadata);
 
     const actionButtons = result && (
       <QueryDownloadWidget
@@ -209,14 +185,16 @@ export default class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
+      card &&
+      getCardUiParameters(card, metadata, {}, card.parameters || undefined);
 
     return (
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
-        parameters={initialized ? parameters : []}
         actionButtons={actionButtons}
+        question={question}
+        parameters={initialized ? parameters : []}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
@@ -253,3 +231,9 @@ export default class PublicQuestion extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ card }) => card && card.name),
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+)(PublicQuestion);

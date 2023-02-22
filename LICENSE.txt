@@ -1,4 +1,4 @@
-Source code in this repository is variously licensed under the GNU Affero General Public License (AGPL), or the Metabase Commercial License (https://www.metabase.com/license/commercial/).
+Source code in this repository is variously licensed under the GNU Affero General Public License (AGPL), or the Metabase Commercial License (https://www.metabase.com/license/commercial).
 
 * Outside of the top-level "enterprise" directory, source code in a given file is licensed under the AGPL.
 

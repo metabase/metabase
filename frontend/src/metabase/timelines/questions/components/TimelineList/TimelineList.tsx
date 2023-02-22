@@ -1,0 +1,49 @@
+import React from "react";
+import { Timeline, TimelineEvent } from "metabase-types/api";
+import TimelineCard from "metabase/timelines/questions/components/TimelineCard/TimelineCard";
+
+export interface TimelineListProps {
+  timelines: Timeline[];
+  visibleEventIds: number[];
+  selectedEventIds?: number[];
+  onEditEvent?: (event: TimelineEvent) => void;
+  onMoveEvent?: (event: TimelineEvent) => void;
+  onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+}
+
+const TimelineList = ({
+  timelines,
+  visibleEventIds,
+  selectedEventIds = [],
+  onEditEvent,
+  onMoveEvent,
+  onArchiveEvent,
+  onToggleEventSelected,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
+}: TimelineListProps): JSX.Element => {
+  return (
+    <div>
+      {timelines.map(timeline => (
+        <TimelineCard
+          key={timeline.id}
+          timeline={timeline}
+          isDefault={timelines.length === 1}
+          visibleEventIds={visibleEventIds}
+          selectedEventIds={selectedEventIds}
+          onEditEvent={onEditEvent}
+          onMoveEvent={onMoveEvent}
+          onToggleEventSelected={onToggleEventSelected}
+          onArchiveEvent={onArchiveEvent}
+          onShowTimelineEvents={onShowTimelineEvents}
+          onHideTimelineEvents={onHideTimelineEvents}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default TimelineList;

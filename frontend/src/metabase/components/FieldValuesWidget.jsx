@@ -1,75 +1,65 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import TokenField from "metabase/components/TokenField";
+import TokenField, {
+  parseNumberValue,
+  parseStringValue,
+} from "metabase/components/TokenField";
+import ListField from "metabase/components/ListField";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { DashboardApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
+import {
+  fetchParameterValues,
+  fetchCardParameterValues,
+  fetchDashboardParameterValues,
+} from "metabase/parameters/actions";
 
 import Fields from "metabase/entities/fields";
-
-import type Field from "metabase-lib/lib/metadata/Field";
-import type { FieldId } from "metabase-types/types/Field";
-import type { Value } from "metabase-types/types/Dataset";
-import type { FormattingOptions } from "metabase/lib/formatting";
-import type { LayoutRendererProps } from "metabase/components/TokenField";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
+import {
+  canListFieldValues,
+  canListParameterValues,
+  canSearchFieldValues,
+  canSearchParameterValues,
+  getSourceType,
+} from "metabase-lib/parameters/utils/parameter-source";
 
 const MAX_SEARCH_RESULTS = 100;
 
 const fieldValuesWidgetPropTypes = {
   addRemappings: PropTypes.func,
   expand: PropTypes.bool,
-  isSidebar: PropTypes.bool,
 };
 
 const optionsMessagePropTypes = {
   message: PropTypes.string.isRequired,
 };
 
-// fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
-// parameterId = the auto-generated ID of the parameter
-// parameters = all parameters in the current dashboard, as an array
-const fetchParameterPossibleValues = async (
-  dashboardId,
-  { id: paramId, filteringParameters = [] } = {},
-  parameters,
-  query,
-) => {
-  // build a map of parameter ID -> value for parameters that this parameter is filtered by
-  const otherValues = _.chain(parameters)
-    .filter(p => filteringParameters.includes(p.id) && p.value != null)
-    .map(p => [p.id, p.value])
-    .object()
-    .value();
-
-  const args = { paramId, query, dashId: dashboardId, ...otherValues };
-  const endpoint = query
-    ? DashboardApi.parameterSearch
-    : DashboardApi.parameterValues;
-  // now call the new chain filter API endpoint
-  const results = await endpoint(args);
-  return results.map(result => [].concat(result));
-};
-
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchParameterValues,
+  fetchCardParameterValues,
+  fetchDashboardParameterValues,
 };
 
 function mapStateToProps(state, { fields = [] }) {
-  // try and use the selected fields, but fall back to the ones passed
   return {
     fields: fields.map(
       field =>
@@ -78,50 +68,45 @@ function mapStateToProps(state, { fields = [] }) {
   };
 }
 
-type Props = {
-  value: Value[],
-  onChange: (value: Value[]) => void,
-  fields: Field[],
-  disablePKRemappingForSearch?: boolean,
-  multi?: boolean,
-  autoFocus?: boolean,
-  color?: string,
-  fetchFieldValues: (id: FieldId) => void,
-  maxResults: number,
-  style?: { [key: string]: string | number },
-  placeholder?: string,
-  formatOptions?: FormattingOptions,
-  maxWidth?: number,
-  minWidth?: number,
-  alwaysShowOptions?: boolean,
-  disableSearch?: boolean,
+async function searchFieldValues(
+  { fields, value, disablePKRemappingForSearch, maxResults },
+  cancelled,
+) {
+  let options = dedupeValues(
+    await Promise.all(
+      fields.map(field =>
+        MetabaseApi.field_search(
+          {
+            value,
+            fieldId: field.id,
+            searchFieldId: field.searchField(disablePKRemappingForSearch).id,
+            limit: maxResults,
+          },
+          { cancelled },
+        ),
+      ),
+    ),
+  );
 
-  dashboard?: DashboardWithCards,
-  parameter?: Parameter,
-  parameters?: Parameter[],
+  options = options.map(result => [].concat(result));
+  return options;
+}
 
-  className?: string,
-};
-
-type State = {
-  loadingState: "INIT" | "LOADING" | "LOADED",
-  options: [Value, ?string][],
-  lastValue: string,
-};
-
-@AutoExpanding
-export class FieldValuesWidget extends Component {
-  props: Props;
-  state: State;
-
-  _cancel: ?() => void;
-
-  constructor(props: Props) {
+class FieldValuesWidgetInner extends Component {
+  constructor(props) {
     super(props);
+    const { parameter, fields, disableSearch, disablePKRemappingForSearch } =
+      props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
+      valuesMode: getValuesMode({
+        parameter,
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+      }),
     };
   }
 
@@ -132,51 +117,141 @@ export class FieldValuesWidget extends Component {
     style: {},
     formatOptions: {},
     maxWidth: 500,
+    disableList: false,
     disableSearch: false,
+    showOptionsInPopover: false,
   };
 
-  // if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
-  // Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
-  useChainFilterEndpoints() {
-    return this.props.dashboard && this.props.dashboard.id;
-  }
+  componentDidMount() {
+    const { parameter, fields, disableSearch } = this.props;
 
-  parameterId() {
-    return this.props.parameter && this.props.parameter.id;
-  }
-
-  UNSAFE_componentWillMount() {
-    if (this.shouldList()) {
-      if (this.useChainFilterEndpoints()) {
-        this.fetchDashboardParamValues();
-      } else {
-        const { fields, fetchFieldValues } = this.props;
-        fields.forEach(field => fetchFieldValues(field.id));
-      }
+    if (shouldList({ parameter, fields, disableSearch })) {
+      this.fetchValues();
     }
   }
 
-  fetchDashboardParamValues = async () => {
+  async fetchValues(query) {
     this.setState({
       loadingState: "LOADING",
       options: [],
     });
 
-    let options;
+    let options = [];
+    let valuesMode = this.state.valuesMode;
     try {
-      const { dashboard, parameter, parameters } = this.props;
-      options = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
-        parameter,
-        parameters,
-      );
+      if (canUseDashboardEndpoints(this.props.dashboard)) {
+        const { values, has_more_values } =
+          await this.fetchDashboardParameterValues(query);
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseCardEndpoints(this.props.question)) {
+        const { values, has_more_values } = await this.fetchCardParameterValues(
+          query,
+        );
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { values, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else {
+        options = await this.fetchFieldValues(query);
+        const {
+          parameter,
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        } = this.props;
+        valuesMode = getValuesMode({
+          parameter,
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        });
+      }
     } finally {
+      this.updateRemappings(options);
       this.setState({
         loadingState: "LOADED",
         options,
+        valuesMode,
       });
     }
+  }
+
+  fetchFieldValues = async query => {
+    if (query == null) {
+      const { fields, fetchFieldValues } = this.props;
+      await Promise.all(fields.map(field => fetchFieldValues(field.id)));
+      return dedupeValues(this.props.fields.map(field => field.values));
+    } else {
+      const { fields } = this.props;
+      const cancelDeferred = defer();
+      const cancelled = cancelDeferred.promise;
+      this._cancel = () => {
+        this._cancel = null;
+        cancelDeferred.resolve();
+      };
+
+      const options = await searchFieldValues(
+        {
+          value: query,
+          fields,
+          disablePKRemappingForSearch: this.props.disablePKRemappingForSearch,
+          maxResults: this.props.maxResults,
+        },
+        cancelled,
+      );
+
+      this._cancel = null;
+      return options;
+    }
   };
+
+  fetchParameterValues = async query => {
+    const { parameter } = this.props;
+
+    return this.props.fetchParameterValues({
+      parameter,
+      query,
+    });
+  };
+
+  fetchCardParameterValues = async query => {
+    const { question, parameter } = this.props;
+
+    return this.props.fetchCardParameterValues({
+      cardId: question.id(),
+      parameter,
+      query,
+    });
+  };
+
+  fetchDashboardParameterValues = async query => {
+    const { dashboard, parameter, parameters } = this.props;
+
+    return this.props.fetchDashboardParameterValues({
+      dashboardId: dashboard?.id,
+      parameter,
+      parameters,
+      query,
+    });
+  };
+
+  updateRemappings(options) {
+    const { fields } = this.props;
+    if (showRemapping(fields)) {
+      const [field] = fields;
+      if (
+        field.remappedField() ===
+        field.searchField(this.props.disablePKRemappingForSearch)
+      ) {
+        this.props.addRemappings(field.id, options);
+      }
+    }
+  }
 
   componentWillUnmount() {
     if (this._cancel) {
@@ -184,260 +259,52 @@ export class FieldValuesWidget extends Component {
     }
   }
 
-  getSearchableTokenFieldPlaceholder(fields, firstField) {
-    let placeholder;
+  onInputChange = value => {
+    const { maxResults } = this.props;
+    const { lastValue, options } = this.state;
+    let { valuesMode } = this.state;
 
-    const names = new Set(
-      fields.map(field => stripId(this.searchField(field).display_name)),
-    );
+    // override "search" mode when searching is unnecessary
+    valuesMode = isExtensionOfPreviousSearch(
+      value,
+      lastValue,
+      options,
+      maxResults,
+    )
+      ? "list"
+      : valuesMode;
 
-    if (names.size > 1) {
-      placeholder = t`Search`;
-    } else {
-      const [name] = names;
-
-      placeholder = t`Search by ${name}`;
-      if (firstField.isID() && firstField !== this.searchField(firstField)) {
-        placeholder += t` or enter an ID`;
-      }
-    }
-    return placeholder;
-  }
-
-  getNonSearchableTokenFieldPlaceholder(firstField) {
-    if (firstField.isID()) {
-      return t`Enter an ID`;
-    } else if (firstField.isNumeric()) {
-      return t`Enter a number`;
-    } else {
-      return t`Enter some text`;
-    }
-  }
-
-  getTokenFieldPlaceholder() {
-    const { fields, placeholder } = this.props;
-
-    if (placeholder) {
-      return placeholder;
-    }
-
-    const [firstField] = fields;
-
-    if (this.hasList()) {
-      return t`Search the list`;
-    } else if (this.isSearchable()) {
-      return this.getSearchableTokenFieldPlaceholder(fields, firstField);
-    } else {
-      return this.getNonSearchableTokenFieldPlaceholder(firstField);
-    }
-  }
-
-  shouldList() {
-    // Virtual fields come from questions that are based on other questions.
-    // Currently, the back end does not return `has_field_values` in their metadata,
-    // so we ignore them for now.
-    const nonVirtualFields = this.props.fields.filter(
-      field => typeof field.id === "number",
-    );
-
-    return (
-      !this.props.disableSearch &&
-      nonVirtualFields.every(field => field.has_field_values === "list")
-    );
-  }
-
-  hasList() {
-    const nonEmptyArray = a => a && a.length > 0;
-    return (
-      this.shouldList() &&
-      (this.useChainFilterEndpoints()
-        ? this.state.loadingState === "LOADED" &&
-          nonEmptyArray(this.state.options)
-        : this.props.fields.every(field => nonEmptyArray(field.values)))
-    );
-  }
-
-  isSearchable() {
-    const { fields, disableSearch } = this.props;
-    return (
-      !disableSearch &&
-      // search is available if:
-      // all fields have a valid search field
-      fields.every(this.searchField) &&
-      // at least one field is set to display as "search"
-      fields.some(f => f.has_field_values === "search") &&
-      // and all fields are either "search" or "list"
-      fields.every(
-        f => f.has_field_values === "search" || f.has_field_values === "list",
-      )
-    );
-  }
-
-  onInputChange = (value: string) => {
-    if (value && this.isSearchable()) {
+    if (valuesMode === "search") {
       this._search(value);
     }
 
     return value;
   };
 
-  searchField = (field: Field) => {
-    if (this.props.disablePKRemappingForSearch && field.isPK()) {
-      return field.isSearchable() ? field : null;
-    }
-
-    const remappedField = field.remappedField();
-    if (remappedField && remappedField.isSearchable()) {
-      return remappedField;
-    }
-    return field.isSearchable() ? field : null;
-  };
-
-  showRemapping = () => this.props.fields.length === 1;
-
-  search = async (value: string, cancelled: Promise<void>) => {
+  search = _.debounce(async value => {
     if (!value) {
+      this.setState({
+        loadingState: "LOADED",
+      });
       return;
     }
 
-    const { fields } = this.props;
-
-    let results;
-    if (this.useChainFilterEndpoints()) {
-      const { dashboard, parameter, parameters } = this.props;
-      results = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
-        parameter,
-        parameters,
-        value,
-      );
-    } else {
-      results = dedupeValues(
-        await Promise.all(
-          fields.map(field =>
-            MetabaseApi.field_search(
-              {
-                value,
-                fieldId: field.id,
-                searchFieldId: this.searchField(field).id,
-                limit: this.props.maxResults,
-              },
-              { cancelled },
-            ),
-          ),
-        ),
-      );
-
-      results = results.map(result => [].concat(result));
-    }
-
-    if (this.showRemapping()) {
-      const [field] = fields;
-      if (field.remappedField() === this.searchField(field)) {
-        this.props.addRemappings(field.id, results);
-      }
-    }
-
-    return results;
-  };
-
-  _search = (value: string) => {
-    const { lastValue, options } = this.state;
-
-    // if this search is just an extension of the previous search, and the previous search
-    // wasn't truncated, then we don't need to do another search because TypeaheadListing
-    // will filter the previous result client-side
-    if (
-      lastValue &&
-      value.slice(0, lastValue.length) === lastValue &&
-      options.length < this.props.maxResults
-    ) {
-      return;
-    }
+    await this.fetchValues(value);
 
     this.setState({
-      loadingState: "LOADING",
+      lastValue: value,
     });
+  }, 500);
 
+  _search = value => {
     if (this._cancel) {
       this._cancel();
     }
 
-    this._searchDebounced(value);
-  };
-
-  _searchDebounced = _.debounce(async (value): void => {
     this.setState({
       loadingState: "LOADING",
     });
-
-    const cancelDeferred = defer();
-    this._cancel = () => {
-      this._cancel = null;
-      cancelDeferred.resolve();
-    };
-
-    let results;
-    try {
-      results = await this.search(value, cancelDeferred.promise);
-    } catch (e) {
-      console.warn(e);
-    }
-
-    this._cancel = null;
-
-    if (results) {
-      this.setState({
-        loadingState: "LOADED",
-        options: results,
-        lastValue: value,
-      });
-    } else {
-      this.setState({
-        loadingState: "INIT",
-        options: [],
-        lastValue: value,
-      });
-    }
-  }, 500);
-
-  renderOptions({
-    optionsList,
-    isFocused,
-    isAllSelected,
-    isFiltered,
-  }: LayoutRendererProps) {
-    const { alwaysShowOptions, fields } = this.props;
-    const { loadingState } = this.state;
-    if (alwaysShowOptions || isFocused) {
-      if (optionsList) {
-        return optionsList;
-      } else if (this.hasList()) {
-        if (isAllSelected) {
-          return <EveryOptionState />;
-        }
-      } else if (this.isSearchable()) {
-        if (loadingState === "LOADING") {
-          return <LoadingState />;
-        } else if (loadingState === "LOADED" && isFiltered) {
-          return <NoMatchState fields={fields.map(this.searchField)} />;
-        }
-      }
-    }
-  }
-
-  renderValue = (value: Value, options: FormattingOptions) => {
-    const { fields, formatOptions } = this.props;
-    return (
-      <ValueComponent
-        value={value}
-        column={fields[0]}
-        maximumFractionDigits={20}
-        remap={this.showRemapping()}
-        {...formatOptions}
-        {...options}
-      />
-    );
+    this.search(value);
   };
 
   render() {
@@ -451,93 +318,135 @@ export class FieldValuesWidget extends Component {
       className,
       style,
       parameter,
+      prefix,
+      disableSearch,
+      disableList,
+      disablePKRemappingForSearch,
+      formatOptions,
+      placeholder,
+      forceTokenField = false,
+      showOptionsInPopover,
+      checkedColor,
+      valueRenderer = value =>
+        renderValue(fields, formatOptions, value, {
+          autoLoad: true,
+          compact: false,
+        }),
+      optionRenderer = option =>
+        renderValue(fields, formatOptions, option[0], {
+          autoLoad: false,
+        }),
+      layoutRenderer = showOptionsInPopover
+        ? undefined
+        : layoutProps => (
+            <div>
+              {layoutProps.valuesList}
+              {renderOptions(this.state, this.props, layoutProps)}
+            </div>
+          ),
     } = this.props;
-    const { loadingState } = this.state;
+    const { loadingState, options = [], valuesMode } = this.state;
 
-    const placeholder = this.getTokenFieldPlaceholder();
+    const tokenFieldPlaceholder = getTokenFieldPlaceholder({
+      fields,
+      parameter,
+      disableSearch,
+      placeholder,
+      disablePKRemappingForSearch,
+      loadingState,
+      options,
+      valuesMode,
+    });
 
-    let options = [];
-    if (this.hasList() && !this.useChainFilterEndpoints()) {
-      options = dedupeValues(fields.map(field => field.values));
-    } else if (
-      loadingState === "LOADED" &&
-      (this.isSearchable() || this.useChainFilterEndpoints())
-    ) {
-      options = this.state.options;
-    } else {
-      options = [];
-    }
+    const isListMode =
+      !disableList &&
+      shouldList({ parameter, fields, disableSearch }) &&
+      valuesMode === "list" &&
+      !forceTokenField;
+    const isLoading = loadingState === "LOADING";
+    const hasListValues = hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    });
+
+    const parseFreeformValue = value => {
+      return isNumeric(fields[0], parameter)
+        ? parseNumberValue(value)
+        : parseStringValue(value);
+    };
 
     return (
       <div
-        className={cx({ "PopoverBody--marginBottom": !this.props.isSidebar })}
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
         }}
       >
-        <TokenField
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          placeholder={placeholder}
-          updateOnInputChange
-          // forwarded props
-          multi={multi}
-          autoFocus={autoFocus}
-          color={color}
-          style={{ ...style, minWidth: "inherit" }}
-          className={className}
-          parameter={this.props.parameter}
-          optionsStyle={!parameter ? { maxHeight: "none" } : {}}
-          // end forwarded props
-          options={options}
-          valueKey={0}
-          valueRenderer={value =>
-            this.renderValue(value, { autoLoad: true, compact: false })
-          }
-          optionRenderer={option =>
-            this.renderValue(option[0], { autoLoad: false })
-          }
-          layoutRenderer={props => (
-            <div>
-              {props.valuesList}
-              {this.renderOptions(props)}
-            </div>
-          )}
-          filterOption={(option, filterString) => {
-            const lowerCaseFilterString = filterString.toLowerCase();
-            return option.some(
-              value =>
-                value != null &&
-                String(value)
-                  .toLowerCase()
-                  .includes(lowerCaseFilterString),
-            );
-          }}
-          onInputChange={this.onInputChange}
-          parseFreeformValue={v => {
-            // trim whitespace
-            v = String(v || "").trim();
-            // empty string is not valid
-            if (!v) {
-              return null;
+        {isListMode && isLoading ? (
+          <LoadingState />
+        ) : isListMode && hasListValues && multi ? (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : isListMode && hasListValues && !multi ? (
+          <SingleSelectListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : (
+          <TokenField
+            prefix={prefix}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={tokenFieldPlaceholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            optionsStyle={
+              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
             }
-            // if the field is numeric we need to parse the string into an integer
-            if (fields[0].isNumeric()) {
-              if (/^-?\d+(\.\d+)?$/.test(v)) {
-                return parseFloat(v);
-              } else {
-                return null;
-              }
-            }
-            return v;
-          }}
-        />
+            // end forwarded props
+            options={options}
+            valueKey="0"
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option.some(
+                value =>
+                  value != null &&
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={this.onInputChange}
+            parseFreeformValue={parseFreeformValue}
+          />
+        )}
       </div>
     );
   }
 }
+
+export const FieldValuesWidget = AutoExpanding(FieldValuesWidgetInner);
 
 FieldValuesWidget.propTypes = fieldValuesWidgetPropTypes;
 
@@ -547,15 +456,12 @@ function dedupeValues(valuesList) {
 }
 
 const LoadingState = () => (
-  <div
-    className="flex layout-centered align-center border-bottom"
-    style={{ minHeight: 82 }}
-  >
+  <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
     <LoadingSpinner size={32} />
   </div>
 );
 
-const NoMatchState = ({ fields }: { fields: Field[] }) => {
+const NoMatchState = ({ fields }) => {
   if (fields.length > 1) {
     // if there is more than one field, don't name them
     return <OptionsMessage message={t`No matching result`} />;
@@ -577,12 +483,280 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-bottom">{message}</div>
+  <div className="flex layout-centered p4">{message}</div>
 );
 
 OptionsMessage.propTypes = optionsMessagePropTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldValuesWidget);
+export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+
+function canUseParameterEndpoints(parameter) {
+  return parameter != null;
+}
+
+function canUseCardEndpoints(question) {
+  return question?.isSaved();
+}
+
+function canUseDashboardEndpoints(dashboard) {
+  return dashboard?.id;
+}
+
+function showRemapping(fields) {
+  return fields.length === 1;
+}
+
+function shouldList({ parameter, fields, disableSearch }) {
+  if (disableSearch) {
+    return false;
+  } else {
+    return parameter
+      ? canListParameterValues(parameter)
+      : canListFieldValues(fields);
+  }
+}
+
+function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
+  if (parameter) {
+    if (isIdParameter(parameter)) {
+      return t`Enter an ID`;
+    } else if (isStringParameter(parameter)) {
+      return t`Enter some text`;
+    } else if (isNumberParameter(parameter)) {
+      return t`Enter a number`;
+    }
+
+    // fallback
+    return t`Enter some text`;
+  } else if (firstField) {
+    if (firstField.isID()) {
+      return t`Enter an ID`;
+    } else if (firstField.isString()) {
+      return t`Enter some text`;
+    } else if (firstField.isNumeric()) {
+      return t`Enter a number`;
+    }
+
+    // fallback
+    return t`Enter some text`;
+  }
+
+  // fallback
+  return t`Enter some text`;
+}
+
+export function searchField(field, disablePKRemappingForSearch) {
+  return field.searchField(disablePKRemappingForSearch);
+}
+
+function getSearchableTokenFieldPlaceholder(
+  parameter,
+  fields,
+  firstField,
+  disablePKRemappingForSearch,
+) {
+  let placeholder;
+
+  const names = new Set(
+    fields.map(field =>
+      stripId(field.searchField(disablePKRemappingForSearch).display_name),
+    ),
+  );
+
+  if (
+    names.size !== 1 ||
+    (parameter != null && getSourceType(parameter) != null)
+  ) {
+    placeholder = t`Search`;
+  } else {
+    const [name] = names;
+
+    placeholder = t`Search by ${name}`;
+    if (
+      firstField &&
+      firstField.isID() &&
+      firstField !== firstField.searchField(disablePKRemappingForSearch)
+    ) {
+      placeholder += t` or enter an ID`;
+    }
+  }
+  return placeholder;
+}
+
+function hasList({ parameter, fields, disableSearch, options }) {
+  return (
+    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
+  );
+}
+
+// if this search is just an extension of the previous search, and the previous search
+// wasn't truncated, then we don't need to do another search because TypeaheadListing
+// will filter the previous result client-side
+function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
+  return (
+    lastValue &&
+    value.slice(0, lastValue.length) === lastValue &&
+    options.length < maxResults
+  );
+}
+
+export function isSearchable({
+  parameter,
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+  valuesMode,
+}) {
+  if (disableSearch) {
+    return false;
+  } else if (valuesMode === "search") {
+    return true;
+  } else if (parameter) {
+    return canSearchParameterValues(parameter, disablePKRemappingForSearch);
+  } else {
+    return canSearchFieldValues(fields, disablePKRemappingForSearch);
+  }
+}
+
+function getTokenFieldPlaceholder({
+  fields,
+  parameter,
+  disableSearch,
+  placeholder,
+  disablePKRemappingForSearch,
+  options,
+  valuesMode,
+}) {
+  if (placeholder) {
+    return placeholder;
+  }
+
+  const [firstField] = fields;
+
+  if (
+    hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    })
+  ) {
+    return t`Search the list`;
+  } else if (
+    isSearchable({
+      parameter,
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode,
+    })
+  ) {
+    return getSearchableTokenFieldPlaceholder(
+      parameter,
+      fields,
+      firstField,
+      disablePKRemappingForSearch,
+    );
+  } else {
+    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
+  }
+}
+
+function renderOptions(
+  state,
+  props,
+  { optionsList, isFocused, isAllSelected, isFiltered },
+) {
+  const {
+    alwaysShowOptions,
+    parameter,
+    fields,
+    disableSearch,
+    disablePKRemappingForSearch,
+  } = props;
+  const { loadingState, options, valuesMode } = state;
+
+  if (alwaysShowOptions || isFocused) {
+    if (optionsList) {
+      return optionsList;
+    } else if (
+      hasList({
+        parameter,
+        fields,
+        disableSearch,
+        options,
+      }) &&
+      valuesMode === "list"
+    ) {
+      if (isAllSelected) {
+        return <EveryOptionState />;
+      }
+    } else if (
+      isSearchable({
+        parameter,
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+        valuesMode,
+      })
+    ) {
+      if (loadingState === "LOADING") {
+        return <LoadingState />;
+      } else if (loadingState === "LOADED" && isFiltered) {
+        return (
+          <NoMatchState
+            fields={fields.map(field =>
+              field.searchField(disablePKRemappingForSearch),
+            )}
+          />
+        );
+      }
+    }
+  }
+}
+
+function renderValue(fields, formatOptions, value, options) {
+  return (
+    <ValueComponent
+      value={value}
+      column={fields[0]}
+      maximumFractionDigits={20}
+      remap={showRemapping(fields)}
+      {...formatOptions}
+      {...options}
+    />
+  );
+}
+
+export function getValuesMode({
+  parameter,
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+}) {
+  if (
+    isSearchable({
+      parameter,
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode: undefined,
+    })
+  ) {
+    return "search";
+  }
+
+  if (shouldList({ parameter, fields, disableSearch })) {
+    return "list";
+  }
+
+  return "none";
+}
+
+function isNumeric(field, parameter) {
+  if (parameter) {
+    return isNumberParameter(parameter);
+  }
+
+  return field.isNumeric();
+}

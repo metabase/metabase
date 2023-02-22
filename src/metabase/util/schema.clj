@@ -1,17 +1,26 @@
-(ns metabase.util.schema
-  "Various schemas that are useful throughout the app."
+(ns ^{:deprecated "0.46.0"} metabase.util.schema
+  "Various schemas that are useful throughout the app.
+
+  Schemas defined are deprecated and should be replaced with Malli schema defined in [[metabase.util.malli.schema]].
+  If you update schemas in this ns, please make sure you update the malli schema too. It'll help us makes the transition easier."
   (:refer-clojure :exclude [distinct])
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]]
-            [metabase.util.password :as password]
-            [schema.core :as s]
-            [schema.macros :as s.macros]
-            [schema.utils :as s.utils]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [schema.macros :as s.macros]
+   [schema.utils :as s.utils]))
+
+(set! *warn-on-reflection* true)
 
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)
@@ -34,7 +43,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     API Schema Validation & Error Messages                                     |
+;;; |                            Plumatic API Schema Validation & Error Messages                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn with-api-error-message
@@ -89,35 +98,64 @@
     (api-error-message (s/maybe (non-empty [NonBlankString])))
     ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
             The array cannot be empty.\""
-  [schema]
-  (or (:api-error-message schema)
-      (existing-schema->api-error-message schema)
-      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
-      ;; "value may be nil, or if non-nil, value must be ..."
-      (when (instance? schema.core.Maybe schema)
-        (when-let [message (api-error-message (:schema schema))]
-          (deferred-tru "value may be nil, or if non-nil, {0}" message)))
-      ;; we can do something similar for enum schemas which are also likely to be defined inline
-      (when (instance? schema.core.EnumSchema schema)
-        (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (map str (:vs schema)))]
-                                                                    (str "`" v "`")))))
-      ;; For cond-pre schemas we'll generate something like
-      ;; value must satisfy one of the following requirements:
-      ;; 1) value must be a boolean.
-      ;; 2) value must be a valid boolean string ('true' or 'false').
-      (when (instance? schema.core.CondPre schema)
-        (create-cond-schema-message (:schemas schema)))
 
-      ;; For conditional schemas we'll generate a string similar to `cond-pre` above
-      (when (instance? schema.core.ConditionalSchema schema)
-        (create-cond-schema-message (map second (:preds-and-schemas schema))))
+  ([schema] (api-error-message schema 0))
+  ([schema indent-depth]
+   (or (:api-error-message schema)
+       (existing-schema->api-error-message schema)
+       ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
+       ;; "value may be nil, or if non-nil, value must be ..."
+       (when (instance? schema.core.Maybe schema)
+         (when-let [message (api-error-message (:schema schema))]
+           (deferred-tru "value may be nil, or if non-nil, {0}" message)))
 
-      ;; do the same for sequences of a schema
-      (when (vector? schema)
-        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                        (when-let [message (api-error-message (first schema))]
-                                                          (str " " (deferred-tru "Each {0}" message))))))))
+       ;; we can do something similar for enum schemas which are also likely to be defined inline
+       (when (instance? schema.core.EnumSchema schema)
+         (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (map str (:vs schema)))]
+                                                                     (str "`" v "`")))))
+       ;; For cond-pre schemas we'll generate something like
+       ;; value must satisfy one of the following requirements:
+       ;; 1) value must be a boolean.
+       ;; 2) value must be a valid boolean string ('true' or 'false').
+       (when (instance? schema.core.CondPre schema)
+         (create-cond-schema-message (:schemas schema)))
 
+       ;; For conditional schemas we'll generate a string similar to `cond-pre` above
+       (when (instance? schema.core.ConditionalSchema schema)
+         (create-cond-schema-message (map second (:preds-and-schemas schema))))
+
+       ;; do the same for sequences of a schema
+       (when (vector? schema)
+         (str (deferred-tru "value must be an array.")
+              (when (= (count schema) 1)
+                (when-let [message (api-error-message (first schema))]
+                  (str " " (deferred-tru "Each {0}" message))))))
+
+       ;; Optional map keys
+       (when (instance? schema.core.OptionalKey schema)
+         (deferred-tru "{0} (optional)" (api-error-message (:k schema))))
+
+       ;; schema map keys
+       (when (instance? clojure.lang.Keyword schema)
+         (name schema))
+
+       ;; for maps of a schema, write out what keys and values
+       ;; this keeps track of indentation because the message is very difficult to read without it.
+       (when (map? schema)
+         (let [spaces (str/join (repeat indent-depth "  "))]
+           (str (deferred-tru "value must be a map with schema: (\n{0}{1}{2}{3}{4}{5}"
+                  spaces
+                  "  "
+                  (str/join
+                   (str "\n" spaces "  ")
+                   (for [k (sort-by pr-str (keys schema))] ;; keep order of keys deterministic
+                     (str
+                      (api-error-message k (inc indent-depth))
+                      " : "
+                      (api-error-message (get schema k) (inc indent-depth)))))
+                  "\n"
+                  spaces
+                  ")")))))))
 
 (defn non-empty
   "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty
@@ -182,12 +220,6 @@
   (with-api-error-message
     (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
     (deferred-tru "value must be an integer greater than zero.")))
-
-(def NonNegativeInt
-  "Schema representing an integer 0 or greater"
-  (with-api-error-message
-    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
-    (deferred-tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
@@ -258,6 +290,13 @@
                                   (deferred-tru "Valid field semantic or relation type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
+(def Field
+  "Schema for a valid Field for API usage."
+  (with-api-error-message (s/pred
+                            (comp (complement (s/checker mbql.s/Field))
+                                  mbql.normalize/normalize-tokens))
+    (deferred-tru "value must an array with :field id-or-name and an options map")))
+
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (with-api-error-message (s/pred #(isa? (keyword %) :Coercion/*) (deferred-tru "Valid coercion strategy"))
@@ -280,7 +319,7 @@
 
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
-  (with-api-error-message (s/constrained s/Str password/is-valid?)
+  (with-api-error-message (s/constrained s/Str u.password/is-valid?)
     (deferred-tru "password is too common.")))
 
 (def IntString
@@ -308,9 +347,14 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Something that adheres to this schema is guaranteed to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
+
+(def TemporalString
+  "Schema for a string that can be parsed by date2/parse."
+  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (boolean (u.date/parse %))))
+    (deferred-tru "value must be a valid date string")))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
@@ -321,6 +365,47 @@
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
 
+(def ^:private keyword-or-non-blank-str
+  (s/conditional
+    string?  NonBlankString
+    keyword? s/Keyword))
+
+(def ValuesSourceConfig
+  "Schema for valid source_options within a Parameter"
+  ;; TODO: This should be tighter
+  {;; for source_type = 'static-list'
+   (s/optional-key :values)      (s/cond-pre [s/Any])
+
+   ;; for source_type = 'card'
+   (s/optional-key :card_id)     IntGreaterThanZero
+   (s/optional-key :value_field) Field
+   ;; label_field is optional
+   (s/optional-key :label_field) Field})
+
+(def Parameter
+  "Schema for a valid Parameter.
+  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  (with-api-error-message {:id                                    NonBlankString
+                           :type                                  keyword-or-non-blank-str
+                           (s/optional-key :values_source_type)   (s/enum "static-list" "card" nil)
+                           (s/optional-key :values_source_config) ValuesSourceConfig
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :slug)                 s/Str
+                           (s/optional-key :name)                 s/Str
+                           (s/optional-key :default)              s/Any
+                           (s/optional-key :sectionId)            NonBlankString
+                           s/Keyword                              s/Any}
+    (deferred-tru "parameter must be a map with :id and :type keys")))
+
+(def ParameterMapping
+  "Schema for a valid Parameter Mapping"
+  (with-api-error-message {:parameter_id             NonBlankString
+                           :target                   s/Any
+                           (s/optional-key :card_id) IntGreaterThanZero
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
@@ -330,3 +415,13 @@
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
     (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+
+(def NanoIdString
+  "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
+  (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (with-api-error-message u/uuid-regex
+    (deferred-tru "String must be a valid 21-character NanoID string.")))

@@ -3,16 +3,17 @@
    This is significantly more expensive than the basic sync-metadata step, and involves things
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.field :refer [Field]]
-            [metabase.sync.analyze.classify :as classify]
-            [metabase.sync.analyze.fingerprint :as fingerprint]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.models.field :refer [Field]]
+   [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -68,7 +69,7 @@
 
 (s/defn ^:private update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (update-last-analyzed! tables))
@@ -99,7 +100,7 @@
   (trs "Total number of tables classified {0}, {1} updated"
        total-tables tables-classified))
 
-(defn ^:private make-analyze-steps [tables log-fn]
+(defn- make-analyze-steps [tables log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
                                #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
                                fingerprint-fields-summary)
@@ -123,7 +124,7 @@
 
 (s/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
-  `fingerprint/max-refingerprint-field-count`."
+  [[fingerprint/max-refingerprint-field-count]]."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)

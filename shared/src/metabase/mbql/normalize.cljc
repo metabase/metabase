@@ -28,13 +28,14 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.mbql.util.match :as mbql.match]
-            [metabase.shared.util.i18n :as i18n]
-            [metabase.shared.util.log :as log]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.log :as log]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -149,9 +150,42 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :datetime-add
+  [[_ field amount unit]]
+  [:datetime-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :datetime-subtract
+  [[_ field amount unit]]
+  [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :get-week
+  [[_ field mode]]
+  (if mode
+    [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-week (normalize-tokens field :ignore-path)]))
+
+(defmethod normalize-mbql-clause-tokens :temporal-extract
+  [[_ field unit mode]]
+  (if mode
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit) (maybe-normalize-token mode)]
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)]))
+
+(defmethod normalize-mbql-clause-tokens :datetime-diff
+  [[_ x y unit]]
+  [:datetime-diff
+   (normalize-tokens x :ignore-path)
+   (normalize-tokens y :ignore-path)
+   (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :value
+  ;; The args of a `value` clause shouldn't be normalized.
+  ;; See https://github.com/metabase/metabase/issues/23354 for details
+  [[_ value info]]
+  [:value value info])
+
 (defmethod normalize-mbql-clause-tokens :default
-  ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
-  ;; args are left as-is.
+  ;; MBQL clauses by default are recursively normalized.
+  ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
   [[clause-name & args]]
   (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
@@ -187,11 +221,11 @@
     (normalize-tokens ag-clause :ignore-path)))
 
 (defn- normalize-expressions-tokens
-  "For expressions, we don't want to normalize the name of the expression; keep that as is, but make it a keyword;
+  "For expressions, we don't want to normalize the name of the expression; keep that as is, and make it a string;
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(keyword expression-name)
+             [(mbql.u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens
@@ -206,23 +240,61 @@
            ;; flip it back to put it back the way we found it.
            (reverse (normalize-mbql-clause-tokens (reverse subclause)))))))
 
+(defn- template-tag-definition-key->transform-fn
+  "Get the function that should be used to transform values for normalized key `k` in a template tag definition."
+  [k]
+  (get {:default     identity
+        :type        maybe-normalize-token
+        :widget-type maybe-normalize-token}
+       k
+       ;; if there's not a special transform function for the key in the map above, just wrap the key-value
+       ;; pair in a dummy map and let [[normalize-tokens]] take care of it. Then unwrap
+       (fn [v]
+         (-> (normalize-tokens {k v} :ignore-path)
+             (get k)))))
+
+(defn- normalize-template-tag-definition
+  "For a template tag definition, normalize all the keys appropriately."
+  [tag-definition]
+  (let [tag-def (into
+                 {}
+                 (map (fn [[k v]]
+                        (let [k            (maybe-normalize-token k)
+                              transform-fn (template-tag-definition-key->transform-fn k)]
+                          [k (transform-fn v)])))
+                 tag-definition)]
+    ;; `:widget-type` is a required key for Field Filter (dimension) template tags -- see
+    ;; [[metabase.mbql.schema/TemplateTag:FieldFilter]] -- but prior to v42 it wasn't usually included by the
+    ;; frontend. See #20643. If it's not present, just add in `:category` which will make things work they way they
+    ;; did in the past.
+    (cond-> tag-def
+      (and (= (:type tag-def) :dimension)
+           (not (:widget-type tag-def)))
+      (assoc :widget-type :category))))
+
 (defn- normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]
-  (into {} (for [[tag-name tag-def] template-tags]
-             [(mbql.u/qualified-name tag-name)
-              (let [tag-def' (normalize-tokens (dissoc tag-def :default) :ignore-path)]
-                (cond-> tag-def'
-                  (:default tag-def)      (assoc :default (:default tag-def)) ;; don't normalize default values
-                  (:type tag-def')        (update :type maybe-normalize-token)
-                  (:widget-type tag-def') (update :widget-type maybe-normalize-token)))])))
+  (into
+   {}
+   (map (fn [[tag-name tag-definition]]
+          (let [tag-name (mbql.u/qualified-name tag-name)]
+            [tag-name
+             (-> (normalize-template-tag-definition tag-definition)
+                 (assoc :name tag-name))])))
+   template-tags))
 
-(defn- normalize-query-parameter [{:keys [type target], :as param}]
+(defn normalize-query-parameter
+  "Normalize a parameter in the query `:parameters` list."
+  [{:keys [type target id values_source_config], :as param}]
   (cond-> param
+    id                   (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type   (update :type maybe-normalize-token)
-    target (update :target #(normalize-tokens % :ignore-path))))
+    type                 (update :type maybe-normalize-token)
+    target               (update :target #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
   (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
@@ -277,6 +349,9 @@
                      :source-query    normalize-source-query
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
+   ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
+   ;; the style in annotate.clj
+   :info            {:metadata/dataset-metadata identity}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
@@ -329,7 +404,7 @@
         :else
         x)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error normalizing form.")
+        (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
 
@@ -364,7 +439,7 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts :as clause]]
+  [[_ id-or-name opts]]
   (if (is-clause? :field id-or-name)
     (let [[_ nested-id-or-name nested-opts] id-or-name]
       (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
@@ -534,6 +609,15 @@
     [:case (vec (for [[pred expr] clauses]
                   [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
 
+(defmethod canonicalize-mbql-clause :substring
+  [[_ arg start & more]]
+  (into [:substring
+         (canonicalize-mbql-clause arg)
+         ;; 0 indexes were allowed in the past but we are now enforcing this rule in MBQL.
+         ;; This allows stored queries with literal 0 in the index to work.
+         (if (= 0 start) 1 (canonicalize-mbql-clause start))]
+        (map canonicalize-mbql-clause more)))
+
 ;;; top-level key canonicalization
 
 (defn- canonicalize-mbql-clauses
@@ -553,7 +637,7 @@
          (canonicalize-mbql-clause x)
          (catch #?(:clj Throwable :cljs js/Error) e
            (log/error (i18n/tru "Invalid clause:") x)
-           (throw (ex-info (i18n/tru "Invalid MBQL clause")
+           (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                            {:clause x}
                            e))))))
    mbql-query))
@@ -675,7 +759,7 @@
       native          (update :native canonicalize-native-query)
       true            canonicalize-mbql-clauses)
     (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error canonicalizing query")
+      (throw (ex-info (i18n/tru "Error canonicalizing query: {0}" (ex-message e))
                       {:query query}
                       e)))))
 
@@ -794,7 +878,7 @@
       (try
         (normalize* query)
         (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error normalizing query")
+          (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
                           {:query query}
                           e)))))))
 

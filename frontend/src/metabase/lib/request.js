@@ -52,7 +52,7 @@ export class RestfulRequest {
 
   mergeToDictionary = (dict, result) => {
     dict = dict || {};
-    result = _.isArray(result)
+    result = Array.isArray(result)
       ? _.indexBy(result, "id")
       : { [result.id]: result };
 

@@ -1,27 +1,30 @@
 import {
   restore,
   withDatabase,
-  describeWithToken,
-} from "__support__/e2e/cypress";
+  describeEE,
+  visitQuestion,
+} from "__support__/e2e/helpers";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-describeWithToken("postgres > user > query", () => {
+describeEE("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
+    // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [PG_DB_ID]: { schemas: "none", native: "none" },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
-      [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
+      [DATA_GROUP]: {
+        [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+      },
       [COLLECTION_GROUP]: {
-        [PG_DB_ID]: { schemas: "none", native: "none" },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
     });
 
@@ -49,8 +52,6 @@ describeWithToken("postgres > user > query", () => {
         },
         database: PG_DB_ID,
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         cy.sandboxTable({
           table_id: PEOPLE_ID,
           attribute_remappings: {
@@ -61,11 +62,7 @@ describeWithToken("postgres > user > query", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);

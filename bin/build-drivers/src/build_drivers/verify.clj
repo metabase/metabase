@@ -1,15 +1,25 @@
 (ns build-drivers.verify
-  (:require [build-drivers.common :as c]
-            [colorize.core :as colorize]
-            [metabuild-common.core :as u])
-  (:import [java.util.zip ZipEntry ZipFile]))
+  (:require
+   [build-drivers.common :as c]
+   [build-drivers.lint-manifest-file :as lint-manifest-file]
+   [clojure.spec.alpha :as s]
+   [colorize.core :as colorize]
+   [expound.alpha :as expound]
+   [metabuild-common.core :as u]
+   [yaml.core :as yaml])
+  (:import
+   (java.util.zip ZipEntry ZipFile)))
+
+(defn- get-jar-entry [^String jar-path ^String filename]
+  (with-open [zip-file (ZipFile. jar-path)]
+    (first
+      (filter
+        (fn [^ZipEntry zip-entry]
+          (= (str zip-entry) filename))
+        (enumeration-seq (.entries zip-file))))))
 
 (defn- jar-contains-file? [^String jar-path ^String filename]
-  (with-open [zip-file (ZipFile. jar-path)]
-    (some
-     (fn [^ZipEntry zip-entry]
-       (= (str zip-entry) filename))
-     (enumeration-seq (.entries zip-file)))))
+  (some? (get-jar-entry jar-path filename)))
 
 (defn- verify-has-init-class [driver]
   (let [jar-filename               (c/driver-jar-destination-path driver)
@@ -32,8 +42,19 @@
 (defn- verify-has-plugin-manifest [driver]
   (let [jar-filename (c/driver-jar-destination-path driver)]
     (u/step (format "Check %s contains metabase-plugin.yaml" jar-filename)
-      (if (jar-contains-file? jar-filename "metabase-plugin.yaml")
-        (u/announce "Plugin manifest found.")
+      (if-let [manifest-entry (get-jar-entry jar-filename "metabase-plugin.yaml")]
+        (with-open [zip-file (ZipFile. jar-filename)]
+          (let [entry-is (.getInputStream zip-file manifest-entry)
+                yaml-str (slurp entry-is)
+                yml      (yaml/parse-string yaml-str)]
+            (u/announce "Plugin manifest found; validating it")
+            (if-not (s/valid? ::lint-manifest-file/plugin-manifest yml)
+              (do
+                ;; print a readable explanation of the spec error
+                (expound/expound ::lint-manifest-file/plugin-manifest yml)
+                (throw (ex-info "Driver verification failed: plugin manifest was invalid; see full explanation above"
+                                {:invalid-driver driver})))
+              (u/announce "Plugin manifest passed spec validation"))))
         (throw (ex-info "Driver verification failed: plugin manifest missing" {}))))))
 
 (defn verify-driver

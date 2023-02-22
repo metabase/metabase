@@ -1,25 +1,19 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/components/Ellipsified";
-
+import _ from "underscore";
 import { formatValue } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import cx from "classnames";
-import _ from "underscore";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Column } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
 
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { TYPE } from "metabase-lib/types/constants";
+import { ScalarContainer } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -39,8 +33,6 @@ const COMPACT_MIN_LENGTH = 6;
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
 export default class Scalar extends Component {
-  props: VisualizationProps;
-
   static uiName = t`Number`;
   static identifier = "scalar";
   static iconName = "number";
@@ -49,8 +41,6 @@ export default class Scalar extends Component {
   static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
-
-  _scalar: ?HTMLElement;
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
@@ -161,7 +151,7 @@ export default class Scalar extends Component {
     click_behavior: {},
   };
 
-  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
+  _getColumnIndex(cols, settings) {
     const columnIndex = _.findIndex(
       cols,
       col => col.name === settings["scalar.field"],
@@ -184,6 +174,9 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
       width,
+      gridSize,
+      totalNumGridCols,
+      fontFamily,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -225,13 +218,11 @@ export default class Scalar extends Component {
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
-        <Ellipsified
-          className={cx("fullscreen-normal-text fullscreen-night-text", {
-            "text-brand-hover cursor-pointer": isClickable,
-          })}
+        <ScalarContainer
+          className="fullscreen-normal-text fullscreen-night-text"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
-          style={{ maxWidth: "100%" }}
+          isClickable={isClickable}
         >
           <span
             onClick={
@@ -242,9 +233,15 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={displayValue} />
+            <ScalarValue
+              value={displayValue}
+              width={width}
+              gridSize={gridSize}
+              totalNumGridCols={totalNumGridCols}
+              fontFamily={fontFamily}
+            />
           </span>
-        </Ellipsified>
+        </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}

@@ -1,20 +1,24 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.test :as t]
-            [medley.core :as m]
-            [metabase.http-client :as http]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.user.UserInstance))
+  (:require
+   [clojure.test :as t]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.http-client :as client]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
@@ -64,9 +68,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (User :email email)
+  (or (db/select-one User :email email)
       (locking create-user-lock
-        (or (User :email email)
+        (or (db/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first
@@ -76,7 +80,7 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-(s/defn fetch-user :- UserInstance
+(s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -89,7 +93,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -97,6 +101,15 @@
      ([user-name]
       {:pre [(contains? usernames user-name)]}
       (u/the-id (fetch-user user-name))))))
+
+(defn user-descriptor
+  "Returns \"admin\" or \"non-admin\" for a given user.
+  User could be a keyword like `:rasta` or a user object."
+  [user]
+  (cond
+   (keyword user)       (user-descriptor (fetch-user user))
+   (:is_superuser user) "admin"
+   :else                "non-admin"))
 
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
@@ -124,7 +137,7 @@
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
-            (u/prog1 (http/authenticate (user->credentials username))
+            (u/prog1 (client/authenticate (user->credentials username))
               (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
@@ -140,7 +153,7 @@
 
 (defn- client-fn [username & args]
   (try
-    (apply http/client (username->token username) args)
+    (apply client/client (username->token username) args)
     (catch ExceptionInfo e
       (let [{:keys [status-code]} (ex-data e)]
         (when-not (= status-code 401)
@@ -155,18 +168,6 @@
         (clear-cached-session-tokens!)
         (binding [*retrying-authentication*  true]
           (apply client-fn username args))))))
-
-(s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
-   In addition, it forces lazy creation of the User if needed.
-
-     ((user->client) :get 200 \"meta/table\")
-
-  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
-  use when writing code."
-  [username :- TestUserName]
-  (fetch-user username) ; force creation of the user if not already created
-  (partial client-fn username))
 
 (defn user-http-request
   "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
@@ -186,13 +187,13 @@
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update User
-                      :set    {:password      (creds/hash-bcrypt user-email)
+        (db/execute! {:update :core_user
+                      :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
-        (apply http/client {:username user-email, :password user-email} args)
+        (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update User
+          (db/execute! {:update :core_user
                         :set    old-password-info
                         :where  [:= :id user-id]}))))))
 
@@ -231,6 +232,6 @@
   `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
 
 (defmacro with-group-for-user
-  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  "Like [[with-group]], but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
   [[group-binding test-user-name-or-user-id group] & body]
   `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

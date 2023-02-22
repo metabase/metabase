@@ -1,27 +1,17 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/helpers";
 
-describe("scenarios > pulse", () => {
+describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     setupSMTP();
   });
-  it("should be able get to the new pulse page from the nav bar", () => {
-    cy.visit("/");
-
-    cy.icon("add").click();
-    cy.contains("New pulse").click();
-
-    cy.url().should("match", /\/pulse\/create$/);
-  });
 
   it("should create a new pulse", () => {
     cy.visit("/pulse/create");
 
-    cy.findByPlaceholderText("Important metrics")
-      .click()
-      .type("pulse title");
+    cy.findByPlaceholderText("Important metrics").click().type("pulse title");
 
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();

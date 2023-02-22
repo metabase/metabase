@@ -1,15 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import Question from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
 
 import OpenInMetabase from "../components/OpenInMetabase";
-
-import Question from "metabase/entities/questions";
-
-import * as Urls from "metabase/lib/urls";
 
 import * as QuestionDetailCards from "../lib/cards/question_detail";
 
@@ -22,7 +20,11 @@ const pagePropTypes = {
 function AuditQuestionDetail({ params, ...props }) {
   const questionId = parseInt(params.questionId);
   return (
-    <Question.Loader id={questionId} wrapped>
+    <Question.Loader
+      id={questionId}
+      entityQuery={{ ignore_view: true }}
+      wrapped
+    >
       {({ question }) => (
         <AuditContent
           {...props}

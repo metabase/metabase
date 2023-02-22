@@ -2,26 +2,22 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import _ from "underscore";
+import Color from "color";
+import cx from "classnames";
 import { formatValue } from "metabase/lib/formatting";
-import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
-import _ from "underscore";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import Color from "color";
-import cx from "classnames";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
 export default class Progress extends Component {
-  constructor(props: VisualizationProps) {
+  constructor(props) {
     super(props);
 
     this.containerRef = React.createRef();
@@ -140,20 +136,13 @@ export default class Progress extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    const value: number =
-      rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
+    const value = rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
     const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 
     const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor)
-      .lighten(0.25)
-      .rgb()
-      .string();
-    const darkColor = Color(mainColor)
-      .darken(0.3)
-      .rgb()
-      .string();
+    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
+    const darkColor = Color(mainColor).darken(0.3).rgb().string();
 
     const progressColor = mainColor;
     const restColor = value > goal ? darkColor : lightColor;
@@ -169,7 +158,7 @@ export default class Progress extends Component {
       barMessage = t`Goal exceeded`;
     }
 
-    const clicked = { value, column };
+    const clicked = { value, column, settings };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
@@ -210,6 +199,7 @@ export default class Progress extends Component {
               borderRadius: BORDER_RADIUS,
               overflow: "hidden",
             }}
+            data-testid="progress-bar"
             onClick={
               isClickable &&
               (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))

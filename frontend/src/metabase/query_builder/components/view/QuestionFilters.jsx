@@ -3,26 +3,21 @@ import React from "react";
 
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
-import ViewPill from "./ViewPill";
-import ViewButton from "./ViewButton";
-
 import { color } from "metabase/lib/colors";
+import ViewPill from "./ViewPill";
+
+import {
+  HeaderButton,
+  FilterHeaderContainer,
+  FilterHeaderButton,
+} from "./ViewHeader.styled";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
-
-const FilterButton = props => (
-  <ViewButton
-    medium
-    icon="filter"
-    color={color("filter")}
-    labelBreakpoint="sm"
-    {...props}
-  />
-);
 
 export default function QuestionFilters({
   className,
@@ -30,12 +25,14 @@ export default function QuestionFilters({
   expanded,
   onExpand,
   onCollapse,
+  onQueryChange,
 }) {
   const query = question.query();
   const filters = query.topLevelFilters();
   if (filters.length === 0) {
     return null;
   }
+
   return (
     <div className={className}>
       <div className="flex flex-wrap align-center mbn1 mrn1">
@@ -50,6 +47,7 @@ export default function QuestionFilters({
                 ? `View Mode; Header Filters Collapse Click`
                 : `View Mode; Header Filters Expand Click`
             }
+            data-testid="filters-visibility-control"
           >
             {expanded ? null : filters.length}
           </FilterPill>
@@ -60,7 +58,7 @@ export default function QuestionFilters({
               key={index}
               triggerElement={
                 <FilterPill
-                  onRemove={() => filter.remove().update(null, { run: true })}
+                  onRemove={() => onQueryChange(filter.remove().rootQuery())}
                 >
                   {filter.displayName()}
                 </FilterPill>
@@ -73,7 +71,7 @@ export default function QuestionFilters({
                 query={query}
                 filter={filter}
                 onChangeFilter={newFilter =>
-                  newFilter.replace().update(null, { run: true })
+                  onQueryChange(newFilter.replace().rootQuery())
                 }
                 className="scroll-y"
               />
@@ -84,20 +82,88 @@ export default function QuestionFilters({
   );
 }
 
-export function QuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
+export function FilterHeaderToggle({
+  className,
+  question,
+  onExpand,
+  expanded,
+  onCollapse,
+  onQueryChange,
 }) {
+  const query = question.query();
+  const filters = query.topLevelFilters();
+  if (filters.length === 0) {
+    return null;
+  }
   return (
-    <FilterButton
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
+    <div className={className}>
+      <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
+        <FilterHeaderButton
+          small
+          rounded
+          icon="filter"
+          onClick={expanded ? onCollapse : onExpand}
+          active={expanded}
+          data-testid="filters-visibility-control"
+        >
+          <span>{filters.length}</span>
+        </FilterHeaderButton>
+      </Tooltip>
+    </div>
+  );
+}
+
+export function FilterHeader({ question, expanded, onQueryChange }) {
+  const query = question.query();
+  const filters = query.topLevelFilters();
+  if (filters.length === 0 || !expanded) {
+    return null;
+  }
+  return (
+    <FilterHeaderContainer data-testid="qb-filters-panel">
+      <div className="flex flex-wrap align-center">
+        {filters.map((filter, index) => (
+          <PopoverWithTrigger
+            key={index}
+            triggerElement={
+              <FilterPill
+                onRemove={() => onQueryChange(filter.remove().rootQuery())}
+              >
+                {filter.displayName()}
+              </FilterPill>
+            }
+            triggerClasses="flex flex-no-shrink align-center mr1 mb1"
+            sizeToFit
+          >
+            <FilterPopover
+              isTopLevel
+              query={query}
+              filter={filter}
+              onChangeFilter={newFilter =>
+                onQueryChange(newFilter.replace().rootQuery())
+              }
+              className="scroll-y"
+            />
+          </PopoverWithTrigger>
+        ))}
+      </div>
+    </FilterHeaderContainer>
+  );
+}
+
+export function QuestionFilterWidget({ onOpenModal, className }) {
+  return (
+    <HeaderButton
+      large
+      labelBreakpoint="sm"
+      className={className}
+      color={color("filter")}
+      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+      aria-label={t`Show more filters`}
+      data-metabase-event="View Mode; Open Filter Modal"
     >
       {t`Filter`}
-    </FilterButton>
+    </HeaderButton>
   );
 }
 
@@ -116,8 +182,10 @@ QuestionFilterWidget.shouldRender = ({
   question,
   queryBuilderMode,
   isObjectDetail,
+  isActionListVisible,
 }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  !isObjectDetail;
+  !isObjectDetail &&
+  isActionListVisible;

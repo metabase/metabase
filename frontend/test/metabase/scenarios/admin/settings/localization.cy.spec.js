@@ -1,7 +1,13 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  visitQuestionAdhoc,
+  visitQuestion,
+} from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > localization", () => {
   beforeEach(() => {
@@ -73,42 +79,40 @@ describe("scenarios > admin > localization", () => {
 
   // HANDLE WITH CARE!
   // This test is extremely tricky and fragile because it needs to test for the "past X weeks" to check if week starts on Sunday or Monday.
-  // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample dataset.
+  // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample database.
   // For that reason I've chosen the past 220 weeks (mid-October 2016). This should give us 3+ years to run this test without updates.
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
   it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.createNativeQuestion({
-      name: "14294",
-      native: {
-        query:
-          "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
-        "template-tags": {
-          date_range: {
-            id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-            name: "date_range",
-            "display-name": "Date range",
-            type: "dimension",
-            dimension: ["field", ORDERS.CREATED_AT, null],
-            "widget-type": "date/all-options",
-            default: "past220weeks",
-            required: true,
+    cy.createNativeQuestion(
+      {
+        name: "14294",
+        native: {
+          query:
+            "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
+          "template-tags": {
+            date_range: {
+              id: "93961154-c3d5-7c93-7b59-f4e494fda499",
+              name: "date_range",
+              "display-name": "Date range",
+              type: "dimension",
+              dimension: ["field", ORDERS.CREATED_AT, null],
+              "widget-type": "date/all-options",
+              default: "past220weeks",
+              required: true,
+            },
           },
         },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-      cy.get(".TableInteractive-header")
-        .next()
-        .as("resultTable");
+      { visitQuestion: true },
+    );
 
-      cy.get("@resultTable").within(() => {
-        // The third cell in the first row (CREATED_AT_DAY)
-        cy.get(".cellData")
-          .eq(2)
-          .should("not.contain", "Sunday");
-      });
+    cy.get(".TableInteractive-header").next().as("resultTable");
+
+    cy.get("@resultTable").within(() => {
+      // The third cell in the first row (CREATED_AT_DAY)
+      cy.get(".cellData").eq(2).should("not.contain", "Sunday");
     });
   });
 
@@ -137,7 +141,7 @@ describe("scenarios > admin > localization", () => {
           query: "SELECT 10 as A",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       visualization_settings: {
         column_settings: {
@@ -149,6 +153,62 @@ describe("scenarios > admin > localization", () => {
     });
 
     cy.findByText("€10.00");
+  });
+
+  it("should use fix up clj unit testsdate and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/setting/custom-formatting").as(
+      "updateFormatting",
+    );
+
+    cy.visit("/admin/settings/localization");
+
+    // update the date style setting to YYYY/MM/DD
+    cy.findByText("January 7, 2018").click();
+    cy.findByText("2018/1/7").click();
+    cy.wait("@updateFormatting");
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+
+    // update the time style setting to 24 hour
+    cy.findByText("17:24 (24-hour clock)").click();
+    cy.wait("@updateFormatting");
+    cy.findByDisplayValue("HH:mm").should("be.checked");
+
+    visitQuestion(1);
+
+    // create a date filter and set it to the 'On' view to see a specific date
+    cy.findByTextEnsureVisible("Created At").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Specific dates...").click();
+    cy.findByText("On").click();
+
+    // ensure the date picker is ready
+    cy.findByTextEnsureVisible("Add a time");
+    cy.findByTextEnsureVisible("Add filter");
+
+    // update the date input in the widget
+    const date = new Date();
+    const dateString = `${date.getFullYear()}/${
+      date.getMonth() + 1
+    }/${date.getDate()}`;
+    cy.findByDisplayValue(dateString).clear().type("2018/5/15").blur();
+
+    // add a time to the date
+    const TIME_SELECTOR_DEFAULT_HOUR = 12;
+    const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+    cy.findByText("Add a time").click();
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`).clear().type("56");
+
+    // apply the date filter
+    cy.button("Add filter").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("loading-spinner").should("not.exist");
+
+    // verify that the correct row is displayed
+    cy.findByText("2018/5/15, 19:56");
+    cy.findByText("127.52");
   });
 });
 

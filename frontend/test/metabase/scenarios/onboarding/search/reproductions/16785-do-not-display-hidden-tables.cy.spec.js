@@ -1,7 +1,7 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { REVIEWS_ID } = SAMPLE_DATASET;
+const { REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 16785", () => {
   beforeEach(() => {

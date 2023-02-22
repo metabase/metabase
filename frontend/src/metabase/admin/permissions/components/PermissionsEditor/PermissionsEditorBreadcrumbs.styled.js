@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 
 export const BreadcrumbsSeparator = styled.div`
@@ -11,7 +11,7 @@ export const BreadcrumbsSeparator = styled.div`
 
 export const BreadcrumbsLink = styled.a`
   cursor: pointer;
-  color: ${color("accent7")};
+  color: ${color("filter")};
   transition: color 200ms;
 
   &:hover {

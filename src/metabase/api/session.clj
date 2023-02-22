@@ -1,31 +1,36 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST]]
-            [metabase.api.common :as api]
-            [metabase.config :as config]
-            [metabase.email.messages :as email]
-            [metabase.events :as events]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
-            [metabase.util.password :as pass]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [throttle.core :as throttle]
-            [toucan.db :as db]
-            [toucan.models :as t.models])
-  (:import com.unboundid.util.LDAPSDKException
-           java.util.UUID))
+  (:require
+   [compojure.core :refer [DELETE GET POST]]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.config :as config]
+   [metabase.email.messages :as messages]
+   [metabase.events :as events]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [throttle.core :as throttle]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.util LDAPSDKException)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
@@ -48,16 +53,15 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (or
-                      (db/insert! Session
-                        :id      (str session-uuid)
-                        :user_id (u/the-id user))
-                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (t.models/post-insert (Session (str session-uuid))))]
+        session      (db/insert! Session
+                                 :id      (str session-uuid)
+                                 :user_id (u/the-id user))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
     (record-login-history! session-uuid (u/the-id user) device-info)
+    (when-not (:last_login user)
+      (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
     (assoc session :id session-uuid)))
 
 (s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
@@ -89,7 +93,7 @@
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when (ldap/ldap-configured?)
+  (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)
@@ -101,7 +105,7 @@
         ;; password is ok, return new session if user is not deactivated
         (let [user (ldap/fetch-or-create-user! user-info)]
           (if (:is_active user)
-            (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info)
+            (create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
@@ -112,7 +116,7 @@
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
   (if-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
-    (when (pass/verify-password password (:password_salt user) (:password user))
+    (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
@@ -120,7 +124,7 @@
                          :errors      {:_error disabled-account-snippet}}))))
     (do
       ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existence in request timing
-      (pass/verify-password password fake-salt fake-hashed-password)
+      (u.password/verify-password password fake-salt fake-hashed-password)
       nil)))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
@@ -157,16 +161,18 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [ip-address (request.u/ip-address request)
-        do-login   (fn []
-                     (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
-                           response                        {:id (str session-uuid)}]
-                       (mw.session/set-session-cookie request response session)))]
+  (let [ip-address   (request.u/ip-address request)
+        request-time (t/zoned-date-time (t/zone-id "GMT"))
+        do-login     (fn []
+                       (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
+                             response                        {:id (str session-uuid)}]
+                         (mw.session/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -174,8 +180,8 @@
                                   (login-throttlers :username)   username]
            (do-login))))))
 
-
-(api/defendpoint DELETE "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/"
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
@@ -194,24 +200,34 @@
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
 (defn- forgot-password-impl
-  [email server-name]
+  [email]
   (future
-   (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
-              (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
-     (let [reset-token        (user/set-password-reset-token! user-id)
-           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-       (log/info password-reset-url)
-       (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)))))
+    (when-let [{user-id      :id
+                google-auth? :google_auth
+                ldap-auth?   :ldap_auth
+                sso-source   :sso_source
+                is-active?   :is_active}
+               (db/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+                              :%lower.email
+                              (u/lower-case-en email))]
+      (if (or google-auth? ldap-auth? sso-source)
+        ;; If user uses any SSO method to log in, no need to generate a reset token
+        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
+        (let [reset-token        (user/set-password-reset-token! user-id)
+              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+          (log/info password-reset-url)
+          (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
 
-(api/defendpoint POST "/forgot_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, :as request}]
+  [:as {{:keys [email]} :body, :as request}]
   {email su/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email) email)
-  (forgot-password-impl email server-name)
+  (forgot-password-impl email)
   api/generic-204-no-content)
 
 (def ^:private ^:const reset-token-ttl-ms
@@ -228,13 +244,14 @@
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
-                (creds/bcrypt-verify token reset_token))
+                (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
               user)))))))
 
-(api/defendpoint POST "/reset_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    su/NonBlankString
@@ -244,31 +261,29 @@
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
-          (email/send-user-joined-admin-notification-email! (User user-id)))
+          (messages/send-user-joined-admin-notification-email! (db/select-one User :id user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true
                                                :session_id (str session-uuid)}]
-          (mw.session/set-session-cookie request response session)))
+          (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-(api/defendpoint GET "/password_reset_token_valid"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
-(api/defendpoint GET "/properties"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (merge
-   (setting/properties :public)
-   (when @api/*current-user*
-     (setting/properties :authenticated))
-   (when api/*is-superuser?*
-     (setting/properties :admin))))
+  (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-(api/defendpoint POST "/google_auth"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
@@ -284,7 +299,10 @@
              response {:id (str session-uuid)}
              user (db/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))
-           (mw.session/set-session-cookie request response session)
+           (mw.session/set-session-cookies request
+                                           response
+                                           session
+                                           (t/zoned-date-time (t/zone-id "GMT")))
            (throw (ex-info (str disabled-account-message)
                            {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))

@@ -20,8 +20,5 @@ export default _.compose(
   Pulses.load({
     id: (state, props) => getPulseId(props),
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(ArchiveModal);

@@ -1,14 +1,16 @@
 (ns metabase.events.revision
-  (:require [clojure.core.async :as async]
-            [clojure.tools.logging :as log]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.revision :refer [push-revision!]]
-            [metabase.models.segment :refer [Segment]]))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.events :as events]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.revision :refer [push-revision!]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
-(def ^:const revisions-topics
+(def ^:private revisions-topics
   "The `Set` of event topics which are subscribed to for use in revision tracking."
   #{:card-create
     :card-update
@@ -26,7 +28,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
   revisions-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
@@ -46,25 +48,25 @@
         (case model
           "card"      (push-revision! :entity       Card,
                                       :id           id,
-                                      :object       (Card id),
+                                      :object       (db/select-one Card :id id),
                                       :user-id      user-id,
                                       :is-creation? (= :card-create topic)
                                       :message      revision-message)
           "dashboard" (push-revision! :entity       Dashboard,
                                       :id           id,
-                                      :object       (Dashboard id),
+                                      :object       (db/select-one Dashboard :id id),
                                       :user-id      user-id,
                                       :is-creation? (= :dashboard-create topic)
                                       :message      revision-message)
           "metric"    (push-revision! :entity       Metric,
                                       :id           id,
-                                      :object       (Metric id),
+                                      :object       (db/select-one Metric :id id),
                                       :user-id      user-id,
                                       :is-creation? (= :metric-create topic)
                                       :message      revision-message)
           "segment"   (push-revision! :entity       Segment,
                                       :id           id,
-                                      :object       (Segment id),
+                                      :object       (db/select-one Segment :id id),
                                       :user-id      user-id,
                                       :is-creation? (= :segment-create topic)
                                       :message      revision-message))))

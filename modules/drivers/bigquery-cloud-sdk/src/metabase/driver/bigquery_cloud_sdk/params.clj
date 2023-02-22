@@ -1,13 +1,17 @@
 (ns metabase.driver.bigquery-cloud-sdk.params
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.util.date-2 :as u.date])
-  (:import [com.google.cloud.bigquery QueryJobConfiguration$Builder QueryParameterValue StandardSQLTypeName]))
+  (:require
+   [java-time :as t]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log])
+  (:import
+   (com.google.cloud.bigquery QueryJobConfiguration$Builder QueryParameterValue StandardSQLTypeName)))
+
+(set! *warn-on-reflection* true)
 
 (defn- param ^QueryParameterValue [type-name v]
   (.build (doto (QueryParameterValue/newBuilder)
             (.setType (StandardSQLTypeName/valueOf type-name))
-            (.setValue (if (some? v) (str v))))))
+            (.setValue (some-> v str)))))
 
 (defmulti ^:private ->QueryParameterValue
   {:arglists '(^QueryParameterValue [v])}

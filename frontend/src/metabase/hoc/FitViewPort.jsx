@@ -38,14 +38,14 @@ function fitViewport(ComposedComponent) {
     componentDidMount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.add("spread", "flex", "flex-column");
+        root.firstChild.classList.add("flex", "flex-column");
       }
     }
 
     componentWillUnmount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.remove("spread", "flex", "flex-column");
+        root.firstChild.classList.remove("flex", "flex-column");
       }
     }
 

@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
-import Button from "metabase/components/Button";
-
 import { t } from "ttag";
+import Button from "metabase/core/components/Button";
+
 import Icon from "metabase/components/Icon";
+import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 
 import "./ExpressionPopover.css";
 
@@ -15,6 +15,8 @@ export default class ExpressionPopover extends React.Component {
     error: null,
     isBlank: true,
   };
+
+  helpTextTarget = React.createRef();
 
   render() {
     const {
@@ -41,8 +43,9 @@ export default class ExpressionPopover extends React.Component {
             <h3 className="inline-block pl1">{title}</h3>
           </a>
         </div>
-        <div className="p1">
+        <div className="p1" ref={this.helpTextTarget}>
           <ExpressionEditorTextfield
+            helpTextTarget={this.helpTextTarget.current}
             startRule={startRule}
             expression={expression}
             query={query}

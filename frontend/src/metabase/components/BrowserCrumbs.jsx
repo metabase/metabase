@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import { color } from "metabase/lib/colors";
+import { BrowserCrumbsItem, BrowserCrumbsRoot } from "./BrowserCrumbs.styled";
 
 // TODO: merge with Breadcrumbs
 
@@ -15,11 +15,11 @@ const Crumb = ({ children }) => (
 );
 
 const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
-  <Flex align="center">
+  <BrowserCrumbsRoot>
     {crumbs
       .filter(c => c)
       .map((crumb, index, crumbs) => (
-        <Flex align="center" key={index}>
+        <BrowserCrumbsItem key={index}>
           {crumb.to ? (
             <Link
               className="text-brand-hover cursor-pointer"
@@ -34,9 +34,9 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
           {index < crumbs.length - 1 ? (
             <Icon name="chevronright" color={color("text-light")} mx={1} />
           ) : null}
-        </Flex>
+        </BrowserCrumbsItem>
       ))}
-  </Flex>
+  </BrowserCrumbsRoot>
 );
 
 export default BrowserCrumbs;

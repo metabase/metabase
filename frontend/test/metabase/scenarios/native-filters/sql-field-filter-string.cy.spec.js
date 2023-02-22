@@ -1,13 +1,11 @@
-import {
-  restore,
-  mockSessionProperty,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+
+const stringFilters = Object.entries(STRING_FILTER_SUBTYPES);
 
 describe("scenarios > filters > sql filters > field filter > String", () => {
   beforeEach(() => {
@@ -15,13 +13,9 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery(
-      "SELECT * FROM products WHERE {{filter}}",
-    );
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
@@ -32,40 +26,49 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     });
   });
 
-  Object.entries(STRING_FILTER_SUBTYPES).forEach(
-    ([subType, { searchTerm, value, representativeResult }]) => {
-      describe(`should work for ${subType}`, () => {
-        it("when set through the filter widget", () => {
-          FieldFilter.setWidgetType(subType);
+  it("when set through the filter widget", () => {
+    stringFilters.forEach(
+      ([subType, { searchTerm, value, representativeResult }]) => {
+        cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
-          FieldFilter.openEntryForm();
-          FieldFilter.addWidgetStringFilter(value);
+        FieldFilter.setWidgetType(subType);
 
-          SQLFilter.runQuery();
+        FieldFilter.openEntryForm();
+        FieldFilter.addWidgetStringFilter(value);
 
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
+        SQLFilter.runQuery();
+
+        cy.get(".Visualization").within(() => {
+          cy.findByText(representativeResult);
         });
+      },
+    );
+  });
 
-        it("when set as the default value for a required filter", () => {
-          FieldFilter.setWidgetType(subType);
+  it("when set as the default value for a required filter", () => {
+    SQLFilter.toggleRequired();
 
-          SQLFilter.toggleRequired();
+    stringFilters.forEach(
+      ([subType, { searchTerm, value, representativeResult }], index) => {
+        FieldFilter.setWidgetType(subType);
 
-          FieldFilter.openEntryForm({ isFilterRequired: true });
+        // When we run the first iteration, there will be no default filter value set
+        if (index !== 0) {
+          FieldFilter.clearDefaultFilterValue();
+        }
 
-          searchTerm
-            ? FieldFilter.pickDefaultValue(searchTerm, value)
-            : FieldFilter.addDefaultStringFilter(value);
+        FieldFilter.openEntryForm({ isFilterRequired: true });
 
-          SQLFilter.runQuery();
+        searchTerm
+          ? FieldFilter.pickDefaultValue(searchTerm, value)
+          : FieldFilter.addDefaultStringFilter(value);
 
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
+        SQLFilter.runQuery();
+
+        cy.get(".Visualization").within(() => {
+          cy.findByText(representativeResult);
         });
-      });
-    },
-  );
+      },
+    );
+  });
 });

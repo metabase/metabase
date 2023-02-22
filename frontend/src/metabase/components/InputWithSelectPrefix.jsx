@@ -1,20 +1,8 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
-import Select, { Option } from "./Select";
-import InputBlurChange from "./InputBlurChange";
-
-type Props = {
-  onChange: (value: any) => void,
-  value: string,
-  prefixes: string[],
-  defaultPrefix: string,
-  caseInsensitivePrefix?: boolean,
-};
-
-type State = {
-  prefix: string,
-  rest: string,
-};
+import Select, { Option } from "metabase/core/components/Select";
+import { SelectPrefixInput } from "./InputWithSelectPrefix.styled";
 
 function splitValue({
   value,
@@ -35,11 +23,17 @@ function splitValue({
   return prefix ? [prefix, value.slice(prefix.length)] : [defaultPrefix, value];
 }
 
-export default class InputWithSelectPrefix extends Component {
-  props: Props;
-  state: State;
+const propTypes = {
+  value: PropTypes.string,
+  prefixes: PropTypes.arrayOf(PropTypes.string),
+  defaultPrefix: PropTypes.string,
+  caseInsensitivePrefix: PropTypes.bool,
+  onChange: PropTypes.func,
+  placeholder: PropTypes.string,
+};
 
-  constructor(props: Props) {
+export default class InputWithSelectPrefix extends Component {
+  constructor(props) {
     super(props);
 
     const [prefix, rest] = splitValue(props);
@@ -55,7 +49,7 @@ export default class InputWithSelectPrefix extends Component {
     }
   }
 
-  componentDidUpdate(prevProps: Props, prevState: State) {
+  componentDidUpdate(prevProps, prevState) {
     const { prefix, rest } = this.state;
     if (prevState.rest !== rest || prevState.prefix !== prefix) {
       const value = prefix + rest;
@@ -83,14 +77,17 @@ export default class InputWithSelectPrefix extends Component {
             </Option>
           ))}
         </Select>
-        <InputBlurChange
+        <SelectPrefixInput
           type="text"
-          className="Form-input flex-full borderless"
+          className="flex-full"
           value={rest}
-          placeholder={"foo"}
+          placeholder={this.props.placeholder}
           onBlurChange={e => this.setState({ rest: e.target.value })}
+          size="large"
         />
       </div>
     );
   }
 }
+
+InputWithSelectPrefix.propTypes = propTypes;

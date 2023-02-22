@@ -1,36 +1,52 @@
-import { restore, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  visualize,
+  withDatabase,
+  adhocQuestionHash,
+  summarize,
+} from "__support__/e2e/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_ID = 2;
 
-describe.skip("issue 13097", () => {
-  before(() => {
+describe("issue 13097", { tags: "@external" }, () => {
+  beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText(MONGO_DB_NAME).click();
-    cy.findByText("People").click();
+    withDatabase(MONGO_DB_ID, ({ PEOPLE_ID }) => {
+      const questionDetails = {
+        dataset_query: {
+          type: "query",
+          query: { "source-table": PEOPLE_ID, limit: 5 },
+          database: MONGO_DB_ID,
+        },
+      };
+
+      const hash = adhocQuestionHash(questionDetails);
+
+      cy.visit(`/question/notebook#${hash}`);
+    });
   });
 
   it("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
-    cy.findByText("Pick the metric you want to see").click();
+    summarize({ mode: "notebook" });
+
     cy.findByText("Number of distinct values of ...").click();
     cy.findByText("City").click();
 
-    cy.get("[class*=NotebookCell]").within(() => {
-      cy.icon("add").click();
-    });
+    cy.findAllByTestId("notebook-cell-item").find(".Icon-add").click();
 
     cy.findByText("Number of distinct values of ...").click();
     cy.findByText("State").click();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visualize();
 
-    cy.log("Reported failing on stats ~v0.36.3");
-    cy.findAllByText("1,966").should("have.length", 1); // City
-    cy.findByText("49"); // State
+    // cy.log("Reported failing on stats ~v0.36.3");
+    cy.get(".cellData")
+      .should("have.length", 4)
+      .and("contain", "Distinct values of City")
+      .and("contain", "1,966")
+      .and("contain", "Distinct values of State")
+      .and("contain", "49");
   });
 });

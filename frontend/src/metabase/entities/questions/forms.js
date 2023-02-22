@@ -1,9 +1,12 @@
 import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
+import validate from "metabase/lib/validate";
+
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 const FORM_FIELDS = [
-  { name: "name", title: t`Name` },
+  { name: "name", title: t`Name`, validate: validate.required() },
   {
     name: "description",
     title: t`Description`,

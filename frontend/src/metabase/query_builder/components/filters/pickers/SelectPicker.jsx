@@ -1,37 +1,17 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import ListSearchField from "metabase/components/ListSearchField";
 
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-import cx from "classnames";
-
-type SelectOption = {
-  name: string,
-  key: string,
-};
-
-type Props = {
-  options: Array<SelectOption>,
-  values: Array<string>,
-  onValuesChange: (values: any[]) => void,
-  placeholder?: string,
-  multi?: boolean,
-};
-
-type State = {
-  searchText: string,
-  searchRegex: ?RegExp,
-};
+import { SelectPickerButton } from "./SelectPicker.styled";
 
 export default class SelectPicker extends Component {
-  state: State;
-  props: Props;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -48,7 +28,7 @@ export default class SelectPicker extends Component {
     multi: PropTypes.bool,
   };
 
-  updateSearchText = (value: string) => {
+  updateSearchText = value => {
     let regex = null;
 
     if (value) {
@@ -61,7 +41,7 @@ export default class SelectPicker extends Component {
     });
   };
 
-  selectValue(key: string, selected: boolean) {
+  selectValue(key, selected) {
     let values;
     if (this.props.multi) {
       values = this.props.values.slice().filter(v => v != null);
@@ -76,7 +56,7 @@ export default class SelectPicker extends Component {
     this.props.onValuesChange(values);
   }
 
-  nameForOption(option: SelectOption) {
+  nameForOption(option) {
     if (option.name === "") {
       return t`Empty`;
     } else if (
@@ -112,11 +92,12 @@ export default class SelectPicker extends Component {
         {validOptions.length <= 10 && !regex ? null : (
           <div className="px1 pt1">
             <ListSearchField
-              hasClearButton
-              onChange={this.updateSearchText}
+              fullWidth
+              autoFocus
+              onResetClick={() => this.updateSearchText("")}
+              onChange={e => this.updateSearchText(e.target.value)}
               value={this.state.searchText}
               placeholder={t`Find a value`}
-              autoFocus={true}
             />
           </div>
         )}
@@ -152,19 +133,12 @@ export default class SelectPicker extends Component {
                   className="half"
                   style={{ padding: "0.15em" }}
                 >
-                  <button
-                    style={{ height: "95px" }}
-                    className={cx(
-                      "full rounded bordered border-purple text-centered text-bold",
-                      {
-                        "text-purple bg-white": values[0] !== option.key,
-                        "text-white bg-purple": values[0] === option.key,
-                      },
-                    )}
+                  <SelectPickerButton
+                    isSelected={values[0] === option.key}
                     onClick={() => this.selectValue(option.key, true)}
                   >
                     {this.nameForOption(option)}
-                  </button>
+                  </SelectPickerButton>
                 </div>
               ))}
             </div>

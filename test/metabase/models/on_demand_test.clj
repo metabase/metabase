@@ -1,16 +1,17 @@
 (ns metabase.models.on-demand-test
   "Tests for On-Demand FieldValues updating behavior for Cards and Dashboards."
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- do-with-mocked-field-values-updating
   "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
@@ -18,8 +19,8 @@
   {:style/indent 0}
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-field-values! (fn [field]
-                                                                (swap! updated-field-names conj (:name field)))]
+    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
+                                                                     (swap! updated-field-names conj (:name field)))]
       (f updated-field-names)
       @updated-field-names)))
 
@@ -29,7 +30,7 @@
    :native   {:query "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"}})
 
 (defn- native-query-with-template-tag [field-or-id]
-  {:database (data/id)
+  {:database (field/field-id->database-id (u/the-id field-or-id))
    :type     "native"
    :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
               :template-tags {:category {:name         "category"
@@ -58,7 +59,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- field-values-were-updated-for-new-card? [options]
-  (not (empty? (do-with-updated-fields-for-card options))))
+  (boolean (seq (do-with-updated-fields-for-card options))))
 
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"
@@ -106,7 +107,7 @@
               {:db    {:is_on_demand true}
                :card  {:dataset_query (basic-native-query)}
                :field {:name "New Field"}}
-              (fn [{:keys [table field card]}]
+              (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
                 (db/update! Card (u/the-id card)
@@ -160,11 +161,15 @@
 
 (defn- parameter-mappings-for-card-and-field [card-or-id field-or-id]
   [{:card_id (u/the-id card-or-id)
-    :target  [:dimension [:field-id (u/the-id field-or-id)]]}])
+    :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
   (dashboard/add-dashcard! dashboard-or-id card-or-id
-    {:parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
+                           {:row                0
+                            :col                0
+                            :size_x             4
+                            :size_y             4
+                            :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
 
 (defn- do-with-updated-fields-for-dashboard {:style/indent 1} [options & [f]]
   (do-with-updated-fields-for-card (merge {:card {:dataset_query (basic-mbql-query)}}
@@ -203,7 +208,7 @@
              ;; Create a On-Demand DB and MBQL Card
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand true}}
-              (fn [{:keys [table field card dash dashcard updated-field-names]}]
+              (fn [{:keys [table card dash dashcard updated-field-names]}]
                 ;; create a Dashboard and add a DashboardCard with a param mapping
                 (mt/with-temp Field [new-field {:table_id         (u/the-id table)
                                                 :name             "New Field"
@@ -223,14 +228,14 @@
       (is (= #{}
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand false}}
-              (fn [{:keys [field card dash updated-field-names]}]
+              (fn [{:keys [field card dash]}]
                 (add-dashcard-with-parameter-mapping! dash card field))))))
 
     (testing "with changed param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand false}}
-              (fn [{:keys [table field card dash dashcard updated-field-names]}]
+              (fn [{:keys [table card dash dashcard]}]
                 (mt/with-temp Field [new-field {:table_id (u/the-id table), :has_field_values "list"}]
                   (dashboard/update-dashcards! dash
                                                [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))

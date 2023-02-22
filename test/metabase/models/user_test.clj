@@ -1,31 +1,41 @@
 (ns metabase.models.user-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.http-client :as http]
-            [metabase.models
-             :refer
-             [Collection
-              Database
-              PermissionsGroup
-              PermissionsGroupMembership
-              Pulse
-              PulseChannel
-              PulseChannelRecipient
-              Session
-              Table
-              User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.collection-test :as collection-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.integrations.google]
+   [metabase.models
+    :refer [Collection
+            Database
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseChannel
+            PulseChannelRecipient
+            Session
+            Table
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :as collection-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-test :as perms-test]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
+
+(comment
+  ;; this has to be loaded for the Google Auth tests to work
+  metabase.integrations.google/keep-me)
 
 ;;; Tests for permissions-set
 
@@ -33,16 +43,14 @@
   (testing "Make sure the test users have valid permissions sets"
     (doseq [user [:rasta :crowberto :lucky :trashbird]]
       (testing user
-        (is (= true
-               (perms/is-permissions-set? (user/permissions-set (mt/user->id user)))))))))
+        (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id user))))))))
 
 (deftest group-with-no-permissions-test
   (testing (str "Adding a group with *no* permissions shouldn't suddenly break all the permissions sets (This was a "
                 "bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).")
     (mt/with-temp* [PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_              {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (is (= true
-             (perms/is-permissions-set? (user/permissions-set (mt/user->id :rasta))))))))
+      (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id :rasta)))))))
 
 (defn- remove-non-collection-perms [perms-set]
   (set (for [perms-path perms-set
@@ -76,7 +84,7 @@
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
            #{(perms/table-read-path table)}
@@ -90,8 +98,8 @@
   [new-user-email-address]
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
     (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
-      (http/client :post 200 "session/reset_password" {:token    reset-token
-                                                       :password "p@ssword1"}))))
+      (client/client :post 200 "session/reset_password" {:token    reset-token
+                                                         :password "p@ssword1"}))))
 
 (defn sent-emails
   "Fetch the emails that have been sent in the form of a map of email address -> sequence of email subjects.
@@ -121,7 +129,7 @@
         (try
           (if google-auth?
             (user/create-new-google-auth-user! (dissoc new-user :password))
-            (user/create-and-invite-user! new-user invitor))
+            (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)
@@ -180,7 +188,13 @@
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+
+  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+    (mt/with-temporary-setting-values [enable-password-login false]
+      (ldap.test/with-ldap-server
+        (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -201,7 +215,7 @@
                 "PermissionsGroupMembership object")
     (mt/with-temp User [user {:is_superuser true}]
       (is (= true
-             (db/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (group/admin))))))))
+             (db/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -270,7 +284,7 @@
       (with-groups [_ {:name "Group 1"} #{:lucky :rasta}
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
-        (let [users (user/add-group-ids (map test-users/fetch-user [:lucky :rasta]))]
+        (let [users (user/add-group-ids (map test.users/fetch-user [:lucky :rasta]))]
           (is (= {"Lucky" #{"All Users" "Group 1" "Group 2"}
                   "Rasta" #{"All Users" "Group 1"}}
                  (zipmap (map :first_name users)
@@ -283,13 +297,13 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (User (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
           (is (= '[(user/add-group-ids <users>)
                    (user/add-group-ids <users>)]
-                 (as-> (map test-users/fetch-user [:rasta :lucky]) users
+                 (as-> (map test.users/fetch-user [:rasta :lucky]) users
                    (hydrate users :group_ids)
                    (mapv :group_ids users)))))))
 
@@ -297,7 +311,7 @@
       (with-groups [_ {:name "Group 1"} #{:lucky :rasta}
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
-        (let [users (mapv test-users/fetch-user [:lucky :rasta])]
+        (let [users (mapv test.users/fetch-user [:lucky :rasta])]
           (db/with-call-counting [call-count]
             (dorun (user/add-group-ids users))
             (is (= 1
@@ -309,7 +323,7 @@
 
 (defn user-group-names [user-or-id-or-kw]
   (group-names (user/group-ids (if (keyword? user-or-id-or-kw)
-                                 (test-users/fetch-user user-or-id-or-kw)
+                                 (test.users/fetch-user user-or-id-or-kw)
                                  user-or-id-or-kw))))
 
 (deftest set-permissions-groups-test
@@ -317,21 +331,21 @@
     (testing "should be able to add a User to new groups"
       (with-groups [group-1 {:name "Group 1"} #{}
                     group-2 {:name "Group 2"} #{}]
-        (user/set-permissions-groups! (mt/user->id :lucky) #{(group/all-users) group-1 group-2})
+        (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-1 group-2})
         (is (= #{"All Users" "Group 1" "Group 2"}
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{:lucky}]
-        (user/set-permissions-groups! (mt/user->id :lucky) #{(group/all-users)})
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
+                    _group-2 {:name "Group 2"} #{:lucky}]
+        (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
                     group-2 {:name "Group 2"} #{}]
-        (user/set-permissions-groups! (mt/user->id :lucky) #{(group/all-users) group-2})
+        (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
                (user-group-names :lucky)))))
 
@@ -342,7 +356,7 @@
 
     (testing "should be able to add someone to the Admin group"
       (mt/with-temp User [user]
-        (user/set-permissions-groups! user #{(group/all-users) (group/admin)})
+        (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
         (is (= #{"Administrators" "All Users"}
                (user-group-names user)))
 
@@ -352,7 +366,7 @@
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp User [user {:is_superuser true}]
-        (user/set-permissions-groups! user #{(group/all-users)})
+        (user/set-permissions-groups! user #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names user)))
 
@@ -366,16 +380,16 @@
         ;; should fail, causing the entire transaction to fail
         (mt/with-temp User [user {:is_superuser true}]
           (u/ignore-exceptions
-            (user/set-permissions-groups! user #{(group/all-users) Integer/MAX_VALUE}))
+            (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
           (is (= true
                  (db/select-one-field :is_superuser User :id (u/the-id user))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
-        (mt/with-temp User [user]
+        (mt/with-temp User [_]
           (with-groups [group {:name "Group"} {}]
             (u/ignore-exceptions
-              (user/set-permissions-groups! (test-users/fetch-user :lucky) #{group})))
+              (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
           (is (= #{"All Users"}
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
@@ -397,9 +411,9 @@
                (db/select-one-field :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User    [{user-id :id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]]
+      (mt/with-temp* [User [{user-id :id}]]
+        (dotimes [_ 2]
+          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (db/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -416,9 +430,9 @@
                  (db/select-one-field :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
-             Exception
-             #"Assert failed: \(i18n/available-locale\? locale\)"
-             (mt/with-temp User [{user-id :id} {:locale "en_XX"}])))))
+             Throwable
+             #"Assert failed: Invalid locale: \"en_XX\""
+             (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]
@@ -428,8 +442,8 @@
                  (db/select-one-field :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
-               AssertionError
-               #"Assert failed: \(i18n/available-locale\? locale\)"
+               Throwable
+               #"Assert failed: Invalid locale: \"en_XX\""
                (db/update! User user-id :locale "en_XX"))))))))
 
 (deftest normalize-locale-test
@@ -461,3 +475,35 @@
           (is (db/update! User user-id :is_active false)))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
+
+(deftest identity-hash-test
+  (testing "User hashes are based on the email address"
+    (mt/with-temp User  [user  {:email "fred@flintston.es"}]
+      (is (= "e8d63472"
+             (serdes.hash/raw-hash ["fred@flintston.es"])
+             (serdes.hash/identity-hash user))))))
+
+(deftest hash-password-on-update-test
+  (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
+    (let [plaintext-password "password-1234"]
+      (mt/with-temp User [{user-id :id} {:password plaintext-password}]
+        (let [salt                     (fn [] (db/select-one-field :password_salt User :id user-id))
+              hashed-password          (fn [] (db/select-one-field :password User :id user-id))
+              original-hashed-password (hashed-password)]
+          (testing "sanity check: check that password can be verified"
+            (is (u.password/verify-password plaintext-password
+                                            (salt)
+                                            original-hashed-password)))
+          (is (= true
+                 (db/update! User user-id :password plaintext-password)))
+          (let [new-hashed-password (hashed-password)]
+            (testing "password should have been hashed"
+              (is (not= plaintext-password
+                        new-hashed-password)))
+            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
+              (is (not= original-hashed-password
+                        new-hashed-password)))
+            (testing "salt should have been set; verify password was hashed correctly"
+              (is (u.password/verify-password plaintext-password
+                                              (salt)
+                                              new-hashed-password)))))))))

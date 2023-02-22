@@ -1,13 +1,17 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [postal.core :as postal]
-            [postal.support :refer [make-props]]
-            [schema.core :as s])
-  (:import javax.mail.Session))
+  (:require
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [postal.core :as postal]
+   [postal.support :refer [make-props]]
+   [schema.core :as s])
+  (:import
+   (javax.mail Session)))
+
+(set! *warn-on-reflection* true)
 
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*
@@ -16,31 +20,56 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use as the sender of Metabase.")
-  :default "notifications@metabase.com")
+  (deferred-tru "The email address you want to use for the sender of emails.")
+  :default    "notifications@metabase.com"
+  :visibility :settings-manager)
+
+(defsetting email-from-name
+  (deferred-tru "The name you want to use for the sender of emails.")
+  :visibility :settings-manager)
+
+(def ^:private ReplyToAddresses
+  (s/maybe [su/Email]))
+
+(def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
+  (s/validator ReplyToAddresses))
+
+(defsetting email-reply-to
+  (deferred-tru "The email address you want the replies to go to, if different from the from address.")
+  :type :json
+  :visibility :settings-manager
+  :setter (fn [new-value]
+            (->> new-value
+                 validate-reply-to-addresses
+                 (setting/set-value-of-type! :json :email-reply-to))))
 
 (defsetting email-smtp-host
-  (deferred-tru "The address of the SMTP server that handles your emails."))
+  (deferred-tru "The address of the SMTP server that handles your emails.")
+  :visibility :settings-manager)
 
 (defsetting email-smtp-username
-  (deferred-tru "SMTP username."))
+  (deferred-tru "SMTP username.")
+  :visibility :settings-manager)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
+  :visibility :settings-manager
   :sensitive? true)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
-  :type :integer)
+  :type       :integer
+  :visibility :settings-manager)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :type    :keyword
-  :default :none
+  :type       :keyword
+  :default    :none
+  :visibility :settings-manager
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-             (setting/set-keyword! :email-smtp-security new-value)))
+             (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
@@ -54,7 +83,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host)))
+  :getter     #(boolean (email-smtp-host))
+  :doc        false)
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge
@@ -92,17 +122,22 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (throw (Exception. (tru "SMTP host is not set."))))
+    (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
   ;; Now send the email
   (send-email! (smtp-settings)
-    {:from    (email-from-address)
-     :to      recipients
-     :subject subject
-     :body    (case message-type
-                :attachments message
-                :text        message
-                :html        [{:type    "text/html; charset=utf-8"
-                               :content message}])}))
+               (merge
+                {:from    (if-let [from-name (email-from-name)]
+                            (str from-name " <" (email-from-address) ">")
+                            (email-from-address))
+                 :to      recipients
+                 :subject subject
+                 :body    (case message-type
+                            :attachments message
+                            :text        message
+                            :html        [{:type    "text/html; charset=utf-8"
+                                           :content message}])}
+                (when-let [reply-to (email-reply-to)]
+                  {:reply-to reply-to}))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
@@ -130,13 +165,15 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                      su/NonBlankString
-   :port                      su/IntGreaterThanZero
-   ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   (s/optional-key :user)     (s/maybe s/Str)
-   (s/optional-key :security) (s/maybe (s/enum :tls :ssl :none :starttls))
-   (s/optional-key :pass)     (s/maybe s/Str)
-   (s/optional-key :sender)   (s/maybe s/Str)})
+  {:host                         su/NonBlankString
+   :port                         su/IntGreaterThanZero
+     ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
+   (s/optional-key :user)        (s/maybe s/Str)
+   (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
+   (s/optional-key :pass)        (s/maybe s/Str)
+   (s/optional-key :sender)      (s/maybe s/Str)
+   (s/optional-key :sender-name) (s/maybe s/Str)
+   (s/optional-key :reply-to)    (s/maybe [s/Str])})
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
@@ -163,7 +200,7 @@
 
 (def ^:private email-security-order [:tls :starttls :ssl])
 
-(def ^:private retry-delay-ms
+(def ^:private ^Long retry-delay-ms
   "Amount of time to wait between retrying SMTP connections with different security options. This delay exists to keep
   us from getting banned on Outlook.com."
   500)
@@ -201,7 +238,7 @@
 
   Attempts to connect with different `:security` options. If able to connect successfully, returns working
   [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the `::error`."
-  [{:keys [port security], :as details} :- SMTPSettings]
+  [details :- SMTPSettings]
   (let [initial-attempt (test-smtp-settings details)]
     (if-not (::error initial-attempt)
       details

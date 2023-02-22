@@ -1,10 +1,13 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
-  (:require [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]))
+  (:require
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
@@ -72,7 +75,7 @@
   ;; add an additional statement to the front to kill open connections to the DB before dropping
   (cons
    (kill-connections-to-db-sql database-name)
-   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) :postgres dbdef options)))
+   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) driver dbdef options)))
 
 (defmethod load-data/load-data! :postgres [& args]
   (apply load-data/load-data-all-at-once! args))

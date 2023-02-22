@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, startNewQuestion, visualize } from "__support__/e2e/helpers";
 
 const supportedDatabases = [
   {
@@ -16,16 +16,18 @@ const supportedDatabases = [
 supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
   describe("scenarios > question > query > external", () => {
     beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
       restore(snapshotName);
       cy.signInAsAdmin();
     });
 
     it(`can query ${database} database`, () => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText(dbName).click();
       cy.findByText("Orders").click();
 
+      visualize();
       cy.contains("37.65");
     });
   });

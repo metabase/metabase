@@ -1,25 +1,26 @@
 import React from "react";
-import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 import { render, screen } from "@testing-library/react";
+import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 
-import Question from "metabase-lib/lib/Question";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
+import Question from "metabase-lib/Question";
 
 const getTimeseriesFilterWidget = question => (
   <TimeseriesFilterWidget
+    question={question}
     card={question.card()}
-    datasetQuery={question.query().datasetQuery()}
+    query={question.query()}
     setDatasetQuery={() => {}}
   />
 );
 
 describe("TimeseriesFilterWidget", () => {
   const questionWithoutFilter = Question.create({
-    databaseId: SAMPLE_DATASET.id,
+    databaseId: SAMPLE_DATABASE.id,
     tableId: ORDERS.id,
     metadata,
   })
@@ -30,7 +31,7 @@ describe("TimeseriesFilterWidget", () => {
 
   it("should display 'All Time' text if no filter is selected", () => {
     render(getTimeseriesFilterWidget(questionWithoutFilter));
-    screen.getByText(/All Time/i);
+    expect(screen.getByText(/All Time/i)).toBeInTheDocument();
   });
 
   it("should display 'Previous 30 Days' text if that filter is selected", () => {
@@ -40,7 +41,7 @@ describe("TimeseriesFilterWidget", () => {
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
-    screen.getByText(/Previous 30 Days/i);
+    expect(screen.getByText(/Previous 30 Days/i)).toBeInTheDocument();
   });
 
   it("should display 'Is Empty' text if that filter is selected", () => {
@@ -50,7 +51,7 @@ describe("TimeseriesFilterWidget", () => {
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
-    screen.getByText(/Is Empty/i);
+    expect(screen.getByText(/Is Empty/i)).toBeInTheDocument();
   });
 
   it("should display 'Not Empty' text if that filter is selected", () => {
@@ -60,6 +61,6 @@ describe("TimeseriesFilterWidget", () => {
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
-    screen.getByText(/Not Empty/i);
+    expect(screen.getByText(/Not Empty/i)).toBeInTheDocument();
   });
 });

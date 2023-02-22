@@ -1,92 +1,72 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
-import Button from "metabase/components/Button";
-
-import * as Query from "metabase/lib/query/query";
-import * as Filter from "metabase/lib/query/filter";
-import * as Card from "metabase/meta/Card";
-
-import {
-  parseFieldTarget,
-  generateTimeFilterValuesDescriptions,
-} from "metabase/lib/query_time";
-
 import cx from "classnames";
 import _ from "underscore";
+import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import SelectButton from "metabase/core/components/SelectButton";
+import Button from "metabase/core/components/Button";
 
-import type {
-  Card as CardObject,
-  StructuredDatasetQuery,
-} from "metabase-types/types/Card";
-import type { FieldFilter } from "metabase-types/types/Query";
+import * as Card from "metabase-lib/queries/utils/card";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
+import * as Query from "metabase-lib/queries/utils/query";
+import * as Filter from "metabase-lib/queries/utils/filter";
 
-type Props = {
-  className?: string,
-  card: CardObject,
-  setDatasetQuery: (
-    datasetQuery: StructuredDatasetQuery,
-    options: { run: boolean },
-  ) => void,
-};
-
-type State = {
-  filterIndex: number,
-  filter: FieldFilter,
-  currentFilter: any,
-};
+import { FieldDimension } from "metabase-lib/Dimension";
 
 export default class TimeseriesFilterWidget extends Component {
-  props: Props;
-  state: State = {
+  state = {
+    dimension: null,
     filter: null,
     filterIndex: -1,
     currentFilter: null,
   };
 
-  _popover: ?any;
-
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    const query = Card.getQuery(nextProps.card);
-    if (query) {
-      const breakouts = Query.getBreakouts(query);
-      const filters = Query.getFilters(query);
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    const { question, query } = nextProps;
+    const breakouts = question.isStructured() && query.breakouts();
+    if (breakouts && breakouts.length > 0) {
+      const filters = query.filters();
 
-      const timeField = parseFieldTarget(breakouts[0]);
+      const dimensions = breakouts.map(b => b.dimension());
+      const firstDimension = dimensions[0];
+
+      const dimension =
+        firstDimension instanceof FieldDimension
+          ? firstDimension.withoutTemporalBucketing()
+          : firstDimension;
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          _.isEqual(filter[1], timeField.mbql()),
+          _.isEqual(filter[1], dimension.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeField.mbql(), -30, "day"];
+        filter = null; // All time
       }
 
-      this.setState({ filter, filterIndex, currentFilter });
+      this.setState({ dimension, filter, filterIndex, currentFilter });
     }
   }
 
   render() {
     const { className, card, setDatasetQuery } = this.props;
-    const { filter, filterIndex, currentFilter } = this.state;
+    const { dimension, filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
 
     if (currentFilter) {
-      currentDescription = generateTimeFilterValuesDescriptions(
-        currentFilter,
-      ).join(" - ");
+      currentDescription =
+        generateTimeFilterValuesDescriptions(currentFilter).join(" - ");
       if (currentFilter[0] === ">") {
         currentDescription = t`After ${currentDescription}`;
       } else if (currentFilter[0] === "<") {
@@ -113,7 +93,8 @@ export default class TimeseriesFilterWidget extends Component {
       >
         <DatePicker
           className="m2"
-          filter={this.state.filter}
+          dimension={dimension}
+          filter={filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}
@@ -131,7 +112,7 @@ export default class TimeseriesFilterWidget extends Component {
                 } else {
                   query = Query.addFilter(query, filter);
                 }
-                const datasetQuery: StructuredDatasetQuery = {
+                const datasetQuery = {
                   ...card.dataset_query,
                   query,
                 };

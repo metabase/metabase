@@ -1,0 +1,37 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Settings events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "settings",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "tracking_permission_enabled"
+      ],
+      "maxLength": 1024
+    },
+    "source": {
+      "description": "String identifying the product location where the event took place",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "setup",
+        "admin"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

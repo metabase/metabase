@@ -1,9 +1,9 @@
 import {
   partialMatch,
   enclosingFunction,
-} from "metabase/lib/expressions/completer";
+} from "metabase-lib/expressions/completer";
 
-describe("metabase/lib/expressions/completer", () => {
+describe("metabase-lib/expressions/completer", () => {
   describe("partialMatch", () => {
     it("should get the function name", () => {
       expect(partialMatch("Lowe")).toEqual("Lowe");
@@ -22,13 +22,16 @@ describe("metabase/lib/expressions/completer", () => {
       expect(partialMatch("X OR")).toEqual(null);
       expect(partialMatch("42 +")).toEqual(null);
       expect(partialMatch("3.14")).toEqual(null);
-      expect(partialMatch('"Hello')).toEqual(null);
-      expect(partialMatch("'world")).toEqual(null);
     });
 
     it("should handle empty input", () => {
       expect(partialMatch("")).toEqual(null);
       expect(partialMatch(" ")).toEqual(null);
+    });
+
+    it("should handle a dangling quote", () => {
+      expect(partialMatch("concat('s")).toEqual(null);
+      expect(partialMatch('length("c')).toEqual(null);
     });
   });
 

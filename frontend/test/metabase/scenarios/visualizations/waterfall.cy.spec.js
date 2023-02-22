@@ -4,10 +4,13 @@ import {
   visitQuestionAdhoc,
   openNativeEditor,
   visualize,
-} from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+  summarize,
+} from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -61,21 +64,15 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("X")
-      .click();
+    cy.get(".List-item").contains("X").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("Y")
-      .click();
+    cy.get(".List-item").contains("Y").click();
 
     cy.contains("Axes").click();
 
     cy.contains("Linear").click();
-    cy.get(".List-item")
-      .contains("Ordinal")
-      .click();
+    cy.get(".List-item").contains("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -89,26 +86,22 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("X")
-      .click();
+    cy.get(".List-item").contains("X").click();
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("Y")
-      .click();
+    cy.get(".List-item").contains("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
 
   it("should work with time-series data", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();
@@ -123,7 +116,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should hide the Total label if there is no space", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
@@ -139,25 +132,18 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
     });
-
-    cy.wait("@dataset");
 
     cy.findByText("Visualization").click();
     cy.findByTestId("Waterfall-button").click();
@@ -166,7 +152,37 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByTestId("remove-count").click();
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 
-    cy.findByText("Add another series...").should("not.exist");
+    cy.findByText(/Add another/).should("not.exist");
+  });
+
+  it("should not allow you to choose X-axis breakout", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    cy.findByText("Visualization").click();
+    cy.findByTestId("Waterfall-button").click();
+
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Created At").click();
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Count").click();
+
+    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+
+    cy.findByText(/Add another/).should("not.exist");
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {
@@ -177,7 +193,7 @@ describe("scenarios > visualizations > waterfall", () => {
           query:
             "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
     });
     cy.findByText("Visualization").click();
@@ -194,7 +210,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',0),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {
@@ -202,19 +218,12 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label")
-      .as("labels")
-      .eq(-3)
-      .invoke("text")
-      .should("eq", "0");
+    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
 
-    cy.get("@labels")
-      .last()
-      .invoke("text")
-      .should("eq", "0.1");
+    cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
-  it("should display correct values when one of them is null (metabase#16246)", () => {
+  it("should now display null values (metabase#16246)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
@@ -223,7 +232,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',null),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {
@@ -231,16 +240,9 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label")
-      .as("labels")
-      .eq(-3)
-      .invoke("text")
-      .should("eq", "0");
+    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "");
 
-    cy.get("@labels")
-      .last()
-      .invoke("text")
-      .should("eq", "0.1");
+    cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
@@ -264,17 +266,13 @@ describe("scenarios > visualizations > waterfall", () => {
     it("should allow toggling of the total bar", () => {
       cy.contains("Display").click();
 
-      cy.contains("Show total")
-        .next()
-        .click();
+      cy.contains("Show total").next().click();
 
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total").should("not.exist");
       });
 
-      cy.contains("Show total")
-        .next()
-        .click();
+      cy.contains("Show total").next().click();
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total");
       });
@@ -285,9 +283,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
       cy.get(".Visualization .value-label").should("not.exist");
 
-      cy.contains("Show values on data points")
-        .next()
-        .click();
+      cy.contains("Show values on data points").next().click();
       cy.get(".Visualization .value-label").within(() => {
         cy.findByText("(4.56)"); // negative in parentheses
       });

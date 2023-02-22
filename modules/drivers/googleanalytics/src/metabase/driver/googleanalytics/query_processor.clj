@@ -1,16 +1,17 @@
 (ns metabase.driver.googleanalytics.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format.
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
-  (:require [clojure.string :as str]
-            [java-time :as t]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date   "today")
@@ -22,7 +23,7 @@
 (defmethod ->rvalue Object [this] this)
 
 (defmethod ->rvalue :field
-  [[_ id-or-name options]]
+  [[_ id-or-name _options]]
   (if (integer? id-or-name)
     (:name (qp.store/field id-or-name))
     id-or-name))
@@ -245,7 +246,7 @@
           nil)))))
 
 (defmethod ->date-range :relative-datetime
-  [unit comparison-type [_ n relative-datetime-unit :as clause]]
+  [unit comparison-type [_ n relative-datetime-unit]]
   (or (when (= relative-datetime-unit :day)
         (day-date-range comparison-type n))
       (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
@@ -413,7 +414,7 @@
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{inner-query :query, :as raw}]
+  [{inner-query :query}]
   {:query (into
            ;; set to false to match behavior of other drivers
            {:include-empty-rows false}

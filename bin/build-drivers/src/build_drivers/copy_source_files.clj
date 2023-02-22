@@ -1,7 +1,8 @@
 (ns build-drivers.copy-source-files
-  (:require [build-drivers.common :as c]
-            [clojure.tools.build.api :as build]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [clojure.tools.build.api :as b]
+   [metabuild-common.core :as u]))
 
 (defn copy-source-files! [driver edition]
   (u/step (format "Copy %s source files" driver)
@@ -10,7 +11,7 @@
       (assert (every? u/absolute? dirs)
               (format "All dirs should be absolute, got: %s" (pr-str dirs)))
       (u/announce "Copying files in %s" (pr-str dirs))
-      (build/copy-dir
+      (b/copy-dir
        {:src-dirs   dirs
         :target-dir (c/compiled-source-target-dir driver)})
       (u/announce "Copied files in %d directories in %d ms."

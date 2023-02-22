@@ -1,18 +1,19 @@
-(ns metabase.sync.sync-metadata.fields-test
+(ns ^:mb/once metabase.sync.sync-metadata.fields-test
   "Tests for the logic that syncs Field models with the Metadata fetched from a DB. (There are more tests for this
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.models :refer [Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
@@ -137,7 +138,7 @@
           (is (= nil
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
-          (sync/sync-table! (Table (mt/id :venues)))
+          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
@@ -146,7 +147,7 @@
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (db/update! Field (mt/id :venues :id), :semantic_type nil)
-          (sync/sync-table! (Table (mt/id :venues)))
+          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
 

@@ -9,7 +9,6 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const https = require("https");
-const fetch = require("isomorphic-fetch");
 const url = require("url");
 
 const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
@@ -64,21 +63,27 @@ async function main(args) {
 
 // simple API client for poeditor
 function poeditor(command, params = {}) {
-  const uri = url.format({
-    protocol: "https",
-    hostname: "api.poeditor.com",
-    pathname: `/v2/${command}`,
-  });
   const query = {
     api_token: POEDITOR_API_TOKEN,
     id: POEDITOR_PROJECT_ID,
     ...params,
   };
-  return fetch(uri, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: url.format({ query }).replace(/^\?/, ""),
-  }).then(res => res.json());
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: "api.poeditor.com",
+      path: `/v2/${command}`,
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    }, res => {
+      const chunks = [];
+      res.on("data", chunk => { chunks.push(chunk); });
+      
+      res.on("end", () => { resolve(JSON.parse(Buffer.concat(chunks))) });
+    })
+    req.on('error',reject);
+    req.write(url.format({ query }).replace(/^\?/, ""));
+    req.end();
+  })
 }
 
 async function getExistingLanguages() {

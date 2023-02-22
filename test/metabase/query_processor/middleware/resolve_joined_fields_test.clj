@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.resolve-joined-fields
+    :as resolve-joined-fields]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (defn- wrap-joined-fields [query]
   (mt/with-everything-store
-    (:pre (mt/test-qp-middleware resolve-joined-fields/resolve-joined-fields query))))
+    (resolve-joined-fields/resolve-joined-fields query)))
 
 (deftest wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
@@ -214,3 +216,45 @@
                  :aggregation  [[:count]]
                  :breakout     [$products.id]
                  :limit        5})))))))
+
+(deftest do-not-rewrite-top-level-clauses-if-field-is-from-source-table-or-query
+  (testing (str "Do not add `:join-alias` to top-level `:field` clauses if the Field could come from the "
+                "`:source-table` or `:source-query` (#18502)")
+    (mt/dataset sample-dataset
+      (is (query= (mt/mbql-query people
+                    {:source-query {:source-table $$people
+                                    :breakout     [!month.created_at]
+                                    :aggregation  [[:count]]
+                                    :order-by     [[:asc !month.created_at]]}
+                     :joins        [{:source-query {:source-table $$people
+                                                    :breakout     [!month.birth_date]
+                                                    :aggregation  [[:count]]
+                                                    :order-by     [[:asc !month.birth_date]]}
+                                     :alias        "Q2"
+                                     :condition    [:= !month.created_at !month.&Q2.birth_date]
+                                     :fields       [&Q2.birth_date &Q2.*count/BigInteger]
+                                     :strategy     :left-join}]
+                     :fields       [!default.created_at
+                                    *count/BigInteger
+                                    &Q2.birth_date
+                                    &Q2.*count/BigInteger]
+                     :limit        3})
+                  (wrap-joined-fields
+                   (mt/mbql-query people
+                     {:source-query {:source-table $$people
+                                     :breakout     [!month.created_at]
+                                     :aggregation  [[:count]]
+                                     :order-by     [[:asc !month.created_at]]}
+                      :joins        [{:source-query {:source-table $$people
+                                                     :breakout     [!month.birth_date]
+                                                     :aggregation  [[:count]]
+                                                     :order-by     [[:asc !month.birth_date]]}
+                                      :alias        "Q2"
+                                      :condition    [:= !month.created_at !month.&Q2.birth_date]
+                                      :fields       [&Q2.birth_date &Q2.*count/BigInteger]
+                                      :strategy     :left-join}]
+                      :fields       [!default.created_at
+                                     *count/BigInteger
+                                     &Q2.birth_date
+                                     &Q2.*count/BigInteger]
+                      :limit        3})))))))

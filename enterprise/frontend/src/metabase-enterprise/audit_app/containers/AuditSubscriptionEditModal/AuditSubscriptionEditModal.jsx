@@ -4,9 +4,11 @@ import _ from "underscore";
 import { t } from "ttag";
 import Pulses from "metabase/entities/pulses";
 import Users from "metabase/entities/users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
 
 const mapStateToProps = (state, { pulse }) => ({
+  isAdmin: getUserIsAdmin(state),
   item: pulse,
   type: "pulse",
   invalidRecipientText: domains =>
@@ -24,8 +26,5 @@ export default _.compose(
     id: (state, props) => Number.parseInt(props.params.pulseId),
   }),
   Users.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(AuditNotificationEditModal);

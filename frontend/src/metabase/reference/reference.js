@@ -176,55 +176,62 @@ const updateDataWrapper = (props, fn) => {
 };
 
 export const rUpdateSegmentDetail = (formFields, props) => {
-  updateDataWrapper(props, props.updateSegment)(formFields);
+  return () => updateDataWrapper(props, props.updateSegment)(formFields);
 };
 export const rUpdateSegmentFieldDetail = (formFields, props) => {
-  updateDataWrapper(props, props.updateField)(formFields);
+  return () => updateDataWrapper(props, props.updateField)(formFields);
 };
 export const rUpdateDatabaseDetail = (formFields, props) => {
-  updateDataWrapper(props, props.updateDatabase)(formFields);
+  return () => updateDataWrapper(props, props.updateDatabase)(formFields);
 };
 export const rUpdateTableDetail = (formFields, props) => {
-  updateDataWrapper(props, props.updateTable)(formFields);
+  return () => updateDataWrapper(props, props.updateTable)(formFields);
 };
 export const rUpdateFieldDetail = (formFields, props) => {
-  updateDataWrapper(props, props.updateField)(formFields);
+  return () => updateDataWrapper(props, props.updateField)(formFields);
 };
 
-export const rUpdateMetricDetail = async (metric, formFields, props) => {
-  props.startLoading();
-  try {
-    const editedFields = filterUntouchedFields(formFields, metric);
-    if (!isEmptyObject(editedFields)) {
-      const newMetric = { ...metric, ...editedFields };
-      await props.updateMetric(newMetric);
+export const rUpdateMetricDetail = (metric, formFields, props) => {
+  return async () => {
+    props.startLoading();
+    try {
+      const editedFields = filterUntouchedFields(formFields, metric);
+      if (!isEmptyObject(editedFields)) {
+        const newMetric = { ...metric, ...editedFields };
+        await props.updateMetric(newMetric);
+      }
+    } catch (error) {
+      props.setError(error);
+      console.error(error);
     }
-  } catch (error) {
-    props.setError(error);
-    console.error(error);
-  }
 
-  resetForm(props);
+    resetForm(props);
+  };
 };
 
-export const rUpdateFields = async (fields, formFields, props) => {
-  props.startLoading();
-  try {
-    const updatedFields = Object.keys(formFields)
-      .map(fieldId => ({
-        field: fields[fieldId],
-        formField: filterUntouchedFields(formFields[fieldId], fields[fieldId]),
-      }))
-      .filter(({ field, formField }) => !isEmptyObject(formField))
-      .map(({ field, formField }) => ({ ...field, ...formField }));
+export const rUpdateFields = (fields, formFields, props) => {
+  return async () => {
+    props.startLoading();
+    try {
+      const updatedFields = Object.keys(formFields)
+        .map(fieldId => ({
+          field: fields[fieldId],
+          formField: filterUntouchedFields(
+            formFields[fieldId],
+            fields[fieldId],
+          ),
+        }))
+        .filter(({ field, formField }) => !isEmptyObject(formField))
+        .map(({ field, formField }) => ({ ...field, ...formField }));
 
-    await Promise.all(updatedFields.map(props.updateField));
-  } catch (error) {
-    props.setError(error);
-    console.error(error);
-  }
+      await Promise.all(updatedFields.map(props.updateField));
+    } catch (error) {
+      props.setError(error);
+      console.error(error);
+    }
 
-  resetForm(props);
+    resetForm(props);
+  };
 };
 
 const initialState = {

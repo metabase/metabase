@@ -8,11 +8,15 @@ import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
-import ErrorDetails from "metabase/components/ErrorDetails";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 import {
   QueryError,
+  QueryErrorHeader,
   QueryErrorIcon,
+  QueryErrorTitle,
+  QueryErrorLink,
   QueryErrorMessage,
+  QueryErrorContent,
 } from "./VisualizationError.styled";
 
 const EmailAdmin = () => {
@@ -58,7 +62,7 @@ export function adjustPositions(error, origSql) {
     adjustmentLength += newLinePos + 2;
   }
 
-  return error.replace(/Position: (\d+)/, function(_, p1) {
+  return error.replace(/Position: (\d+)/, function (_, p1) {
     return "Position: " + (parseInt(p1) - adjustmentLength);
   });
 }
@@ -143,12 +147,18 @@ class VisualizationError extends Component {
       }
       return (
         <QueryError className={className}>
-          <QueryErrorIcon>
-            <svg viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-              <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z " />
-            </svg>
-          </QueryErrorIcon>
-          <QueryErrorMessage>{processedError}</QueryErrorMessage>
+          <QueryErrorContent>
+            <QueryErrorHeader>
+              <QueryErrorIcon name="warning" />
+              <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
+            </QueryErrorHeader>
+            <QueryErrorMessage>{processedError}</QueryErrorMessage>
+            <QueryErrorLink
+              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+            >
+              {t`Learn how to debug SQL errors`}
+            </QueryErrorLink>
+          </QueryErrorContent>
         </QueryError>
       );
     } else {

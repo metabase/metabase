@@ -1,29 +1,33 @@
 (ns metabase.api.field
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.db.metadata-queries :as metadata]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.models.permissions :as perms]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.related :as related]
-            [metabase.server.middleware.offset-paging :as offset-paging]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.text.NumberFormat))
+  (:require
+   [clojure.string :as str]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.models.permissions :as perms]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.related :as related]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.text NumberFormat)))
 
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
@@ -47,10 +51,11 @@
                 (has-segmented-query-permissions? (field/table field)))
     (api/throw-403)))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
   [id]
-  (let [field (-> (api/check-404 (Field id))
+  (let [field (-> (api/check-404 (db/select-one Field :id id))
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
@@ -64,9 +69,10 @@
     ;; ...but if we do, return the Field <3
     field))
 
-(defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
-  (when (and dimension-id (= :external dimension-type))
-    (db/delete! Dimension :id dimension-id))
+(defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
+  (doseq [{dimension-id :id, dimension-type :type} dimensions]
+    (when (and dimension-id (= :external dimension-type))
+      (db/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -85,17 +91,19 @@
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
-  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as old-field} base-type new-semantic-type]
-  (when (and old-dim-id
-             (= :internal old-dim-type)
-             (not (internal-remapping-allowed? base-type new-semantic-type)))
-    (db/delete! Dimension :id old-dim-id))
+  [{:keys [dimensions], :as _old-field} base-type new-semantic-type]
+  (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
+    (when (and old-dim-id
+               (= :internal old-dim-type)
+               (not (internal-remapping-allowed? base-type new-semantic-type)))
+      (db/delete! Dimension :id old-dim-id)))
   true)
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   coercion_strategy visibility_type has_field_values settings]
+                   coercion_strategy visibility_type has_field_values settings nfc_path]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -106,7 +114,8 @@
    coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
-   settings           (s/maybe su/Map)}
+   settings           (s/maybe su/Map)
+   nfc_path           (s/maybe [su/NonBlankString])}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -137,56 +146,59 @@
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
                                      :coercion_strategy coercion-strategy)
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
-                       :has_field_values}
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                       :coercion_strategy :effective_type :has_field_values :nfc_path}
             :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (Field id) :dimensions)
+    (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
-(api/defendpoint GET "/:id/summary"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
   (let [field (api/read-check Field id)]
-    [[:count     (metadata/field-count field)]
-     [:distincts (metadata/field-distinct-count field)]]))
+    [[:count     (metadata-queries/field-count field)]
+     [:distincts (metadata-queries/field-distinct-count field)]]))
 
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
-(api/defendpoint POST "/:id/dimension"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
    dimension-name          (su/api-param "name" su/NonBlankString)
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
-  (let [field (api/write-check Field id)]
-    (api/check (or (= dimension-type "internal")
-                   (and (= dimension-type "external")
-                        human_readable_field_id))
-      [400 "Foreign key based remappings require a human readable field id"])
-    (if-let [dimension (Dimension :field_id id)]
-      (db/update! Dimension (u/the-id dimension)
-        {:type dimension-type
-         :name dimension-name
-         :human_readable_field_id human_readable_field_id})
-      (db/insert! Dimension
-        {:field_id id
-         :type dimension-type
-         :name dimension-name
-         :human_readable_field_id human_readable_field_id}))
-    (Dimension :field_id id)))
+  (api/write-check Field id)
+  (api/check (or (= dimension-type "internal")
+                 (and (= dimension-type "external")
+                      human_readable_field_id))
+             [400 "Foreign key based remappings require a human readable field id"])
+  (if-let [dimension (db/select-one Dimension :field_id id)]
+    (db/update! Dimension (u/the-id dimension)
+      {:type                    dimension-type
+       :name                    dimension-name
+       :human_readable_field_id human_readable_field_id})
+    (db/insert! Dimension
+                {:field_id                id
+                 :type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id}))
+  (db/select-one Dimension :field_id id))
 
-(api/defendpoint DELETE "/:id/dimension"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
-  (let [field (api/write-check Field id)]
-    (db/delete! Dimension :field_id id)
-    api/generic-204-no-content))
+  (api/write-check Field id)
+  (db/delete! Dimension :field_id id)
+  api/generic-204-no-content)
 
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
@@ -194,29 +206,58 @@
 (def ^:private empty-field-values
   {:values []})
 
+(declare search-values)
+
 (defn field->values
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
-  [field]
-  (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field)))
+  [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
+  ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
+  ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
+  ;; [[search-values]] without a search term to fetch all values.
+  (if-let [human-readable-field-id (when (= has-field-values-type :list)
+                                     (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
+    {:values          (search-values (api/check-404 field)
+                                     (api/check-404 (db/select-one Field :id human-readable-field-id)))
+     :field_id        field-id
+     :has_more_values has_more_values}
+    (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(defn- check-perms-and-return-field-values
+(defn check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
   [field-id]
-  (let [field (api/check-404 (Field field-id))]
+  (let [field (api/check-404 (db/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
 
-(api/defendpoint GET "/:id/values"
-  "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
+;; todo: we need to unify and untangle this stuff
+(defn field-id->values
+  "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
+  `api.field/check-parms-and-return-field-values`."
+  [field-id query]
+  (if (str/blank? query)
+    (check-perms-and-return-field-values field-id)
+    (let [field (api/check-404 (db/select-one Field :id field-id))]
+      ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
+      ;; is what the return-field-values returns above
+      {:values (map (comp vector first) (search-values field field query))
+       ;; assume there are more
+       :has_more_values true
+       :field_id field-id})))
+
+;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/values"
+  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
   (check-perms-and-return-field-values id))
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
-(api/defendpoint GET "/field%2C:field-name%2C:options/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/field%2C:field-name%2C:options/values"
   "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored
@@ -245,12 +286,14 @@
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
+      :type :full
       :field_id (u/the-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
                                (map second value-pairs)))))
 
-(api/defendpoint POST "/:id/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
@@ -259,28 +302,31 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
 
-
-(api/defendpoint POST "/:id/rescan_values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (api/check-superuser)
-  (field-values/create-or-update-field-values! (api/check-404 (Field id)))
+  (let [field (api/write-check (db/select-one Field :id id))]
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
-(api/defendpoint POST "/:id/discard_values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/check-superuser)
-  (field-values/clear-field-values! (api/check-404 (Field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (db/select-one Field :id id)))
   {:status :success})
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
@@ -292,7 +338,7 @@
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
-  non-FK Fields, returns them as-is. For example, with the Sample Dataset:
+  non-FK Fields, returns them as-is. For example, with the Sample Database:
 
      (follow-fks <PEOPLE.ID Field>)        ;-> <PEOPLE.ID Field>
      (follow-fks <REVIEWS.REVIEWER Field>) ;-> <PEOPLE.ID Field>
@@ -305,15 +351,15 @@
     (db/select-one Field :id fk-target-field-id)
     field))
 
-
 (defn- search-values-query
-  "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
-  slightly based on whether the two Fields are the same Field."
+  "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
+  differs slightly based on whether the two Fields are the same Field."
   [field search-field value limit]
   {:database (db-id field)
    :type     :query
    :query    {:source-table (table-id field)
-              :filter       [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}]
+              :filter       (when (some? value)
+                              [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
               ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
               ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
               ;; identifiers/aliases
@@ -328,43 +374,48 @@
 
       [<value-of-field> <matching-value-of-search-field>].
 
-   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name
+   For example, with the Sample Database, you could search for the first three IDs & names of People whose name
   contains `Ma` as follows:
 
       (search-values <PEOPLE.ID Field> <PEOPLE.NAME Field> \"Ma\" 3)
       ;; -> ((14 \"Marilyne Mohr\")
              (36 \"Margot Farrell\")
              (48 \"Maryam Douglas\"))"
-  [field search-field value maybe-limit]
-  (try
-    (let [field   (follow-fks field)
-          limit   (or maybe-limit default-max-field-search-limit)
-          results (qp/process-query (search-values-query field search-field value limit))
-          rows    (get-in results [:data :rows])]
-      ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
-      ;; return them as-is
-      (if-not (= (u/the-id field) (u/the-id search-field))
-        rows
-        ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
-        ;; value to get the format the frontend expects
-        (for [[result] rows]
-          [result result])))
-    ;; this Exception is usually one that can be ignored which is why I gave it log level debug
-    (catch Throwable e
-      (log/debug e (trs "Error searching field values"))
-      nil)))
+  ([field search-field]
+   (search-values field search-field nil nil))
+  ([field search-field value]
+   (search-values field search-field value nil))
+  ([field search-field value maybe-limit]
+   (try
+     (let [field   (follow-fks field)
+           limit   (or maybe-limit default-max-field-search-limit)
+           results (qp/process-query (search-values-query field search-field value limit))
+           rows    (get-in results [:data :rows])]
+       ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
+       ;; return them as-is
+       (if-not (= (u/the-id field) (u/the-id search-field))
+         rows
+         ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
+         ;; value to get the format the frontend expects
+         (for [[result] rows]
+           [result result])))
+     ;; this Exception is usually one that can be ignored which is why I gave it log level debug
+     (catch Throwable e
+       (log/debug e (trs "Error searching field values"))
+       nil))))
 
 
-(api/defendpoint GET "/:id/search/:search-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
   {value su/NonBlankString}
-  (let [field        (api/check-404 (Field id))
-        search-field (api/check-404 (Field search-id))]
+  (let [field        (api/check-404 (db/select-one Field :id id))
+        search-field (api/check-404 (db/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
-    (search-values field search-field value offset-paging/*limit*)))
+    (search-values field search-field value mw.offset-paging/*limit*)))
 
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
@@ -373,7 +424,7 @@
 
    if a match is found.
 
-   For example, with the Sample Dataset, you could find the name of the Person with ID 20 as follows:
+   For example, with the Sample Database, you could find the name of the Person with ID 20 as follows:
 
       (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
       ;; -> [20 \"Peter Watsica\"]"
@@ -403,7 +454,8 @@
     (.parse (NumberFormat/getInstance) value)
     value))
 
-(api/defendpoint GET "/:id/remapping/:remapped-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
@@ -411,9 +463,10 @@
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
-(api/defendpoint GET "/:id/related"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Field api/read-check related/related))
+  (-> (db/select-one Field :id id) api/read-check related/related))
 
 (api/define-routes)

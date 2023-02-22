@@ -3,23 +3,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import { iconPropTypes } from "metabase/components/Icon";
 
-import CardRenderer from "./CardRenderer";
-import LegendLayout from "./legend/LegendLayout";
-
 import "./LineAreaBarChart.css";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
 
-import {
-  isNumeric,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase/lib/schema_metadata";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -27,12 +16,25 @@ import { formatValue } from "metabase/lib/formatting";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import {
-  MinRowsError,
-  ChartSettingsError,
-} from "metabase/visualizations/lib/errors";
+  validateChartDataSettings,
+  validateDatasetRows,
+  validateStacking,
+} from "metabase/visualizations/lib/settings/validation";
+import { getOrderedSeries } from "metabase/visualizations/lib/series";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import {
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/types/utils/isa";
 
-import _ from "underscore";
-import cx from "classnames";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -74,15 +76,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import { normal } from "metabase/lib/colors";
-
 export default class LineAreaBarChart extends Component {
-  props: VisualizationProps;
-
-  static identifier: string;
-  static renderer: (element: Element, props: VisualizationProps) => any;
-
   static noHeader = true;
   static supportsSeries = true;
 
@@ -107,22 +101,9 @@ export default class LineAreaBarChart extends Component {
       throw new Error(t`${this.uiName} chart does not support multiple series`);
     }
 
-    const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
-    if (_.every(series, singleSeriesHasNoRows)) {
-      throw new MinRowsError(1, 0);
-    }
-
-    const dimensions = (settings["graph.dimensions"] || []).filter(
-      name => name,
-    );
-    const metrics = (settings["graph.metrics"] || []).filter(name => name);
-    if (dimensions.length < 1 || metrics.length < 1) {
-      throw new ChartSettingsError(
-        t`Which fields do you want to use for the X and Y axes?`,
-        { section: t`Data` },
-        t`Choose fields`,
-      );
-    }
+    validateDatasetRows(series);
+    validateChartDataSettings(settings);
+    validateStacking(settings);
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
@@ -269,10 +250,9 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
-  getLegendSettings() {
+  getLegendSettings(series) {
     const {
       card,
-      series,
       settings,
       showTitle,
       actionButtons,
@@ -303,7 +283,7 @@ export default class LineAreaBarChart extends Component {
       : series.map(single => single.card.name);
     const colors = seriesSettings
       ? seriesSettings.map(s => s.color)
-      : Object.values(normal);
+      : Object.values(getAccentColors());
 
     return {
       title,
@@ -365,9 +345,11 @@ export default class LineAreaBarChart extends Component {
       isFullscreen,
       isQueryBuilder,
       onHoverChange,
-      onAddSeries,
       onRemoveSeries,
+      settings,
     } = this.props;
+
+    const orderedSeries = getOrderedSeries(series, settings);
 
     const {
       title,
@@ -378,7 +360,7 @@ export default class LineAreaBarChart extends Component {
       hasLegend,
       hasBreakout,
       canSelectTitle,
-    } = this.getLegendSettings();
+    } = this.getLegendSettings(orderedSeries);
 
     return (
       <LineAreaBarChartRoot
@@ -407,13 +389,12 @@ export default class LineAreaBarChart extends Component {
           isFullscreen={isFullscreen}
           isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
-          onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
         >
           <CardRenderer
             {...this.props}
-            series={series}
+            series={orderedSeries}
             settings={this.getSettings()}
             className="renderer flex-full"
             maxSeries={MAX_SERIES}
@@ -498,6 +479,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         ]
           .filter(n => n)
           .join(": "),
+        originalCardName: card.name,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
@@ -541,6 +523,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         card: {
           ...card,
           name: name,
+          originalCardName: card.name,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
           // EXCEPT for dashboard multiseries, so check seriesIndex == 0

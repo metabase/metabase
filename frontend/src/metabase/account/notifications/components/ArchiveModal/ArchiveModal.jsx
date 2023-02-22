@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/notifications";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
 import { ModalMessage } from "./ArchiveModal.styled";
@@ -52,7 +52,7 @@ const ArchiveModal = ({
       onClose={onClose}
     >
       {isCreator(item, user) && hasUnsubscribed && (
-        <ModalMessage>
+        <ModalMessage data-server-date>
           {getCreatorMessage(type, user)}
           {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
         </ModalMessage>

@@ -1,11 +1,15 @@
 (ns metabase.async.util
   "Utility functions for core.async-based async logic."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [schema.core :as s])
-  (:import clojure.core.async.impl.buffers.PromiseBuffer
-           clojure.core.async.impl.channels.ManyToManyChannel
-           java.util.concurrent.ThreadPoolExecutor))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.util.log :as log]
+   [schema.core :as s])
+  (:import
+   (clojure.core.async.impl.buffers PromiseBuffer)
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.util.concurrent ThreadPoolExecutor)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
 ;; 2020. No longer needed
@@ -20,6 +24,8 @@
   "Schema for a core.async promise channel."
   (s/constrained ManyToManyChannel promise-chan? "promise chan"))
 
+;;; TODO -- this is used in literally one place only, [[metabase.api.public/run-query-for-card-with-id-async-run-fn]],
+;;; so maybe we should consider getting rid of it.
 (s/defn promise-pipe
   "Like `core.async/pipe` but for promise channels, and closes `in-chan` if `out-chan` is closed before receiving a
   result. Closes both channels when `in-chan` closes or receives a result."

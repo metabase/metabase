@@ -15,7 +15,6 @@ const DropTargetBackgroundAndBorder = ({
   <div
     className={cx("absolute rounded", {
       "pointer-events-none": !highlighted,
-      "bg-medium": highlighted,
     })}
     style={{
       top: -marginTop,
@@ -55,13 +54,16 @@ export default class DropArea extends React.Component {
       children,
       className,
       style,
+      enableDropTargetBackground = true,
       ...props
     } = this.props;
     return this.state.show
       ? connectDropTarget(
           <div className={cx("relative", className)} style={style}>
             {typeof children === "function" ? children(props) : children}
-            <DropTargetBackgroundAndBorder {...props} />
+            {enableDropTargetBackground && (
+              <DropTargetBackgroundAndBorder {...props} />
+            )}
           </div>,
         )
       : null;

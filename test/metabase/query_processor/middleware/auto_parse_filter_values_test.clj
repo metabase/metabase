@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.auto-parse-filter-values-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.auto-parse-filter-values
+    :as auto-parse-filter-values]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest parse-value-for-base-type-test
   (testing "Should throw an Exception with a useful error message if parsing fails"
@@ -11,7 +15,7 @@
          (#'auto-parse-filter-values/parse-value-for-base-type "s" :type/Integer)))))
 
 (defn- auto-parse-filter-values [query]
-  (mt/test-qp-middleware auto-parse-filter-values/auto-parse-filter-values query))
+  (auto-parse-filter-values/auto-parse-filter-values query))
 
 (deftest auto-parse-filter-values-test
   (doseq [[base-type expected] {:type/Integer    4
@@ -25,7 +29,7 @@
                [:= $price [:value expected {:base_type base-type}]])
              (-> (mt/mbql-query venues {:filter [:= $price [:value (str expected) {:base_type base-type}]]})
                  auto-parse-filter-values
-                 :pre :query :filter))))))
+                 :query :filter))))))
 
 (deftest parse-large-integers-test
   (testing "Should parse Integer strings to Longs in case they're extra-big"
@@ -35,6 +39,5 @@
         (is (= (mt/$ids venues
                  [:= $price [:value n {:base_type :type/Integer}]])
                (-> (auto-parse-filter-values query)
-                   :pre
                    :query
                    :filter)))))))

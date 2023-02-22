@@ -1,63 +1,75 @@
 (ns metabase.plugins
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.plugins.initialize :as initialize]
-            [metabase.util.files :as files]
-            [metabase.util.i18n :refer [trs]]
-            [yaml.core :as yaml])
-  (:import java.io.File
-           [java.nio.file Files Path]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.initialize :as plugins.init]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml])
+  (:import
+   (java.io File)
+   (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
       (.getAbsolutePath (io/file "plugins"))))
 
-;; logic for determining plugins dir -- see below
-(defonce ^:private plugins-dir*
-  (delay
-    (let [filename (plugins-dir-filename)]
-      (try
-        ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
-        (let [path (files/get-path filename)]
-          (files/create-dir-if-not-exists! path)
-          (assert (Files/isWritable path)
-            (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
-          path)
-        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
-        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
-        (catch Throwable e
-          (log/warn
-           e
-           (trs "Metabase cannot use the plugins directory {0}" filename)
-           "\n"
-           (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
-           (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
-           (trs "Falling back to a temporary directory for now."))
-          ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
-          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
-          (let [path (files/get-path (System/getProperty "java.io.tmpdir"))]
-            (assert (Files/isWritable path)
-              (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
-            path))))))
+(def ^:private plugins-dir*
+  ;; Memoized so we don't log the error messages multiple times if the plugins directory doesn't change
+  (memoize/memo
+   (fn [filename]
+     (try
+       ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
+       (let [path (u.files/get-path filename)]
+         (u.files/create-dir-if-not-exists! path)
+         (assert (Files/isWritable path)
+           (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
+         {:path  path, :temp false})
+       ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
+       ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
+       (catch Throwable e
+         (log/warn
+          e
+          (trs "Metabase cannot use the plugins directory {0}" filename)
+          "\n"
+          (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
+          (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
+          (trs "Falling back to a temporary directory for now."))
+         ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
+         ;; gracefully proceed here. Throw an Exception detailing the critical issues.
+         (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
+           (assert (Files/isWritable path)
+             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
+           {:path path, :temp true}))))))
 
-;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
-;; in cases where we have to fall back to the system temporary directory
-(defn- plugins-dir
-  "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
-  another, or if we do not have write permissions for it, use a temporary directory instead."
+(defn plugins-dir-info
+  "Map with a :path key containing the `Path` to the Metabase plugins directory, and a :temp key indicating whether a
+  temporary directory was used."
   ^Path []
-  @plugins-dir*)
+  (plugins-dir* (plugins-dir-filename)))
+
+(defn plugins-dir
+  "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
+  another, or if we do not have write permissions for it, use a temporary directory instead.
+
+  This is a wrapper around `plugins-dir-info` which also contains a :temp key indicating whether a temporary directory
+  was used."
+  []
+  (:path (plugins-dir-info)))
 
 (defn- extract-system-modules! []
   (when (io/resource "modules")
     (let [plugins-path (plugins-dir)]
-      (files/with-open-path-to-resource [modules-path "modules"]
-        (files/copy-files! modules-path plugins-path)))))
+      (u.files/with-open-path-to-resource [modules-path "modules"]
+        (u.files/copy-files! modules-path plugins-path)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -68,14 +80,14 @@
   (classloader/add-url-to-classpath! (-> jar-path .toUri .toURL)))
 
 (defn- plugin-info [^Path jar-path]
-  (some-> (files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
+  (some-> (u.files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
           yaml/parse-string))
 
 (defn- init-plugin-with-info!
   "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
   [info]
-  (initialize/init-plugin-with-info! info))
+  (plugins.init/init-plugin-with-info! info))
 
 (defn- init-plugin!
   "Init plugin JAR file; returns truthy if plugin initialization was successful."
@@ -92,9 +104,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- plugins-paths []
-  (for [^Path path (files/files-seq (plugins-dir))
-        :when      (and (files/regular-file? path)
-                        (files/readable? path)
+  (for [^Path path (u.files/files-seq (plugins-dir))
+        :when      (and (u.files/regular-file? path)
+                        (u.files/readable? path)
                         (str/ends-with? (.getFileName path) ".jar")
                         (or (not (str/ends-with? (.getFileName path) "spark-deps.jar"))
                             ;; if the JAR in question is the spark deps JAR we cannot load it because it's signed, and
@@ -107,7 +119,7 @@
 
 (when (or config/is-dev? config/is-test?)
   (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml.core/parse-string initialize/init-plugin-with-info!))
+    (some-> (slurp (str path)) yaml.core/parse-string plugins.init/init-plugin-with-info!))
 
   (defn- driver-manifest-paths
     "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
@@ -118,7 +130,8 @@
            :when      (and (.isDirectory file)
                            (not (.isHidden file))
                            (str/includes? (str file) "modules/drivers")
-                           (str/ends-with? (str file) "resources"))
+                           (or (str/ends-with? (str file) "resources")
+                               (str/ends-with? (str file) "resources-ee")))
            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
            :when      (.exists manifest-file)]
        manifest-file)
@@ -127,7 +140,7 @@
      ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
      ;; multiple plugin manifests by comma-separating them.
      (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
-       (map files/get-path (str/split additional-paths #",")))))
+       (map u.files/get-path (str/split additional-paths #",")))))
 
   (defn- load-local-plugin-manifests!
     "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
@@ -140,7 +153,7 @@
       (load-local-plugin-manifest! manifest-path))))
 
 (defn- has-manifest? ^Boolean [^Path path]
-  (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
+  (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
 
 (defn- init-plugins! [paths]
   ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
@@ -162,7 +175,7 @@
   (when (or config/is-dev? config/is-test?)
     (load-local-plugin-manifests!)))
 
-(defonce ^:private load!* (delay (load!)))
+(defonce ^:private loaded? (atom false))
 
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
@@ -182,4 +195,8 @@
   This function will only perform loading steps the first time it is called — it is safe to call this function more
   than once."
   []
-  @load!*)
+  (when-not @loaded?
+    (locking loaded?
+      (when-not @loaded?
+        (load!)
+        (reset! loaded? true)))))

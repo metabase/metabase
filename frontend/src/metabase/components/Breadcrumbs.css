@@ -20,6 +20,10 @@
   cursor: default;
 }
 
+:local(.breadcrumb.fontLarge) {
+  font-size: 0.875rem;
+}
+
 :local(.breadcrumbDivider) {
   margin-left: var(--breadcrumb-divider-spacing);
   margin-right: var(--breadcrumb-divider-spacing);

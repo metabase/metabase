@@ -1,4 +1,3 @@
-import "core-js/stable";
 import "regenerator-runtime/runtime";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
@@ -7,12 +6,17 @@ import "classlist-polyfill";
 
 import "number-to-locale-string";
 
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// Should be imported before any other metabase import
+import "ee-overrides"; // eslint-disable-line import/no-unresolved, import/no-duplicates
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
 
 // set the locale before loading anything else
-import { loadLocalization } from "metabase/lib/i18n";
+import "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
 import "metabase/lib/colors";
@@ -22,26 +26,12 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-unresolved
-
-import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
-
-import registerVisualizations from "metabase/visualizations/register";
+import "ee-plugins"; // eslint-disable-line import/no-unresolved, import/no-duplicates
 
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "styled-components";
-
-import { createTracker } from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
-
-import api from "metabase/lib/api";
-import { initializeEmbedding } from "metabase/lib/embed";
-
-import { getStore } from "./store";
-
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { ThemeProvider } from "@emotion/react";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -51,6 +41,16 @@ import { syncHistoryWithStore } from "react-router-redux";
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { initializeEmbedding } from "metabase/lib/embed";
+import api from "metabase/lib/api";
+import MetabaseSettings from "metabase/lib/settings";
+import { createTracker } from "metabase/lib/analytics";
+import registerVisualizations from "metabase/visualizations/register";
+import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
+
+import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { getStore } from "./store";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -72,10 +72,14 @@ function _init(reducers, getRoutes, callback) {
   const history = syncHistoryWithStore(browserHistory, store);
 
   let root;
+
+  createTracker(store);
+
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
+          <GlobalStyles />
           <Router history={history}>{routes}</Router>
         </ThemeProvider>
       </DragDropContextProvider>
@@ -83,23 +87,11 @@ function _init(reducers, getRoutes, callback) {
     document.getElementById("root"),
   );
 
-  createTracker(store);
-
   registerVisualizations();
 
   initializeEmbedding(store);
 
   store.dispatch(refreshSiteSettings());
-
-  MetabaseSettings.on("user-locale", async locale => {
-    // reload locale definition and site settings with the new locale
-    await Promise.all([
-      loadLocalization(locale),
-      store.dispatch(refreshSiteSettings({ locale })),
-    ]);
-    // force re-render of React application
-    root.forceUpdate();
-  });
 
   PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
 

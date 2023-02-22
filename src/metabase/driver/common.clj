@@ -1,63 +1,25 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  (:require [clj-time.coerce :as tcoerce]
-            [clj-time.core :as time]
-            [clj-time.format :as tformat]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.setting :as setting]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [schema.core :as s])
-  (:import java.text.SimpleDateFormat
-           org.joda.time.DateTime
-           org.joda.time.format.DateTimeFormatter))
+  (:require
+   [clj-time.coerce :as time.coerce]
+   [clj-time.core :as time]
+   [clj-time.format :as time.format]
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [schema.core :as s])
+  (:import
+   (java.text SimpleDateFormat)
+   (org.joda.time DateTime)
+   (org.joda.time.format DateTimeFormatter)))
 
-(def connection-error-messages
-  "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port
-   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-        " "
-        (deferred-tru "Make sure your host and port settings are correct"))
-
-   :ssh-tunnel-auth-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the username, password."))
-
-   :ssh-tunnel-connection-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the hostname and port."))
-
-   :database-name-incorrect
-   (deferred-tru "Looks like the database name is incorrect.")
-
-   :invalid-hostname
-   (str (deferred-tru "It looks like your host is invalid.")
-        " "
-        (deferred-tru "Please double-check it and try again."))
-
-   :password-incorrect
-   (deferred-tru "Looks like your password is incorrect.")
-
-   :password-required
-   (deferred-tru "Looks like you forgot to enter your password.")
-
-   :username-incorrect
-   (deferred-tru "Looks like your username is incorrect.")
-
-   :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")
-
-   :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
-
-   :requires-ssl
-   (deferred-tru "Server appears to require SSL - please enable SSL above")})
+(set! *warn-on-reflection* true)
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -65,7 +27,8 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :placeholder  "localhost"})
+   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :placeholder  "name.database.com"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
@@ -78,7 +41,7 @@
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
    :display-name (deferred-tru "Username")
-   :placeholder  (deferred-tru "What username do you use to login to the database?")
+   :placeholder  (deferred-tru "username")
    :required     true})
 
 (def default-password-details
@@ -98,15 +61,140 @@
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)")
    :type         :boolean
    :default      false})
 
-(def default-additional-options-details
+(def additional-options
   "Map of the db `additional-options` details field, useful for `connection-properties` implementations. Should assoc a
   `:placeholder` key"
   {:name         "additional-options"
-   :display-name (deferred-tru "Additional JDBC connection string options")})
+   :display-name (deferred-tru "Additional JDBC connection string options")
+   :visible-if   {"advanced-options" true}})
+
+(def ssh-tunnel-preferences
+  "Configuration parameters to include in the add driver page on drivers that
+  support ssh tunnels"
+  [{:name         "tunnel-enabled"
+    :display-name (deferred-tru "Use an SSH tunnel")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
+    :type         :boolean
+    :default      false}
+   {:name         "tunnel-host"
+    :display-name (deferred-tru "SSH tunnel host")
+    :helper-text  (deferred-tru "The hostname that you use to connect to SSH tunnels.")
+    :placeholder  "hostname"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-port"
+    :display-name (deferred-tru "SSH tunnel port")
+    :type         :integer
+    :default      22
+    :required     false
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-user"
+    :display-name (deferred-tru "SSH tunnel username")
+    :helper-text  (deferred-tru "The username you use to login to your SSH tunnel.")
+    :placeholder  "username"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   ;; this is entirely a UI flag
+   {:name         "tunnel-auth-option"
+    :display-name (deferred-tru "SSH Authentication")
+    :type         :select
+    :options      [{:name (deferred-tru "SSH Key") :value "ssh-key"}
+                   {:name (deferred-tru "Password") :value "password"}]
+    :default      "ssh-key"
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-pass"
+    :display-name (deferred-tru "SSH tunnel password")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "password"}}
+   {:name         "tunnel-private-key"
+    :display-name (deferred-tru "SSH private key to connect to the tunnel")
+    :type         :string
+    :placeholder  (deferred-tru "Paste the contents of an SSH private key here")
+    :required     true
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
+   {:name         "tunnel-private-key-passphrase"
+    :display-name (deferred-tru "Passphrase for SSH private key")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
+
+(def advanced-options-start
+  "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
+  have their visibility controlled using the `visible-if` property."
+  {:name    "advanced-options"
+   :type    :section
+   :default false})
+
+(def auto-run-queries
+  "Map representing the `auto-run-queries` option in a DB connection form."
+  {:name         "auto_run_queries"
+   :type         :boolean
+   :default      true
+   :display-name (deferred-tru "Rerun queries for simple explorations")
+   :description  (deferred-tru
+                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                        "This is on by default but you can turn it off if performance is slow."))
+   :visible-if   {"advanced-options" true}})
+
+(def let-user-control-scheduling
+  "Map representing the `let-user-control-scheduling` option in a DB connection form."
+  {:name         "let-user-control-scheduling"
+   :type         :boolean
+   :display-name (deferred-tru "Choose when syncs and scans happen")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
+   :visible-if   {"advanced-options" true}})
+
+(def metadata-sync-schedule
+  "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.metadata_sync"
+   :display-name (deferred-tru "Database syncing")
+   :description  (deferred-tru
+                   (str "This is a lightweight process that checks for updates to this database’s schema. "
+                        "In most cases, you should be fine leaving this set to sync hourly."))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def cache-field-values-schedule
+  "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.cache_field_values"
+   :display-name (deferred-tru "Scanning for Filter Values")
+   :description  (deferred-tru
+                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                        "particularly if you have a very large database. When should Metabase automatically scan "
+                        "and cache field values?"))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def json-unfolding
+  "Map representing the `json-unfolding` option in a DB connection form"
+  {:name         "json-unfolding"
+   :display-name (deferred-tru "Unfold JSON Columns")
+   :type         :boolean
+   :visible-if   {"advanced-options" true}
+   :description  (deferred-tru
+                   (str "We unfold JSON columns into component fields."
+                        "This is on by default but you can turn it off if performance is slow."))
+   :default      true})
+
+(def refingerprint
+  "Map representing the `refingerprint` option in a DB connection form."
+  {:name         "refingerprint"
+   :type         :boolean
+   :display-name (deferred-tru "Periodically refingerprint tables")
+   :description  (deferred-tru
+                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                        "behavior, like improved auto-binning on your bar charts."))
+   :visible-if   {"advanced-options" true}})
+
+(def default-advanced-options
+  "Vector containing the three most common options present in the advanced option section of the DB connection form."
+  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -118,13 +206,34 @@
 
   See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
   for more details."
-  {:additional-options default-additional-options-details
-   :dbname             default-dbname-details
-   :host               default-host-details
-   :password           default-password-details
-   :port               default-port-details
-   :ssl                default-ssl-details
-   :user               default-user-details})
+  {:dbname                   default-dbname-details
+   :host                     default-host-details
+   :password                 default-password-details
+   :port                     default-port-details
+   :ssl                      default-ssl-details
+   :user                     default-user-details
+   :ssh-tunnel               ssh-tunnel-preferences
+   :additional-options       additional-options
+   :advanced-options-start   advanced-options-start
+   :default-advanced-options default-advanced-options})
+
+(def cloud-ip-address-info
+  "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior
+  to being returned to the client, in [[metabase.driver.util/connection-props-server->client]]."
+  {:name   "cloud-ip-address-info"
+   :type   :info
+   :getter (fn []
+             (when-let [ips (public-settings/cloud-gateway-ips)]
+               (str (deferred-tru
+                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                    "\n"
+                    (str/join " - " ips))))})
+
+(def default-connection-info-fields
+  "Default definitions for informational banners that can be included in a database connection form. These keys can be
+  added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
+  {:cloud-ip-address-info cloud-ip-address-info})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -139,7 +248,7 @@
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
   (parse [formatter date-time-str]
-    (tformat/parse formatter date-time-str)))
+    (time.format/parse formatter date-time-str)))
 
 ;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
 ;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
@@ -152,13 +261,13 @@
     (let [sdf         (SimpleDateFormat. format-str)
           parsed-date (.parse sdf date-time-str)
           joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
-      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+      (time/to-time-zone (time.coerce/from-date parsed-date) joda-tz))))
 
 (defn ^:deprecated create-db-time-formatters
-  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  "Creates date formatters from `date-format-str` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
-  [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
+  [(.withOffsetParsed ^DateTimeFormatter (time.format/formatter date-format-str))
    (ThreadSafeSimpleDateFormat. date-format-str)])
 
 (defn- ^:deprecated first-successful-parse
@@ -170,48 +279,46 @@
         (parse formatter time-str))))
 
 (defmulti ^:deprecated current-db-time-native-query
-  "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
+  "Return a native query that will fetch the current time (presumably as a string) used by the [[current-db-time]]
   implementation below.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti ^:deprecated current-db-time-date-formatters
-  "Return JODA time date formatters to parse the current time returned by `current-db-time-native-query`. Used by
-  `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
+  "Return JODA time date formatters to parse the current time returned by [[current-db-time-native-query`]] Used by
+  `current-db-time` implementation below. You can use [[create-db-time-formatters]] provided by this namespace to create
   formatters for a date format string.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defn ^:deprecated current-db-time
-  "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
-  `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
-  the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided.
+  "Implementation of [[metabase.driver/current-db-time]] using the [[current-db-time-native-query]] and
+  [[current-db-time-date-formatters]] multimethods defined above. Execute a native query for the current time, and
+  parse the results using the date formatters, preserving the timezone. To use this implementation, you must implement
+  the aforementioned multimethods; no default implementation is provided.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   ^org.joda.time.DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
-          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                            {:settings {:report-timezone report-tz}})
           time-str        (try
-                            ;; need to initialize the store since we're calling `execute-reducible-query` directly
-                            ;; instead of going thru normal QP pipeline
+                            ;; need to initialize the store since we're calling [[driver/execute-reducible-query]]
+                            ;; directly instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}
-                                    reduce (fn [metadata reducible-rows]
+                                    reduce (fn [_metadata reducible-rows]
                                              (transduce
                                               identity
                                               (fn
@@ -222,8 +329,10 @@
                                 (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
                             (catch Exception e
                               (throw
-                               (Exception.
-                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+                               (ex-info (tru "Error querying database {0} for current time: {1}"
+                                             (pr-str (:name database)) (ex-message e))
+                                        {:driver driver, :query native-query}
+                                        e))))]
       (try
         (when time-str
           (first-successful-parse date-formatters time-str))
@@ -301,14 +410,43 @@
            key
            class->base-type)))))
 
-(def ^:private days-of-week
+(def ^:private ^clojure.lang.PersistentVector days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
-(s/defn start-of-week-offset :- s/Int
-  "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
-  [driver]
-  (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
-        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-keyword :start-of-week))
+(def ^:dynamic *start-of-week*
+  "Used to override the [[metabase.public-settings/start-of-week]] settings.
+  Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
+  More in (defmethod date [:sql :week-of-year-us])."
+  nil)
+
+(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
+                                      "Start of week integer")
+  "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
+  `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
+  {:added "0.42.0"}
+  []
+  (.indexOf days-of-week (or *start-of-week* (setting/get-value-of-type :keyword :start-of-week))))
+
+(defn start-of-week-offset-for-day
+  "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
+  offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
+  of week in the range 1..7 with [[metabase.public-settings/start-of-week]] as 1."
+  [start-of-week]
+  (let [db-start-of-week     (.indexOf days-of-week start-of-week)
+        target-start-of-week (start-of-week->int)
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
+
+(s/defn start-of-week-offset :- s/Int
+  "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
+  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
+  results.
+
+  e.g.
+
+  If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
+  and [[metabase.public-settings/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
+  Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
+  [driver]
+  (start-of-week-offset-for-day (driver/db-start-of-week driver)))

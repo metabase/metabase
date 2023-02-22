@@ -4,8 +4,7 @@ export const viewsByTime = questionId => ({
     display: "bar",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.question-detail/cached-views-by-time",
+      fn: "metabase-enterprise.audit-app.pages.question-detail/cached-views-by-time",
       args: [questionId, "day"],
     },
     visualization_settings: {
@@ -33,21 +32,19 @@ export const averageExecutionTime = questionId => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.question-detail/avg-execution-time-by-time",
+      fn: "metabase-enterprise.audit-app.pages.question-detail/avg-execution-time-by-time",
       args: [questionId, "day"],
     },
   },
 });
 
-export const revisionHistory = (questionId: number) => ({
+export const revisionHistory = questionId => ({
   card: {
     name: "Revision history",
     display: "table",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.question-detail/revision-history",
+      fn: "metabase-enterprise.audit-app.pages.question-detail/revision-history",
       args: [questionId],
     },
     visualization_settings: {
@@ -61,7 +58,7 @@ export const revisionHistory = (questionId: number) => ({
   },
 });
 
-export const auditLog = (questionId: number) => ({
+export const auditLog = questionId => ({
   card: {
     name: "Audit log",
     display: "table",

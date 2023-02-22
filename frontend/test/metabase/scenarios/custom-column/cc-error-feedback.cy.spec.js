@@ -2,7 +2,7 @@ import {
   restore,
   openProductsTable,
   enterCustomColumnDetails,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > custom column > error feedback", () => {
   beforeEach(() => {
@@ -11,50 +11,6 @@ describe("scenarios > question > custom column > error feedback", () => {
 
     openProductsTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-  });
-
-  it("should catch mismatched parentheses", () => {
-    enterCustomColumnDetails({
-      formula: "FLOOR [Price]/2)",
-      name: "Massive Discount",
-    });
-
-    cy.contains(/^Expecting an opening parenthesis after function FLOOR/i);
-  });
-
-  it("should catch missing parentheses", () => {
-    enterCustomColumnDetails({
-      formula: "LOWER [Vendor]",
-      name: "Massive Discount",
-    });
-
-    cy.contains(/^Expecting an opening parenthesis after function LOWER/i);
-  });
-
-  it("should catch invalid characters", () => {
-    enterCustomColumnDetails({
-      formula: "[Price] / #",
-      name: "Massive Discount",
-    });
-
-    cy.contains(/^Invalid character: #/i);
-  });
-
-  it("should catch unterminated string literals", () => {
-    cy.get("[contenteditable='true']")
-      .type('[Category] = "widget')
-      .blur();
-
-    cy.findByText("Missing closing quotes");
-  });
-
-  it("should catch unterminated field reference", () => {
-    enterCustomColumnDetails({
-      formula: "[Price / 2",
-      name: "Massive Discount",
-    });
-
-    cy.contains(/^Missing a closing bracket/i);
   });
 
   it("should catch non-existent field reference", () => {
@@ -66,20 +22,12 @@ describe("scenarios > question > custom column > error feedback", () => {
     cy.contains(/^Unknown Field: abcdef/i);
   });
 
-  it("should show the correct number of CASE arguments in a custom expression", () => {
+  it("should fail on expression validation errors", () => {
     enterCustomColumnDetails({
-      formula: "CASE([Price]>0)",
-      name: "Sum Divide",
+      formula: "SUBSTRING('foo', 0, 1)",
+      name: "BadSubstring",
     });
 
-    cy.contains(/^CASE expects 2 arguments or more/i);
-  });
-
-  it("should show the correct number of function arguments in a custom expression", () => {
-    cy.get("[contenteditable='true']")
-      .type("contains([Category])")
-      .blur();
-
-    cy.contains(/^Function contains expects 2 arguments/i);
+    cy.contains(/positive integer/i);
   });
 });

@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import colors from "metabase/lib/colors";
+import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const LegendItemRoot = styled.div`
@@ -8,7 +8,7 @@ export const LegendItemRoot = styled.div`
   min-width: 0;
   overflow: hidden;
 
-  &:not(:first-child) {
+  &:not(:first-of-type) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
     margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
   }
@@ -23,7 +23,7 @@ export const LegendItemLabel = styled.div`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${({ onMouseEnter }) => (onMouseEnter ? colors["brand"] : "")};
+    color: ${({ onMouseEnter }) => (onMouseEnter ? color("brand") : "")};
   }
 `;
 
@@ -36,21 +36,23 @@ export const LegendItemDot = styled.div`
 `;
 
 export const LegendItemTitle = styled.div`
-  color: ${colors["text-dark"]};
+  color: ${color("text-dark")};
   font-weight: bold;
   margin-left: 0.5rem;
   overflow: hidden;
 `;
 
-export const LegendItemRemoveIcon = styled(Icon).attrs({
-  name: "close",
-  size: 12,
-})`
-  color: ${colors["text-light"]};
+export const LegendItemRemoveIcon = styled(Icon)`
+  color: ${color("text-light")};
   cursor: pointer;
   margin-left: 0.5rem;
 
   &:hover {
-    color: ${colors["text-medium"]};
+    color: ${color("text-medium")};
   }
 `;
+
+LegendItemRemoveIcon.defaultProps = {
+  name: "close",
+  size: 12,
+};

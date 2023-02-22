@@ -1,15 +1,20 @@
 (ns metabase.server.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [metabase.util.date-2 :as u.date]
-            [ring.middleware.json :as ring.json]
-            [ring.util.io :as rui]
-            [ring.util.response :as rr])
-  (:import com.fasterxml.jackson.core.JsonGenerator
-           [java.io BufferedWriter OutputStream OutputStreamWriter]
-           java.nio.charset.StandardCharsets
-           java.time.temporal.Temporal))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.factory]
+   [cheshire.generate :as json.generate]
+   [metabase.util.date-2 :as u.date]
+   [ring.middleware.json :as ring.json]
+   [ring.util.io :as rui]
+   [ring.util.response :as response])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           JSON SERIALIZATION CONFIG                                            |
@@ -82,7 +87,7 @@
                               (update-in response [:body] streamed-json-response opts))]
     (if (contains? (:headers json-response) "Content-Type")
       json-response
-      (rr/content-type json-response "application/json; charset=utf-8"))
+      (response/content-type json-response "application/json; charset=utf-8"))
     response))
 
 (defn wrap-streamed-json-response

@@ -1,8 +1,10 @@
 (ns release.common
-  (:require [clojure.string :as str]
-            [environ.core :as env]
-            [metabuild-common.core :as u])
-  (:import java.io.File))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io File)))
 
 (assert (str/ends-with? (env/env :user-dir) "/bin/release")
         "Please run release.clj from the `release` directory e.g. `cd bin/release; clojure -m release`")
@@ -107,11 +109,6 @@
 (defn website-repo []
   (case (edition)
     :oss "metabase/metabase.github.io"
-    nil))
-
-(defn heroku-buildpack-repo []
-  (case (edition)
-    :oss "metabase/metabase-buildpack"
     nil))
 
 (defn metabase-repo

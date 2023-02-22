@@ -1,19 +1,23 @@
 (ns metabase.query-processor.middleware.annotate-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
     (driver/with-driver :h2
-      (-> (mt/test-qp-middleware annotate/add-column-info query metadata []) :metadata :data))))
+      ((annotate/add-column-info query identity) metadata))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |
@@ -52,7 +56,8 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id)))
+   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+                           :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
@@ -207,24 +212,25 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-    (mt/with-everything-store
+     (mt/with-everything-store
         (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                ;; when the info is inferred. the solution to this might be quite extensive renaming
-                :coercion_strategy nil
-                :name            "parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                 ;; when the info is inferred. the solution to this might be quite extensive renaming
+                 :coercion_strategy nil
+                 :name            "parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -240,6 +246,7 @@
                 :name            "grandparent.parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
@@ -275,17 +282,39 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-    (testing "if there is no matching expression it should give a meaningful error message"
-      (is (= {:data    {:expression-name "double-price"
-                        :tried           ["double-price" :double-price]
-                        :found           #{"one-hundred"}
-                        :type            :invalid-query}
-              :message "No expression named 'double-price'"}
-             (try
-               (mt/$ids venues
-                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "col-info for convert-timezone should have a `converted_timezone` property"
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                 [:expression "last-login-converted"]))))
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:datetime-add
+                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                 [:expression "last-login-converted"])))))
 
+   (testing "if there is no matching expression it should give a meaningful error message"
+     (is (= {:data    {:expression-name "double-price"
+                       :tried           ["double-price" :double-price]
+                       :found           #{"one-hundred"}
+                       :type            :invalid-query}
+             :message "No expression named 'double-price'"}
+            (try
+              (mt/$ids venues
+                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
@@ -438,10 +467,87 @@
   (-> (add-column-info (mt/mbql-query venues {:expressions {"expr" expr}
                                               :fields      [[:expression "expr"]]
                                               :limit       10})
-                                      {})
+                       {})
       :cols
       first
       (select-keys [:base_type :semantic_type])))
+
+(deftest computed-columns-inference
+  (letfn [(infer [expr] (-> (mt/mbql-query venues
+                                           {:expressions {"expr" expr}
+                                            :fields [[:expression "expr"]]
+                                            :limit 10})
+                            (add-column-info {})
+                            :cols
+                            first))]
+    (testing "Coalesce"
+      (testing "Uses the first clause"
+        (testing "Gets the type information from the field"
+          (is (= {:semantic_type :type/Name,
+                  :coercion_strategy nil,
+                  :name "expr",
+                  :expression_name "expr",
+                  :source :fields,
+                  :field_ref [:expression "expr"],
+                  :effective_type :type/Text,
+                  :display_name "expr",
+                  :base_type :type/Text}
+                 (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
+          (testing "Does not contain a field id in its analysis (#18513)"
+            (is (false? (contains? (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])
+                                   :id)))))
+        (testing "Gets the type information from the literal"
+          (is (= {:base_type :type/Text,
+                  :name "expr",
+                  :display_name "expr",
+                  :expression_name "expr",
+                  :field_ref [:expression "expr"],
+                  :source :fields}
+                 (infer [:coalesce "bar" [:field (mt/id :venues :name) nil]]))))))
+    (testing "Case"
+      (testing "Uses first available type information"
+        (testing "From a field"
+          (is (= {:semantic_type :type/Name,
+                  :coercion_strategy nil,
+                  :name "expr",
+                  :expression_name "expr",
+                  :source :fields,
+                  :field_ref [:expression "expr"],
+                  :effective_type :type/Text,
+                  :display_name "expr",
+                  :base_type :type/Text}
+                 (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
+          (testing "does not contain a field id in its analysis (#17512)"
+            (is (false?
+                 (contains? (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])
+                            :id))))))
+      (is (= {:base_type :type/Text}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
+      (is (= {:base_type :type/Float}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
+                                        [:+ [:field (mt/id :venues :price) nil] 1]]]])))
+      (testing "Make sure we skip nils when infering case return type"
+        (is (= {:base_type :type/Number}
+               (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
+                                         [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
+      (is (= {:base_type :type/Float}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
+
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field (mt/id :checkins :date) {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
@@ -469,19 +575,6 @@
   (is (= {:base_type     :type/Text
           :semantic_type :type/Name}
          (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
-
-(deftest test-case
-  (is (= {:base_type :type/Text}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
-  (is (= {:base_type :type/Float}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
-                                    [:+ [:field (mt/id :venues :price) nil] 1]]]])))
-  (testing "Make sure we skip nils when infering case return type"
-    (is (= {:base_type :type/Number}
-           (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
-                                     [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
-  (is (= {:base_type :type/Float}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
@@ -561,7 +654,7 @@
 
 (deftest mbql-cols-nested-queries-test
   (testing "Should be able to infer MBQL columns with nested queries"
-    (let [base-query (qp/query->preprocessed
+    (let [base-query (qp/preprocess
                       (mt/mbql-query venues
                         {:joins [{:fields       :all
                                   :source-table $$categories
@@ -581,7 +674,43 @@
                         {:name "ID_2",        :id %categories.id,   :field_ref &c.categories.id}
                         {:name "NAME_2",      :id %categories.name, :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref])
-                          (:cols (add-column-info nested-query {}))))))))))))
+                          (:cols (add-column-info nested-query {})))))))))))
+
+  (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
+    (mt/dataset sample-dataset
+     (mt/with-temp* [Card [{card-id :id}
+                           {:dataset true
+                            :dataset_query
+                            (mt/$ids :products
+                                     {:type     :query
+                                      :database (mt/id)
+                                      :query    {:source-table $$products
+                                                 :aggregation
+                                                 [[:aggregation-options
+                                                   [:sum $price]
+                                                   {:name "sum"}]
+                                                  [:aggregation-options
+                                                   [:max $rating]
+                                                   {:name "max"}]]
+                                                 :breakout     $category
+                                                 :order-by     [[:asc $category]]}})}]]
+       (let [query (qp/preprocess
+                     (mt/mbql-query nil
+                                    {:source-table (str "card__" card-id)
+                                     :aggregation  [[:aggregation-options
+                                                     [:sum
+                                                      [:field
+                                                       "sum"
+                                                       {:base-type :type/Float}]]
+                                                     {:name "sum"}]
+                                                    [:aggregation-options
+                                                     [:count]
+                                                     {:name "count"}]]
+                                     :limit        1}))]
+        (is (= ["Sum of Sum of Price" "Count"]
+              (->> (add-column-info query {})
+                  :cols
+                  (map :display_name)))))))))
 
 (deftest inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
@@ -589,11 +718,11 @@
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
-          (let [base-query (qp/query->preprocessed
+          (let [base-query (qp/preprocess
                             (mt/mbql-query orders
                               {:joins [{:fields       :all
                                         :source-table $$products
@@ -625,7 +754,7 @@
                       Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (mt/$ids nil
-            (let [base-query (qp/query->preprocessed
+            (let [base-query (qp/preprocess
                               (mt/mbql-query nil
                                 {:source-table (str "card__" card-1-id)
                                  :joins        [{:fields       :all
@@ -639,4 +768,61 @@
                       {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
                      (->> (:cols (add-column-info base-query {}))
                           (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref]))))))))))))
+                          (map #(select-keys % [:display_name :field_ref])))))))))))
+
+  (testing "Has the correct display names for joined fields from cards"
+    (letfn [(native [query] {:type :native
+                             :native {:query query :template-tags {}}
+                             :database (mt/id)})]
+      (mt/with-temp* [Card [{card1-id :id} {:dataset_query
+                                            (native "select 'foo' as A_COLUMN")}]
+                      Card [{card2-id :id} {:dataset_query
+                                            (native "select 'foo' as B_COLUMN")}]]
+        (doseq [card-id [card1-id card2-id]]
+          ;; populate metadata
+          (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+        (let [query {:database (mt/id)
+                     :type :query
+                     :query {:source-table (str "card__" card1-id)
+                             :joins [{:fields "all"
+                                      :source-table (str "card__" card2-id)
+                                      :condition [:=
+                                                  [:field "A_COLUMN" {:base-type :type/Text}]
+                                                  [:field "B_COLUMN" {:base-type :type/Text
+                                                                      :join-alias "alias"}]]
+                                      :alias "alias"}]}}
+              results (qp/process-query query)]
+          (is (= "alias → B Column" (-> results :data :cols second :display_name))
+              "cols has wrong display name")
+          (is (= "alias → B Column" (-> results :data :results_metadata
+                                        :columns second :display_name))
+              "Results metadata cols has wrong display name"))))))
+
+(deftest preserve-original-join-alias-test
+  (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset sample-dataset
+        (let [join-alias "Products with a very long name - Product ID with a very long name"
+              results    (mt/run-mbql-query orders
+                           {:joins  [{:source-table $$products
+                                      :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
+                                      :alias        join-alias
+                                      :fields       [[:field %products.title {:join-alias join-alias}]]}]
+                            :fields [$orders.id
+                                     [:field %products.title {:join-alias join-alias}]]
+                            :limit  4})]
+          (doseq [[location metadata] {"data.cols"                     (mt/cols results)
+                                       "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
+            (testing location
+              (is (= (mt/$ids
+                       [{:display_name "ID"
+                         :field_ref    $orders.id}
+                        (merge
+                         {:display_name (str join-alias " → Title")
+                          :field_ref    [:field %products.title {:join-alias join-alias}]}
+                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
+                         (when (= location "data.cols")
+                           {:source_alias join-alias}))])
+                     (map
+                      #(select-keys % [:display_name :field_ref :source_alias])
+                      metadata))))))))))

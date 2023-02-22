@@ -11,10 +11,7 @@ import FieldSet from "metabase/components/FieldSet";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 const FilteredToUrlTable = propName => ComposedComponent =>
-  connect(
-    null,
-    { push },
-  )(
+  connect(null, { push })(
     class FilteredToUrlTable extends React.Component {
       constructor(props) {
         super(props);
@@ -50,11 +47,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
 
 export default FilteredToUrlTable;
 
-@Tables.load({
-  id: (state, props) => props.tableId,
-  loadingAndErrorWrapper: false,
-})
-class TableSelector extends React.Component {
+class TableSelectorInner extends React.Component {
   render() {
     const { table, tableId, setTableId } = this.props;
     return (
@@ -92,3 +85,8 @@ class TableSelector extends React.Component {
     );
   }
 }
+
+const TableSelector = Tables.load({
+  id: (state, props) => props.tableId,
+  loadingAndErrorWrapper: false,
+})(TableSelectorInner);

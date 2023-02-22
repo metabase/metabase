@@ -2,8 +2,8 @@
 import React from "react";
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
-import Button from "metabase/components/Button";
-import ExternalLink from "metabase/components/ExternalLink";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
 
@@ -199,7 +199,7 @@ const MONGO_EXAMPLES = {
 
 const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   <div>
-    <h5>Example:</h5>
+    <h5>{t`Example:`}</h5>
     <p>
       <Code>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
@@ -219,12 +219,12 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
 const TagEditorHelp = ({
   database,
   setDatasetQuery,
-  sampleDatasetId,
+  sampleDatabaseId,
   switchToSettings,
 }) => {
   const driver = database && database.engine;
   const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = driver === "mongo" ? database.id : sampleDatasetId;
+  const datasetId = driver === "mongo" ? database.id : sampleDatabaseId;
 
   let setQueryWithDatasetId = null;
   if (datasetId != null) {
@@ -297,9 +297,11 @@ const TagEditorHelp = ({
 
       <p className="pt2 link">
         <ExternalLink
-          href={MetabaseSettings.docsUrl("users-guide/13-sql-parameters")}
+          href={MetabaseSettings.docsUrl(
+            "questions/native-editor/sql-parameters",
+          )}
           target="_blank"
-          data-metabase-event={"QueryBuilder;Template Tag Documentation Click"}
+          data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</ExternalLink>
       </p>
     </div>

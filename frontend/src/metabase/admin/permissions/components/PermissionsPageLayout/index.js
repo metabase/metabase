@@ -1,1 +1,1 @@
-export * from "./PermissionsPageLayout";
+export { default } from "./PermissionsPageLayout";

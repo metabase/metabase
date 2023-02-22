@@ -9,7 +9,7 @@ export function cancelable(promise) {
     );
   });
 
-  wrappedPromise.cancel = function() {
+  wrappedPromise.cancel = function () {
     canceled = true;
   };
 

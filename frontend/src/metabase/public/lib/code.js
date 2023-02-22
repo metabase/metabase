@@ -1,17 +1,6 @@
 import { optionsToHashParams } from "./embed";
 
-export type CodeSampleOption = {
-  name: string,
-  source: () => string,
-  mode?: string,
-  embedOption?: string,
-};
-
-export const getPublicEmbedOptions = ({
-  iframeUrl,
-}: {
-  iframeUrl: string,
-}): CodeSampleOption[] => [
+export const getPublicEmbedOptions = ({ iframeUrl }) => [
   {
     name: "HTML",
     source: () => html({ iframeUrl: `"${iframeUrl}"` }),
@@ -19,7 +8,7 @@ export const getPublicEmbedOptions = ({
   },
 ];
 
-export const getSignedEmbedOptions = (): CodeSampleOption[] => [
+export const getSignedEmbedOptions = () => [
   {
     name: "Mustache",
     source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
@@ -32,7 +21,7 @@ export const getSignedEmbedOptions = (): CodeSampleOption[] => [
   },
 ];
 
-export const getSignTokenOptions = (params: any): CodeSampleOption[] => [
+export const getSignTokenOptions = params => [
   {
     name: "Node.js",
     source: () => node(params),
@@ -49,7 +38,7 @@ export const getSignTokenOptions = (params: any): CodeSampleOption[] => [
   { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
 ];
 
-export const getPublicEmbedHTML = (iframeUrl: string): string =>
+export const getPublicEmbedHTML = iframeUrl =>
   html({ iframeUrl: JSON.stringify(iframeUrl) });
 
 const html = ({ iframeUrl }) =>
@@ -96,9 +85,7 @@ var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
 
 var payload = {
   resource: { ${resourceType}: ${resourceId} },
-  params: ${JSON.stringify(params, null, 2)
-    .split("\n")
-    .join("\n  ")},
+  params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},
   exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);

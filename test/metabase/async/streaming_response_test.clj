@@ -1,17 +1,24 @@
-(ns metabase.async.streaming-response-test
-  (:require [clj-http.client :as http]
-            [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.driver :as driver]
-            [metabase.http-client :as test-client]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor.context :as context]
-            [metabase.test :as mt]
-            [metabase.util :as u])
-  (:import java.util.concurrent.Executors
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
+(ns ^:mb/once metabase.async.streaming-response-test
+  (:require
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.driver :as driver]
+   [metabase.http-client :as client]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (jakarta.servlet AsyncContext ServletOutputStream)
+   (jakarta.servlet.http HttpServletResponse)
+   (java.util.concurrent Executors)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! ::test-driver)
 
@@ -64,14 +71,13 @@
                 (try
                   (when-let [chan @start-execution-chan]
                     (a/>!! chan ::started))
-                  (Thread/sleep sleep)
-                  (mt/suppress-output
-                    (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]]))
+                  (Thread/sleep (long sleep))
+                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
                     (reset! canceled? true)
                     (throw e))))]
     (a/go
-      (when (a/<! (context/canceled-chan context))
+      (when (a/<! (qp.context/canceled-chan context))
         (reset! canceled? true)
         (future-cancel futur)))))
 
@@ -84,7 +90,7 @@
     (with-test-driver-db
       (is (= [[10]]
              (mt/rows
-               ((mt/user->client :lucky)
+               (mt/user-http-request :lucky
                 :post 202 "dataset"
                 {:database (mt/id)
                  :type     "native"
@@ -95,9 +101,9 @@
     (with-test-driver-db
       (let [num-requests       (+ thread-pool-size 20)
             remaining          (atom num-requests)
-            session-token      (test-client/authenticate (mt/user->credentials :lucky))
-            url                (test-client/build-url "dataset" nil)
-            request            (test-client/build-request-map session-token
+            session-token      (client/authenticate (mt/user->credentials :lucky))
+            url                (client/build-url "dataset" nil)
+            request            (client/build-request-map session-token
                                                               {:database (mt/id)
                                                                :type     "native"
                                                                :native   {:query {:sleep 2000}}})]
@@ -106,7 +112,7 @@
             (future (http/post url request)))
           (Thread/sleep 100)
           (let [start-time-ms (System/currentTimeMillis)]
-            (is (= {:status "ok"} (test-client/client :get 200 "health")))
+            (is (= {:status "ok"} (client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
             (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
@@ -120,9 +126,9 @@
       (with-test-driver-db
         (reset! canceled? false)
         (with-start-execution-chan [start-chan]
-          (let [url           (test-client/build-url "dataset" nil)
-                session-token (test-client/authenticate (mt/user->credentials :lucky))
-                request       (test-client/build-request-map session-token
+          (let [url           (client/build-url "dataset" nil)
+                session-token (client/authenticate (mt/user->credentials :lucky))
+                request       (client/build-request-map session-token
                                                              {:database (mt/id)
                                                               :type     "native"
                                                               :native   {:query {:sleep 5000}}})
@@ -136,5 +142,32 @@
                    (loop [[wait & more] (repeat 10 50)]
                      (or @canceled?
                          (when wait
-                           (Thread/sleep wait)
+                           (Thread/sleep (long wait))
                            (recur more))))))))))))
+
+(def ^:private ^:dynamic *number-of-cans* nil)
+
+(deftest preserve-bindings-test
+  (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
+    (with-open [os (java.io.ByteArrayOutputStream.)]
+      (let [streaming-response (binding [*number-of-cans* 2]
+                                 (streaming-response/streaming-response nil [os _]
+                                   (.write os (.getBytes (format "%s cans" *number-of-cans*) "UTF-8"))))
+            complete-promise   (promise)]
+        (server.protocols/respond streaming-response
+                                  {:response      (reify HttpServletResponse
+                                                    (setStatus [_ _])
+                                                    (getOutputStream [_]
+                                                      (proxy [ServletOutputStream] []
+                                                        (write
+                                                          ([byytes]
+                                                           (.write os ^bytes byytes))
+                                                          ([byytes offset length]
+                                                           (.write os ^bytes byytes offset length))))))
+                                   :async-context (reify AsyncContext
+                                                    (complete [_]
+                                                      (deliver complete-promise true)))})
+        (is (= true
+               (deref complete-promise 1000 ::timed-out)))
+        (is (= "2 cans"
+               (String. (.toByteArray os) "UTF-8")))))))

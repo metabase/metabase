@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { AutoSizer, List } from "react-virtualized";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -17,6 +16,7 @@ import {
   SearchInput,
   QuestionListContainer,
   EmptyStateContainer,
+  QuestionListWrapper,
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 import { isQuestionCompatible } from "./utils";
@@ -65,10 +65,7 @@ export const QuestionList = React.memo(function QuestionList({
   const filteredQuestions = useMemo(() => {
     const filterText = debouncedSearchText.toLowerCase();
     const filteredQuestions = questions.filter(question =>
-      question
-        .displayName()
-        .toLowerCase()
-        .includes(filterText),
+      question.displayName().toLowerCase().includes(filterText),
     );
 
     filteredQuestions.sort((a, b) => {
@@ -86,17 +83,38 @@ export const QuestionList = React.memo(function QuestionList({
 
   const compatibleQuestions = useMemo(
     () =>
-      filteredQuestions?.filter(question =>
-        isQuestionCompatible(visualization, dashcard, dashcardData, question),
-      ),
+      filteredQuestions?.filter(question => {
+        try {
+          return isQuestionCompatible(
+            visualization,
+            dashcard,
+            dashcardData,
+            question,
+          );
+        } catch (e) {
+          console.warn(
+            `Could not check question compatibility for a question with id=${question?.id?.()}`,
+            e,
+          );
+          return false;
+        }
+      }),
     [dashcard, dashcardData, filteredQuestions, visualization],
   );
 
   const questionsWithoutMetadata = useMemo(
     () =>
-      filteredQuestions.filter(
-        question => question.isStructured() && !question.query().hasMetadata(),
-      ),
+      filteredQuestions.filter(question => {
+        try {
+          return question.isStructured() && !question.query().hasMetadata();
+        } catch (e) {
+          console.warn(
+            `Could not check question metadata existence for a question with id=${question?.id?.()}`,
+            e,
+          );
+          return false;
+        }
+      }),
     [filteredQuestions],
   );
 
@@ -117,7 +135,7 @@ export const QuestionList = React.memo(function QuestionList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredQuestions.length]);
 
-  const hasQuestionsToShow = compatibleQuestions.length > 0;
+  const hasQuestionsToShow = !!(compatibleQuestions.length > 0);
   const canLoadMore = questionsWithoutMetadata.length > 0;
   const rowsCount = canLoadMore
     ? compatibleQuestions.length + 1
@@ -127,72 +145,71 @@ export const QuestionList = React.memo(function QuestionList({
     <>
       <SearchContainer>
         <SearchInput
+          fullWidth
           value={searchText}
           colorScheme="transparent"
           icon={<Icon name="search" size={16} pt="0.25rem" />}
           placeholder={t`Search for a question`}
           onFocus={handleSearchFocus}
-          onChange={value => setSearchText(value)}
+          onChange={e => setSearchText(e.target.value)}
         />
       </SearchContainer>
-      <LoadingAndErrorWrapper
+      <QuestionListWrapper
         className="flex flex-full overflow-auto"
         loading={!filteredQuestions}
         error={error}
         noBackground
       >
-        {() => (
-          <QuestionListContainer>
-            <AutoSizer>
-              {({ width, height }) => (
-                <List
-                  overscanRowCount={0}
-                  width={width}
-                  height={height}
-                  rowCount={rowsCount}
-                  rowHeight={36}
-                  rowRenderer={({ index, key, style }) => {
-                    const isLoadMoreRow = index === compatibleQuestions.length;
+        <QuestionListContainer>
+          <AutoSizer>
+            {({ width, height }) => (
+              <List
+                overscanRowCount={0}
+                width={width}
+                height={height}
+                rowCount={rowsCount}
+                rowHeight={36}
+                rowRenderer={({ index, key, style }) => {
+                  const isLoadMoreRow = index === compatibleQuestions.length;
 
-                    if (isLoadMoreRow) {
-                      return (
-                        <LoadMoreRow style={style}>
-                          <LoadMoreButton
-                            onClick={handleLoadNext}
-                            disabled={isLoadingMetadata}
-                          >
-                            {isLoadingMetadata ? t`Loading` : t`Load more`}
-                          </LoadMoreButton>
-                        </LoadMoreRow>
-                      );
-                    }
-
-                    const question = compatibleQuestions[index];
-                    const isEnabled = enabledQuestions[question.id()];
-                    const isBad = badQuestions[question.id()];
-
+                  if (isLoadMoreRow) {
                     return (
-                      <QuestionListItem
-                        key={key}
-                        question={question}
-                        isEnabled={isEnabled}
-                        isBad={isBad}
-                        style={style}
-                        onChange={e => onSelect(question, e.target.checked)}
-                      />
+                      <LoadMoreRow style={style}>
+                        <LoadMoreButton
+                          onClick={handleLoadNext}
+                          disabled={isLoadingMetadata}
+                        >
+                          {isLoadingMetadata ? t`Loading` : t`Load more`}
+                        </LoadMoreButton>
+                      </LoadMoreRow>
                     );
-                  }}
-                />
-              )}
-            </AutoSizer>
-            {!hasQuestionsToShow && (
-              <EmptyStateContainer>
-                <EmptyState message={t`Nothing here`} icon="all" />
-              </EmptyStateContainer>
+                  }
+
+                  const question = compatibleQuestions[index];
+                  const isEnabled = enabledQuestions[question.id()];
+                  const isBad = badQuestions[question.id()];
+
+                  return (
+                    <QuestionListItem
+                      key={key}
+                      question={question}
+                      isEnabled={isEnabled}
+                      isBad={isBad}
+                      style={style}
+                      onChange={e => onSelect(question, e.target.checked)}
+                    />
+                  );
+                }}
+              />
             )}
-          </QuestionListContainer>
-        )}
-      </LoadingAndErrorWrapper>
+          </AutoSizer>
+          {!hasQuestionsToShow && (
+            <EmptyStateContainer>
+              <EmptyState message={t`Nothing here`} icon="folder" />
+            </EmptyStateContainer>
+          )}
+        </QuestionListContainer>
+      </QuestionListWrapper>
     </>
   );
 });

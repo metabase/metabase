@@ -1,39 +1,19 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Value from "metabase/components/Value";
-
-import Dimension from "metabase-lib/lib/Dimension";
-
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { hasFilterOptions } from "metabase/lib/query/filter";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-
 import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterObject } from "metabase-types/types/Query";
-import type { Value as ValueType } from "metabase-types/types/Dataset";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
+import Value from "metabase/components/Value";
 
-export type FilterRenderer = ({
-  field?: React.Element,
-  operator: ?string,
-  values: (React.Element | string)[],
-}) => React.Element;
+import { color } from "metabase/lib/colors";
 
-type Props = {
-  filter: FilterObject | FilterWrapper,
-  metadata: Metadata,
-  maxDisplayValues?: number,
-  children?: FilterRenderer,
-};
+import ViewPill from "metabase/query_builder/components/view/ViewPill";
+import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
+import { hasFilterOptions } from "metabase-lib/queries/utils/filter";
+import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 
-const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
-  field,
-  operator,
-  values,
-}) => {
+const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];
   // insert an "and" at the end if multiple values
   // NOTE: works for "between", not sure about others
@@ -54,18 +34,20 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
   );
 };
 
-export const OperatorFilter = ({
+const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
+
+export const SimpleOperatorFilter = ({
   filter,
   metadata,
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
-}: Props) => {
-  const [op, field] = filter;
-  const values: ValueType[] = hasFilterOptions(filter)
+}) => {
+  const [op] = filter;
+  const values = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
 
-  const dimension = Dimension.parseMBQL(field, metadata);
+  const dimension = getFilterDimension(filter, metadata);
   if (!dimension) {
     return null;
   }
@@ -102,12 +84,26 @@ export const OperatorFilter = ({
   });
 };
 
+export const ComplexOperatorFilter = ({ index, filter, removeFilter }) => {
+  return (
+    <FilterPill onRemove={() => removeFilter(index)}>
+      {filter.displayName()}
+    </FilterPill>
+  );
+};
+
+export const OperatorFilter = ({ filter, ...props }) =>
+  filter.displayName ? (
+    <ComplexOperatorFilter filter={filter} {...props} />
+  ) : (
+    <SimpleOperatorFilter filter={filter} {...props} />
+  );
+
 export const SegmentFilter = ({
   filter,
   metadata,
-  maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
-}: Props) => {
+}) => {
   const segment = metadata.segment(filter[1]);
   return children({
     operator: t`Matches`,
@@ -115,7 +111,7 @@ export const SegmentFilter = ({
   });
 };
 
-const Filter = ({ filter, ...props }: Props) =>
+const Filter = ({ filter, ...props }) =>
   filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (

@@ -1,13 +1,19 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
-import { Flex } from "grid-styled";
+import React, { Children } from "react";
+import {
+  ButtonBarCenter,
+  ButtonBarLeft,
+  ButtonBarRight,
+  ButtonBarRoot,
+} from "./ButtonBar.styled";
 
 function normalizeArray(array) {
   if (Array.isArray(array)) {
     array = array.filter(a => a);
     if (array.length === 0) {
       array = null;
+    } else {
+      array = Children.toArray(array);
     }
   }
   return array;
@@ -23,23 +29,12 @@ export default function ButtonBar({
   left = normalizeArray(left);
   center = normalizeArray(center);
   right = normalizeArray(right);
+
   return (
-    <Flex align="center" {...props}>
-      <Flex
-        align="center"
-        justifyContent="flex-start"
-        className={center ? "flex-full flex-basis-none" : "mr-auto"}
-      >
-        {left}
-      </Flex>
-      {center && <Flex align="center">{center}</Flex>}
-      <Flex
-        align="center"
-        justifyContent="flex-end"
-        className={center ? "flex-full flex-basis-none" : "ml-auto"}
-      >
-        {right}
-      </Flex>
-    </Flex>
+    <ButtonBarRoot {...props}>
+      <ButtonBarLeft center={center}>{left}</ButtonBarLeft>
+      {center && <ButtonBarCenter>{center}</ButtonBarCenter>}
+      <ButtonBarRight center={center}>{right}</ButtonBarRight>
+    </ButtonBarRoot>
   );
 }

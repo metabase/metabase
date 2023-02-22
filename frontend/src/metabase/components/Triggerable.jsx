@@ -1,15 +1,18 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import cx from "classnames";
+import styled from "@emotion/styled";
 import { isObscured } from "metabase/lib/dom";
 
-import Tooltip from "./Tooltip";
+import Tooltip from "../core/components/Tooltip";
 
-import cx from "classnames";
+const Trigger = styled.a``;
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-export default ComposedComponent =>
+
+const Triggerable = ComposedComponent =>
   class extends Component {
     static displayName =
       "Triggerable[" +
@@ -30,20 +33,21 @@ export default ComposedComponent =>
     }
 
     static defaultProps = {
+      as: "a",
       closeOnObscuredTrigger: false,
     };
 
-    open() {
+    open = () => {
       this.toggle(true);
-    }
+    };
 
-    close() {
+    close = () => {
       this.toggle(false);
-    }
+    };
 
-    toggle(isOpen = !this.state.isOpen) {
+    toggle = (isOpen = !this.state.isOpen) => {
       this.setState({ isOpen });
-    }
+    };
 
     onClose(e) {
       // don't close if clicked the actual trigger, it will toggle
@@ -101,6 +105,7 @@ export default ComposedComponent =>
 
     render() {
       const {
+        as,
         triggerId,
         triggerClasses,
         triggerStyle,
@@ -133,37 +138,49 @@ export default ComposedComponent =>
       }
 
       return (
-        <a
-          id={triggerId}
-          ref={this.trigger}
-          onClick={event => {
-            event.preventDefault();
-            !this.props.disabled && this.toggle();
-          }}
-          className={cx(
-            triggerClasses,
-            isOpen && triggerClassesOpen,
-            !isOpen && triggerClassesClose,
-            "no-decoration",
-            {
-              "cursor-default": this.props.disabled,
-            },
-          )}
-          aria-disabled={this.props.disabled}
-          style={triggerStyle}
-        >
-          {typeof triggerElement === "function"
-            ? triggerElement({ isTriggeredComponentOpen: isOpen })
-            : triggerElement}
+        <>
+          <Trigger
+            as={as}
+            id={triggerId}
+            ref={this.trigger}
+            onClick={event => {
+              event.preventDefault();
+              !this.props.disabled && this.toggle();
+            }}
+            className={cx(
+              triggerClasses,
+              isOpen && triggerClassesOpen,
+              !isOpen && triggerClassesClose,
+              "no-decoration",
+              {
+                "cursor-default": this.props.disabled,
+              },
+            )}
+            aria-disabled={this.props.disabled}
+            style={triggerStyle}
+          >
+            {typeof triggerElement === "function"
+              ? triggerElement({
+                  isTriggeredComponentOpen: isOpen,
+                  open: this.open,
+                  close: this.close,
+                })
+              : triggerElement}
+          </Trigger>
           <ComposedComponent
             {...this.props}
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
+            sizeToFit
           >
             {children}
           </ComposedComponent>
-        </a>
+        </>
       );
     }
   };
+
+export default Object.assign(Triggerable, {
+  Trigger,
+});

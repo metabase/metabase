@@ -1,22 +1,19 @@
-import {
-  createSelector,
-  createSelectorCreator,
-  defaultMemoize,
-} from "reselect";
-
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Database from "metabase-lib/lib/metadata/Database";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
-import Metric from "metabase-lib/lib/metadata/Metric";
-import Segment from "metabase-lib/lib/metadata/Segment";
+import { createSelector } from "reselect";
 
 import _ from "underscore";
-import shallowEqual from "./shallowEqual";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
-
-import { getIn } from "icepick";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/queries/utils/field";
+import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
+import Metric from "metabase-lib/metadata/Metric";
+import Segment from "metabase-lib/metadata/Segment";
+import Question from "metabase-lib/Question";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
@@ -47,6 +44,7 @@ export const getNormalizedFields = createSelector(
 );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
+export const getNormalizedQuestions = state => state.entities.questions;
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -72,12 +70,43 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
-export const instantiateDatabase = obj => new Database(obj);
-export const instantiateSchema = obj => new Schema(obj);
-export const instantiateTable = obj => new Table(obj);
-export const instantiateField = obj => new Field(obj);
-export const instantiateSegment = obj => new Segment(obj);
-export const instantiateMetric = obj => new Metric(obj);
+export const instantiateDatabase = (obj, metadata) => {
+  const instance = new Database(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSchema = (obj, metadata) => {
+  const instance = new Schema(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateTable = (obj, metadata) => {
+  const instance = new Table(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+// We need a way to distinguish field objects that come from the server
+// vs. those that are created client-side to handle lossy transformations between
+// Field instances and FieldDimension instances.
+// There are scenarios where we are failing to convert FieldDimensions back into Fields,
+// and as a safeguard we instantiate a new Field that is missing most of its properties.
+export const instantiateField = (obj, metadata) => {
+  const instance = new Field({ ...obj, _comesFromEndpoint: true });
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSegment = (obj, metadata) => {
+  const instance = new Segment(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateMetric = (obj, metadata) => {
+  const instance = new Metric(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateQuestion = (obj, metadata) =>
+  new Question(obj, metadata);
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies
@@ -89,18 +118,33 @@ export const getMetadata = createSelector(
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
+    getNormalizedQuestions,
   ],
-  (databases, schemas, tables, fields, segments, metrics): Metadata => {
+  (databases, schemas, tables, fields, segments, metrics, questions) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
     meta.tables = copyObjects(meta, tables, instantiateTable);
-    meta.fields = copyObjects(meta, fields, instantiateField);
+    meta.fields = copyObjects(meta, fields, instantiateField, "uniqueId");
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
+    meta.questions = copyObjects(meta, questions, instantiateQuestion);
 
     // database
-    hydrateList(meta.databases, "tables", meta.tables);
+    hydrate(meta.databases, "tables", database => {
+      if (database.tables?.length > 0) {
+        return database.tables
+          .map(tableId => meta.table(tableId))
+          .filter(table => table != null);
+      }
+
+      return Object.values(meta.tables).filter(
+        table =>
+          !isVirtualCardId(table.id) &&
+          table.schema &&
+          table.db_id === database.id,
+      );
+    });
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
@@ -110,22 +154,15 @@ export const getMetadata = createSelector(
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
-    // NOTE: special handling for schemas
-    // This is pretty hacky
-    // hydrateList(meta.databases, "schemas", meta.schemas);
-    hydrate(meta.databases, "schemas", database =>
-      database.schemas
-        ? // use the database schemas if they exist
-          database.schemas.map(s => meta.schema(s))
-        : database.tables.length > 0
-        ? // if the database has tables, use their schemas
-          _.uniq(database.tables.map(t => t.schema))
-        : // otherwise use any loaded schemas that match the database id
-          Object.values(meta.schemas).filter(
-            s => s.database && s.database.id === database.id,
-          ),
-    );
-    // hydrateList(meta.schemas, "tables", meta.tables);
+    hydrate(meta.databases, "schemas", database => {
+      if (database.schemas) {
+        return database.schemas.map(s => meta.schema(s));
+      }
+      return Object.values(meta.schemas).filter(
+        s => s.database && s.database.id === database.id,
+      );
+    });
+
     hydrate(meta.schemas, "tables", schema =>
       schema.tables
         ? // use the schema tables if they exist
@@ -156,7 +193,6 @@ export const getMetadata = createSelector(
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-
     return meta;
   },
 );
@@ -170,15 +206,9 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-export const getTables = createSelector(
-  [getMetadata],
-  ({ tables }) => tables,
-);
+export const getTables = createSelector([getMetadata], ({ tables }) => tables);
 
-export const getFields = createSelector(
-  [getMetadata],
-  ({ fields }) => fields,
-);
+export const getFields = createSelector([getMetadata], ({ fields }) => fields);
 export const getMetrics = createSelector(
   [getMetadata],
   ({ metrics }) => metrics,
@@ -189,100 +219,21 @@ export const getSegments = createSelector(
   ({ segments }) => segments,
 );
 
-// FIELD VALUES FOR DASHBOARD FILTERS / SQL QUESTION PARAMETERS
-
-// Returns a dictionary of field id:s mapped to matching field values
-// Currently this assumes that you are passing the props of <ParameterValueWidget> which contain the
-// `field_ids` array inside `parameter` prop.
-const getParameterFieldValuesByFieldId = (state, props) => {
-  // NOTE Atte Keinänen 9/14/17: Reading the state directly instead of using `getFields` selector
-  // because `getMetadata` doesn't currently work with fields of public dashboards
-  return (
-    _.chain(getIn(state, ["entities", "fields"]))
-      // SQL template tags provide `field_id` instead of `field_ids`
-      .pick(...(props.parameter.field_ids || [props.parameter.field_id]))
-      .mapObject(getFieldValues)
-      .value()
-  );
-};
-
-// Custom equality selector for checking if two field value dictionaries contain same fields and field values
-// Currently we simply check if fields match and the lengths of field value arrays are equal which makes the comparison fast
-// See https://github.com/reactjs/reselect#customize-equalitycheck-for-defaultmemoize
-const createFieldValuesEqualSelector = createSelectorCreator(
-  defaultMemoize,
-  (a, b) => {
-    // TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
-    return shallowEqual(
-      _.mapObject(a, values => values.length),
-      _.mapObject(b, values => values.length),
-    );
-  },
-);
-
-// HACK Atte Keinänen 7/27/17: Currently the field value analysis code only returns a single value for booleans,
-// this will be addressed in analysis sync refactor
-const patchBooleanFieldValues_HACK = valueArray => {
-  const isBooleanFieldValues =
-    valueArray &&
-    valueArray.length === 1 &&
-    valueArray[0] &&
-    typeof valueArray[0][0] === "boolean";
-
-  if (isBooleanFieldValues) {
-    return [[true], [false]];
-  } else {
-    return valueArray;
-  }
-};
-
-// Merges the field values of fields linked to a parameter and removes duplicates
-// We want that we have a distinct selector for each field id combination, and for that reason
-// we export a method that creates a new selector; see
-// https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
-// TODO Atte Keinänen 7/20/17: Should we have any thresholds if the count of field values is high or we have many (>2?) fields?
-export const makeGetMergedParameterFieldValues = () => {
-  return createFieldValuesEqualSelector(
-    getParameterFieldValuesByFieldId,
-    fieldValues => {
-      const fieldIds = Object.keys(fieldValues);
-
-      if (fieldIds.length === 0) {
-        // If we have no fields for the parameter, don't return any field values
-        return [];
-      } else if (fieldIds.length === 1) {
-        // We have just a single field so we can return the field values almost as-is,
-        // only address the boolean bug for now
-        const singleFieldValues = fieldValues[fieldIds[0]];
-        return patchBooleanFieldValues_HACK(singleFieldValues);
-      } else {
-        // We have multiple fields, so let's merge their values to a single array
-        const sortedMergedValues = _.chain(Object.values(fieldValues))
-          .flatten(true)
-          .sortBy(fieldValue => {
-            const valueIsRemapped = fieldValue.length === 2;
-            return valueIsRemapped ? fieldValue[1] : fieldValue[0];
-          })
-          .value();
-
-        // run the uniqueness comparision always against a non-remapped value
-        return _.uniq(sortedMergedValues, false, fieldValue => fieldValue[0]);
-      }
-    },
-  );
-};
-
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, instantiate) {
+export function copyObjects(
+  metadata,
+  objects,
+  instantiate,
+  identifierProp = "id",
+) {
   const copies = {};
   for (const object of Object.values(objects)) {
-    if (object && object.id != null) {
-      copies[object.id] = instantiate(object);
-      copies[object.id].metadata = metadata;
+    if (object?.[identifierProp] != null) {
+      copies[object[identifierProp]] = instantiate(object, metadata);
     } else {
-      console.warn("Missing id:", object);
+      console.warn(`Missing ${identifierProp}:`, object);
     }
   }
   return copies;

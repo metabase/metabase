@@ -7,20 +7,21 @@ import moment from "moment-timezone";
 
 import { t } from "ttag";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
+import { hasEventAxis } from "metabase/visualizations/lib/timelines";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
-import type { SingleSeries } from "metabase-types/types/Visualization";
-
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;
+const X_AXIS_PADDING = 3;
+const X_AXIS_PADDING_WITH_EVENT_AXIS = 20;
 
 /// d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
 /// if it's an array then convert to a num. Use this function so you're guaranteed to get a number;
@@ -89,12 +90,10 @@ export function applyChartTimeseriesXAxis(
   chart,
   series,
   { xValues, xDomain, xInterval },
+  timelineEvents,
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
 
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
@@ -102,6 +101,8 @@ export function applyChartTimeseriesXAxis(
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
+  let tickFormat = () => "";
+  const { timezone } = tickInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
@@ -115,25 +116,22 @@ export function applyChartTimeseriesXAxis(
       chart.settings["graph.x_axis.gridLine_enabled"],
     );
 
-    if (dimensionColumn.unit == null) {
+    if (dimensionColumn.unit == null && dataInterval.interval !== "ms") {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+
     const waterfallTotalX =
       firstSeries.card.display === "waterfall" &&
       chart.settings["waterfall.show_total"]
         ? xValues[xValues.length - 1]
         : null;
 
-    // extract xInterval timezone for updating tickInterval
-    const { timezone } = tickInterval;
-
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
-    const tickFormat = timestamp => {
-      const { column, ...columnSettings } = chart.settings.column(
-        dimensionColumn,
-      );
+    tickFormat = timestamp => {
+      const { column, ...columnSettings } =
+        chart.settings.column(dimensionColumn);
       return waterfallTotalX && waterfallTotalX.isSame(timestamp)
         ? t`Total`
         : formatValue(timestamp, {
@@ -166,18 +164,24 @@ export function applyChartTimeseriesXAxis(
 
     chart.xAxis().tickFormat(tickFormat);
 
-    // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = {
-      ...tickInterval,
-      ...computeTimeseriesTicksInterval(
-        xDomain,
-        tickInterval,
-        chart.width(),
-        tickFormat,
-      ),
-      timezone,
-    };
+    if (hasEventAxis({ timelineEvents, xDomain, isTimeseries: true })) {
+      chart.xAxis().tickPadding(X_AXIS_PADDING_WITH_EVENT_AXIS);
+    } else {
+      chart.xAxis().tickPadding(X_AXIS_PADDING);
+    }
   }
+
+  // Compute a sane interval to display based on the data granularity, domain, and chart width
+  tickInterval = {
+    ...tickInterval,
+    ...computeTimeseriesTicksInterval(
+      xDomain,
+      tickInterval,
+      chart.width(),
+      tickFormat,
+    ),
+    timezone,
+  };
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
@@ -222,10 +226,7 @@ export function applyChartQuantitativeXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
   const dimensionColumn = firstSeries.data.cols[0];
 
   const waterfallTotalX =
@@ -283,7 +284,8 @@ export function applyChartQuantitativeXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain = [xDomain[0] - xInterval * 0.75, xDomain[1] + xInterval * 0.75];
+  const pad = Math.round(xInterval * 0.75 * 10) / 10;
+  xDomain = [xDomain[0] - pad, xDomain[1] + pad];
 
   chart.x(scale.domain(xDomain)).xUnits(dc.units.fp.precision(xInterval));
 }
@@ -294,10 +296,7 @@ export function applyChartOrdinalXAxis(
   { xValues, isHistogramBar },
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
 
   const dimensionColumn = firstSeries.data.cols[0];
 

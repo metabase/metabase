@@ -1,10 +1,12 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const testQuery = {
-  database: 1,
+  database: SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [
@@ -23,8 +25,6 @@ describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
@@ -85,15 +85,51 @@ describe("scenarios > visualizations > scatter", () => {
     cy.findByText("Visualization");
     cy.findAllByText("79").should("not.exist");
   });
+
+  it("should respect circle size in a visualization (metabase#22929)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as size, 1 as x, 5 as y union all
+select 10 as size, 2 as x, 5 as y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+      visualization_settings: {
+        "scatter.bubble": "SIZE",
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+    });
+
+    cy.get("circle").each((circle, index) => {
+      cy.wrap(circle)
+        .invoke("attr", "r")
+        .then(r => {
+          const rFloat = +r;
+
+          expect(rFloat).to.be.greaterThan(0);
+
+          cy.wrap(r).as("radius" + index);
+        });
+    });
+
+    cy.get("@radius0").then(r0 => {
+      cy.get("@radius1").then(r1 => {
+        assert.notEqual(r0, r1);
+      });
+    });
+  });
 });
 
 function triggerPopoverForBubble(index = 13) {
-  cy.wait("@dataset");
   // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
   // See: https://github.com/metabase/metabase/pull/15235
-  cy.get("[class*=ViewFooter]").within(() => {
-    cy.icon("table2").click(); // Switch to the tabular view...
-    cy.icon("bubble").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
+  cy.findByTestId("view-footer").within(() => {
+    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+    cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
   cy.get(".bubble")

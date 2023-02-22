@@ -1,6 +1,8 @@
 const cypress = require("cypress");
 const arg = require("arg");
 
+const { executeYarnCommand } = require("./cypress-runner-utils");
+
 const args = arg(
   {
     "--folder": String, // The name of the folder to run files from
@@ -13,7 +15,6 @@ const folder = args["--folder"];
 const isFolder = !!folder;
 
 const isOpenMode = args["--open"];
-const isCI = process.env["CI"];
 
 const parseArguments = async () => {
   const cliArgs = args._;
@@ -34,42 +35,37 @@ const getSourceFolder = folder => {
   return `./frontend/test/metabase/scenarios/${folder}/**/*.cy.spec.js`;
 };
 
-const getReporterConfig = isCI => {
-  return isCI
-    ? {
-        reporter: "junit",
-        "reporter-options": "mochaFile=cypress/results/results-[hash].xml",
-      }
-    : null;
-};
-
 const runCypress = async (baseUrl, exitFunction) => {
+  await executeYarnCommand({
+    command: "yarn run clean-cypress-artifacts",
+    message: "Removing the existing Cypress artifacts\n",
+  });
+
   const defaultConfig = {
-    configFile: "frontend/test/__support__/e2e/cypress.json",
+    browser: "chrome",
+    configFile: "frontend/test/__support__/e2e/cypress.config.js",
     config: {
       baseUrl,
     },
     spec: isFolder && getSourceFolder(folder),
   };
 
-  const reporterConfig = getReporterConfig(isCI);
-
   const userArgs = await parseArguments();
 
-  const finalConfig = Object.assign(
-    {},
-    defaultConfig,
-    reporterConfig,
-    userArgs,
-  );
+  const finalConfig = Object.assign({}, defaultConfig, userArgs);
 
   try {
     const { status, message, totalFailed, failures } = isOpenMode
       ? await cypress.open(finalConfig)
       : await cypress.run(finalConfig);
 
-    // At least one test failed
+    // At least one test failed, so let's generate HTML report that helps us determine what went wrong
     if (totalFailed > 0) {
+      await executeYarnCommand({
+        command: "yarn run generate-cypress-html-report",
+        message: "Generating Mochawesome HTML report\n",
+      });
+
       await exitFunction(1);
     }
 

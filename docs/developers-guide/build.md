@@ -1,26 +1,163 @@
-# Build Metabase
+---
+title: Building Metabase
+---
 
-## Install Prerequisites
+# Building Metabase
 
-These are the tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
+This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
+
+## Install the prerequisites
+
+If you're using macOS, you'll want to install Xcode Command Line Tools first, by running: 
+
+```
+xcode-select --install
+```
+
+To complete any build of the Metabase code, you'll need to install the following.
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../operations-guide/java-versions.md))
+
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/java-versions.md))
+
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
-4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by doing `npm install --global yarn`
+
+4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
+ 
+```
+npm install --global yarn
+```
 
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
 sudo apt install openjdk-11-jdk nodejs && sudo npm install --global yarn
 ```
-If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building by doing `sudo update-alternatives --config java` and selecting Java 11 in the menu
 
-If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
+If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with: 
 
-Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
+```
+sudo update-alternatives --config java
+``` 
 
-## Build Metabase Uberjar
+Then select Java 11 in the menu.
+
+### Running on M1 Apple computers
+
+If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
+
+```
+/usr/sbin/softwareupdate --install-rosetta (root permission not required)
+```
+
+or
+
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license (root permission required)
+```
+
+### If you're running Windows, use WSL
+
+If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
+
+### Developing with VS Code in a remote container
+
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](visual-studio-code.md) and its remote container support.
+
+## Clone the Metabase repo
+
+Once you've installed all the build tools, you'll need to clone the [Metabase repository](https://github.com/metabase/metabase) from GitHub.
+
+1. Create a `workspace` folder (you can name it that or whatever you want), which will store the Metabase code files.
+
+2. Open up your terminal app, and navigate to your workspace folder with: 
+
+```
+cd ~/workspace
+```
+
+{:start="3"}
+3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
+
+```
+git clone https://github.com/metabase/metabase
+```
+
+## Choose the branch you want to run, and run it
+
+This is the part that you’ll use over and over. 
+
+The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
+
+{:start="4"}
+4. Open up your terminal app
+
+5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
+   
+   ```
+   cd ~/workspace/metabase
+   ```
+
+6. "Pull” down the latest code by running: 
+
+   ```
+   git pull
+   ```
+
+   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch someone make changes to it.
+
+7. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
+`fix-native-dataset-drill-popover`.
+
+8. Switch to, or “check out,” that branch by running:
+
+   ```
+   git checkout <branch-name>
+   ```
+    
+   If we wanted to switch to the branch in the previous step, we'd run:
+
+   ```
+   git checkout fix-native-dataset-drill-popover
+   ```
+    
+   When you want to switch back to `master`, run: 
+    
+   ```
+   git checkout master
+   ```
+
+## Run Metabase
+
+{:start="9"}
+9. Now we’ll start up the backend server of Metabase with:
+
+   ```
+   clojure -M:run
+   ```
+   
+   When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
+
+10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command: 
+
+   ```
+   yarn build-hot
+   ```
+   
+If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
+
+{:start="11"}
+11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
+     
+   This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
+
+To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 6, 7, and 8. If Metabase wasn’t already running, you'll need to complete steps 9 and 10 again too. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
+
+## Shutting down Metabase
+
+If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing step 9 again.
+
+## Building the Metabase Uberjar
 
 The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM. There is a script which will execute all steps in the process and output the final artifact for you. You can pass the environment variable MB_EDITION before running the build script to choose the version that you want to build. If you don't provide a value, the default is `oss` which will build the Community Edition.
 
@@ -28,152 +165,10 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
-## Building macOS App (`Metabase.app`)
+### Build  a Metabase Uberjar in a containerized environment
 
-NOTE: These instructions are only for packaging a built Metabase uberjar into `Metabase.app`. They are not useful if your goal is to work on Metabase itself; for development, please see above.
-
-### First-Time Configuration
-
-<details>
-<summary>
-Steps
-</summary>
-
-#### Building
-
-The following steps need to be done before building the Mac App:
-
-1. Install XCode.
-
-1. Add a JRE to the `/path/to/metabase/repo/OSX/Metabase/jre`
-
-   You must acquire a copy of a JRE (make sure you get a JRE rather than JDK) and move it to the correct location in the Mac App source directory so it can be included as part of the Mac App. To ship Java applications as Mac Apps, you must ship them with their own JRE. In this case we want to get a JRE from somewhere (more on this below) and move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.)
-
-   <details><summary>Option 1: Download from AdoptOpenJDK (currently broken -- do not use)</summary>
-
-    You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.) For example:
-
-   ```bash
-   # IMPORTANT -- DO NOT COPY THIS -- THIS JRE DOESN'T WORK
-   cd /path/to/metabase/repo
-   wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
-   tar -xzvf OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
-   mv jdk-11.0.8+10-jre/Contents/Home OSX/Metabase/jre
-   ```
-
-   **VERY IMPORTANT!**
-
-   Make sure the JRE version you use is one that is known to work successfully with notarization. We have found out the one linked above does not work.
-   I have found a nightly build that *does* work, but it's no longer available for download. Cam has a copy of a JRE that is known to work. Refer to Option 2.
-
-   If you get notarization errors like
-
-   > The executable does not have the hardened runtime enabled.
-
-   (Referring to files in `Metabase.app/Contents/Resources/jre/bin/`) then use a different build of the JRE.
-
-   Assuming the OpenJDK folks have resolved this issue going forward, you are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the OpenJ9 one but it ultimately shouldn't make a difference.
-   </details>
-
-   <details><summary>Option 2: Ask Cam for known working JRE</summary>
-
-    Have Cam ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
-    </details>
-   
-1. Copy Metabase uberjar to OSX resources dir (only needed for testing build in Xcode)
-   
-    Normally the release script does this for you automatically, but for purposes of making sure things are working at this point independently of the release script you should do this yourself just this once. Download a Metabase uberjar from `https://downloads.metabase.com` and copy it to the `Resources` directory:
-
-    ```bash
-    cp /path/to/metabase.jar OSX/Resources/metabase.jar
-    ```
-
-At this point, you should try opening up the Xcode project and building the Mac App in Xcode by clicking the run button. The app should build and launch at this point. If it doesn't, ask Cam for help!
-
-#### Releasing
-
-The following steps are prereqs for *releasing* the Mac App:
-
-1)  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
-
-1)  Install AWS command-line client (if needed)
-
-    ```bash
-    brew install awscli
-    ```
-
-1)  Configure AWS Credentials for `metabase` profile (used to upload artifacts to S3)
-
-    You'll need credentials that give you permission to write the metabase-osx-releases S3 bucket.
-    You just need the access key ID and secret key; use the defaults for locale and other options.
-
-    ```bash
-    aws configure --profile metabase
-    ```
-
-1)  Obtain a copy of the private key for signing app updates (ask Cam) and put a copy of it at `OSX/dsa_priv.pem`
-
-    ```bash
-    cp /path/to/private/key.pem OSX/dsa_priv.pem
-    ```
-
-1)  Add `Apple Developer ID Application Certificate` to your computer's keychain.
-
-    1) Generate a Certificate Signing Request from the Keychain Access app.
-
-        1) `Keychain Access` > `Certificate Assistant` > `Request a Certificate From a Certificate Authority`.
-
-        1) Enter the email associated with your Apple Developer account.
-
-        1) Leave "CA Email Address" blank
-
-        1) Choose "Save to Disk"
-
-    1) Have Cam go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a `Developer ID Application` certificate for you by uploading the Certificate Signing Request you creating in the last step.
-
-    1) Load the generated certificate on your computer.
-
-1)  Export your Apple ID for building the app as `METABASE_MAC_APP_BUILD_APPLE_ID`. (This Apple ID must be part of the Metabase org in the Apple developer site. Ask Cam to add you if it isn't.)
-
-    ```bash
-    #  Add this to .zshrc or .bashrc
-    export METABASE_MAC_APP_BUILD_APPLE_ID=my_email@whatever.com
-    ```
-
-1)  Create an App-Specific password for the Apple ID in the previous step
-
-    1.  Go to https://appleid.apple.com/account/manage then `Security` > `App-Specific Passwords` > `Generate Password`
-
-    1.  Store the password in Keychain
-
-        ```bash
-        xcrun altool \
-        --store-password-in-keychain-item "METABASE_MAC_APP_BUILD_PASSWORD" \
-        -u "$METABASE_MAC_APP_BUILD_APPLE_ID" \
-        -p <secret_password>
-        ```
-
-1) Install Clojure CLI. See [the instructions on
-clojure.org](https://www.clojure.org/guides/getting_started) for more details.
-
-    ```bash
-    brew install clojure/tools/clojure
-    ```
-
-</details>
-
-### Building & Releasing the Mac App
-
-After following the configuration steps above, to build and release the app you can use the build script:
-
-1. Make sure release is *published* on GitHub and release notes are ready. The script copies these for the update release notes.
-
-1. Make sure you're on the appropriate release branch locally. The script reads the version number from the most recent tag
-
-1. Bundle entire app, and upload to s3
-
-   ```bash
-   ./OSX/release.sh
-   ```
-
-   **Important Note** Do not let your computer lock the screen while running the script — if the screen is locked, macOS will not allow the script to access your Apple Developer credentials from the Keychain (needed for notarization) and the script will fail.
+If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
+```
+DOCKER_BUILDKIT=1 docker build --output container-output/ .
+```
+Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.

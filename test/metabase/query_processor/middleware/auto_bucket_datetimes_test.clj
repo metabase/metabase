@@ -1,19 +1,21 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.middleware.auto-bucket-datetimes :as auto-bucket-datetimes]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.middleware.auto-bucket-datetimes
+    :as qp.auto-bucket-datetimes]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest should-not-be-autobucketed?-test
   (testing "Don't auto-bucket fields that are already bucketed"
     (is (= true
            (boolean
-            (#'auto-bucket-datetimes/should-not-be-autobucketed?
+            (#'qp.auto-bucket-datetimes/should-not-be-autobucketed?
              [:field 1 {:temporal-unit :month}]))))))
 
 (defn- auto-bucket [query]
-  (:pre (mt/test-qp-middleware auto-bucket-datetimes/auto-bucket-datetimes query)))
+  (qp.auto-bucket-datetimes/auto-bucket-datetimes query))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (mt/id), :type :query, :query mbql-query})

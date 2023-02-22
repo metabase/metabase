@@ -24,13 +24,14 @@
 
   3.  `substitute` (and the related namespace `substitution`) replace optional and param objects with appropriate SQL
       snippets and prepared statement args, and combine the sequence of fragments back into a single SQL string."
-  (:require [clojure.set :as set]
-            [metabase.driver :as driver]))
+  (:require
+   [clojure.set :as set]
+   [metabase.driver :as driver]))
 
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [{:keys [parameters query native] :as inner-query}]
+  [inner-query]
   (if-not (driver/supports? driver/*driver* :native-parameters)
     inner-query
     ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native

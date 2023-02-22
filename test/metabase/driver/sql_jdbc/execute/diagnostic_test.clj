@@ -1,10 +1,12 @@
 (ns metabase.driver.sql-jdbc.execute.diagnostic-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute.diagnostic
+    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -23,8 +25,7 @@
           (let [{:keys [::sql-jdbc.execute.diagnostic/driver
                         ::sql-jdbc.execute.diagnostic/database-id
                         ::sql-jdbc.execute.diagnostic/active-connections
-                        ::sql-jdbc.execute.diagnostic/total-connections
-                        ::sql-jdbc.execute.diagnostic/threads-waiting]} diag-info]
+                        ::sql-jdbc.execute.diagnostic/total-connections]} diag-info]
             ;; the diag info driver should match the current one
             (is (= driver/*driver* driver))
             ;; the diag info database-id should also match the current one

@@ -2,11 +2,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import RevisionDiff from "./RevisionDiff";
 import { t } from "ttag";
+import moment from "moment-timezone";
 import UserAvatar from "metabase/components/UserAvatar";
 
-import moment from "moment";
+import RevisionDiff from "./RevisionDiff";
 
 export default class Revision extends Component {
   static propTypes = {
@@ -46,7 +46,7 @@ export default class Revision extends Component {
     if (user.id === currentUser.id) {
       return t`You`;
     } else {
-      return user.first_name;
+      return user.common_name;
     }
   }
 
@@ -66,7 +66,7 @@ export default class Revision extends Component {
       <li className="flex flex-row">
         <div className="flex flex-column align-center mr2">
           <div className="text-white">
-            <UserAvatar user={revision.user} background={userColor} />
+            <UserAvatar user={revision.user} bg={userColor} />
           </div>
           <div
             className="flex-full my1 border-left"

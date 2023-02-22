@@ -1,12 +1,40 @@
 (ns metabase.models.field-values
-  (:require [clojure.tools.logging :as log]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  "FieldValues is used to store a cached list of values of Fields that has `has_field_values=:auto-list or :list`.
+  Check the doc in [[metabase.models.field/has-field-values-options]] for more info about `has_field_values`.
+
+  There are 2 main classes of FieldValues: Full and Advanced.
+  - Full FieldValues store a list of distinct values of a Field without any constraints.
+  - Whereas Advanced FieldValues has additional constraints:
+    - sandbox: FieldValues of a field but is sandboxed for a specific user
+    - linked-filter: FieldValues for a param that connects to a Field that is constrained by the values of other Field.
+      It's currently being used on Dashboard or Embedding, but it could be used to power any parameters that connect to a Field.
+
+  * Life cycle
+  - Full FieldValues are created by the fingerprint or scanning process.
+    Once it's created the values will be updated by the scanning process that runs daily.
+    Only active FieldValues that have a last_used_at within [[active-field-values-cutoff]] will be updated on sync.
+    FieldValues get a new last_used_at when going through [[get-or-create-full-field-values!]].
+  - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
+    sandboxed permission try to get values of a Field.
+    Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
+    But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -17,18 +45,39 @@
 (def ^Integer auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
-  (int 100))
+  (int 1000))
 
 (def ^:private ^Integer entry-max-length
   "The maximum character length for a stored FieldValues entry."
   (int 100))
 
-(def ^:private ^Integer total-max-length
+(def ^:dynamic *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
+(def advanced-field-values-max-age
+  "Age of an advanced FieldValues in days.
+  After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
+  (t/days 30))
 
-;; ## Entity + DB Multimethods
+(def ^:private active-field-values-cutoff
+  "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
+   they are used again."
+  (t/days 14))
+
+(def advanced-field-values-types
+  "A class of fieldvalues that has additional constraints/filters."
+  #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
+    :linked-filter}) ;; are fieldvalues but has constraints from other linked parameters on dashboard/embedding
+
+(def ^:private field-values-types
+  "All FieldValues type."
+  (into #{:full} ;; default type for fieldvalues where it contains values for a field without constraints
+        advanced-field-values-types))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Entity & Lifecycle                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (models/defmodel FieldValues :metabase_fieldvalues)
 
@@ -38,13 +87,61 @@
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
 
-(defn- pre-insert [field-values]
-  (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)))
+(defn- assert-valid-field-values-type
+  [{:keys [type hash_key] :as _field-values}]
+  (when type
+    (when-not (contains? field-values-types type)
+      (throw (ex-info (tru "Invalid field-values type.")
+                      {:type        type
+                       :stauts-code 400})))
 
-(defn- pre-update [field-values]
+    (when (and (= type :full)
+               hash_key)
+      (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
+                      {:type        type
+                       :hash_key    hash_key
+                       :status-code 400})))
+
+    (when (and (advanced-field-values-types type)
+               (empty? hash_key))
+      (throw (ex-info (tru "Advanced FieldValues requires a hash_key.")
+                      {:type        type
+                       :status-code 400})))))
+
+(defn clear-advanced-field-values-for-field!
+  "Remove all advanced FieldValues for a `field-or-id`."
+  [field-or-id]
+  (db/delete! FieldValues :field_id (u/the-id field-or-id)
+                          :type     [:in advanced-field-values-types]))
+
+(defn clear-field-values-for-field!
+  "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
+  [field-or-id]
+  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+
+(defn- pre-insert [{:keys [field_id] :as field-values}]
+  (u/prog1 (merge {:type :full}
+                  field-values)
+    (assert-valid-human-readable-values field-values)
+    (assert-valid-field-values-type field-values)
+    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field is deleted
+    (when (= (:type <>) :full)
+      (clear-advanced-field-values-for-field! field_id))))
+
+(defn- pre-update [{:keys [id type field_id values hash_key] :as field-values}]
   (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)))
+    (assert-valid-human-readable-values field-values)
+    (when (or type hash_key)
+      (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
+                      {:type        type
+                       :hash_key    hash_key
+                       :status-code 400})))
+    ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+    (when (and values
+           (= (or type (db/select-one-field :type FieldValues :id id))
+              :full))
+     (clear-advanced-field-values-for-field! (or field_id
+                                                 (db/select-one-field :field_id FieldValues :id id))))))
 
 (defn- post-select [field-values]
   (cond-> field-values
@@ -68,17 +165,29 @@
                                        :else
                                        [])))))
 
-(u/strict-extend (class FieldValues)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
-          :pre-insert  pre-insert
-          :pre-update  pre-update
-          :post-select post-select}))
+(mi/define-methods
+ FieldValues
+ {:properties  (constantly {::mi/timestamped? true})
+  :types       (constantly {:human_readable_values :json-no-keywordization
+                            :values                :json
+                            :type                  :keyword})
+  :pre-insert  pre-insert
+  :pre-update  pre-update
+  :post-select post-select})
 
+(defmethod serdes.hash/identity-hash-fields FieldValues
+  [_field-values]
+  [(serdes.hash/hydrated-hash :field)])
 
-;; ## FieldValues Helper Functions
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Utils fns                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn inactive?
+  "If FieldValues have not been accessed recently they are considered inactive."
+  [field-values]
+  (and field-values (t/before? (:last_used_at field-values)
+                               (t/minus (t/offset-date-time) active-field-values-cutoff))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
@@ -102,41 +211,35 @@
             (not (isa? (keyword base-type) :type/Temporal))
             (#{:list :auto-list} (keyword has-field-values)))))))
 
-(defn- values-less-than-total-max-length?
-  "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
-  FieldValues entry. Does some logging as well."
-  [distinct-values]
-  ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
-  (let [total-length (reduce
-                      (fn [total-length v]
-                        (let [new-total (+ total-length (count (str v)))]
-                          (if (>= new-total total-max-length)
-                            (reduced new-total)
-                            new-total)))
-                      0
-                      distinct-values)]
-    (u/prog1 (<= total-length total-max-length)
-      (log/debug (trs "Field values total length is > {0}." total-max-length)
-                 (if <>
-                   (trs "FieldValues are allowed for this Field.")
-                   (trs "FieldValues are NOT allowed for this Field."))))))
+(defn take-by-length
+  "Like `take` but condition by the total length of elements.
+  Returns a stateful transducer when no collection is provided.
 
-(defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the `total-max-length` threshold. If the values are
-  past the threshold, this returns `nil`. (This function provides the values that normally get saved as a Field's
-  FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
-  very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
-  [field]
-  (classloader/require 'metabase.db.metadata-queries)
-  (try
-    (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
-      (when (values-less-than-total-max-length? values)
-        values))
-    (catch Throwable e
-      (log/error e (trs "Error fetching field values"))
-      nil)))
+    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
+    ;; => [\"Dog\" \"Cat\"]"
+  ([max-length]
+   (fn [rf]
+     (let [current-length (volatile! 0)]
+       (fn
+         ([] (rf))
+         ([result]
+          (rf result))
+         ([result input]
+          (vswap! current-length + (count (str input)))
+          (if (< @current-length max-length)
+            (rf result input)
+            (reduced result)))))))
 
-(defn- fixup-human-readable-values
+  ([max-length coll]
+   (lazy-seq
+     (when-let [s (seq coll)]
+       (let [f          (first s)
+             new-length (- max-length (count (str f)))]
+         (when-not (neg? new-length)
+           (cons f (take-by-length new-length
+                                   (rest s)))))))))
+
+(defn fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changes, the
   human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
   `new-values`. If a new field value is found, a string version of that is used"
@@ -145,41 +248,124 @@
     (let [orig-remappings (zipmap old-values old-hrv)]
       (map #(get orig-remappings % (str %)) new-values))))
 
-(defn create-or-update-field-values!
-  "Create or update the FieldValues object for 'field`. If the FieldValues object already exists, then update values for
+(defn field-values->pairs
+  "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
+  `field-values` instance."
+  [{:keys [values human_readable_values]}]
+  (if (seq human_readable_values)
+    (map vector values human_readable_values)
+    (map vector values)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Advanced FieldValues                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn advanced-field-values-expired?
+  "Checks if an advanced FieldValues expired."
+  [fv]
+  {:pre [(advanced-field-values-types (:type fv))]}
+  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
+
+(defenterprise hash-key-for-sandbox
+  "Return a hash-key that will be used for sandboxed fieldvalues."
+  metabase-enterprise.sandbox.models.params.field-values
+  [field-id]
+  nil)
+
+(defn default-hash-key-for-linked-filters
+  "OSS impl of [[hash-key-for-linked-filters]]."
+  [field-id constraints]
+  (str (hash [field-id
+              constraints])))
+
+(defenterprise hash-key-for-linked-filters
+  "Return a hash-key that will be used for linked-filters fieldvalues."
+  metabase-enterprise.sandbox.models.params.field-values
+  [field-id constraints]
+  (default-hash-key-for-linked-filters field-id constraints))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    CRUD fns                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn distinct-values
+  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
+  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[*total-max-length*]].
+  It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
+
+  ;; (distinct-values (Field 1))
+  ;; ->  {:values          [1, 2, 3]
+          :has_more_values false}
+
+  (This function provides the values that normally get saved as a Field's
+  FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
+  very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
+  [field]
+  (classloader/require 'metabase.db.metadata-queries)
+  (try
+    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+          limited-distinct-values (take-by-length *total-max-length* distinct-values)]
+      {:values          limited-distinct-values
+       ;; has_more_values=true means the list of values we return is a subset of all possible values.
+       :has_more_values (or
+                          ;; If the `distinct-values` has more elements than `limited-distinct-values`
+                          ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
+                          (> (count distinct-values)
+                             (count limited-distinct-values))
+                          ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
+                          ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
+                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                          ;; we assume the returned values is just a subset of what we have in DB.
+                          (= (count distinct-values)
+                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+    (catch Throwable e
+      (log/error e (trs "Error fetching field values"))
+      nil)))
+
+(defn create-or-update-full-field-values!
+  "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
-   created/updated/deleted as a result of this call."
+   created/updated/deleted as a result of this call.
+
+  Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values (FieldValues :field_id (u/the-id field))
-        values       (distinct-values field)
-        field-name   (or (:name field) (:id field))]
+  (let [field-values                     (db/select-one FieldValues :field_id (u/the-id field) :type :full)
+        {:keys [values has_more_values]} (distinct-values field)
+        field-name                       (or (:name field) (:id field))]
     (cond
-      ;; If this Field is marked `auto-list`, and the number of values in now over the list threshold, we need to
-      ;; unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues; this will
-      ;; result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred by the
-      ;; `metabase.models.field/infer-has-field-values` hydration function (see that namespace for more detailed
+      ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
+      ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold
+      ;; we need to unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues;
+      ;; this will result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred
+      ;; by the [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed
       ;; discussion)
       ;;
       ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
       ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a
       ;; way that could make this work. Thus, we are stuck doing it here :(
-      (and (> (count values) auto-list-cardinality-threshold)
-           (= :auto-list (keyword (:has_field_values field))))
+      (and (= :auto-list (keyword (:has_field_values field)))
+           (or has_more_values
+               (> (count values) auto-list-cardinality-threshold)))
       (do
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
         (db/update! 'Field (u/the-id field) :has_field_values nil)
-        (db/delete! FieldValues :field_id (u/the-id field)))
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
 
-      (= (:values field-values) values)
-      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+      (and (= (:values field-values) values)
+           (= (:has_more_values field-values) has_more_values))
+      (do
+        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
@@ -189,7 +375,9 @@
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
+          :type :full
           :field_id              (u/the-id field)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)
@@ -197,40 +385,36 @@
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
       :else
       (do
-        (db/delete! FieldValues :field_id (u/the-id field))
+        (clear-field-values-for-field! field)
         ::fv-deleted))))
 
-(defn field-values->pairs
-  "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
-  `field-values` instance."
-  [{:keys [values human_readable_values] :as field-values}]
-  (if (seq human_readable_values)
-    (map vector values human_readable_values)
-    (map vector values)))
-
-(defn get-or-create-field-values!
+(defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
-  created FieldValues for `Field`."
+  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (FieldValues :field_id field-id)
-        (when (#{::fv-created ::fv-updated} (create-or-update-field-values! field human-readable-values))
-          (FieldValues :field_id field-id)))))
+    (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
+      (if (or (not existing) (inactive? existing))
+        (case (create-or-update-full-field-values! field human-readable-values)
+          ::fv-deleted
+          nil
 
-(defn save-field-values!
-  "Save the FieldValues for `field-id`, creating them if needed, otherwise updating them."
-  [field-id values]
-  {:pre [(integer? field-id) (coll? values)]}
-  (if-let [field-values (FieldValues :field_id field-id)]
-    (db/update! FieldValues (u/the-id field-values), :values values)
-    (db/insert! FieldValues :field_id field-id, :values values)))
+          ::fv-created
+          (db/select-one FieldValues :field_id field-id :type :full)
 
-(defn clear-field-values!
-  "Remove the FieldValues for `field-or-id`."
-  [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+          (do
+            (when existing
+              (db/update! FieldValues (:id existing) :last_used_at :%now))
+            (db/select-one FieldValues :field_id field-id :type :full)))
+        (do
+          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          existing)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  On Demand                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- table-ids->table-id->is-on-demand?
   "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
@@ -261,4 +445,75 @@
         (log/debug
          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
                  (u/the-id field) (:name field)))
-        (create-or-update-field-values! field)))))
+        (create-or-update-full-field-values! field)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Serialization                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/serdes-generate-path "FieldValues" [_ {:keys [field_id]}]
+  (let [field (db/select-one 'Field :id field_id)]
+    (conj (serdes.base/serdes-generate-path "Field" field)
+          {:model "FieldValues" :id "0"})))
+
+(defmethod serdes.base/serdes-dependencies "FieldValues" [fv]
+  ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
+  [(pop (serdes.base/serdes-path fv))])
+
+(defmethod serdes.base/extract-one "FieldValues" [_model-name _opts fv]
+  (-> (serdes.base/extract-one-basics "FieldValues" fv)
+      (dissoc :field_id)))
+
+(defmethod serdes.base/load-xform "FieldValues" [fv]
+  (let [[db schema table field :as field-ref] (map :id (pop (serdes.base/serdes-path fv)))
+        field-ref (if field
+                    field-ref
+                    ;; It's too short, so no schema. Shift them over and add a nil schema.
+                    [db nil schema table])]
+    (-> (serdes.base/load-xform-basics fv)
+        (assoc :field_id (serdes.util/import-field-fk field-ref))
+        (update :type keyword))))
+
+(defmethod serdes.base/load-find-local "FieldValues" [path]
+  ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
+  (let [field (serdes.base/load-find-local (pop path))]
+    (db/select-one FieldValues :field_id (:id field))))
+
+(defmethod serdes.base/load-update! "FieldValues" [_ ingested local]
+  ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
+  ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
+  ;; this preserves the new value so the normal error is produced.
+  (let [ingested (cond-> ingested
+                   (= (:type ingested)     (:type local))     (dissoc :type)
+                   (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
+    ((get-method serdes.base/load-update! "") "FieldValues" ingested local)))
+
+(def ^:private field-values-slug "___fieldvalues")
+
+(defmethod serdes.base/storage-path "FieldValues" [fv _]
+  ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+  ;; don't have their own directories.
+  (let [hierarchy    (serdes.base/serdes-path fv)
+        field        (last (drop-last hierarchy))
+        table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
+    (concat table-prefix
+            ["fields" (str (:id field) field-values-slug)])))
+
+(serdes.base/register-ingestion-path!
+  "FieldValues"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (str/ends-with? (last path) field-values-slug)
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id (subs field 0 (- (count field) (count field-values-slug)))}
+                         ;; FieldValues is always just ID 0, since there's at most one as part of the field.
+                         {:model "FieldValues" :id "0"}]))))

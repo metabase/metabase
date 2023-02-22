@@ -1,32 +1,51 @@
 /*eslint no-use-before-define: "error"*/
 
+import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
-import { getIn, assocIn, updateIn } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-import Visualization from "metabase/visualizations/components/Visualization";
-
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
+import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/meta/Card";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
-
-import Utils from "metabase/lib/utils";
-
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import Databases from "metabase/entities/databases";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { parseTimestamp } from "metabase/lib/time";
+import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import { getSetting } from "metabase/selectors/settings";
+import {
+  getXValues,
+  isTimeseries,
+} from "metabase/visualizations/lib/renderer_utils";
+import ObjectMode from "metabase/modes/components/modes/ObjectMode";
+
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import {
+  normalizeParameters,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
+import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
+import Mode from "metabase-lib/Mode";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
 export const getUiControls = state => state.qb.uiControls;
+const getQueryStatus = state => state.qb.queryStatus;
+const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -36,20 +55,130 @@ export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
 export const getIsShowingRawTable = state =>
   getUiControls(state).isShowingRawTable;
-export const getIsEditing = state => getUiControls(state).isEditing;
+
+const SIDEBARS = [
+  "isShowingQuestionDetailsSidebar",
+  "isShowingChartTypeSidebar",
+  "isShowingChartSettingsSidebar",
+  "isShowingTimelineSidebar",
+
+  "isShowingSummarySidebar",
+
+  "isShowingDataReference",
+  "isShowingTemplateTagsEditor",
+  "isShowingSnippetSidebar",
+];
+
+export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
+  SIDEBARS.some(sidebar => uiControls[sidebar]),
+);
+
 export const getIsRunning = state => getUiControls(state).isRunning;
+export const getIsLoadingComplete = state =>
+  getQueryStatus(state) === "complete";
 
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
-export const getQueryResults = state => state.qb.queryResults;
-export const getFirstQueryResult = state =>
-  state.qb.queryResults && state.qb.queryResults[0];
+export const getParameterValuesSearchCache = state =>
+  state.qb.parameterValuesSearchCache;
 
-// get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
+export const getMetadataDiff = state => state.qb.metadataDiff;
+
+export const getEntities = state => state.entities;
+export const getVisibleTimelineEventIds = state =>
+  state.qb.visibleTimelineEventIds;
+export const getSelectedTimelineEventIds = state =>
+  state.qb.selectedTimelineEventIds;
+
+const getRawQueryResults = state => state.qb.queryResults;
+
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
+  );
+
+export const getQueryResults = createSelector(
+  [getRawQueryResults, getMetadataDiff],
+  (queryResults, metadataDiff) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return null;
+    }
+
+    const [result] = queryResults;
+    if (result.error || !result?.data?.results_metadata) {
+      return queryResults;
+    }
+    const { cols, results_metadata } = result.data;
+
+    function applyMetadataDiff(column) {
+      const columnDiff = metadataDiff[column.field_ref];
+      return columnDiff ? merge(column, columnDiff) : column;
+    }
+
+    return [
+      {
+        ...result,
+        data: {
+          ...result.data,
+          cols: cols.map(applyMetadataDiff),
+          results_metadata: {
+            ...results_metadata,
+            columns: results_metadata.columns.map(applyMetadataDiff),
+          },
+        },
+      },
+    ];
+  },
+);
+
+export const getFirstQueryResult = createSelector([getQueryResults], results =>
+  Array.isArray(results) ? results[0] : null,
+);
+
+export const getTableId = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "query", "source-table"]),
+);
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult, getTableId],
+  (result, tableId) => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+
+    const hasMultiplePks =
+      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+
+    if (hasMultiplePks) {
+      return -1;
+    }
+    return cols.findIndex(getIsPKFromTablePredicate(tableId));
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
+);
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
@@ -58,11 +187,6 @@ export const getQueryStartTime = state => state.qb.queryStartTime;
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,
-);
-
-export const getTableId = createSelector(
-  [getCard],
-  card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeyReferences = state =>
@@ -103,11 +227,11 @@ export const getTableForeignKeys = createSelector(
   table => table && table.fks,
 );
 
-export const getSampleDatasetId = createSelector(
+export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
   databases => {
-    const sampleDataset = _.findWhere(databases, { is_sample: true });
-    return sampleDataset && sampleDataset.id;
+    const sampleDatabase = _.findWhere(databases, { is_sample: true });
+    return sampleDatabase && sampleDatabase.id;
   },
 );
 
@@ -119,11 +243,7 @@ export const getDatabaseFields = createSelector(
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(
-      card,
-      metadata,
-      parameterValues,
-    ),
+    getCardUiParameters(card, metadata, parameterValues),
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -147,24 +267,86 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector(
-  [getParameters],
-  parameters =>
-    parameters
-      .filter(
-        // parameters with an empty value get filtered out before a query run,
-        // so in order to compare current parameters to previously-used parameters we need
-        // to filter them here as well
-        parameter => parameter.value != null,
-      )
-      .map(parameter =>
-        // parameters are "normalized" immediately before a query run, so in order
-        // to compare current parameters to previously-used parameters we need
-        // to run parameters through this normalization function
-        normalizeParameterValue(parameter.type, parameter.value),
-      )
-      .filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector([getParameters], parameters =>
+  parameters
+    .filter(
+      // parameters with an empty value get filtered out before a query run,
+      // so in order to compare current parameters to previously-used parameters we need
+      // to filter them here as well
+      parameter => parameter.value != null,
+    )
+    .map(parameter =>
+      // parameters are "normalized" immediately before a query run, so in order
+      // to compare current parameters to previously-used parameters we need
+      // to run parameters through this normalization function
+      normalizeParameterValue(parameter.type, parameter.value),
+    )
+    .filter(p => p !== undefined),
 );
+
+const getNextRunParameters = createSelector([getParameters], parameters =>
+  normalizeParameters(parameters),
+);
+
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.previousQueryBuilderMode,
+);
+
+export const getDatasetEditorTab = createSelector(
+  [getUiControls],
+  uiControls => uiControls.datasetEditorTab,
+);
+
+export const getOriginalQuestion = createSelector(
+  [getMetadata, getOriginalCard],
+  (metadata, card) => metadata && card && new Question(card, metadata),
+);
+
+export const getLastRunQuestion = createSelector(
+  [getMetadata, getLastRunCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
+);
+
+export const getQuestion = createSelector(
+  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
+  (metadata, card, parameterValues, queryBuilderMode) => {
+    if (!metadata || !card) {
+      return;
+    }
+    const question = new Question(card, metadata, parameterValues);
+
+    const isEditingModel = queryBuilderMode === "dataset";
+    if (isEditingModel) {
+      return question.lockDisplay();
+    }
+
+    // When opening a model, we swap it's `dataset_query`
+    // with clean query using the model as a source table,
+    // to enable "simple mode" like features
+    // This has to be skipped for users without data permissions
+    // as it would be blocked by the backend as an ad-hoc query
+    // see https://github.com/metabase/metabase/issues/20042
+    const hasDataPermission = !!question.database();
+    return question.isDataset() && hasDataPermission && !isEditingModel
+      ? question.composeDataset()
+      : question;
+  },
+);
+
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
 
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
@@ -205,67 +387,212 @@ export function normalizeQuery(query, tableMetadata) {
   return query;
 }
 
+function isQuestionEditable(question) {
+  return !question?.query().readOnly();
+}
+
+function areQueriesEqual(queryA, queryB, tableMetadata) {
+  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
+  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
+  return _.isEqual(normalizedQueryA, normalizedQueryB);
+}
+
+// Model questions may be composed via the `composeDataset` method.
+// A composed model question should be treated as equivalent to its original form.
+// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
+// in either form.
+function areModelsEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+    return false;
+  }
+
+  const composedOriginal = originalQuestion.composeDataset();
+
+  const isLastRunComposed = areQueriesEqual(
+    lastRunQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+  const isCurrentComposed = areQueriesEqual(
+    currentQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+
+  const isLastRunEquivalentToCurrent =
+    isLastRunComposed &&
+    areQueriesEqual(
+      currentQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  const isCurrentEquivalentToLastRun =
+    isCurrentComposed &&
+    areQueriesEqual(
+      lastRunQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
+}
+
+function areQueriesEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  return (
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ) ||
+    areModelsEquivalent({
+      originalQuestion,
+      lastRunQuestion,
+      currentQuestion,
+      tableMetadata,
+    })
+  );
+}
+
 export const getIsResultDirty = createSelector(
   [
-    getLastRunDatasetQuery,
-    getNextRunDatasetQuery,
+    getQuestion,
+    getOriginalQuestion,
+    getLastRunQuestion,
     getLastRunParameterValues,
     getNextRunParameterValues,
     getTableMetadata,
   ],
   (
-    lastDatasetQuery,
-    nextDatasetQuery,
+    question,
+    originalQuestion,
+    lastRunQuestion,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
-    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
-    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
+    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+
     return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
+      haveParametersChanged ||
+      (isQuestionEditable(question) &&
+        !areQueriesEquivalent({
+          originalQuestion,
+          lastRunQuestion,
+          currentQuestion: question,
+          tableMetadata,
+        }))
     );
   },
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    metadata && card && new Question(card, metadata, parameterValues),
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+
+const getZoomedObjectRowIndex = createSelector(
+  [getPKRowIndexMap, getZoomedObjectId],
+  (PKRowIndexMap, objectId) => {
+    if (!PKRowIndexMap) {
+      return;
+    }
+    return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
+  },
 );
 
-export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
+export const getPreviousRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex - 1;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex - 1][PKColumnIndex];
+  },
 );
 
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
-    metadata && card && new Question(card, metadata),
+export const getNextRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex + 1;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex + 1][PKColumnIndex];
+  },
+);
+
+export const getCanZoomPreviousRow = createSelector(
+  [getZoomedObjectRowIndex],
+  rowIndex => rowIndex !== 0,
+);
+
+export const getCanZoomNextRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    const rowCount = queryResults[0].data.rows.length;
+    return rowIndex !== rowCount - 1;
+  },
+);
+
+export const getZoomRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    return queryResults[0].data.rows[rowIndex];
+  },
+);
+
+const isZoomingRow = createSelector(
+  [getZoomedObjectId],
+  index => index != null,
 );
 
 export const getMode = createSelector(
-  [getLastRunQuestion],
-  question => question && question.mode(),
+  [getLastRunQuestion, isZoomingRow],
+  (question, isZoomingRow) =>
+    isZoomingRow
+      ? new Mode(question, ObjectMode)
+      : question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults],
-  (mode, results) => {
-    // It handles filtering by a manually set PK column that is not unique
-    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
-    return mode?.name() === "object" && !hasMultipleRows;
-  },
+  [getMode, isZoomingRow],
+  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) =>
-    question && question.isDirtyComparedToWithoutParameters(originalQuestion),
+  (question, originalQuestion) => {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // We need to escape the isDirty check as it will always be true in this case,
+    // and the page will always be covered with a 'rerun' overlay.
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
+      return false;
+    }
+    return question.isDirtyComparedToWithoutParameters(originalQuestion);
+  },
 );
 
 export const getQuery = createSelector(
@@ -274,8 +601,16 @@ export const getQuery = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion],
-  question => question && question.canRun(),
+  [getQuestion, getIsDirty],
+  (question, isDirty) => {
+    if (!question) {
+      return false;
+    }
+    if (!question.isSaved() || isDirty) {
+      return question.canRun() && !question.query().readOnly();
+    }
+    return question.canRun();
+  },
 );
 
 export const getQuestionAlerts = createSelector(
@@ -288,6 +623,13 @@ export const getQuestionAlerts = createSelector(
 export const getResultsMetadata = createSelector(
   [getFirstQueryResult],
   result => result && result.data && result.data.results_metadata,
+);
+
+export const isResultsMetadataDirty = createSelector(
+  [getMetadataDiff],
+  metadataDiff => {
+    return Object.keys(metadataDiff).length > 0;
+  },
 );
 
 /**
@@ -311,9 +653,7 @@ export const getRawSeries = createSelector(
     let display = question && question.display();
     let settings = question && question.settings();
 
-    if (isObjectDetail) {
-      display = "object";
-    } else if (isShowingRawTable) {
+    if (isShowingRawTable) {
       display = "table";
       settings = { "table.pivot": false };
     }
@@ -364,11 +704,6 @@ export const getVisualizationSettings = createSelector(
   series => series && getComputedSettingsForSeries(series),
 );
 
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
-);
-
 /**
  * Returns whether the current question is a native query
  */
@@ -388,6 +723,73 @@ export const getIsNativeEditorOpen = createSelector(
 const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+export const getIsTimeseries = createSelector(
+  [getVisualizationSettings],
+  settings => settings && isTimeseries(settings),
+);
+
+export const getTimeseriesXValues = createSelector(
+  [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
+  (isTimeseries, series, settings) =>
+    isTimeseries && series && settings && getXValues({ series, settings }),
+);
+
+export const getTimeseriesXDomain = createSelector(
+  [getIsTimeseries, getTimeseriesXValues],
+  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+);
+
+export const getFetchedTimelines = createSelector([getEntities], entities => {
+  const entityQuery = { include: "events" };
+  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+});
+
+export const getTransformedTimelines = createSelector(
+  [getFetchedTimelines],
+  timelines => {
+    return getSortedTimelines(
+      timelines.map(timeline =>
+        updateIn(timeline, ["events"], (events = []) =>
+          _.chain(events)
+            .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+            .filter(event => !event.archived)
+            .value(),
+        ),
+      ),
+    );
+  },
+);
+
+export const getFilteredTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXDomain],
+  (timelines, xDomain) => {
+    return timelines
+      .map(timeline =>
+        updateIn(timeline, ["events"], events =>
+          xDomain
+            ? events.filter(event => isEventWithinDomain(event, xDomain))
+            : events,
+        ),
+      )
+      .filter(timeline => timeline.events.length > 0);
+  },
+);
+
+export const getVisibleTimelineEvents = createSelector(
+  [getFilteredTimelines, getVisibleTimelineEventIds],
+  (timelines, visibleTimelineEventIds) =>
+    _.chain(timelines)
+      .map(timeline => timeline.events)
+      .flatten()
+      .filter(event => visibleTimelineEventIds.includes(event.id))
+      .sortBy(event => event.timestamp)
+      .value(),
 );
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {
@@ -437,28 +839,6 @@ export const getSnippetCollectionId = createSelector(
   uiControls => uiControls && uiControls.snippetCollectionId,
 );
 
-/**
- * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
- * NOTE: completely disabled for now
- */
-export const getIsPreviewable = createSelector(
-  [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
-  (isNativeEditorOpen, question, isNew, isDirty) =>
-    // isNativeEditorOpen &&
-    // question &&
-    // question.display() === "table" &&
-    // (isNew || isDirty),
-    false,
-);
-
-/**
- * Returns whether the query builder is in native query "preview" mode
- */
-export const getIsPreviewing = createSelector(
-  [getIsPreviewable, getUiControls],
-  (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
-);
-
 export const getIsVisualized = createSelector(
   [getQuestion, getVisualizationSettings],
   (question, settings) =>
@@ -491,4 +871,103 @@ export const getIsLiveResizable = createSelector(
 export const getQuestionDetailsTimelineDrawerState = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
+);
+
+export const isBasedOnExistingQuestion = createSelector(
+  [getOriginalQuestion],
+  originalQuestion => {
+    return originalQuestion != null;
+  },
+);
+
+export const getDocumentTitle = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls?.documentTitle,
+);
+
+export const getPageFavicon = createSelector(
+  [getLoadingControls],
+  loadingControls =>
+    loadingControls?.showLoadCompleteFavicon
+      ? LOAD_COMPLETE_FAVICON
+      : undefined,
+);
+
+export const getTimeoutId = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls.timeoutId,
+);
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+);
+
+export const getCardAutocompleteResultsFn = state => {
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
+      dbId,
+      query,
+    });
+    return apiCall;
+  };
+};
+
+export const getAutocompleteResultsFn = state => {
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
+
+  if (matchStyle === "off") {
+    return null;
+  }
+
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_autocomplete_suggestions({
+      dbId,
+      query,
+      matchStyle,
+    });
+    return apiCall;
+  };
+};
+
+export const getDataReferenceStack = createSelector(
+  [getUiControls, getDatabaseId],
+  (uiControls, dbId) =>
+    uiControls.dataReferenceStack
+      ? uiControls.dataReferenceStack
+      : dbId
+      ? [{ type: "database", item: { id: dbId } }]
+      : [],
+);
+
+export const getNativeQueryFn = createSelector(
+  [getNextRunDatasetQuery, getNextRunParameters],
+  (datasetQuery, parameters) => {
+    let lastResult = undefined;
+
+    return async () => {
+      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+      return lastResult;
+    };
+  },
 );

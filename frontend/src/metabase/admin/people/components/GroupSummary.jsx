@@ -3,6 +3,7 @@ import React from "react";
 
 import { t, ngettext, msgid } from "ttag";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { AdminGroupLabel } from "./GroupSummary.styled";
 
 const GroupSummary = ({ groups, selectedGroupIds }) => {
   const adminGroup = groups.find(isAdminGroup);
@@ -13,7 +14,7 @@ const GroupSummary = ({ groups, selectedGroupIds }) => {
   if (adminGroup && selectedGroupIds.includes(adminGroup.id)) {
     return (
       <span>
-        <span className="text-purple">{t`Admin`}</span>
+        <AdminGroupLabel>{t`Admin`}</AdminGroupLabel>
         {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
           <span className="text-brand">

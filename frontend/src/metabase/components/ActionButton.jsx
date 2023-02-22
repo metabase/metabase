@@ -1,39 +1,16 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
-
-import { cancelable } from "metabase/lib/promise";
 import { t } from "ttag";
 import cx from "classnames";
+import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 
-type Props = {
-  actionFn: (...args: any[]) => Promise<any>,
-  className?: string,
-  successClassName?: string,
-  failedClassName?: string,
-  children?: any,
-  normalText?: string,
-  activeText?: string,
-  failedText?: string,
-  successText?: string,
-  forceActiveStyle?: boolean,
-};
-
-type State = {
-  active: boolean,
-  result: null | "success" | "failed",
-};
+import { cancelable } from "metabase/lib/promise";
 
 export default class ActionButton extends Component {
-  props: Props;
-  state: State;
-
-  timeout: ?any;
-  actionPromise: ?{ cancel: () => void };
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -77,7 +54,7 @@ export default class ActionButton extends Component {
     );
   };
 
-  onClick = (event: MouseEvent) => {
+  onClick = event => {
     event.preventDefault();
 
     // set state to active

@@ -2,6 +2,8 @@
   "This namespace has clojure implementations of logic currently found in the UI, but is needed for the
   backend. Idealling code here would be refactored such that the logic for this isn't needed in two places")
 
+(set! *warn-on-reflection* true)
+
 (defn- dimension-column?
   "A dimension column is any non-aggregation column"
   [col]
@@ -26,7 +28,7 @@
   "For graphs with goals, this function returns the index of the default column that should be used to compare against
   the goal. This follows the frontend code getDefaultLineAreaBarColumns closely with a slight change (detailed in the
   code)"
-  [{graph-type :display :as card} {[col-1 col-2 col-3 :as all-cols] :cols :as result}]
+  [{graph-type :display :as _card} {[col-1 col-2 col-3 :as all-cols] :cols :as _result}]
   (let [cols-count (count all-cols)]
     (cond
       ;; Progress goals return a single row and column, compare that
@@ -59,7 +61,7 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [column-name {:keys [cols] :as result}]
+  [column-name {:keys [cols] :as _result}]
   (first (remove nil? (map-indexed (fn [idx column]
                                      (when (.equalsIgnoreCase (name column-name) (name (:name column)))
                                        idx))
@@ -82,6 +84,36 @@
   "This is used as the X-axis column in the UI"
   [card results]
   (graph-column-index :graph.dimensions card results))
+
+(defn mult-y-axis-rowfn
+  "This is used as the Y-axis column in the UI
+  when we have comboes, which have more than one y axis."
+  [card results]
+  (let [metrics     (some-> card
+                            (get-in [:visualization_settings :graph.metrics]))
+        col-indices (map #(column-name->index % results) metrics)]
+    (when (seq col-indices)
+      (fn [row]
+        (let [res (vec (for [idx col-indices]
+                         (nth row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
+
+(defn mult-x-axis-rowfn
+  "This is used as the X-axis column in the UI
+  when we have comboes, which have more than one x axis."
+  [card results]
+  (let [dimensions  (some-> card
+                            (get-in [:visualization_settings :graph.dimensions]))
+        col-indices (map #(column-name->index % results) dimensions)]
+    (when (seq col-indices)
+      (fn [row]
+        (let [res (vec (for [idx col-indices]
+                         (nth row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
 
 (defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come

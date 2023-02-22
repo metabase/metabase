@@ -1,88 +1,158 @@
-# Synchronizing with the database
+---
+title: Troubleshooting syncs, scans, and fingerprinting
+---
 
-<div class='doc-toc' markdown=1>
-- [Metabase can't sync, fingerprint, or scan](#cant-sync-fingerprint-scan)
-- [Metabase isn't showing all of the values I expect to see](#not-showing-all-values)
-- [I cannot force Metabase to sync or scan using the API](#cant-force-with-api)
-- [Sync and scan take a very long time to run](#sync-scan-long-time)
-</div>
+# Troubleshooting syncs, scans, and fingerprinting
 
-Metabase needs to know what's in your database in order to show tables and fields, populate dropdown menus, and suggest good visualizations, but loading all the data would be very slow (or simply impossible if you have a lot of data). It therefore does three things:
+First, check if your data is outdated because of browser caching:
 
-1. Metabase periodically asks the database what tables are available, then asks which columns are available for each table. We call this *syncing*, and it happens [hourly or daily][sync-frequency] depending on how you've configured it. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers][community-db-drivers].
+1. Clear your browser cache.
+2. Refresh your Metabase page.
+3. Open your Metabase page in an incognito window.
 
-2. Metabase *fingerprints* the column the first time it synchronizes. Fingerprinting fetches the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once, unless the administrator explicitly tells it to fingerprint the column again, or in the rare event that a new release of Metabase changes the fingerprinting logic.
+Once you've confirmed that you're looking at a non-cached view of your tables and columns, tag your database admin for help with troubleshooting:
 
-3. A *scan* is similar to fingerprinting, but is done every 24 hours (unless it's configured to run less often or disabled).  Scanning looks at the first 5000 distinct records ordered ascending, when a field is set to "A list of all values" in the Data Model, which is used to display options in dropdowns. If the textual result of scanning a column is more than 10 kilobytes long, for example, we display a search box instead of a dropdown.
+- **Syncs**, if your tables or columns are missing, or your column data types are wrong.
+- **Scans**, if your column _values_ are missing or wrong (for example, in your filter dropdown menus).
+- **Fingerprinting**, if you've triggered a manual scan, but the changes aren't taking effect.
 
-<h2 id="cant-sync-fingerprint-scan">Metabase can't sync, fingerprint, or scan</h2>
+## Syncing
 
-If the credentials Metabase is using to connect to the database don't give it privileges to read the tables, the first sign will often be a failure to sync, which would then also stop fingerprint and scan.
+1. Make sure your database driver is up to date.
+2. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
+3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
 
-**How to detect this:** You can't see any of the tables in the database, or columns that have just been added to your data source don't show up in Metabase.
+    ```sql
+    SELECT *
+    FROM "your_schema"."your_table_or_view"
+    LIMIT 1
+    ```
+5. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
 
-**How to fix this:** [This guide][troubleshooting-db-connection] explains how to troubleshoot database connections. The relevant steps for solving this problem are:
+### Special cases
 
-1. Sometimes browsers will show an old cached list of tables or columns. Refreshing the page will update the cache.
-2. If you've just set up a new database in Metabase, the sync process might still be running---it's normally fast, but it can sometimes take a while. You can follow its progress in Admin > Troubleshooting > Logs.
-3. If you've just added a table or a column, Metabase might not have synced yet. You can manually run the sync process by going to the Admin Panel, selecting "Databases", choosing your database, and clicking on "Sync database schema now".
-4. To see if the problem is caused by lack of database privileges, try running a query like the one below for each table you think you should be able to access :
+If you’ve just set up a new database in Metabase, the initial sync query needs some time to kick off. If the sync hasn't started at all, try [Troubleshooting database connections](./db-connection.md).
 
+**Explanation**
+
+A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
+
+```sql
+SELECT TRUE
+FROM "your_schema"."your_table_or_view"
+WHERE 1 <> 1
+LIMIT 0
 ```
+
+To run the sync query, Metabase must:
+
+- successfully connect to your database, and
+- be [granted privileges](./data-permissions.md#granting-database-privileges) to query that database. 
+
+If the [connection is failing](./db-connection.md) or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
+
+## Unfolding JSON columns with Object records
+
+1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
+2. Click **Disable "JSON unfolding"**
+3. Click **Save changes**.
+4. Click **Sync database schema**.
+
+**Explanation**
+
+Metabase will try to unfold JSON and JSONB records during the sync process, which can take up a decent chunk of query execution time. If you have a lot of JSON records, try disabling the automatic unfolding option to pull the sync out of slow-motion. Remember that you can follow the status of the sync from **Admin** > **Troubleshooting** > **Logs**.
+
+## Scanning
+
+1. Go to **Admin** > **Data Model**.
+2. Select the database and table.
+3. Go to the column you want to update, and click the **gear** icon.
+4. Click **Discard cached field values**.
+5. Click **Re-scan this field**.
+6. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan and debug errors from there.
+
+### Special cases
+
+If you're waiting for the initial scan to run after connecting a database, make sure the initial sync has completed first (remember you can check the status from **Admin** > **Troubleshooting** > **Logs**).
+
+**Explanation**
+
+Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
+
+```sql
+SELECT "your_table_or_view"."column" AS "column"
+FROM "your_schema"."your_table_or_view"
+GROUP BY "your_table_or_view"."column"
+ORDER BY "your_table_or_view"."column" ASC
+LIMIT 1000
+```
+
+A failed scan is caused by a failed scan query---you can look at the logs to debug the query similar to other queries you'd run directly against your database.
+
+Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Data Model, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
+
+- Use a search box filter for that field.
+- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
+
+## Fingerprinting
+
+To manually re-trigger a fingerprinting query for a given column:
+
+1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
+2. Toggle ON **Periodically refingerprint tables** and click **Save changes**.
+3. Go to **Admin** > **Data Model**.
+4. Select your database and table.
+5. Change the visibility of the table to "Hidden".
+6. Change the visibility back to "Queryable".
+7. Wait 10 seconds.
+8. Go to your column and change the **Type** from "Entity Key" to "No semantic type", and back to "Entity Key".
+
+### Special cases
+
+If you're waiting for the initial fingerprinting query to run after connecting a database, make sure the initial sync has completed first (remember you can check the status from **Admin** > **Troubleshooting** > **Logs**).
+
+If you're using MongoDB, Metabase fingerprints the first 10,000 documents per collection. If you're not seeing all of your fields, it's because those fields might not exist in those first 10,000 documents. For more info, see our [MongoDB reference doc](../databases/connections/mongodb.md#i-added-fields-to-my-database-but-dont-see-them-in-metabase).
+
+**Explanation**
+
+The initial fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
+
+```sql
 SELECT *
-FROM table
-LIMIT 1
+FROM "your_schema"."your_table_or_view"
+LIMIT 10000
 ```
 
-Note that we only get the first 10,000 documents when scanning a MongoDB collection, so if you're not seeing some new fields, those fields might not exist in the documents we looked at. Please see [this discussion][metabase-mongo-missing] for more details.
+If the first 10,000 rows aren't representative of the data in a table (for example, if you've got sparse data with a lot of blanks or nulls), you could see issues such as:
 
-<h2 id="not-showing-all-values">Metabase isn't showing all of the values I expect to see</h2>
+- Incorrect [filter types](../questions/query-builder/introduction.md#filter-types), such as a category when you want a calendar.
+- Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
 
-**How to detect this:**
+Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.
 
-1. The UI isn't displaying some of the values you expect to see in a dropdown menu.
-2. The UI is showing a search box for selecting values where you expect a dropdown menu.
+## Syncing or scanning is taking a long time
 
-**How to fix this:**
+To speed up **syncs**:
+   - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
+   - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
 
-1. Go to the Admin Panel and select the **Data Model** tab.
-2. Select the database, schema, table, and field in question.
-3. Click the gear-icon to view all the field's settings.
-4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
-5. Click the button **Re-scan this field** in the bottom.
+To speed up **scans**:
+   - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
+   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
-<h2 id="cant-force-with-api">I cannot force Metabase to sync or scan using the API</h2>
+**Explanation**
 
-Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API][api-learn] to force sync or scan to take place right away. [Our API][metabase-api] provides two ways to do this:
+Syncs and scans are ultimately just two kinds of queries that are run against your database, so the speed of execution is limited by the number of queries that are run, the frequency of execution, the size of your data, and the amount of resources you've allocated to your database. Metabase gives you options to adjust the number and frequency of sync and scan queries, since unfortunately, we can't imbue your database with more power... (yet?)
 
-1. Using an endpoint with a session token: `/api/database/:id/sync_schema` or `api/database/:id/rescan_values`. These do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. In this case you have to authenticate with a user ID and pass a session token in the header of your request.
+## Related topics
 
-2. Using an endpoint with an API key: `/api/notify/db/:id`. This endpoint was made to notify Metabase to sync after an [ETL operation][etl] finishes. In this case you must pass an API key by defining the `MB_API_KEY` environment variable.
+- [Troubleshooting database connections](./db-connection.md).
+- [Troubleshooting filters](./filters.md).
+- [How syncs and scans work](../databases/connecting.md#syncing-and-scanning-databases).
 
-**How to detect this:** Your script fails to run.
+## Are you still stuck?
 
-**How to fix this:**
+If you can’t solve your problem using the troubleshooting guides:
 
-1. Make sure you are able to sync and scan manually via the Admin Panel.
-2. Make sure you're using the correct URL to send the request to Metabase.
-3. Check the error message returned from Metabase.
-4. Check the credentials you're using to authenticate and make sure they identify your script as a user with administrative privileges.
-
-<h2 id="sync-scan-long-time">Sync and scan take a very long time to run</h2>
-
-**How to detect this:** Sync and scan take a long time to complete.
-
-**How to fix this:** 
-1. For sync, delays are usually caused by a large database with hundreds of schema, thousands of table and with hundreds of columns in each table. If you only need a subset of those tables or columns in Metabase, then restricting the privileges used to connect to the database will make sure that Metabase can only sync a limited subset of the database.
-2. Scanning normally takes longer than sync, but you can reduce the number of fields Metabase will scan by changing the number of fields that have the **Filtering on this field** option set to "A list of all values". Setting fields to either "Search box" or "Plain input box" will exclude those fields from scans.
-
-You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain.
-
-[api-learn]: /learn/administration/metabase-api.html
-[bugs]: ./bugs.html
-[community-db-drivers]: ../developers-guide-drivers.html
-[etl]: /glossary.html#etl
-[metabase-api]: ../api-documentation.html
-[metabase-mongo-missing]: ../administration-guide/databases/mongodb.html#i-added-fields-to-my-database-but-dont-see-them-in-metabase
-[sync-frequency]: ../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
-[troubleshooting-db-connection]: ./datawarehouse.html
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.md).

@@ -2,7 +2,8 @@ import {
   restore,
   openNativeEditor,
   runNativeQuery,
-} from "__support__/e2e/cypress";
+  sidebar,
+} from "__support__/e2e/helpers";
 
 describe("issue 16914", () => {
   beforeEach(() => {
@@ -21,10 +22,10 @@ describe("issue 16914", () => {
     runNativeQuery();
 
     cy.findByTestId("viz-settings-button").click();
-    cy.findByTestId("sidebar-left")
-      .contains(/hidden/i)
-      .siblings(".Icon-close")
-      .click();
+    sidebar().within(() => {
+      cy.findByText("Add or remove columns").click();
+      cy.findByText("HIDDEN").click();
+    });
     cy.button("Done").click();
 
     cy.get("@editor").type(FAILING_PIECE);

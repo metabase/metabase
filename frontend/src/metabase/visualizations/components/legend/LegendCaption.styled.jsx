@@ -1,21 +1,22 @@
-import styled from "styled-components";
-import colors from "metabase/lib/colors";
+import styled from "@emotion/styled";
+import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;
+  justify-content: space-between;
 `;
 
 export const LegendLabel = styled.div`
-  color: ${colors["text-dark"]};
+  color: ${color("text-dark")};
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
 
   &:hover {
-    color: ${({ onClick }) => (onClick ? colors["brand"] : "")};
+    color: ${({ onClick }) => (onClick ? color("brand") : "")};
   }
 `;
 
@@ -23,9 +24,20 @@ export const LegendLabelIcon = styled(Icon)`
   padding-right: 0.25rem;
 `;
 
-export const LegendDescriptionIcon = styled(Icon).attrs({
-  name: "info",
-})`
-  color: ${colors["text-medium"]};
-  margin-left: 0.5rem;
+export const LegendDescriptionIcon = styled(Icon)`
+  color: ${lighten("text-light", 0.1)};
+  margin: 0 0.375rem;
+
+  &:hover {
+    color: ${color("text-medium")};
+  }
 `;
+
+export const LegendRightContent = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+LegendDescriptionIcon.defaultProps = {
+  name: "info",
+};

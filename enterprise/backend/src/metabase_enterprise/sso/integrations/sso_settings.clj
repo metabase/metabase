@@ -2,24 +2,21 @@
   "Namesapce for defining settings used by the SSO backends. This is separate as both the functions needed to support
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [saml20-clj.core :as saml]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [saml20-clj.core :as saml]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private GroupMappings
   (s/maybe {su/KeywordOrString [su/IntGreaterThanZero]}))
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (s/validator GroupMappings))
-
-(defsetting saml-enabled
-  (deferred-tru "Enable SAML authentication.")
-  :type    :boolean
-  :default false)
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
@@ -42,7 +39,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
             ;; when setting the idp cert validate that it's something we
             (when new-value
               (validate-saml-idp-cert new-value))
-            (setting/set-string! :saml-identity-provider-certificate new-value)))
+            (setting/set-value-of-type! :string :saml-identity-provider-certificate new-value)))
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
@@ -90,30 +87,33 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing SAML to Metabase group mappings.")
   :type    :json
   :default {}
-  :setter (comp (partial setting/set-json! :saml-group-mappings) validate-group-mappings))
+  :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
 
-(defn saml-configured?
-  "Check if SAML is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (saml-enabled)
-                (saml-identity-provider-uri)
-                (saml-identity-provider-certificate))))
+(defsetting saml-configured
+  (deferred-tru "Are the mandatory SAML settings configured?")
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (boolean
+                  (and (saml-identity-provider-uri)
+                       (saml-identity-provider-certificate)))))
 
-(defsetting jwt-enabled
-  (deferred-tru "Enable JWT based authentication")
+(defsetting saml-enabled
+  (deferred-tru "Is SAML authentication configured and enabled?")
   :type    :boolean
-  :default false)
+  :default false
+  :getter  (fn []
+             (if (saml-configured)
+               (setting/get-value-of-type :boolean :saml-enabled)
+               false)))
 
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL of JWT based login page"))
 
 (defsetting jwt-shared-secret
-  (deferred-tru "String used to seed the private key used to validate JWT messages")
-  :setter (fn [new-value]
-            (when (seq new-value)
-              (assert (u/hexadecimal-string? new-value)
-                       "Invalid JWT Shared Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
-            (setting/set-string! :jwt-shared-secret new-value)))
+  (deferred-tru (str "String used to seed the private key used to validate JWT messages."
+                     " "
+                     "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
+  :type :string)
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user's email address")
@@ -141,25 +141,33 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing JWT to Metabase group mappings.")
   :type    :json
   :default {}
-  :setter  (comp (partial setting/set-json! :jwt-group-mappings) validate-group-mappings))
+  :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
 
-(defn jwt-configured?
-  "Check if JWT is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (jwt-enabled)
-                (jwt-identity-provider-uri)
-                (jwt-shared-secret))))
+(defsetting jwt-configured
+  (deferred-tru "Are the mandatory JWT settings configured?")
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (boolean
+                  (and (jwt-identity-provider-uri)
+                       (jwt-shared-secret)))))
+
+(defsetting jwt-enabled
+  (deferred-tru "Is JWT authentication configured and enabled?")
+  :type    :boolean
+  :default false
+  :getter  (fn []
+             (if (jwt-configured)
+               (setting/get-value-of-type :boolean :jwt-enabled)
+               false)))
 
 (defsetting send-new-sso-user-admin-email?
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
   :type :boolean
   :default true)
 
-(defsetting other-sso-configured?
+(defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or
-                      (saml-configured?)
-                      (jwt-configured?))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled))))

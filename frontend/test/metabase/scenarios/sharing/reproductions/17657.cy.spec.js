@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, sidebar, visitDashboard } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const {
@@ -14,10 +14,9 @@ describe("issue 17657", () => {
   });
 
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
 
     cy.findByText(/^Emailed monthly/).click();
 

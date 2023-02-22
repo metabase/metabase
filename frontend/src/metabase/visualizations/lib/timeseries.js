@@ -1,8 +1,8 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 import { unexpectedTimezoneWarning, multipleTimezoneWarning } from "./warnings";
 
@@ -66,7 +66,7 @@ const TIMESERIES_INTERVALS = [
 
 // mapping from Metabase "unit" to d3 intervals above
 const INTERVAL_INDEX_BY_UNIT = {
-  minute: 1,
+  minute: 5,
   hour: 9,
   day: 13,
   week: 14,
@@ -133,9 +133,7 @@ export function computeTimeseriesDataInverval(xValues, unit) {
 function intervalTickDistanceMilliseconds(interval) {
   // add COUNT nuumber of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
   // (in milliseconds). Since we added to 0 this will be the interval between each tick
-  return moment(0)
-    .add(interval.count, interval.interval)
-    .valueOf();
+  return moment(0).add(interval.count, interval.interval).valueOf();
 }
 
 /// Return the number of ticks we can expect to see over a time range using the TIMESERIES_INTERVALS entry interval.

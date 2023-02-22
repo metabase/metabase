@@ -1,0 +1,27 @@
+{
+  "plugins": ["@emotion"],
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react",
+    "@babel/preset-typescript"
+  ],
+  "env": {
+    "development": {
+      "presets": []
+    },
+    "extract": {
+      "plugins": [
+        [
+          "ttag",
+          {
+            "extract": {
+              "output": "locales/metabase-frontend.pot"
+            },
+            "discover": ["t", "jt"],
+            "numberedExpressions": true
+          }
+        ]
+      ]
+    }
+  }
+}

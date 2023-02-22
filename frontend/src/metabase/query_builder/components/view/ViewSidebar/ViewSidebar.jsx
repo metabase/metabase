@@ -21,7 +21,7 @@ ViewSidebar.propTypes = {
   right: PropTypes.bool,
   width: PropTypes.number,
   isOpen: PropTypes.bool,
-  side: PropTypes.oneOf[("left", "right")],
+  side: PropTypes.oneOf(["left", "right"]),
   children: PropTypes.node,
 };
 

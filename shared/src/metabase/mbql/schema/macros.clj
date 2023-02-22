@@ -1,5 +1,6 @@
 (ns metabase.mbql.schema.macros
-  (:require [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
+  (:require
+   [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
 
 (defn- stringify-names [arg-names-and-schemas]
   (reduce concat (for [[arg-name schema] (partition 2 arg-names-and-schemas)]
@@ -44,4 +45,4 @@
   [& clauses]
   `(metabase.mbql.schema.helpers/one-of*
     ~@(for [clause clauses]
-        [`(:clause-name (meta (resolve '~clause))) clause])))
+        [`(or (:clause-name (meta (resolve '~clause))) '~clause) clause])))

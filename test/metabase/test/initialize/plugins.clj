@@ -1,25 +1,31 @@
 (ns metabase.test.initialize.plugins
-  (:require [clojure.java.io :as io]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.plugins :as plugins]
-            [metabase.plugins.initialize :as plugins.init]
-            [metabase.test.data.env.impl :as tx.env.impl]
-            [metabase.util :as u]
-            [yaml.core :as yaml]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.plugins :as plugins]
+   [metabase.plugins.initialize :as plugins.init]
+   [metabase.test.data.env.impl :as tx.env.impl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml]))
 
+(set! *warn-on-reflection* true)
+
+;; [[metabase.plugins/load-local-plugin-manifests!]] actually does the same thing as the code below now; the only
+;; difference is this code also initializes plugins in `test_modules`. Besides that this code isn't needed
 (defn- driver-plugin-manifest [driver]
   (let [nm    (name driver)
         paths (mapv
-                #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
-                ;; look for driver definition in both the regular modules directory, as well as in a top-level
-                ;; test_modules directory, specifically designed for test driver definitions
-                ["modules" "test_modules"])]
+               #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
+               ;; look for driver definition in both the regular modules directory, as well as in a top-level
+               ;; test_modules directory, specifically designed for test driver definitions
+               ["modules" "test_modules"])]
     (first (filter some?
                    (for [path paths
                          :let [manifest (io/file path)]
                          :when (.exists manifest)]
                      (do
-                       (println (u/format-color
+                       (log/info (u/format-color
                                   'green
                                   "Loading plugin manifest (from %s) for driver as if it were a real plugin: %s"
                                   path

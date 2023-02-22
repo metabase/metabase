@@ -1,18 +1,23 @@
 import React from "react";
+import { Route } from "react-router";
+
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import admin from "metabase/admin/admin";
-import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { setupEnterpriseTest } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
   h2: {
     "details-fields": [
       { "display-name": "Connection String", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "H2",
     "superseded-by": null,
@@ -20,33 +25,33 @@ const ENGINES_MOCK = {
   sqlite: {
     "details-fields": [
       { "display-name": "Filename", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "SQLite",
     "superseded-by": null,
   },
 };
 
-function mockSettings({ cachingEnabled = false }) {
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "engines") {
-      return ENGINES_MOCK;
-    }
-    if (key === "enable-query-caching") {
-      return cachingEnabled;
-    }
-    if (key === "site-url") {
-      return "http://localhost:3333";
-    }
-  });
-}
+const ComponentMock = () => <div />;
+jest.mock(
+  "metabase/databases/containers/DatabaseHelpCard",
+  () => ComponentMock,
+);
 
 async function setup({ cachingEnabled = false } = {}) {
-  mockSettings({ cachingEnabled });
-  renderWithProviders(<DatabaseEditApp />, {
-    withRouter: true,
-    reducers: { admin },
+  const settings = mockSettings({
+    engines: ENGINES_MOCK,
+    "token-features": createMockTokenFeatures({ advanced_config: true }),
+    "enable-query-caching": cachingEnabled,
   });
+
+  renderWithProviders(<Route path="/" component={DatabaseEditApp} />, {
+    withRouter: true,
+    storeInitialState: {
+      settings,
+    },
+  });
+
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
@@ -64,22 +69,14 @@ describe("DatabaseEditApp", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        PLUGIN_CACHING.databaseCacheTTLFormField = {
-          name: "cache_ttl",
-          type: "integer",
-          title: "Default result cache duration",
-        };
-      });
-
-      afterEach(() => {
-        PLUGIN_CACHING.databaseCacheTTLFormField = null;
+        setupEnterpriseTest();
       });
 
       it("is visible", async () => {
         await setup({ cachingEnabled: true });
 
         expect(
-          screen.queryByText("Default result cache duration"),
+          screen.getByText("Default result cache duration"),
         ).toBeInTheDocument();
       });
 

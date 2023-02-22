@@ -4,13 +4,13 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
 
-import { IFRAMED } from "metabase/lib/dom";
+import _ from "underscore";
+import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -33,11 +33,7 @@ import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-
-import type { Dashboard } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
-
-import _ from "underscore";
+import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -59,42 +55,9 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-type Props = {
-  params: { uuid?: string, token?: string },
-  location: { query: { [key: string]: string } },
-  dashboardId: string,
-
-  dashboard?: Dashboard,
-  parameters: Parameter[],
-  parameterValues: { [key: string]: string },
-
-  initialize: () => void,
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  fetchDashboard: (
-    dashId: string,
-    query: { [key: string]: string },
-  ) => Promise<void>,
-  fetchDashboardCardData: (options: {
-    reload: boolean,
-    clear: boolean,
-  }) => Promise<void>,
-  cancelFetchDashboardCardData: () => Promise<void>,
-  setParameterValue: (id: string, value: string) => void,
-  setErrorPage: (error: { status: number }) => void,
-};
-
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
-@title(({ dashboard }) => dashboard && dashboard.name)
-@DashboardControls
 // NOTE: this should use DashboardData HoC
-export default class PublicDashboard extends Component {
-  props: Props;
-
-  async UNSAFE_componentWillMount() {
+class PublicDashboard extends Component {
+  _initialize = async () => {
     const {
       initialize,
       fetchDashboard,
@@ -118,14 +81,22 @@ export default class PublicDashboard extends Component {
       console.error(error);
       setErrorPage(error);
     }
+  };
+
+  async componentDidMount() {
+    this._initialize();
   }
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+  async componentDidUpdate(prevProps) {
+    if (this.props.dashboardId !== prevProps.dashboardId) {
+      return this._initialize();
+    }
+
+    if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
@@ -138,7 +109,7 @@ export default class PublicDashboard extends Component {
       isFullscreen,
       isNightMode,
     } = this.props;
-    const buttons = !IFRAMED
+    const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
 
@@ -164,7 +135,8 @@ export default class PublicDashboard extends Component {
           {() => (
             <DashboardGrid
               {...this.props}
-              className={"spread"}
+              isPublic
+              className="spread"
               mode={PublicMode}
               metadata={this.props.metadata}
               navigateToNewCardFromDashboard={() => {}}
@@ -175,3 +147,9 @@ export default class PublicDashboard extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ dashboard }) => dashboard && dashboard.name),
+  DashboardControls,
+)(PublicDashboard);

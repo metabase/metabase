@@ -3,75 +3,101 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:require clojure.data
-            [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
-            [environ.core :as env]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.email-test :as et]
-            [metabase.http-client :as http]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.initialize :as initialize]
-            metabase.test.redefs
-            [metabase.test.util :as tu]
-            [metabase.test.util.async :as tu.async]
-            [metabase.test.util.i18n :as i18n.tu]
-            [metabase.test.util.log :as tu.log]
-            [metabase.test.util.timezone :as tu.tz]
-            [metabase.util :as u]
-            [pjstadig.humane-test-output :as humane-test-output]
-            [potemkin :as p]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:refer-clojure :exclude [compile])
+  (:require
+   [clojure.data]
+   [clojure.test :refer :all]
+   [environ.core :as env]
+   [hawk.init]
+   [hawk.parallel]
+   [humane-are.core :as humane-are]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.email-test :as et]
+   [metabase.http-client :as client]
+   [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test.data :as data]
+   [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.persistence :as test.persistence]
+   [metabase.test.redefs]
+   [metabase.test.util :as tu]
+   [metabase.test.util.async :as tu.async]
+   [metabase.test.util.i18n :as i18n.tu]
+   [metabase.test.util.log :as tu.log]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util.log :as log]
+   [pjstadig.humane-test-output :as humane-test-output]
+   [potemkin :as p]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan.util.test :as tt]))
 
-(humane-test-output/activate!)
+(set! *warn-on-reflection* true)
+
+(humane-are/install!)
+
+;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
+  client/keep-me
   data/keep-me
   data.impl/keep-me
   datasets/keep-me
   driver/keep-me
   et/keep-me
-  http/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   metabase.test.redefs/keep-me
-  mt.tu/keep-me
   mw.session/keep-me
+  test.persistence/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
-  test-users/keep-me
+  sql.qp-test-util/keep-me
+  test-runner.assert-exprs/keep-me
+  test.users/keep-me
   tt/keep-me
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
-  tu.tz/keep-me
+  test.tz/keep-me
   tx/keep-me
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
 (p/import-vars
+ [actions.test-util
+  with-actions
+  with-actions-disabled
+  with-actions-enabled
+  with-actions-test-data
+  with-actions-test-data-tables
+  with-actions-test-data-and-actions-enabled
+  with-temp-test-data]
+
  [data
   $ids
   dataset
@@ -94,25 +120,25 @@
   when-testing-driver]
 
  [driver
-  *driver*
   with-driver]
 
  [et
   email-to
   fake-inbox-email-fn
   inbox
+  received-email-body?
+  received-email-subject?
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
   with-expected-messages
   with-fake-inbox]
 
- [http
+ [client
   authenticate
   build-url
   client
-  client-full-response
-  derecordize]
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -125,9 +151,9 @@
   with-current-user]
 
  [qp
-  process-query
-  query->native
-  query->preprocessed]
+  compile
+  preprocess
+  process-query]
 
  [qp.test
   col
@@ -145,6 +171,7 @@
   with-bigquery-fks]
 
  [qp.test-util
+  card-with-source-metadata-for-query
   store-contents
   with-database-timezone-id
   with-everything-store
@@ -154,12 +181,21 @@
  [sql-jdbc.tu
   sql-jdbc-drivers]
 
- [test-users
+ [sql.qp-test-util
+  with-native-query-testing-context]
+
+ [test-runner.assert-exprs
+  derecordize]
+
+ [test.persistence
+  with-persistence-enabled]
+
+ [test.users
   fetch-user
   test-user?
-  user->client
   user->credentials
   user->id
+  user-descriptor
   user-http-request
   with-group
   with-group-for-user
@@ -175,6 +211,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  file->bytes
   is-uuid-string?
   obj->json->obj
   postwalk-pred
@@ -183,7 +220,9 @@
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
+  select-keys-sequentially
   throw-if-called
+  with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
   with-env-keys-renamed-by
@@ -191,25 +230,26 @@
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
-  with-scheduler
   with-temp-env-var-value
+  with-temp-dir
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
-  with-temporary-setting-values]
+  with-temporary-setting-values
+  with-temporary-raw-setting-values
+  with-user-in-groups]
 
  [tu.async
-  wait-for-close
   wait-for-result
   with-open-channels]
 
  [tu.log
-  suppress-output
-  with-log-messages
+  ns-log-level
+  set-ns-log-level!
   with-log-messages-for-level
   with-log-level]
 
- [tu.tz
+ [test.tz
   with-system-timezone-id]
 
  [tx
@@ -218,6 +258,7 @@
   dataset-definition
   db-qualified-table-name
   db-test-env-var
+  db-test-env-var!
   db-test-env-var-or-throw
   dbdef->connection-details
   defdataset
@@ -226,24 +267,18 @@
   has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
-  sorts-nil-first?]
+  sorts-nil-first?
+  supports-time-type?
+  supports-timestamptz-type?]
 
  [tx.env
   set-test-drivers!
   with-test-drivers])
 
-;; ee-only stuff
-(u/ignore-exceptions
-  (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
-                                with-gtaps
-                                with-gtaps-for-user
-                                with-user-attributes])))
-
-;; TODO -- move this stuff into some other namespace and refer to it here
+;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-clock")
+  (hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -251,11 +286,12 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 
 (defmacro with-clock
-  "Same as `t/with-clock`, but adds `testing` context, and also supports using `ZonedDateTime` instances
+  "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
   directly (converting them to a mock clock automatically).
 
     (mt/with-clock #t \"2019-12-10T00:00-08:00[US/Pacific]\"
@@ -263,10 +299,49 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
+(defn do-with-single-admin-user
+  [attributes thunk]
+  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (db/select-ids User :is_superuser true)
+        _                          (when (seq existing-admin-ids)
+                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
+        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
+                                                           attributes
+                                                           {:is_superuser true}))
+        primary-key                (models/primary-key User)]
+    (try
+      (thunk temp-admin)
+      (finally
+        (db/delete! User primary-key (primary-key temp-admin))
+        (when (seq existing-admin-ids)
+          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
+        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+
+(defmacro with-single-admin-user
+  "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
+  powers of all other users in the database.
+
+  Example:
+
+  (testing \"Check that the last superuser cannot deactivate themselves\"
+    (mt/with-single-admin-user [{id :id}]
+      (is (= \"You cannot remove the last member of the 'Admin' group!\"
+             (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
+  [[binding-form & [options-map]] & body]
+  `(do-with-single-admin-user ~options-map (fn [~binding-form]
+                                             ~@body)))
+
+;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
 (defn test-qp-middleware
-  "Helper for testing QP middleware. Changes are returned in a map with keys:
+  "Helper for testing QP middleware that uses the
+
+    (defn middleware [qp]
+      (fn [query rff context]
+        (qp query rff context)))
+
+  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing
@@ -301,7 +376,7 @@
                                  (when run (run))
                                  (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
-                                   (println "Error in test-qp-middleware runf:" e)
+                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
                                    (throw e))))}
                    context)]
      (if async?
@@ -336,27 +411,16 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
-     (test-runner.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
+     (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
 
-(defn are+-message [expr arglist args]
-  (pr-str
-   (second
-    (macroexpand-1
-     (list
-      `tools.macro/symbol-macrolet
-      (vec (apply concat (map-indexed (fn [i arg]
-                                        [arg (nth args i)])
-                                      arglist)))
-      expr)))))
-
-(defmacro are+
-  "Like `clojure.test/are` but includes a message for easier test failure debugging. (Also this is somewhat more
-  efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
-  {:style/indent 2}
-  [argv expr & args]
-  `(doseq [args# ~(mapv vec (partition (count argv) args))
-           :let [~argv args#]]
-     (is ~expr
-         (str (are+-message '~expr '~argv args#)))))
+(defmacro disable-flaky-test-when-running-driver-tests-in-ci
+  "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
+  disabling those damn flaky tests that cause CI to fail all the time. You should obviously only do this for things
+  that have nothing to do with drivers but tend to flake anyway."
+  {:style/indent 0}
+  [& body]
+  `(when (and (not (seq (env/env :drivers)))
+              (not (seq (env/env :ci))))
+     ~@body))

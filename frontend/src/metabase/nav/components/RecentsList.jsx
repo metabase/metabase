@@ -2,31 +2,34 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
-import Recents from "metabase/entities/recents";
-import Card from "metabase/components/Card";
+import RecentItems from "metabase/entities/recent-items";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ResultLink,
+  ResultSpinner,
   Title,
+  TitleWrapper,
 } from "metabase/search/components/SearchResult.styled";
 import { ItemIcon } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 
-import { getTranslatedEntityName } from "./utils";
+import { getTranslatedEntityName } from "../utils";
 import {
+  Root,
   EmptyStateContainer,
   Header,
   RecentListItemContent,
 } from "./RecentsList.styled";
 
 const LOADER_THRESHOLD = 100;
-
-const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
-const getItemName = model_object =>
-  model_object.display_name || model_object.name;
 
 const propTypes = {
   list: PropTypes.arrayOf(
@@ -37,9 +40,16 @@ const propTypes = {
     }),
   ),
   loading: PropTypes.bool,
+  onChangeLocation: PropTypes.func,
 };
 
-function RecentsList({ list, loading }) {
+const getItemUrl = item => (isItemActive(item) ? Urls.modelToUrl(item) : "");
+
+function RecentsList({ list, loading, onChangeLocation }) {
+  const { getRef, cursorIndex } = useListKeyboardNavigation({
+    list,
+    onEnter: item => onChangeLocation(getItemUrl(item)),
+  });
   const [canShowLoader, setCanShowLoader] = useState(false);
   const hasRecents = list?.length > 0;
 
@@ -53,50 +63,113 @@ function RecentsList({ list, loading }) {
   }
 
   return (
-    <Card py={1}>
+    <Root>
       <Header>{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
         <React.Fragment>
           {hasRecents && (
             <ul>
-              {list.map(item => (
-                <li key={getItemKey(item)}>
-                  <ResultLink to={Urls.modelToUrl(item)} compact={true}>
-                    <RecentListItemContent
-                      align="start"
-                      data-testid="recently-viewed-item"
+              {list.map((item, index) => {
+                const key = getItemKey(item);
+                const title = getItemName(item);
+                const type = getTranslatedEntityName(item.model);
+                const active = isItemActive(item);
+                const loading = isItemLoading(item);
+                const url = getItemUrl(item);
+                const moderatedStatus = getModeratedStatus(item);
+
+                return (
+                  <li key={key} ref={getRef(item)}>
+                    <ResultLink
+                      to={url}
+                      compact={true}
+                      active={active}
+                      isSelected={cursorIndex === index}
                     >
-                      <ItemIcon item={item} type={item.model} />
-                      <div>
-                        <Title data-testid="recently-viewed-item-title">
-                          {getItemName(item.model_object)}
-                        </Title>
-                        <Text data-testid="recently-viewed-item-type">
-                          {getTranslatedEntityName(item.model)}
-                        </Text>
-                      </div>
-                    </RecentListItemContent>
-                  </ResultLink>
-                </li>
-              ))}
+                      <RecentListItemContent
+                        align="start"
+                        data-testid="recently-viewed-item"
+                      >
+                        <ItemIcon
+                          item={item}
+                          type={item.model}
+                          active={active}
+                        />
+                        <div>
+                          <TitleWrapper>
+                            <Title
+                              active={active}
+                              data-testid="recently-viewed-item-title"
+                            >
+                              {title}
+                            </Title>
+                            <PLUGIN_MODERATION.ModerationStatusIcon
+                              status={moderatedStatus}
+                              size={12}
+                            />
+                          </TitleWrapper>
+                          <Text data-testid="recently-viewed-item-type">
+                            {type}
+                          </Text>
+                        </div>
+                        {loading && <ResultSpinner size={24} borderWidth={3} />}
+                      </RecentListItemContent>
+                    </ResultLink>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
           {!hasRecents && (
             <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           )}
         </React.Fragment>
       </LoadingAndErrorWrapper>
-    </Card>
+    </Root>
   );
 }
 
 RecentsList.propTypes = propTypes;
 
+const getItemKey = ({ model, model_id }) => {
+  return `${model}:${model_id}`;
+};
+
+const getItemName = ({ model_object }) => {
+  return model_object.display_name || model_object.name;
+};
+
+const getModeratedStatus = ({ model_object }) => {
+  return model_object.moderated_status;
+};
+
+const isItemActive = ({ model, model_object }) => {
+  switch (model) {
+    case "table":
+      return isSyncCompleted(model_object);
+    default:
+      return true;
+  }
+};
+
+const isItemLoading = ({ model, model_object }) => {
+  switch (model) {
+    case "database":
+    case "table":
+      return !isSyncCompleted(model_object);
+    default:
+      return false;
+  }
+};
+
 export default _.compose(
-  Recents.loadList({
+  connect(null, {
+    onChangeLocation: push,
+  }),
+  RecentItems.loadList({
     wrapped: true,
     reload: true,
     loadingAndErrorWrapper: false,

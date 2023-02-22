@@ -3,11 +3,12 @@ import {
   withDatabase,
   visitAlias,
   popover,
-} from "__support__/e2e/cypress";
+  startNewQuestion,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
 describe.skip("scenarios > admin > datamodel > field", () => {
@@ -16,14 +17,12 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
       cy.wrap(
-        `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
     });
 
-    cy.server();
-    cy.route("PUT", "/api/field/*").as("fieldUpdate");
-    cy.route("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
-    cy.route("POST", "/api/field/*/values").as("fieldValuesUpdate");
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
   describe("Name and Description", () => {
@@ -119,20 +118,15 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
       // change to custom mapping
       cy.findByText("Use original value").click();
-      popover()
-        .findByText("Custom mapping")
-        .click();
+      popover().findByText("Custom mapping").click();
 
       // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]")
-        .clear()
-        .type("nothin");
+      cy.get("input[value=null]").clear().type("nothin");
       cy.findByText("Save").click();
       cy.findByText("Saved!");
 
       // check that it appears in QB
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("sqlite").click();
       cy.findByText("Number With Nulls").click();
       cy.findByText("nothin");

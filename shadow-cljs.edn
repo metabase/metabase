@@ -1,17 +1,5 @@
 ;; shadow-cljs configuration
-{:source-paths
- ["shared/src"
-  "shared/test"]
-
- ;; TODO -- share deps with deps.edn -- see https://shadow-cljs.github.io/docs/UsersGuide.html#deps-edn
- :dependencies
- [[org.clojure/core.match "1.0.0"]
-  [medley "1.3.0"]
-  [net.cgrand/macrovich "0.2.1"]
-  [prismatic/schema "1.1.12"]
-
-  ;; new stuff
-  [lambdaisland/glogi "1.0.106"]]
+{:deps {:aliases [:cljs]}
 
  :nrepl
  {:middleware
@@ -23,9 +11,16 @@
  {:app
   {:target     :npm-module
    :output-dir "frontend/src/cljs/"
-   :entries    [metabase.mbql.js
+   :entries    [metabase.domain-entities.queries.util
+                metabase.mbql.js
                 metabase.types
-                metabase.shared.util.currency]}
+                metabase.shared.formatting.constants
+                metabase.shared.formatting.date
+                metabase.shared.formatting.numbers
+                metabase.shared.formatting.time
+                metabase.shared.util.currency
+                metabase.shared.util.time
+                metabase.shared.parameters.parameters]}
 
   :test
   {:target    :node-test

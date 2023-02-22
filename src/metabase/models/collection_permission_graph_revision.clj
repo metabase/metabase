@@ -1,22 +1,18 @@
 (ns metabase.models.collection-permission-graph-revision
-  (:require [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 
-(defn- pre-insert [revision]
-  (assoc revision :created_at :%now))
-
-(u/strict-extend (class CollectionPermissionGraphRevision)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:before :json
-                                   :after  :json})
-          :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))}))
-
+(mi/define-methods
+ CollectionPermissionGraphRevision
+ {:types      (constantly {:before :json
+                           :after  :json})
+  :properties (constantly {::mi/created-at-timestamped? true})
+  :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))})
 
 (defn latest-id
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.

@@ -1,80 +1,91 @@
 import {
   restore,
-  popover,
   modal,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+  visitQuestionAdhoc,
+  summarize,
+  sidebar,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/card").as("card");
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/dataset/native").as("datasetNative");
     restore();
     cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
     openNativeEditor().type("select count(*) from orders");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
     openNativeEditor().type("select * from not_a_table");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", () => {
     openNativeEditor().type(
       "select * from orders" +
-      "{leftarrow}".repeat(3) + // move left three
+        "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "ORD" not found');
   });
 
-  it("should show referenced cards in the template tag sidebar", () => {
-    openNativeEditor()
-      // start typing a question referenced
-      .type("select * from {{#}}", {
-        parseSpecialCharSequences: false,
-      });
+  it("should handle template tags", () => {
+    openNativeEditor().type("select * from PRODUCTS where RATING > {{Stars}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.get("input[placeholder*='Stars']").type("3");
+    runQuery();
+    cy.contains("Showing 168 rows");
+  });
 
-    cy.contains("Question #…")
+  it("should modify parameters accordingly when tags are modified", () => {
+    openNativeEditor().type("select * from PRODUCTS where CATEGORY = {{cat}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.findByTestId("sidebar-right")
+      .findByText("Required?")
       .parent()
-      .parent()
-      .contains("Pick a saved question")
-      .click({ force: true });
-
-    // selecting a question should update the query
-    popover()
-      .contains("Orders")
+      .find("input")
       .click();
+    cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
+    runQuery();
 
-    cy.contains("select * from {{#1}}");
+    cy.contains("Save").click();
 
-    // run query and see that a value from the results appears
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("37.65");
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Products on Category");
+      cy.findByText("Save").click();
 
-    // update the text of the query to reference question 2
-    // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(1);
+        const parameter = requestBody.parameters[0];
+        expect(parameter.default).to.equal("Gizmo");
+      });
+    });
 
-    // sidebar should show updated question title and name
-    cy.contains("Question #2")
-      .parent()
-      .parent()
-      .contains("Orders, Count");
-
-    // run query again and see new result
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("18,760");
+    cy.findByText("Not now").click();
   });
 
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("No results!");
     cy.icon("contract").click();
     cy.contains("Save").click();
@@ -90,101 +101,206 @@ describe("scenarios > question > native", () => {
 
   it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
     const FILTERS = ["Is not", "Does not contain"];
-    const QUESTION = "QQ";
 
-    openNativeEditor().type(
-      `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
-    );
-    cy.findByText("Save").click();
+    const questionDetails = {
+      name: "13332",
+      native: {
+        query: `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+        "template-tags": {},
+      },
+    };
 
-    modal().within(() => {
-      cy.findByLabelText("Name").type(QUESTION);
-      cy.findByText("Save").click();
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+          },
+          type: "query",
+        },
+      });
     });
-    cy.findByText("Not now").click();
 
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Simple question").click();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
-      cy.findByText(QUESTION).click();
-    });
-
-    cy.url("should.contain", "/question#");
     cy.findByText("This has a value");
 
-    FILTERS.forEach(filter => {
-      // Clicking on a question's name in UI resets previously applied filters
-      // We can ask variations of that question "on the fly"
-      cy.findByText(QUESTION).click();
-
+    FILTERS.forEach(operator => {
       cy.log("Apply a filter");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
-      cy.get(".List-item-title")
-        .contains("V")
-        .click();
-      cy.findByText("Is").click();
-      popover().within(() => {
-        cy.findByText(filter).click();
+      filter();
+      filterField("V", {
+        operator,
+        value: "This has a value",
       });
-      cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Add filter").click();
+
+      cy.findByTestId("apply-filters").click();
 
       cy.log(
-        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+        `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
       );
-      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText(`V ${operator.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
 
       cy.log(
         "**Final assertion: Count of rows with 'null' value should be 1**",
       );
       // "Count" is pre-selected option for "Summarize"
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.icon("close").click();
+      });
+      summarize();
+      sidebar().within(() => {
+        cy.icon("close").click();
+      });
+      cy.findByText("Done").click();
     });
   });
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play")
-      .as("runQuery")
-      .click();
+    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
     cy.findByText("Settings").click();
-    cy.findByTestId("sidebar-left")
-      .as("sidebar")
-      .contains(/hidden/i)
-      .siblings(".Icon-close")
-      .click();
+    cy.findByTestId("sidebar-left").as("sidebar");
+    cy.findByText("Add or remove columns").click();
+    sidebar().within(() => {
+      cy.findByText("HIDDEN").click();
+    });
+
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it("should link correctly from the variables sidebar (metabase#16212)", () => {
-    cy.createNativeQuestion({
-      name: "test-question",
-      native: { query: 'select 1 as "a", 2 as "b"' },
-    }).then(({ body: { id: questionId } }) => {
-      openNativeEditor().type(`{{#${questionId}}}`, {
+  it("should recognize template tags and save them as parameters", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+      {
         parseSpecialCharSequences: false,
+      },
+    );
+    cy.get("input[placeholder*='Cat']").type("Gizmo");
+    cy.get("input[placeholder*='Stars']").type("3");
+
+    runQuery();
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("SQL Products");
+      cy.findByText("Save").click();
+
+      // parameters[] should reflect the template tags
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(2);
       });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("a");
-        cy.findByText("b");
-        cy.findByText("1");
-        cy.findByText("2");
-      });
-      cy.findByRole("link", { name: `Question #${questionId}` })
-        .should("have.attr", "href")
-        .and("eq", `/question/${questionId}-test-question`);
+    });
+    cy.findByText("Not now").click();
+
+    // Now load the question again and parameters[] should still be there
+    cy.intercept("GET", "/api/card/4").as("cardQuestion");
+    cy.visit("/question/4?cat=Gizmo&stars=3");
+    cy.wait("@cardQuestion").should(xhr => {
+      const responseBody = xhr.response?.body;
+      expect(responseBody?.parameters?.length).to.equal(2);
     });
   });
+
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
+  });
+
+  it("should allow to preview a fully parameterized query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.findByPlaceholderText("Category").type("Gadget");
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
+  });
+
+  it("should show errors when previewing a query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/missing required parameters/).should("be.visible");
+  });
+
+  it("should allow to convert a structured query to a native query", () => {
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "table.colums": [
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.ID, null],
+            name: "ID",
+          },
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            name: "User ID",
+          },
+          {
+            enabled: true,
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            name: "Product ID",
+          },
+        ],
+      },
+    });
+
+    cy.icon("notebook").click();
+    cy.button("View the SQL").click();
+    cy.wait("@datasetNative");
+    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
+
+    cy.button("Convert this question to SQL").click();
+
+    //Ensure that the new native query ran after being converted
+    cy.findByText("Showing 1 row").should("be.visible");
+    cy.findAllByTestId("header-cell").contains("USER_ID").should("be.visible");
+  });
 });
+
+const runQuery = () => {
+  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.wait("@dataset");
+};

@@ -1,10 +1,13 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -107,7 +110,78 @@
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]}))))))))
+                    :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
+
+(defn- timezone-arithmetic-drivers []
+  (set/intersection
+    (mt/normal-drivers-with-feature :expressions)
+    (mt/normal-drivers-with-feature :date-arithmetics)
+    (timezones-test/timezone-aware-column-drivers)))
+
+(deftest temporal-arithmetic-test
+  (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
+    (mt/test-drivers (timezone-arithmetic-drivers)
+      (mt/dataset attempted-murders
+        (doseq [offset-unit [:year :day]
+                  interval-unit [:year :day]
+                  compare-op [:between := :< :<= :> :>=]
+                  compare-order (cond-> [:field-first]
+                                  (not= compare-op :between) (conj :value-first))]
+            (let [query (mt/mbql-query attempts
+                          {:aggregation [[:count]]
+                           :filter      (cond-> [compare-op]
+                                          (= compare-order :field-first)
+                                          (conj [:+ !default.datetime_tz [:interval 3 offset-unit]]
+                                                [:relative-datetime -7 interval-unit])
+                                          (= compare-order :value-first)
+                                          (conj [:relative-datetime -7 interval-unit]
+                                                [:+ !default.datetime_tz [:interval 3 offset-unit]])
+                                          (= compare-op :between)
+                                          (conj [:relative-datetime 0 interval-unit]))})]
+              ;; we are not interested in the exact result, just want to check
+              ;; that the query can be compiled and executed
+              (mt/with-native-query-testing-context query
+                (let [[[result]] (mt/formatted-rows [int]
+                                   (qp/process-query query))]
+                  (if (= driver/*driver* :mongo)
+                    (is (or (nil? result)
+                            (pos-int? result)))
+                    (is (nat-int? result)))))))))))
+
+(deftest nonstandard-temporal-arithmetic-test
+  (testing "Nonstandard temporal arithmetic should also be supported"
+    (mt/test-drivers (timezone-arithmetic-drivers)
+      (mt/dataset attempted-murders
+        (doseq [offset-unit [:year :day]
+                  interval-unit [:year :day]
+                  compare-op [:between := :< :<= :> :>=]
+                  add-op [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
+                  compare-order (cond-> [:field-first]
+                                  (not= compare-op :between) (conj :value-first))]
+            (let [add-fn (fn [field interval]
+                           (if (= add-op :-)
+                             [add-op field interval interval]
+                             [add-op interval field interval]))
+                  query (mt/mbql-query attempts
+                          {:aggregation [[:count]]
+                           :filter      (cond-> [compare-op]
+                                          (= compare-order :field-first)
+                                          (conj (add-fn !default.datetime_tz [:interval 3 offset-unit])
+                                                [:relative-datetime -7 interval-unit])
+                                          (= compare-order :value-first)
+                                          (conj [:relative-datetime -7 interval-unit]
+                                                (add-fn !default.datetime_tz [:interval 3 offset-unit]))
+                                          (= compare-op :between)
+                                          (conj [:relative-datetime 0 interval-unit]))})]
+              ;; we are not interested in the exact result, just want to check
+              ;; that the query can be compiled and executed
+              (mt/with-native-query-testing-context query
+                (let [[[result]] (mt/formatted-rows [int]
+                                   (qp/process-query query))]
+                  (if (= driver/*driver* :mongo)
+                    (is (or (nil? result)
+                            (pos-int? result)))
+                    (is (nat-int? result)))))))))))
 
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)
@@ -151,8 +225,9 @@
              (mt/first-row
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:not-null *date]}))))))))
+                   {:source-query {:source-table $$checkins}
+                    :aggregation  [[:count]]
+                    :filter       [:not-null *date]}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -404,12 +479,12 @@
       (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
         (is (= 4
                (count-with-filter-clause checkins [:between
-                                                   [:datetime-field $timestamp :minute]
+                                                   !minute.timestamp
                                                    "2019-01-01T12:30:00"
                                                    "2019-01-14"])))))
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
-             (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))
+             (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
 (deftest string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -425,14 +500,14 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp/query->native-with-spliced-params query))))
+            (testing (format "\nquery = %s" (pr-str (:query (qp/compile-and-splice-parameters query))))
               ;; Mongo returns empty results if count is zero -- see #5419
               (is (= (if (and (= driver/*driver* :mongo)
                               (zero? expected-count))
                        []
                        [[expected-count]])
                      (mt/formatted-rows [int]
-                                        (qp/process-query query)))))))))
+                       (qp/process-query query)))))))))
 
     (testing "Make sure we're not being too aggressive and encoding percent signs (e.g. SQL `LIKE`)"
       (is (= [[1]]

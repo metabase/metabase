@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 describe("issue 9357", () => {
@@ -22,16 +22,10 @@ describe("issue 9357", () => {
       .trigger("mouseup", 430, 0, { force: true });
 
     // Ensure they're in the right order
-    cy.findAllByText("Variable name")
-      .parent()
-      .as("variableField");
+    cy.findAllByText("Variable name").parent().as("variableField");
 
-    cy.get("@variableField")
-      .first()
-      .findByText("nextparameter");
+    cy.get("@variableField").first().findByText("nextparameter");
 
-    cy.get("@variableField")
-      .last()
-      .findByText("firstparameter");
+    cy.get("@variableField").last().findByText("firstparameter");
   });
 });

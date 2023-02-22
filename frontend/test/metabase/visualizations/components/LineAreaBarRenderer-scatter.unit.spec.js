@@ -1,4 +1,4 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
+import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
 import {
   NumberColumn,
@@ -33,11 +33,11 @@ describe("LineAreaBarRenderer-scatter", () => {
     ...window.document.documentElement.querySelectorAll(selector),
   ];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 

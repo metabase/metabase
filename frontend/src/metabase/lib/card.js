@@ -1,10 +1,8 @@
-import _ from "underscore";
-import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
 
-import { CardApi } from "metabase/services";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import Questions from "metabase/entities/questions";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 export function createCard(name = null) {
   return {
@@ -26,87 +24,52 @@ export function startNewCard(type, databaseId, tableId) {
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 // TODO: move to redux
-export async function loadCard(cardId) {
+export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    return await CardApi.get({ cardId: cardId });
+    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
+    const card = Questions.selectors.getObject(getState(), {
+      entityId: cardId,
+    });
+    return card;
   } catch (error) {
     console.log("error loading card", error);
     throw error;
   }
 }
 
-// TODO Atte Keinänen 5/31/17 Deprecated, we should migrate existing references to this method to `question.isCardDirty`
-// predicate function that dermines if a given card is "dirty" compared to the last known version of the card
-export function isCardDirty(card, originalCard) {
-  // The rules:
-  //   - if it's new, then it's dirty when
-  //       1) there is a database/table chosen or
-  //       2) when there is any content on the native query
-  //   - if it's saved, then it's dirty when
-  //       1) the current card doesn't match the last saved version
-
-  if (!card) {
-    return false;
-  } else if (!card.id) {
-    if (card.dataset_query.query && card.dataset_query.query["source-table"]) {
-      return true;
-    } else if (
-      card.dataset_query.native &&
-      !_.isEmpty(card.dataset_query.native.query)
-    ) {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    const origCardSerialized = originalCard
-      ? serializeCardForUrl(originalCard)
-      : null;
-    const newCardSerialized = card
-      ? serializeCardForUrl(_.omit(card, "original_card_id"))
-      : null;
-    return newCardSerialized !== origCardSerialized;
-  }
-}
-
-// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
-export function serializeCardForUrl(card) {
+function getCleanCard(card) {
   const dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
     dataset_query.query = Q_DEPRECATED.cleanQuery(dataset_query.query);
   }
 
-  const cardCopy = {
+  return {
     name: card.name,
     description: card.description,
     dataset_query: dataset_query,
     display: card.display,
     displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
+    dashboardId: card.dashboardId,
+    dashcardId: card.dashcardId,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
   };
+}
 
-  return utf8_to_b64url(JSON.stringify(cardCopy));
+export function isEqualCard(card1, card2) {
+  if (card1 && card2) {
+    return Utils.equals(getCleanCard(card1), getCleanCard(card2));
+  } else {
+    return false;
+  }
+}
+
+// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
+export function serializeCardForUrl(card) {
+  return utf8_to_b64url(JSON.stringify(getCleanCard(card)));
 }
 
 export function deserializeCardFromUrl(serialized) {
   return JSON.parse(b64hash_to_utf8(serialized));
-}
-
-export function urlForCardState(state, dirty) {
-  return Urls.question(
-    state.card,
-    state.serializedCard && dirty ? state.serializedCard : "",
-  );
-}
-
-export function cleanCopyCard(card) {
-  const cardCopy = {};
-  for (const name in card) {
-    if (name.charAt(0) !== "$") {
-      cardCopy[name] = card[name];
-    }
-  }
-  return cardCopy;
 }

@@ -1,8 +1,15 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  sidebar,
+  summarize,
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > null", () => {
   beforeEach(() => {
@@ -15,7 +22,10 @@ describe("scenarios > question > null", () => {
       name: "13571",
       query: {
         "source-table": ORDERS_ID,
-        fields: [["field", ORDERS.DISCOUNT, null]],
+        fields: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.DISCOUNT, null],
+        ],
         filter: ["=", ["field", ORDERS.ID, null], 1],
       },
     });
@@ -25,8 +35,11 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
-    cy.findByText("Discount");
-    cy.findByText("Empty");
+    cy.get("#detail-shortcut").click();
+    cy.findByRole("dialog").within(() => {
+      cy.findByText(/Discount/i);
+      cy.findByText("Empty");
+    });
   });
 
   // [quarantine]
@@ -71,6 +84,10 @@ describe("scenarios > question > null", () => {
           // add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id: dashCardId } }) => {
             // connect filter to that question
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -80,8 +97,8 @@ describe("scenarios > question > null", () => {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
+                  size_x: 8,
+                  size_y: 6,
                   parameter_mappings: [
                     {
                       parameter_id: "1f97c149",
@@ -99,7 +116,7 @@ describe("scenarios > question > null", () => {
 
           cy.log("Reported failing in v0.37.0.2");
           cy.get(".DashCard").within(() => {
-            cy.get(".LoadingSpinner").should("not.exist");
+            cy.findByTestId("loading-spinner").should("not.exist");
             cy.findByText("13626");
             // [quarantine]: flaking in CircleCI, passing locally
             // TODO: figure out the cause of the failed test in CI after #13721 is merged
@@ -127,20 +144,25 @@ describe("scenarios > question > null", () => {
           cy.log("Add both previously created questions to the dashboard");
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {
+            const cardSizeX = 6;
+            const col = index === 0 ? 0 : cardSizeX; // making sure the second card doesn't overlap the first one
+
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: questionId,
+              row: 0,
+              col: col,
+              size_x: cardSizeX,
+              size_y: 4,
             }).then(({ body: { id: DASHCARD_ID } }) => {
-              const CARD_SIZE_X = 6;
-
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cards: [
                   {
                     id: DASHCARD_ID,
                     card_id: questionId,
                     row: 0,
-                    col: index === 0 ? 0 : CARD_SIZE_X, // making sure the second card doesn't overlap the first one
-                    sizeX: CARD_SIZE_X,
-                    sizeY: 4,
+                    col: col,
+                    size_x: cardSizeX,
+                    size_y: 4,
                     parameter_mappings: [],
                   },
                 ],
@@ -148,11 +170,11 @@ describe("scenarios > question > null", () => {
             });
           });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          visitDashboard(DASHBOARD_ID);
           cy.log("P0 regression in v0.37.1!");
-          cy.get(".LoadingSpinner").should("not.exist");
+          cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
-          cy.get(".ScalarValue").contains("0");
+          cy.get(".ScalarValue").should("contain", "0");
           cy.findByText("13801_Q2");
         });
       });
@@ -171,9 +193,7 @@ describe("scenarios > question > null", () => {
       // Open the context menu that lets us apply filter using this column directly
       .click({ force: true });
 
-    popover()
-      .contains("=")
-      .click();
+    popover().contains("=").click();
 
     cy.findByText("39.72");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
@@ -181,17 +201,15 @@ describe("scenarios > question > null", () => {
   });
 
   describe("aggregations with null values", () => {
-    beforeEach(() => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-    });
-
     it("summarize with null values (metabase#12585)", () => {
       openOrdersTable();
-      cy.wait("@dataset");
-      cy.contains("Summarize").click();
-      // remove pre-selected "Count"
-      cy.icon("close").click();
+
+      summarize();
+      sidebar().within(() => {
+        // remove pre-selected "Count"
+        cy.icon("close").click();
+      });
+      cy.findByText("Add a metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();
@@ -200,10 +218,6 @@ describe("scenarios > question > null", () => {
       // Group by
       cy.contains("Created At").click();
       cy.contains("Cumulative sum of Discount by Created At: Month");
-      cy.wait(["@dataset", "@dataset"]).then(xhrs => {
-        expect(xhrs[0].status).to.equal(202);
-        expect(xhrs[1].status).to.equal(202);
-      });
 
       cy.findByText("There was a problem with your question").should(
         "not.exist",

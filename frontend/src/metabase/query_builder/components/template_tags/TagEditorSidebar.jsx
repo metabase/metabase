@@ -6,39 +6,14 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import TagEditorParam from "./TagEditorParam";
-import CardTagEditor from "./CardTagEditor";
-import TagEditorHelp from "./TagEditorHelp";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { TableId } from "metabase-types/types/Table";
-import type { Database } from "metabase-types/types/Database";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Field as FieldObject } from "metabase-types/types/Field";
-
-type Props = {
-  query: NativeQuery,
-
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  setTemplateTag: (tag: TemplateTag) => void,
-
-  databaseFields: FieldObject[],
-  databases: Database[],
-  sampleDatasetId: TableId,
-
-  onClose: () => void,
-};
-type State = {
-  section: "help" | "settings",
-};
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import TagEditorParam from "./TagEditorParam";
+import TagEditorHelp from "./TagEditorHelp";
 
 export default class TagEditorSidebar extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     section: "settings",
   };
 
@@ -46,9 +21,10 @@ export default class TagEditorSidebar extends React.Component {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
-    sampleDatasetId: PropTypes.number,
+    sampleDatabaseId: PropTypes.number,
     setDatasetQuery: PropTypes.func.isRequired,
     setTemplateTag: PropTypes.func.isRequired,
+    setTemplateTagConfig: PropTypes.func.isRequired,
     setParameterValue: PropTypes.func.isRequired,
   };
 
@@ -65,15 +41,15 @@ export default class TagEditorSidebar extends React.Component {
     const {
       databases,
       databaseFields,
-      sampleDatasetId,
+      sampleDatabaseId,
       setDatasetQuery,
       query,
       setTemplateTag,
+      setTemplateTagConfig,
       setParameterValue,
       onClose,
     } = this.props;
-    // The tag editor sidebar excludes snippets since they have a separate sidebar.
-    const tags = query.templateTagsWithoutSnippets();
+    const tags = query.variableTemplateTags();
     const database = query.database();
     const parameters = query.question().parameters();
     const parametersById = _.indexBy(parameters, "id");
@@ -87,7 +63,7 @@ export default class TagEditorSidebar extends React.Component {
 
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div>
+        <div data-testid="tag-editor-sidebar">
           <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
               className={cx("Button flex-full Button--small", {
@@ -110,15 +86,14 @@ export default class TagEditorSidebar extends React.Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
-              query={query}
-              setDatasetQuery={setDatasetQuery}
               setTemplateTag={setTemplateTag}
+              setTemplateTagConfig={setTemplateTagConfig}
               setParameterValue={setParameterValue}
             />
           ) : (
             <TagEditorHelp
               database={database}
-              sampleDatasetId={sampleDatasetId}
+              sampleDatabaseId={sampleDatabaseId}
               setDatasetQuery={setDatasetQuery}
               switchToSettings={() => this.setSection("settings")}
             />
@@ -135,31 +110,24 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
-  query,
-  setDatasetQuery,
   setTemplateTag,
+  setTemplateTagConfig,
   setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        {tag.type === "card" ? (
-          <CardTagEditor
-            query={query}
-            setDatasetQuery={setDatasetQuery}
-            tag={tag}
-          />
-        ) : (
-          <TagEditorParam
-            tag={tag}
-            parameter={parametersById[tag.id]}
-            databaseFields={databaseFields}
-            database={database}
-            databases={databases}
-            setTemplateTag={setTemplateTag}
-            setParameterValue={setParameterValue}
-          />
-        )}
+        <TagEditorParam
+          tag={tag}
+          key={tags.name}
+          parameter={parametersById[tag.id]}
+          databaseFields={databaseFields}
+          database={database}
+          databases={databases}
+          setTemplateTag={setTemplateTag}
+          setTemplateTagConfig={setTemplateTagConfig}
+          setParameterValue={setParameterValue}
+        />
       </div>
     ))}
   </div>

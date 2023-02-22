@@ -2,9 +2,6 @@ name: Kerberized Presto Integration Test
 
 on:
   pull_request:
-    paths:
-    - '**/presto_jdbc/**'
-    - '**/presto_jdbc.clj'
   push:
     branches:
       - master
@@ -12,12 +9,26 @@ on:
       - 'feature**'
     tags:
       - '**'
-    paths:
-    - '**/presto_jdbc/**'
-    - '**/presto_jdbc.clj'
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      backend_presto_kerberos: ${{ steps.changes.outputs.backend_presto_kerberos }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   run-presto-kerberos-test:
+    needs: files-changed
+    if: needs.files-changed.outputs.backend_presto_kerberos == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 40
     steps:
@@ -30,14 +41,14 @@ jobs:
             && sudo ./install \
             && cd -
       - name: Checkout Metabase repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out Presto Kerberos Docker Compose
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: metabase/presto-kerberos-docker
-          ref: add-test_data-catalog
+          ref: master
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
@@ -53,7 +64,7 @@ jobs:
       - name: Copy client.keytab file to resources
         run: docker cp presto-kerberos:/home/presto/client.keytab resources
       - name: Checkout mba
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: metabase/mba
           ref: master

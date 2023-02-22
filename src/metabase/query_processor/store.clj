@@ -9,17 +9,20 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(Field 10)` every time you needed information about that Field,
+   Of course, it would be entirely possible to call `(db/select-one Field :id 10)` every time you needed information about that Field,
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
-  (:require [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
@@ -55,16 +58,19 @@
   [:id
    :engine
    :name
-   :details])
+   :dbms_version
+   :details
+   :settings])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
-   (class Database)
-   {:id      su/IntGreaterThanZero
-    :engine  s/Keyword
-    :name    su/NonBlankString
-    :details su/Map
-    s/Any    s/Any}))
+   (mi/InstanceOf Database)
+   {:id       su/IntGreaterThanZero
+    :engine   s/Keyword
+    :name     su/NonBlankString
+    :details  su/Map
+    :settings (s/maybe su/Map)
+    s/Any     s/Any}))
 
 (def ^:private table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."
@@ -75,7 +81,7 @@
 
 (def ^:private TableInstanceWithRequiredStoreKeys
   (s/both
-   (class Table)
+   (mi/InstanceOf Table)
    {:schema (s/maybe s/Str)
     :name   su/NonBlankString
     s/Any   s/Any}))
@@ -94,6 +100,7 @@
    :fingerprint
    :id
    :name
+   :nfc_path
    :parent_id
    :semantic_type
    :settings
@@ -102,8 +109,9 @@
 
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
-   (class Field)
+   (mi/InstanceOf Field)
    {:name                               su/NonBlankString
+    :table_id                           su/IntGreaterThanZero
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)
     :database_type                      su/NonBlankString
@@ -115,6 +123,7 @@
     :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
     :fingerprint                        (s/maybe su/Map)
     :parent_id                          (s/maybe su/IntGreaterThanZero)
+    :nfc_path                           (s/maybe [su/NonBlankString])
     s/Any                               s/Any}))
 
 
@@ -198,23 +207,23 @@
   [field-ids :- IDs]
   ;; remove any IDs for Fields that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
-    (let [fetched-fields (db/do-post-select Field
-                           (db/query
-                            {:select    (for [column-kw field-columns-to-fetch]
-                                          [(keyword (str "field." (name column-kw)))
-                                           column-kw])
-                             :from      [[Field :field]]
-                             :left-join [[Table :table] [:= :field.table_id :table.id]]
-                             :where     [:and
-                                         [:in :field.id (set ids-to-fetch)]
-                                         [:= :table.db_id (db-id)]]}))
+    (let [fetched-fields (t2/select
+                          Field
+                          {:select    (for [column-kw field-columns-to-fetch]
+                                        [(keyword (str "field." (name column-kw)))
+                                         column-kw])
+                           :from      [[:metabase_field :field]]
+                           :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
+                           :where     [:and
+                                       [:in :field.id (set ids-to-fetch)]
+                                       [:= :table.db_id (db-id)]]})
           fetched-ids    (set (map :id fetched-fields))]
       ;; make sure all Fields in field-ids were fetched, or throw an Exception
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
            (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
-             {:field id, :database (db-id)}))))
+                    {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
         (store-field! field)))))
@@ -229,17 +238,35 @@
   (or (:database @*store*)
       (throw (Exception. (tru "Error: Database is not present in the Query Processor Store.")))))
 
+(defn- default-table
+  "Default implementation of [[table]]."
+  [table-id]
+  (or (get-in @*store* [:tables table-id])
+      (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id)))))
+
+(def ^:dynamic *table*
+  "Implementation of [[table]]. Dynamic so this can be overridden as needed by tests."
+  default-table)
+
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- su/IntGreaterThanZero]
-  (or (get-in @*store* [:tables table-id])
-      (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id)))))
+  (*table* table-id))
+
+(defn- default-field
+  "Default implementation of [[field]]."
+  [field-id]
+  (or (get-in @*store* [:fields field-id])
+      (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))
+
+(def ^:dynamic *field*
+  "Implementation of [[field]]. Dynamic so this can be overridden as needed by tests."
+  default-field)
 
 (s/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- su/IntGreaterThanZero]
-  (or (get-in @*store* [:fields field-id])
-      (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))
+  (*field* field-id))
 
 
 ;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------

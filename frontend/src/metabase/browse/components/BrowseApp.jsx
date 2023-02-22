@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
-
-import { PAGE_PADDING } from "metabase/browse/constants";
+import { BrowseAppRoot } from "./BrowseApp.styled";
 
 export default function BrowseApp({ children }) {
-  return <Box mx={PAGE_PADDING}>{children}</Box>;
+  return <BrowseAppRoot>{children}</BrowseAppRoot>;
 }

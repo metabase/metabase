@@ -3,44 +3,14 @@ import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
+import { FieldDimension } from "metabase-lib/Dimension";
 
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
-
-// import type { Section } from "metabase/components/AccordionList";
-export type AccordionListItem = {};
-
-export type AccordionListSection = {
-  name: ?string,
-  items: AccordionListItem[],
-};
-
-type Props = {
-  className?: string,
-  maxHeight?: number,
-  width?: ?number | ?string,
-
-  dimension?: ?Dimension,
-  dimensions?: Dimension[],
-  onChangeDimension: (dimension: Dimension) => void,
-  onChangeOther?: (item: any) => void,
-
-  onAddDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-  onRemoveDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-
-  sections: AccordionListSection[],
-
-  alwaysExpanded?: boolean,
-  enableSubDimensions?: boolean,
-  useOriginalDimension?: boolean,
-};
-
-type State = {
-  sections: AccordionListSection[],
-};
+import { DimensionPicker } from "./DimensionPicker";
+import { FieldListGroupingTrigger } from "./DimensionList.styled";
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",
@@ -56,36 +26,34 @@ const SUBMENU_TETHER_OPTIONS = {
 };
 
 export default class DimensionList extends Component {
-  props: Props;
-  state: State = {
-    sections: [],
-  };
-  state: State = {
+  state = {
     sections: [],
   };
 
   UNSAFE_componentWillMount() {
-    this._updateSections(this.props.sections);
+    this.updateSections(this.props.sections);
   }
+
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.sections !== nextProps.sections) {
-      this._updateSections(nextProps.sections);
+      this.updateSections(nextProps.sections);
     }
   }
-  _updateSections(sections) {
+
+  updateSections(sections = []) {
     this.setState({
-      sections: (sections || []).map(section => ({
+      sections: sections.map(section => ({
         ...section,
         items: section.items.map(item => ({
           ...item,
-          name: item.name || (item.dimension && item.dimension.displayName()),
-          icon: item.icon || (item.dimension && item.dimension.icon()),
+          name: item.name || item.dimension?.displayName(),
+          icon: item.icon || item.dimension?.icon(),
         })),
       })),
     });
   }
 
-  _getDimensions() {
+  getDimensions() {
     return (
       this.props.dimensions ||
       (this.props.dimension ? [this.props.dimension] : [])
@@ -93,49 +61,57 @@ export default class DimensionList extends Component {
   }
 
   itemIsSelected = item => {
-    const dimensions = this._getDimensions();
+    const dimensions = this.getDimensions();
     return (
       item.dimension &&
-      _.any(dimensions, d => item.dimension.isSameBaseDimension(d))
+      _.any(dimensions, dimension => {
+        // sometimes `item.dimension` has a join-alias and `dimension` doesn't
+        // with/without is equivalent in this scenario
+        return dimension.isSameBaseDimension(item.dimension.withoutJoinAlias());
+      })
     );
   };
 
   renderItemExtra = (item, itemIndex, isSelected) => {
     const {
-      dimension,
       enableSubDimensions,
+      preventNumberSubDimensions,
       onAddDimension,
       onRemoveDimension,
     } = this.props;
+
+    const surpressSubDimensions =
+      preventNumberSubDimensions && item.dimension.field().isSummable();
+
     const subDimensions =
       enableSubDimensions &&
-      item.dimension &&
       // Do not display sub dimension if this is an FK (metabase#16787)
-      !item.dimension.field().isFK() &&
+      !item.dimension?.field().isFK() &&
+      !surpressSubDimensions &&
       item.dimension.dimensions();
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
 
-    const sectionDimension = dimension
-      ? dimension
+    const sectionDimension = this.props.dimension
+      ? this.props.dimension
       : _.find(
-          this._getDimensions(),
-          d => d.field() === item.dimension.field(),
+          this.getDimensions(),
+          dimension => dimension.field() === item.dimension.field(),
         );
 
     return (
       <div className="Field-extra flex align-center">
-        {/* {item.segment && this.renderSegmentTooltip(item.segment)} */}
-        {item.dimension && item.dimension.tag && (
+        {item.dimension?.tag && (
           <span className="h5 text-light px1">{item.dimension.tag}</span>
         )}
-        {subDimensions && subDimensions.length > 0 ? (
+        {subDimensions?.length > 0 ? (
           <PopoverWithTrigger
             className={this.props.className}
             hasArrow={false}
             triggerElement={this.renderSubDimensionTrigger(
               item.dimension,
               multiSelect,
+              preventNumberSubDimensions,
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
             sizeToFit
@@ -183,21 +159,30 @@ export default class DimensionList extends Component {
   };
 
   renderSubDimensionTrigger(otherDimension, multiSelect) {
-    const dimensions = this._getDimensions();
+    const dimensions = this.getDimensions();
     const subDimension =
-      _.find(dimensions, d => d.isSameBaseDimension(otherDimension)) ||
-      otherDimension.defaultDimension();
-    const name = subDimension ? subDimension.subTriggerDisplayName() : null;
+      _.find(dimensions, dimension =>
+        dimension.isSameBaseDimension(otherDimension),
+      ) || otherDimension.defaultDimension();
+    const name = subDimension?.subTriggerDisplayName() ?? null;
+
     return (
-      <div className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer">
+      <FieldListGroupingTrigger
+        className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer"
+        data-testid="dimension-list-item-binning"
+      >
         {name && <h4>{name}</h4>}
         {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
-      </div>
+      </FieldListGroupingTrigger>
     );
   }
 
-  _getDimensionFromItem(item) {
-    const { enableSubDimensions, useOriginalDimension } = this.props;
+  getDimensionFromItem(item) {
+    const {
+      enableSubDimensions,
+      useOriginalDimension,
+      preventNumberSubDimensions,
+    } = this.props;
     const dimension = useOriginalDimension
       ? item.dimension
       : item.dimension.defaultDimension() || item.dimension;
@@ -207,7 +192,10 @@ export default class DimensionList extends Component {
       dimension instanceof FieldDimension &&
       dimension.binningStrategy();
 
-    if (shouldExcludeBinning) {
+    if (
+      shouldExcludeBinning ||
+      (preventNumberSubDimensions && dimension.field().isSummable())
+    ) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
       // as a binned field (which would use the default binning)
       // Let's unwrap the base field of the binned field instead
@@ -223,23 +211,23 @@ export default class DimensionList extends Component {
       // ensure if we select the same item we don't reset the subdimension
       onChangeDimension(dimension, item);
     } else if (item.dimension) {
-      onChangeDimension(this._getDimensionFromItem(item), item);
+      onChangeDimension(this.getDimensionFromItem(item), item);
     } else if (onChangeOther) {
       onChangeOther(item);
     }
   };
 
   handleAdd = item => {
-    const d = this._getDimensionFromItem(item);
-    if (d && this.props.onAddDimension) {
-      this.props.onAddDimension(d, item);
+    const dimension = this.getDimensionFromItem(item);
+    if (dimension && this.props.onAddDimension) {
+      this.props.onAddDimension(dimension, item);
     }
   };
 
   handleRemove = item => {
-    const d = this._getDimensionFromItem(item);
-    if (d && this.props.onRemoveDimension) {
-      this.props.onRemoveDimension(d, item);
+    const dimension = this.getDimensionFromItem(item);
+    if (dimension && this.props.onRemoveDimension) {
+      this.props.onRemoveDimension(dimension, item);
     }
   };
 
@@ -249,6 +237,7 @@ export default class DimensionList extends Component {
     return (
       <AccordionList
         {...this.props}
+        itemTestId="dimension-list-item"
         sections={this.state.sections}
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
@@ -258,33 +247,3 @@ export default class DimensionList extends Component {
     );
   }
 }
-
-import cx from "classnames";
-
-export const DimensionPicker = ({
-  style,
-  className,
-  dimension,
-  dimensions,
-  onChangeDimension,
-}) => {
-  return (
-    <ul className={cx(className, "px2 py1")} style={style}>
-      {dimensions.map((d, index) => (
-        <li
-          key={index}
-          className={cx("List-item", {
-            "List-item--selected": d.isEqual(dimension),
-          })}
-        >
-          <a
-            className="List-item-title full px2 py1 cursor-pointer"
-            onClick={() => onChangeDimension(d)}
-          >
-            {d.subDisplayName()}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-};

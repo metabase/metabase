@@ -3,29 +3,17 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import Tables from "metabase/entities/tables";
-
-import Icon from "metabase/components/Icon";
-
 import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+import Icon from "metabase/components/Icon";
+import Tables from "metabase/entities/tables";
 
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
 
-@connect(
-  null,
-  {
-    setVisibilityForTables: (tables, visibility_type) =>
-      Tables.actions.bulkUpdate({
-        ids: tables.map(t => t.id),
-        visibility_type,
-      }),
-  },
-)
-export default class MetadataTableList extends Component {
+class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -73,7 +61,7 @@ export default class MetadataTableList extends Component {
 
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
-        <li className="AdminList-section">
+        <li className="AdminList-section flex justify-between align-center">
           {(n =>
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
@@ -119,7 +107,7 @@ export default class MetadataTableList extends Component {
           />
         </div>
         {(this.props.onBack || this.props.schema) && (
-          <h4 className="p2 border-bottom">
+          <h4 className="p2 border-bottom break-anywhere">
             {this.props.onBack && (
               <span
                 className="text-brand cursor-pointer"
@@ -162,6 +150,14 @@ export default class MetadataTableList extends Component {
     );
   }
 }
+
+export default connect(null, {
+  setVisibilityForTables: (tables, visibility_type) =>
+    Tables.actions.bulkUpdate({
+      ids: tables.map(t => t.id),
+      visibility_type,
+    }),
+})(MetadataTableList);
 
 function TableRow({
   table,

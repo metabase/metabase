@@ -1,37 +1,48 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.card :as card-api]
-            [metabase.api.common :as api]
-            [metabase.api.dashboard :as dashboard-api]
-            [metabase.api.dataset :as dataset-api]
-            [metabase.api.field :as field-api]
-            [metabase.async.util :as async.u]
-            [metabase.db.util :as mdb.u]
-            [metabase.mbql.normalize :as normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.params :as params]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.field :as api.field]
+   [metabase.async.util :as async.u]
+   [metabase.db.util :as mdb.u]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.util :as u]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [throttle.core :as throttle]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -42,7 +53,8 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  (card/map->CardInstance
+  (mi/instance
+   Card
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
                                [:dataset_query :type [:native :template-tags]]])))
 
@@ -50,22 +62,22 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
-                              :archived false, conditions))
-        remove-card-non-public-columns
-        (hydrate :param_values :param_fields))))
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
+      remove-card-non-public-columns
+      (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
-(api/defendpoint GET "/card/:uuid"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti transform-results
+(defmulti ^:private transform-results
   "Transform results to be suitable for a public endpoint"
   {:arglists '([results])}
   :status)
@@ -83,7 +95,7 @@
     :status]))
 
 (defmethod transform-results :failed
-  [{:keys [error], error-type :error_type, :as results}]
+  [{error-type :error_type, :as results}]
   ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
   ;; instead of returning anything about the query just return a generic error message
   (merge
@@ -94,8 +106,21 @@
 (defn public-reducedf
   "Reducer function for public data"
   [orig-reducedf]
-  (fn [metadata final-metadata context]
-    (orig-reducedf metadata (transform-results final-metadata) context)))
+  (fn [final-metadata context]
+    (orig-reducedf (transform-results final-metadata) context)))
+
+(defn- run-query-for-card-with-id-async-run-fn
+  "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
+  [qp-runner export-format]
+  (fn [query info]
+    (qp.streaming/streaming-response
+        [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
+        (let [context  (assoc context :reducedf (public-reducedf reducedf))
+              in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                         (qp-runner query info context))
+              out-chan (a/promise-chan (map transform-results))]
+          (async.u/promise-pipe in-chan out-chan)
+          out-chan))))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
@@ -110,41 +135,35 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (m/mapply card-api/run-query-for-card-async card-id export-format
+    (m/mapply qp.card/run-query-for-card-async card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (fn [query info]
-                            (qp.streaming/streaming-response
-                             [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
-                             (let [context  (assoc context :reducedf (public-reducedf reducedf))
-                                   in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                                              (qp-runner query info context))
-                                   out-chan (a/promise-chan (map transform-results))]
-                               (async.u/promise-pipe in-chan out-chan)
-                               out-chan)))
+              :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
               options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
-(api/defendpoint ^:streaming GET "/card/:uuid/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
-(api/defendpoint ^:streaming GET "/card/:uuid/query/:export-format"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/ExportFormat}
+   export-format api.dataset/ExportFormat}
   (run-query-for-card-with-public-uuid-async
    uuid
    export-format
@@ -161,146 +180,117 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series] :param_values :param_fields)
-        dashboard-api/add-query-average-durations
-        (update :ordered_cards (fn [dashcards]
-                                 (for [dashcard dashcards]
-                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
-                                                              :sizeY :parameter_mappings :visualization_settings])
-                                       (update :card remove-card-non-public-columns)
-                                       (update :series (fn [series]
-                                                         (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+  {:pre [(even? (count conditions))]}
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
+      (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
+      api.dashboard/add-query-average-durations
+      (update :ordered_cards (fn [dashcards]
+                               (for [dashcard dashcards]
+                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
+                                                            :size_y :parameter_mappings :visualization_settings :action])
+                                     (update :card remove-card-non-public-columns)
+                                     (update :series (fn [series]
+                                                       (for [series series]
+                                                         (remove-card-non-public-columns series))))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
-(api/defendpoint GET "/dashboard/:uuid"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
 
-(defn- dashboard->dashcard-param-mappings
-  "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
-  [dashboard-or-id]
-  (for [params (db/select-field :parameter_mappings DashboardCard
-                 :dashboard_id (u/the-id dashboard-or-id))
-        param  params
-        :when  (:parameter_id param)]
-    param))
-
-(defn- matching-dashboard-param-with-target
-  "Find an entry in `dashboard-params` that matches `target`, if one exists. Since `dashboard-params` do not themselves
-  have targets they are matched via the `dashcard-param-mappings` for the Dashboard. See `resolve-params` below for
-  more details."
-  [dashboard-params dashcard-param-mappings target]
-  (some (fn [{id :parameter_id, :as param-mapping}]
-          (when (= target (:target param-mapping))
-            ;; ...and once we find that, try to find a Dashboard `:parameters`
-            ;; entry with the same ID...
-            (m/find-first #(= (:id %) id)
-                          dashboard-params)))
-        dashcard-param-mappings))
-
-(s/defn ^:private resolve-params :- (s/maybe [{s/Keyword s/Any}])
-  "Resolve the parmeters passed in to the API (`query-params`) and make sure they're actual valid parameters the
-  Dashboard with `dashboard-id`. This is done to prevent people from adding in parameters that aren't actually present
-  on the Dashboard. When successful, this will return a merged sequence based on the original `dashboard-params`, but
-  including the `:value` from the appropriate query-param.
-
-  The way we pass in parameters is complicated and silly: for public Dashboards, they're passed in as JSON-encoded
-  parameters that look something like (when decoded):
-
-      [{:type :category, :target [:variable [:template-tag :num]], :value \"50\"}]
-
-  For embedded Dashboards they're simply passed in as query parameters, e.g.
-
-      [{:num 50}]
-
-  Thus resolving the params has to take either format into account. To further complicate matters, a Dashboard's
-  `:parameters` column contains values that look something like:
-
-       [{:name \"Num\", :slug \"num\", :id \"537e37b4\", :type \"category\"}
-
-  This is sufficient to resolve slug-style params passed in to embedded Dashboards, but URL-encoded params for public
-  Dashboards do not have anything that can directly match them to a Dashboard `:parameters` entry. However, they
-  already have enough information for the query processor to handle resolving them itself; thus we simply need to make
-  sure these params are actually allowed to be used on the Dashboard. To do this, we can match them against the
-  `:parameter_mappings` for the Dashboard's DashboardCards, which look like:
-
-      [{:card_id 1, :target [:variable [:template-tag :num]], :parameter_id \"537e37b4\"}]
-
-  Thus for public Dashboards JSON-encoded style we can look for a matching Dashcard parameter mapping, based on
-  `:target`, and then find the matching Dashboard parameter, based on `:id`.
-
-  *Cries*
-
-  TODO -- Tom has mentioned this, and he is very correct -- our lives would be much easier if we just used slug-style
-  for everything, rather than the weird JSON-encoded format we use for public Dashboards. We should fix this!"
-  [dashboard-id :- su/IntGreaterThanZero, query-params :- (s/maybe [{s/Keyword s/Any}])]
-  (when (seq query-params)
-    (let [dashboard-params        (db/select-one-field :parameters Dashboard, :id dashboard-id)
-          slug->dashboard-param   (u/key-by :slug dashboard-params)
-          dashcard-param-mappings (dashboard->dashcard-param-mappings dashboard-id)]
-      (for [{slug :slug, target :target, :as query-param} query-params
-            :let [target (normalize/normalize-tokens target :ignore-path)
-                  dashboard-param
-                  (or
-                   ;; try to match by slug...
-                   (slug->dashboard-param slug)
-                   ;; ...if that fails, try to find a DashboardCard param mapping with the same target...
-                   (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
-                   ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
-                   ;; trying to inject new params
-                   (throw (ex-info (tru "Invalid param: {0}" slug)
-                                   {:type qp.error-type/invalid-parameter})))]]
-        (merge query-param dashboard-param)))))
-
-(defn- check-card-is-in-dashboard
-  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
-  as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
-  [card-id dashboard-id]
-  (api/check-404
-   (or (db/exists? DashboardCard
-         :dashboard_id dashboard-id
-         :card_id      card-id)
-       (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-         (db/exists? DashboardCardSeries
-           :card_id          card-id
-           :dashboardcard_id [:in dashcard-ids])))))
-
+;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
+;; [[run-query-for-card-with-id-async]]
 (defn public-dashcard-results-async
-  "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
-  `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
-  [dashboard-id card-id export-format parameters
-   & {:keys [context constraints qp-runner]
-      :or   {context     :public-dashboard
-             constraints constraints/default-query-constraints
-             qp-runner   qp/process-query-and-save-execution!}}]
-  (check-card-is-in-dashboard card-id dashboard-id)
-  (let [params (resolve-params dashboard-id (if (string? parameters)
-                                              (json/parse-string parameters keyword)
-                                              parameters))]
-    (run-query-for-card-with-id-async
-     card-id export-format params
-     :dashboard-id dashboard-id
-     :context      context
-     :constraints  constraints
-     :qp-runner    qp-runner)))
+  "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
+  `dashcard-id`. `card-id`, `dashboard-id`, and `dashcard-id` are all required; other parameters are optional:
 
-(api/defendpoint ^:streaming GET "/dashboard/:uuid/card/:card-id"
+  * `parameters`    - MBQL query parameters, either already parsed or as a serialized JSON string
+  * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
+  * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
+
+  Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
+  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
+  [& {:keys [export-format parameters qp-runner]
+      :or   {qp-runner     qp/process-query-and-save-execution!
+             export-format :api}
+      :as   options}]
+  (let [options (merge
+                 {:context     :public-dashboard
+                  :constraints (qp.constraints/default-query-constraints)}
+                 options
+                 {:parameters    (cond-> parameters
+                                   (string? parameters) (json/parse-string keyword))
+                  :export-format export-format
+                  :qp-runner     qp-runner
+                  :run           (run-query-for-card-with-id-async-run-fn qp-runner export-format)})]
+    ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
+    ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
+    ;; anyway
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
-  [uuid card-id parameters]
+  [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async dashboard-id card-id :api parameters)))
+    (public-dashcard-results-async
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [uuid dashcard-id parameters]
+  {dashcard-id su/IntGreaterThanZero
+   parameters su/JSONString}
+  (validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
 
-(api/defendpoint GET "/oembed"
+(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
+  {dashcard-id su/IntGreaterThanZero
+   parameters (s/maybe {s/Keyword s/Any})}
+  (let [throttle-message (try
+                           (throttle/check dashcard-execution-throttle dashcard-id)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :dashcard-id])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+          ;; Run this query with full superuser perms. We don't want the various perms checks
+          ;; failing because there are no current user perms; if this Dashcard is public
+          ;; you're by definition allowed to run it without a perms check anyway
+          (binding [api/*current-user-permissions-set* (delay #{"/"})]
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
@@ -316,6 +306,25 @@
      :width   width
      :height  height
      :html    (embed/iframe url width height)}))
+
+
+;;; ----------------------------------------------- Public Action ------------------------------------------------
+
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :visualization_settings
+    :parameters})
+
+(api/defendpoint GET "/action/:uuid"
+  "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
+  [uuid]
+  {uuid ms/UUIDString}
+  (validation/check-public-sharing-enabled)
+  (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+    (actions/check-actions-enabled! action)
+    (select-keys action action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -369,19 +378,20 @@
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (Dashboard dashboard-id)))]
+  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (db/select-one Dashboard :id dashboard-id)))]
     (api/check-404 (contains? param-field-ids field-id))))
 
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (field-api/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
@@ -390,12 +400,13 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (field-api/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
@@ -408,7 +419,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (field-api/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -416,23 +427,25 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (field-api/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
@@ -440,10 +453,10 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (Field field-id))
-        remapped-field (api/check-404 (Field remapped-field-id))]
+  (let [field          (api/check-404 (db/select-one Field :id field-id))
+        remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
-    (field-api/remapped-value field remapped-field (field-api/parse-query-param-value-for-field field value-str))))
+    (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
   "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the
@@ -459,63 +472,127 @@
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-remapped-values field-id remapped-field-id value-str))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
-;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
+;;; ------------------------------------------------ Param Values -------------------------------------------------
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/values"
+  "Fetch values for a parameter on a public card."
+  [uuid param-key]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
+  "Fetch values for a parameter on a public card containing `query`."
+  [uuid param-key query]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key query))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params))))
+      (api.dashboard/param-values dashboard param-key query-params))))
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params query))))
+      (api.dashboard/param-values dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
-(api/defendpoint ^:streaming GET "/pivot/card/:uuid/query"
+;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/card/:card-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
-  [uuid card-id parameters]
+  [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (api/check-public-sharing-enabled)
-
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async dashboard-id card-id :api parameters :qp-runner qp.pivot/run-pivot-query)))
+    (public-dashcard-results-async
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
+
+(def ^:private action-execution-throttle
+  "Rate limit at 1 action per second on a per action basis.
+   The goal of rate limiting should be to prevent very obvious abuse, but it should
+   be relatively lax so we don't annoy legitimate users."
+  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+
+(api/defendpoint POST "/action/:uuid/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [uuid :as {{:keys [parameters], :as _body} :body}]
+  {uuid       ms/UUIDString
+   parameters [:maybe [:map-of :keyword any?]]}
+  (let [throttle-message (try
+                           (throttle/check action-execution-throttle uuid)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :action-uuid])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body   throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        ;; Run this query with full superuser perms. We don't want the various perms checks
+        ;; failing because there are no current user perms; if this Dashcard is public
+        ;; you're by definition allowed to run it without a perms check anyway
+        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+          (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-action! action (update-keys parameters name))))))))
+
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the
-;; `api/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
+;; `validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
 ;; every single endpoint definition here? Wouldn't that be 100x better?!
 ;;
 ;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for

@@ -1,11 +1,12 @@
 (ns build-drivers.create-uberjar
-  (:require [build-drivers.common :as c]
-            [clojure.java.io :as io]
-            [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.util.dir :as deps.dir]
-            [colorize.core :as colorize]
-            [hf.depstar.api :as depstar]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [clojure.java.io :as io]
+   [clojure.tools.deps.alpha :as deps]
+   [clojure.tools.deps.alpha.util.dir :as deps.dir]
+   [colorize.core :as colorize]
+   [hf.depstar.api :as depstar]
+   [metabuild-common.core :as u]))
 
 (defn driver-basis [driver edition]
   (let [edn (c/driver-edn driver edition)]
@@ -51,7 +52,7 @@
     ;; log which libs we're including and excluding.
     (doseq [lib (sort (keys (:libs basis)))]
       (u/announce (if-let [provider (get provided-lib->provider lib)]
-                    (format "SKIP %%45s (provided by %s)" provider)
+                    (format "SKIP    %%s (provided by %s)" provider)
                     "INCLUDE %s")
                   (colorize/yellow lib)))
     ;; now remove the provide libs from `:classpath`, `:classpath-roots`, and `:libs`

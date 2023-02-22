@@ -1,4 +1,4 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
+import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
 import {
   NumberColumn,
@@ -89,11 +89,11 @@ describe("LineAreaBarRenderer-bar", () => {
   let element;
   const qsa = selector => [...element.querySelectorAll(selector)];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 
@@ -206,29 +206,6 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(values).toEqual(["0.1%", "99.9%"]);
   });
 
-  it(`should render an bar normalized chart with just one series`, () => {
-    const onHoverChange = jest.fn();
-    renderLineAreaBar(
-      element,
-      [
-        MainSeries(
-          "bar",
-          { "stackable.stack_type": "normalized" },
-          { value: 3 },
-        ),
-      ],
-      { onHoverChange },
-    );
-
-    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
-
-    const { calls } = onHoverChange.mock;
-    expect(getDataKeyValues(calls[0][0])).toEqual([
-      { key: "Category", value: "A" },
-      { key: "% Sum", value: "100%" },
-    ]);
-  });
-
   it("should replace the aggregation name with the series name", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
@@ -267,7 +244,7 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(value).toEqual("(empty)");
 
     const tick = element.querySelector(".axis.x .tick text");
-    expect(tick.textContent).toEqual("(empty)");
+    expect(tick).toHaveTextContent("(empty)");
   });
 
   it(`should render a stacked chart on a logarithmic y scale`, async () => {

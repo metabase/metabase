@@ -1,7 +1,16 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  visitQuestionAdhoc,
+  sidebar,
+  getDraggableElements,
+  moveColumnDown,
+  popover,
+} from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
@@ -22,7 +31,7 @@ describe("scenarios > visualizations > bar chart", () => {
         dataset_query: {
           type: "native",
           native: { query, "template-tags": {} },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "bar",
         visualization_settings: visualizationSettings,
@@ -37,7 +46,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -50,7 +58,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)");
     });
   });
@@ -67,7 +74,7 @@ describe("scenarios > visualizations > bar chart", () => {
               ["field", ORDERS.DISCOUNT, { binning: { strategy: "default" } }],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 
@@ -91,7 +98,7 @@ describe("scenarios > visualizations > bar chart", () => {
               "union all\n" +
               "select '2021-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         visualization_settings: {
           "graph.show_values": true,
@@ -100,8 +107,121 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.findByText("19");
-      cy.findAllByText("20.0M");
+      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
+    });
+  });
+
+  describe("with x-axis series", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc({
+        display: "bar",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+      });
+
+      cy.findByText("Settings").click();
+      sidebar().findByText("Data").click();
+    });
+
+    it("should allow you to show/hide and reorder columns", () => {
+      moveColumnDown(getDraggableElements().eq(0), 2);
+
+      getDraggableElements().each((element, index) => {
+        const draggableName = element[0].innerText;
+        cy.findAllByTestId("legend-item").eq(index).contains(draggableName);
+      });
+
+      const columnIndex = 1;
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .within(() => {
+          cy.icon("eye_outline").click();
+        });
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .invoke("text")
+        .then(columnName => {
+          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findAllByTestId("legend-item").should("have.length", 3);
+          cy.get(".enable-dots").should("have.length", 3);
+        });
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .within(() => {
+          cy.icon("eye_crossed_out").click();
+        });
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .invoke("text")
+        .then(columnName => {
+          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findAllByTestId("legend-item").should("have.length", 4);
+          cy.get(".enable-dots").should("have.length", 4);
+        });
+    });
+
+    it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
+      moveColumnDown(getDraggableElements().first(), 2);
+
+      getDraggableElements()
+        .eq(1)
+        .within(() => {
+          cy.icon("eye_outline").click();
+        });
+
+      cy.findByText("Filter").click();
+      cy.findByText("Product").click();
+
+      cy.findByTestId("filter-field-Category").within(() => {
+        cy.findByTestId("operator-select").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Is not").click();
+      });
+
+      cy.findByTestId("filter-field-Category").within(() => {
+        cy.findByText("Gadget").click();
+      });
+
+      cy.findByText("Apply Filters").click();
+
+      getDraggableElements().should("have.length", 3);
+
+      //Ensures that "Gizmo" is still hidden, so it's state hasn't changed.
+      getDraggableElements()
+        .eq(0)
+        .within(() => {
+          cy.icon("eye_crossed_out").click();
+        });
+
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.icon("close").click();
+      });
+
+      getDraggableElements().should("have.length", 4);
+
+      //Re-added items should appear at the end of the list.
+      getDraggableElements().eq(0).should("have.text", "Gizmo");
+      getDraggableElements().eq(3).should("have.text", "Gadget");
     });
   });
 });

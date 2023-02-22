@@ -4,26 +4,13 @@ import { t } from "ttag";
 
 import SettingToggle from "./SettingToggle";
 
-type Props = {
-  onChange: (value: any) => void,
-  setting: {},
-  settingValues: { "site-url": string },
-};
-
-type State = {
-  status: string,
-};
-
 const VERIFIED = "verified";
 const CHECKING = "checking";
 const NOT_CHECKED = "not_checked";
 const FAILED = "failed";
 
 export default class HttpsOnlyWidget extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       status: NOT_CHECKED,
@@ -44,7 +31,7 @@ export default class HttpsOnlyWidget extends Component {
     this.checkHttps();
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps) {
     if (
       prevProps.settingValues["site-url"] !==
       this.props.settingValues["site-url"]
@@ -57,13 +44,14 @@ export default class HttpsOnlyWidget extends Component {
     const { status } = this.state;
     return (
       <div>
-        {status === VERIFIED ? (
-          <SettingToggle {...this.props} />
-        ) : status === CHECKING ? (
-          t`Checking HTTPS...`
-        ) : status === FAILED ? (
-          t`It looks like HTTPS is not properly configured`
-        ) : null // NOT_CHECKED
+        {
+          status === VERIFIED ? (
+            <SettingToggle {...this.props} />
+          ) : status === CHECKING ? (
+            t`Checking HTTPS...`
+          ) : status === FAILED ? (
+            t`It looks like HTTPS is not properly configured`
+          ) : null // NOT_CHECKED
         }
       </div>
     );

@@ -1,20 +1,24 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styled from "styled-components";
+import PropTypes from "prop-types";
+import styled from "@emotion/styled";
 
 import { color as c } from "metabase/lib/colors";
 
-type Props = {
-  percentage: number,
-  animated: boolean,
-  color: string,
-  height: number,
+const propTypes = {
+  percentage: PropTypes.number.isRequired,
+  animated: PropTypes.bool,
+  color: PropTypes.string,
+  height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  className: PropTypes.string,
 };
 
 const ProgressWrapper = styled.div`
   position: relative;
   border: 1px solid ${props => props.color};
-  height: 10px;
+  height: ${props => props.height};
   border-radius: 99px;
+  transition: border-color 0.3s;
 `;
 
 const Progress = styled.div`
@@ -28,6 +32,7 @@ const Progress = styled.div`
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
       width: ${props => props.width}%;
+      transition: background-color 0.3s;
       ":before": {
         display: ${props => (props.animated ? "block" : "none")};
         position: absolute;
@@ -43,22 +48,28 @@ const Progress = styled.div`
 
 // @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
-  props: Props;
-
   static defaultProps = {
     animated: false,
     height: 10,
   };
 
   render() {
-    const { percentage, animated, color = c("brand") } = this.props;
+    const {
+      percentage,
+      height,
+      animated,
+      color = c("brand"),
+      className,
+    } = this.props;
 
     const width = percentage * 100;
 
     return (
-      <ProgressWrapper color={color}>
+      <ProgressWrapper color={color} height={height} className={className}>
         <Progress width={width} animated={animated} color={color} />
       </ProgressWrapper>
     );
   }
 }
+
+ProgressBar.propTypes = propTypes;

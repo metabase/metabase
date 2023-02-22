@@ -4,23 +4,21 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { connect } from "react-redux";
 import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
   AddEditEmailSidebar,
-} from "metabase/sharing/components/AddEditSidebar";
+} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
-
-import { connect } from "react-redux";
 
 import {
   cleanPulse,
   createChannel,
-  getPulseParameters,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
 
@@ -106,15 +104,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-@Pulses.loadList({
-  query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
-})
-@User.loadList({ loadingAndErrorWrapper: false })
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
-class SharingSidebar extends React.Component {
+class SharingSidebarInner extends React.Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
@@ -131,12 +121,16 @@ class SharingSidebar extends React.Component {
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
-    pulses: PropTypes.array.isRequired,
+    pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     users: PropTypes.array,
     params: PropTypes.object,
   };
+
+  componentDidMount() {
+    this.props.fetchPulseFormInput();
+  }
 
   setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
@@ -158,10 +152,6 @@ class SharingSidebar extends React.Component {
       cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
-  };
-
-  componentDidMount = async () => {
-    await this.props.fetchPulseFormInput();
   };
 
   onChannelPropertyChange = (index, name, value) => {
@@ -207,27 +197,6 @@ class SharingSidebar extends React.Component {
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
-    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
-      parameter => {
-        const {
-          default: defaultValue,
-          name,
-          slug,
-          type,
-          value,
-          id,
-        } = parameter;
-        const normalizedValue = normalizeParameterValue(type, value);
-        return {
-          default: defaultValue,
-          id,
-          name,
-          slug,
-          type,
-          value: normalizedValue,
-        };
-      },
-    );
 
     try {
       this.setState({ isSaving: true });
@@ -281,18 +250,17 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      testPulse,
-      users,
-      dashboard,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, users, dashboard } =
+      this.props;
 
-    // protect from empty values that will mess this up
-    if (!formInput.channels || !pulse) {
-      return <Sidebar />;
+    const isLoading = !pulses || !users || !pulse || !formInput?.channels;
+
+    if (isLoading) {
+      return (
+        <Sidebar>
+          <LoadingAndErrorWrapper loading />
+        </Sidebar>
+      );
     }
 
     if (editingMode === "list-pulses" && pulses.length > 0) {
@@ -309,7 +277,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-email" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
@@ -351,7 +320,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-slack" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
@@ -429,5 +399,14 @@ class SharingSidebar extends React.Component {
     return <Sidebar />;
   }
 }
+
+const SharingSidebar = _.compose(
+  Pulses.loadList({
+    query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
+    loadingAndErrorWrapper: false,
+  }),
+  User.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(SharingSidebarInner);
 
 export default SharingSidebar;

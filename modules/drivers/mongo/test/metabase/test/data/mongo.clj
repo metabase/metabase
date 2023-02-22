@@ -1,26 +1,64 @@
 (ns metabase.test.data.mongo
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.models :refer [Field]]
-            [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx]
-            [monger.collection :as mc]
-            [monger.core :as mg])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
+   [medley.core :as m]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.test.data.interface :as tx]
+   [monger.collection :as mcoll]
+   [monger.core :as mg])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (tx/add-test-extensions! :mongo)
 
+(defmethod tx/supports-time-type? :mongo [_driver] false)
+(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+
+(defn ssl-required?
+  "Returns if the mongo server requires an SSL connection."
+  []
+  (contains? #{"true" "1"} (System/getenv "MB_TEST_MONGO_REQUIRES_SSL")))
+
+(defn- ssl-params
+  "Returns the Metabase connection parameters needed for an SSL connection."
+  []
+  {:ssl true
+   :ssl-use-client-auth true
+   :client-ssl-key-value (-> "ssl/mongo/metabase.key" io/resource slurp)
+   :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+   :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
+
+(defn conn-details
+  "Extends `details` with the parameters necessary for an SSL connection."
+  [details]
+  (cond->> details
+    (ssl-required?) (merge (ssl-params))))
+
 (defmethod tx/dbdef->connection-details :mongo
-  [_ _ dbdef]
-  {:dbname (tx/escaped-database-name dbdef)
-   :host   "localhost"})
+  [_driver _connection-type dbdef]
+  (conn-details (merge
+                 {:dbname (tx/escaped-database-name dbdef)
+                  :host   (tx/db-test-env-var :mongo :host "localhost")
+                  :port   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :port "27017"))}
+                 (when-let [user (tx/db-test-env-var :mongo :user)]
+                   {:user user})
+                 (when-let [password (tx/db-test-env-var :mongo :password)]
+                   {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
-    (mg/drop-db mongo-connection (tx/escaped-database-name dbdef))))
+  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+    (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
+
+(def ^:dynamic *remove-nil?*
+  "When creating a dataset, omit any nil-valued fields from the documents."
+  false)
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
@@ -34,8 +72,9 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
-                                                        (zipmap field-names row)))
+            (mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
+                                                           (cond->> (zipmap field-names row)
+                                                             *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 
@@ -43,10 +82,10 @@
   [driver dbdef]
   (destroy-db! driver dbdef))
 
-(defmethod tx/format-name :mongo
+(defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
-  (if (= table-or-field-name "id")
-    "_id"
+  (if (re-matches #"id(?:_\d+)?" table-or-field-name)
+    (str "_" table-or-field-name)
     table-or-field-name))
 
 (defn- json-raw
@@ -62,23 +101,21 @@
            (json/generate-string {:x (json-raw "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
-  [driver table-name field-name param-type]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name _param-type]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})
 
 (defmethod tx/count-with-field-filter-query :mongo
-  [driver table-name field-name]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match (json-raw (format "{{%s}}" (name field-name)))}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})

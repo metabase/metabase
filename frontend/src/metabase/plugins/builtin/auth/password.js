@@ -1,19 +1,12 @@
-/* eslint-disable react/prop-types */
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
-import React from "react";
-import { t } from "ttag";
+PLUGIN_AUTH_PROVIDERS.push(providers => {
+  const passwordProvider = {
+    name: "password",
+    // circular dependencies
+    Button: require("metabase/auth/containers/PasswordButton").default,
+    Panel: require("metabase/auth/containers/PasswordPanel").default,
+  };
 
-import LdapAndEmailForm from "metabase/auth/components/LdapAndEmailForm";
-
-const EmailButton = ({ children }) => (
-  <div className="pt2 cursor-pointer text-grey-1 text-right">{t`Sign in with email`}</div>
-);
-
-const PASSWORD_PROVIDER = {
-  name: "password",
-  Button: EmailButton,
-  Panel: LdapAndEmailForm,
-};
-
-PLUGIN_AUTH_PROVIDERS.push(providers => [...providers, PASSWORD_PROVIDER]);
+  return [...providers, passwordProvider];
+});

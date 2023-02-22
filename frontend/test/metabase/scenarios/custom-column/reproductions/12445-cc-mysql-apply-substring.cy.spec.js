@@ -1,8 +1,8 @@
-import { restore, withDatabase } from "__support__/e2e/cypress";
+import { restore, withDatabase } from "__support__/e2e/helpers";
 
 const CC_NAME = "Abbr";
 
-describe.skip("issue 12445", () => {
+describe.skip("issue 12445", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();
@@ -21,7 +21,7 @@ describe.skip("issue 12445", () => {
               [CC_NAME]: [
                 "substring",
                 ["field", PEOPLE.SOURCE, null],
-                0,
+                1,
                 4, // we want 4 letter abbreviation
               ],
             },

@@ -52,5 +52,5 @@ export function validateCacheTTL(value) {
 }
 
 export function normalizeCacheTTL(value) {
-  return value === 0 ? null : value;
+  return value === 0 || value === undefined ? null : value;
 }

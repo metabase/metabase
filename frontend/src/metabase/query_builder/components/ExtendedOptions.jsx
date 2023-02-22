@@ -4,36 +4,16 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
+import Popover from "metabase/components/Popover";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AddClauseButton from "./AddClauseButton";
 import Expressions from "./expressions/Expressions";
 import ExpressionWidget from "./expressions/ExpressionWidget";
 import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
-import Popover from "metabase/components/Popover";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
-
-type Props = {
-  query: StructuredQuery,
-  setDatasetQuery: (
-    datasetQuery: DatasetQuery,
-    options: { run: boolean },
-  ) => void,
-  features: GuiQueryEditorFeatures,
-  onClose?: () => void,
-};
-
-type State = {
-  editExpression: any,
-};
 
 export class ExtendedOptionsPopover extends Component {
-  props: Props;
-  state: State = {
+  state = {
     editExpression: null,
   };
 
@@ -54,9 +34,10 @@ export class ExtendedOptionsPopover extends Component {
 
   setExpression(name, expression, previousName) {
     const { query, setDatasetQuery } = this.props;
-    query
-      .updateExpression(name, expression, previousName)
-      .update(setDatasetQuery);
+
+    const newQuery = query.updateExpression(name, expression, previousName);
+    setDatasetQuery(newQuery);
+
     this.setState({ editExpression: null });
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
@@ -67,7 +48,10 @@ export class ExtendedOptionsPopover extends Component {
 
   removeExpression(name) {
     const { query, setDatasetQuery } = this.props;
-    query.removeExpression(name).update(setDatasetQuery);
+
+    const newQuery = query.removeExpression(name);
+    setDatasetQuery(newQuery);
+
     this.setState({ editExpression: null });
 
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Remove Expression");
@@ -75,7 +59,10 @@ export class ExtendedOptionsPopover extends Component {
 
   setLimit = limit => {
     const { query, setDatasetQuery } = this.props;
-    query.updateLimit(limit).update(setDatasetQuery);
+
+    const newQuery = query.setLimit(limit);
+    setDatasetQuery(newQuery);
+
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Set Limit", limit);
     if (this.props.onClose) {
       this.props.onClose();
@@ -98,9 +85,9 @@ export class ExtendedOptionsPopover extends Component {
           tableMetadata={query.table()}
           sort={sort}
           fieldOptions={query.sortOptions(sort)}
-          removeOrderBy={() => query.removeSort(index).update(setDatasetQuery)}
+          removeOrderBy={() => setDatasetQuery(query.removeSort(index))}
           updateOrderBy={orderBy =>
-            query.updateSort(index, orderBy).update(setDatasetQuery)
+            setDatasetQuery(query.updateSort(index, orderBy))
           }
         />
       ));
@@ -110,7 +97,7 @@ export class ExtendedOptionsPopover extends Component {
           <AddClauseButton
             text={t`Pick a field to sort by`}
             onClick={() => {
-              query.sort(["asc", null]).update(setDatasetQuery);
+              setDatasetQuery(query.sort(["asc", null]));
             }}
           />
         );
@@ -217,6 +204,12 @@ export default class ExtendedOptions extends React.Component {
     },
   };
 
+  constructor(props, context) {
+    super(props, context);
+
+    this.rootRef = React.createRef();
+  }
+
   render() {
     const { features } = this.props;
     if (!features.sort && !features.limit) {
@@ -228,7 +221,10 @@ export default class ExtendedOptions extends React.Component {
       : null;
 
     return (
-      <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+      <div
+        className="GuiBuilder-section GuiBuilder-sort-limit flex align-center"
+        ref={this.rootRef}
+      >
         <span
           className={cx("EllipsisButton no-decoration text-light px1", {
             "cursor-pointer": onClick,
@@ -238,6 +234,7 @@ export default class ExtendedOptions extends React.Component {
           …
         </span>
         <Popover
+          target={this.rootRef.current}
           isOpen={this.state.isOpen}
           onClose={() => this.setState({ isOpen: false })}
         >

@@ -8,10 +8,9 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import ActivityItem from "./ActivityItem";
 import ActivityStory from "./ActivityStory";
-
-import * as Urls from "metabase/lib/urls";
 
 export default class Activity extends Component {
   constructor(props, context) {
@@ -82,7 +81,7 @@ export default class Activity extends Component {
     if (user && currentUser && user.id === currentUser.id) {
       return t`You`;
     } else if (user) {
-      return user.first_name;
+      return user.common_name;
     } else {
       return t`Metabase`;
     }
@@ -152,7 +151,9 @@ export default class Activity extends Component {
         if (item.table) {
           description.summary = (
             <span>
-              {t`saved a question about `}
+              {item.model === "dataset"
+                ? t`saved a model based on `
+                : t`saved a question about `}
               <Link
                 to={Urls.tableRowsQuery(item.database_id, item.table_id)}
                 data-metabase-event={
@@ -165,11 +166,13 @@ export default class Activity extends Component {
             </span>
           );
         } else {
-          description.summary = t`saved a question`;
+          description.summary =
+            item.model === "dataset" ? t`saved a model` : t`saved a question`;
         }
         break;
       case "card-delete":
-        description.summary = t`deleted a question`;
+        description.summary =
+          item.model === "dataset" ? t`deleted a model` : t`deleted a question`;
         break;
       case "dashboard-create":
         description.summary = t`created a dashboard`;
@@ -344,10 +347,10 @@ export default class Activity extends Component {
         description.summary = t`removed the metric ` + item.details.name;
         break;
       case "pulse-create":
-        description.summary = t`created a pulse`;
+        description.summary = t`created a subscription`;
         break;
       case "pulse-delete":
-        description.summary = t`deleted a pulse`;
+        description.summary = t`deleted a subscription`;
         break;
       case "segment-create":
         if (item.model_exists) {
@@ -524,7 +527,7 @@ export default class Activity extends Component {
           <div className="full flex flex-column">
             <div className="">
               {activity.length === 0 ? (
-                <div className="flex flex-column layout-centered mt4">
+                <div className="flex flex-column layout-centered my4">
                   <span className="QuestionCircle">!</span>
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}

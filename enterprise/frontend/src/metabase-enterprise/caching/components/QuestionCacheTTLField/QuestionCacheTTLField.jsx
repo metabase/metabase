@@ -31,7 +31,7 @@ function getInitialMode(question, implicitCacheTTL) {
   return MODE.DEFAULT;
 }
 
-export function QuestionCacheTTLField({ field, question, ...props }) {
+function QuestionCacheTTLField({ field, question, ...props }) {
   const implicitCacheTTL = useMemo(
     () => getQuestionsImplicitCacheTTL(question),
     [question],
@@ -73,3 +73,5 @@ export function QuestionCacheTTLField({ field, question, ...props }) {
 }
 
 QuestionCacheTTLField.propTypes = propTypes;
+
+export default QuestionCacheTTLField;

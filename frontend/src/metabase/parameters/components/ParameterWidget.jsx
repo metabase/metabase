@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ParameterValueWidget from "./ParameterValueWidget";
+import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+import FieldSet from "../../components/FieldSet";
+import ParameterValueWidget from "./ParameterValueWidget";
 
 import S from "./ParameterWidget.css";
-import cx from "classnames";
-
-import FieldSet from "../../components/FieldSet";
 
 export default class ParameterWidget extends Component {
   state = {
@@ -29,6 +28,7 @@ export default class ParameterWidget extends Component {
 
   renderPopover(value, setValue, placeholder, isFullscreen) {
     const {
+      question,
       dashboard,
       parameter,
       editingParameter,
@@ -42,6 +42,7 @@ export default class ParameterWidget extends Component {
       <ParameterValueWidget
         parameter={parameter}
         parameters={parameters}
+        question={question}
         dashboard={dashboard}
         name={name}
         value={value}

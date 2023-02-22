@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
@@ -6,11 +8,7 @@ import AuditTableWithSearch from "../containers/AuditTableWithSearch";
 
 import * as SchemasCards from "../lib/cards/schemas";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditSchemas = (props: Props) => (
+const AuditSchemas = props => (
   <AuditContent {...props} title="Schemas" tabs={AuditSchemas.tabs} />
 );
 
@@ -25,14 +23,14 @@ const AuditSchemasOverviewTab = () => (
 
 const AuditSchemasAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Schema name`}
+    placeholder={t`Schema name`}
     table={SchemasCards.table()}
   />
 );
 
 AuditSchemas.tabs = [
-  { path: "overview", title: "Overview", component: AuditSchemasOverviewTab },
-  { path: "all", title: "All schemas", component: AuditSchemasAllTab },
+  { path: "overview", title: t`Overview`, component: AuditSchemasOverviewTab },
+  { path: "all", title: t`All schemas`, component: AuditSchemasAllTab },
 ];
 
 export default AuditSchemas;

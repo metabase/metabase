@@ -1,3 +1,85 @@
+/*
+ * # Entities abstract the interface between the back-end and the front-end.
+ *
+ * ## Endpoint requirements for entities:
+ *
+ * When fetching a list, each item of the list must include an `id` key/value pair.
+ *
+ * JSON must wrap response inside a `{ "data" : { …your data } }` structure.
+ *
+ * ## Required Properties:
+ *
+ * name:
+ *   a string in plural form
+ *   examples:
+ *     "questions", "dashboards"
+ *
+ * path:
+ *   a uri
+ *     starting with "/api/"
+ *     conventionally followed by the entity name in singular form
+ *   examples:
+ *     "/api/card", "/api/dashboard"
+ *
+ * ## Optional properties:
+ *
+ * api:
+ *
+ * here you can override the basic entity methods like `list`, `create`, `get`, `update`, `delete` (OR see `path` below)
+ *
+ * schema:
+ *   normalizr schema
+ *   default:
+ *     `new schema.Entity(entity.name)`
+ *
+ * ## How to create a bare-bones entity
+ *
+ * Say we want to create a "books" entity, to be able to fetch a list of "books".
+ *
+ * Add the following line to `frontend/src/metabase/entities.index.js`:
+ *
+ *   export { default as books } from "./books"
+ *
+ * Create file `frontend/src/metabase/entities/books.js`
+ *
+ * Add the following to it:
+ *
+ *   import { createEntity } from "metabase/lib/entities";
+
+ *   const Books = createEntity({
+ *     name: "books",
+ *     nameOne: "book",
+ *     path: "/api/book",
+ *   });
+ *
+ *   export default Books;
+ *
+ * ## How to consume an entity:
+ *
+ * Near the top of a container file, import the entity:
+ *
+ *   import Book from "metabase/entities/books";
+ *
+ * Near the bottom of the container file, add the entity to a `compose` statement:
+ *
+ *   export default _.compose(
+ *     Book.loadList(),
+ *     connect(mapStateToProps),
+ *   )(BookContainer);
+ */
+
+import createCachedSelector from "re-reselect";
+
+// NOTE: need to use inflection directly here due to circular dependency
+import inflection from "inflection";
+
+import { createSelector } from "reselect";
+import { normalize, denormalize, schema } from "normalizr";
+import { getIn, merge } from "icepick";
+import _ from "underscore";
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 import {
   combineReducers,
   handleEntities,
@@ -7,183 +89,9 @@ import {
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
-import createCachedSelector from "re-reselect";
 
-import { addUndo } from "metabase/redux/undo";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-
-// NOTE: need to use inflection directly here due to circular dependency
-import inflection from "inflection";
-
-import { createSelector } from "reselect";
-import { normalize, denormalize, schema } from "normalizr";
-import { getIn, merge } from "icepick";
-import _ from "underscore";
-
-// entity defintions export the following properties (`name`, and `api` or `path` are required)
-//
-// name: plural, like "questions" or "dashboards"
-// api: object containing `list`, `create`, `get`, `update`, `delete` methods (OR see `path` below)
-// path: API endpoint to create default `api` object
-// schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
-//
-
-import type { APIMethod } from "metabase/lib/api";
-import type { FormDefinition } from "metabase/containers/Form";
-
-type EntityName = string;
-
-type ActionType = string;
-type ActionCreator = Function;
-type ObjectActionCreator = Function;
-type ObjectSelector = Function;
-
-type Action = any;
-export type Reducer = (state: any, action: Action) => any;
-
-type EntityDefinition = {
-  name: EntityName,
-
-  nameOne?: string,
-  nameMany?: string,
-
-  form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
-
-  displayNameOne?: string,
-  displayNameMany?: string,
-
-  schema?: schema.Entity,
-  path?: string,
-  api?: { [method: string]: APIMethod },
-  actions?: {
-    [name: string]: ActionCreator,
-  },
-  selectors?: {
-    [name: string]: Function,
-  },
-  createSelectors?: ({ [name: string]: Function }) => {
-    [name: string]: Function,
-  },
-  objectActions?: {
-    [name: string]: ObjectActionCreator,
-  },
-  objectSelectors?: {
-    [name: string]: ObjectSelector,
-  },
-  reducer?: Reducer,
-  wrapEntity?: (object: EntityObject) => any,
-  actionShouldInvalidateLists?: (action: Action) => boolean,
-
-  // list of properties for this object which should be persisted
-  writableProperties?: string[],
-};
-
-type EntityObject = any;
-
-type EntityQuery = {
-  [name: string]: string | number | boolean | null,
-};
-
-type FetchOptions = {
-  reload?: boolean,
-};
-type UpdateOptions = {
-  notify?:
-    | { verb?: string, subject?: string, undo?: boolean, message?: any }
-    | false,
-};
-
-type Result = any; // FIXME
-
-export type Entity = {
-  name: EntityName,
-
-  nameOne: string,
-  nameMany: string,
-
-  displayNameOne: string,
-  displayNameMany: string,
-
-  form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
-
-  path?: string,
-  api: {
-    list: APIMethod,
-    create: APIMethod,
-    get: APIMethod,
-    update: APIMethod,
-    delete: APIMethod,
-    [method: string]: APIMethod,
-  },
-  schema: schema.Entity,
-  actionTypes: {
-    [name: string]: ActionType,
-    CREATE: ActionType,
-    FETCH: ActionType,
-    UPDATE: ActionType,
-    DELETE: ActionType,
-    FETCH_LIST: ActionType,
-  },
-  actionDecorators: {
-    [name: string]: Function, // TODO: better type
-  },
-  actions: {
-    [name: string]: ActionCreator,
-    fetchList: (
-      entityQuery?: EntityQuery,
-      options?: FetchOptions,
-    ) => Promise<Result>,
-  },
-  reducers: { [name: string]: Reducer },
-  selectors: {
-    getList: Function,
-    getObject: Function,
-    getLoading: Function,
-    getLoaded: Function,
-    getFetched: Function,
-    getError: Function,
-    [name: string]: Function,
-  },
-  objectActions: {
-    [name: string]: ObjectActionCreator,
-    create: (entityObject: EntityObject) => Promise<Result>,
-    fetch: (
-      entityObject: EntityObject,
-      options?: FetchOptions,
-    ) => Promise<Result>,
-    update: (
-      entityObject: EntityObject,
-      updatedObject: EntityObject,
-      options?: UpdateOptions,
-    ) => Promise<Result>,
-    delete: (entityObject: EntityObject) => Promise<Result>,
-  },
-  objectSelectors: {
-    [name: string]: ObjectSelector,
-  },
-  wrapEntity: (object: EntityObject) => any,
-
-  requestsReducer: Reducer,
-  actionShouldInvalidateLists: (action: Action) => boolean,
-
-  writableProperties?: string[],
-  getAnalyticsMetadata?: () => any,
-
-  normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
-  normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
-
-  getObjectStatePath: Function,
-  getListStatePath: Function,
-
-  HACK_getObjectFromAction: (action: Action) => any,
-};
-
-export function createEntity(def: EntityDefinition): Entity {
-  const entity: Entity = { ...def };
+export function createEntity(def) {
+  const entity = { ...def };
 
   if (!entity.nameOne) {
     entity.nameOne = inflection.singularize(entity.name);
@@ -220,12 +128,12 @@ export function createEntity(def: EntityDefinition): Entity {
     };
   }
 
-  const getIdForQuery = entityQuery => JSON.stringify(entityQuery || null);
-
+  const getQueryKey = entityQuery => JSON.stringify(entityQuery || null);
   const getObjectStatePath = entityId => ["entities", entity.name, entityId];
   const getListStatePath = entityQuery =>
-    ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+    ["entities", entity.name + "_list"].concat(getQueryKey(entityQuery));
 
+  entity.getQueryKey = getQueryKey;
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
@@ -298,16 +206,21 @@ export function createEntity(def: EntityDefinition): Entity {
     return entity.actionDecorators[action] || (_ => _);
   }
 
+  // `objectActions` are for actions that accept an entity as their first argument,
+  // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
     fetch: compose(
       withAction(FETCH_ACTION),
       withCachedDataAndRequestState(
         ({ id }) => [...getObjectStatePath(id)],
         ({ id }) => [...getObjectStatePath(id), "fetch"],
+        entityQuery => getQueryKey(entityQuery),
       ),
       withEntityActionDecorators("fetch"),
-    )(entityObject => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get({ id: entityObject.id })),
+    )(
+      (entityQuery, options = {}) =>
+        async (dispatch, getState) =>
+          entity.normalize(await entity.api.get(entityQuery, options)),
     ),
 
     create: compose(
@@ -327,52 +240,50 @@ export function createEntity(def: EntityDefinition): Entity {
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
-      (entityObject, updatedObject = null, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        // save the original object for undo
-        const originalObject = entity.selectors.getObject(getState(), {
-          entityId: entityObject.id,
-        });
-        // If a second object is provided just take the id from the first and
-        // update it with all the properties in the second
-        // NOTE: this is so that the object.update(updatedObject) method on
-        // the default entity wrapper class works correctly
-        if (updatedObject) {
-          entityObject = { id: entityObject.id, ...updatedObject };
-        }
-
-        const result = entity.normalize(
-          await entity.api.update(getWritableProperties(entityObject)),
-        );
-
-        if (notify) {
-          if (notify.undo) {
-            // pick only the attributes that were updated
-            const undoObject = _.pick(
-              originalObject,
-              ...Object.keys(updatedObject || {}),
-            );
-            dispatch(
-              addUndo({
-                actions: [
-                  entity.objectActions.update(
-                    entityObject,
-                    undoObject,
-                    // don't show an undo for the undo
-                    { notify: false },
-                  ),
-                ],
-                ...notify,
-              }),
-            );
-          } else {
-            dispatch(addUndo(notify));
+      (entityObject, updatedObject = null, { notify } = {}) =>
+        async (dispatch, getState) => {
+          // save the original object for undo
+          const originalObject = entity.selectors.getObject(getState(), {
+            entityId: entityObject.id,
+          });
+          // If a second object is provided just take the id from the first and
+          // update it with all the properties in the second
+          // NOTE: this is so that the object.update(updatedObject) method on
+          // the default entity wrapper class works correctly
+          if (updatedObject) {
+            entityObject = { id: entityObject.id, ...updatedObject };
           }
-        }
-        return result;
-      },
+
+          const result = entity.normalize(
+            await entity.api.update(getWritableProperties(entityObject)),
+          );
+
+          if (notify) {
+            if (notify.undo) {
+              // pick only the attributes that were updated
+              const undoObject = _.pick(
+                originalObject,
+                ...Object.keys(updatedObject || {}),
+              );
+              dispatch(
+                addUndo({
+                  actions: [
+                    entity.objectActions.update(
+                      entityObject,
+                      undoObject,
+                      // don't show an undo for the undo
+                      { notify: false },
+                    ),
+                  ],
+                  ...notify,
+                }),
+              );
+            } else {
+              dispatch(addUndo(notify));
+            }
+          }
+          return result;
+        },
     ),
 
     delete: compose(
@@ -381,7 +292,7 @@ export function createEntity(def: EntityDefinition): Entity {
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete({ id: entityObject.id });
+      await entity.api.delete(entityObject);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -426,6 +337,11 @@ export function createEntity(def: EntityDefinition): Entity {
         entityQuery,
       };
     }),
+
+    invalidateLists: compose(
+      withAction(INVALIDATE_LISTS_ACTION),
+      withEntityActionDecorators("invalidateLists"),
+    )(() => null),
 
     // user defined actions should override defaults
     ...entity.objectActions,
@@ -475,14 +391,18 @@ export function createEntity(def: EntityDefinition): Entity {
   const getObject = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
-  )((state, { entityId }) =>
-    typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
+  )((state, { entityId } = {}) =>
+    typeof entityId === "object"
+      ? JSON.stringify(entityId)
+      : entityId
+      ? entityId
+      : "",
   ); // must stringify objects
 
   // LIST SELECTORS
 
   const getEntityQueryId = (state, props) =>
-    getIdForQuery(props && props.entityQuery);
+    getQueryKey(props && props.entityQuery);
 
   const getEntityLists = createSelector(
     [getEntities],
@@ -504,14 +424,16 @@ export function createEntity(def: EntityDefinition): Entity {
     entities => entities && entities.metadata,
   );
 
-  const getList = createSelector(
-    [state => state, getEntityIds],
+  const getList = createCachedSelector(
+    [getEntities, getEntityIds],
     // delegate to getObject
-    (state, entityIds) =>
+    (entities, entityIds) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject(state, { entityId }))
-        .filter(e => e != null), // deleted entities might remain in lists
+        .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
+        .filter(e => e != null), // deleted entities might remain in lists,
+  )((state, { entityQuery } = {}) =>
+    entityQuery ? JSON.stringify(entityQuery) : "",
   );
 
   // REQUEST STATE SELECTORS
@@ -604,7 +526,7 @@ export function createEntity(def: EntityDefinition): Entity {
         const { entityQuery, metadata, result: list } = payload;
         return {
           ...state,
-          [getIdForQuery(entityQuery)]: {
+          [getQueryKey(entityQuery)]: {
             list,
             metadata,
           },
@@ -660,7 +582,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // dispatched using it, otherwise the actions will be returned
     //
     class EntityWrapper {
-      _dispatch: ?(action: any) => any;
+      _dispatch;
 
       constructor(object, dispatch = null) {
         Object.assign(this, object);
@@ -670,7 +592,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           return method(this, ...args);
         };
       }
@@ -678,7 +600,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
             return this._dispatch(method(this, ...args));
@@ -700,14 +622,7 @@ export function createEntity(def: EntityDefinition): Entity {
   return entity;
 }
 
-type CombinedEntities = {
-  entities: { [key: EntityName]: Entity },
-  reducers: { [name: string]: Reducer },
-  reducer: Reducer,
-  requestsReducer: Reducer,
-};
-
-export function combineEntities(entities: Entity[]): CombinedEntities {
+export function combineEntities(entities) {
   const entitiesMap = {};
   const reducersMap = {};
 
@@ -739,10 +654,10 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
 
 // OBJECT ACTION DECORATORS
 
-export const notify = (opts: any = {}, subject: string, verb: string) =>
+export const notify = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: false } }, opts || {});
 
-export const undo = (opts: any = {}, subject: string, verb: string) =>
+export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
 
 // decorator versions disabled due to incompatibility with current version of flow

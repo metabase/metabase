@@ -1,10 +1,11 @@
 (ns metabase.mbql.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [replace])
-  (:require [clojure.core.match :as clojure.core.match]
-            [clojure.walk :as walk]
-            [metabase.mbql.util.match.impl :as metabase.mbql.util.match.impl]
-            [net.cgrand.macrovich :as macros]))
+  (:require
+   [clojure.core.match]
+   [clojure.walk :as walk]
+   [metabase.mbql.util.match.impl :as metabase.mbql.util.match.impl]
+   [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern
   "Generate a single approprate pattern for use with core.match based on the `pattern` input passed into `match` or
@@ -71,7 +72,7 @@
   (= '_ (second (reverse patterns-and-results))))
 
 (defmethod clojure.core.match/emit-pattern-for-syntax [:isa? :default]
-  [[_ parent]] {::clojure.core.match/tag ::isa? :parent parent})
+  [[_ parent]] {:clojure.core.match/tag ::isa? :parent parent})
 
 (defmethod clojure.core.match/to-source ::isa?
   [{parent :parent} ocr]

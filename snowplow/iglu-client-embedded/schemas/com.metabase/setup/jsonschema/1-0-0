@@ -1,0 +1,61 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Setup flow",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "setup",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "version": {
+      "description": "String describing the version of onboarding we're on",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "step": {
+      "description": "String describing the step that the set up step",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "step_number": {
+      "description": "Integer describing the order of the referenced step",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1024
+    },
+    "database": {
+      "description": "String with the database type that the user selected",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "source": {
+      "description": "String with the product location that the event took place",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event",
+    "version"
+  ],
+  "additionalProperties": true
+}

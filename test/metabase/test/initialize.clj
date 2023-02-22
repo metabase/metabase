@@ -1,11 +1,14 @@
 (ns metabase.test.initialize
   "Logic for initializing different components that need to be initialized when running tests."
-  (:require [clojure.string :as str]
-            [colorize.core :as colorize]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [hawk.init]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."
@@ -15,13 +18,11 @@
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
         border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)]
-    (println
-     (colorize/blue
-      (str "\n"
-           (str/join "\n" [border body border])
-           "\n")))))
+    (log/info (u/colorize :blue (str "\n"
+                                     (str/join "\n" [border body border])
+                                     "\n")))))
 
-(def ^:private init-timeout-ms (* 30 1000))
+(def ^:private init-timeout-ms (u/seconds->ms 60))
 
 (def ^:private ^:dynamic *initializing*
   "Collection of components that are being currently initialized by the current thread."
@@ -41,8 +42,7 @@
       (u/with-timeout init-timeout-ms
         (do-initialization! step)))
     (catch Throwable e
-      (println "Error initializing" step)
-      (println e)
+      (log/fatalf e "Error initializing %s" step)
       (when config/is-test?
         (System/exit -1))
       (throw e))))
@@ -55,7 +55,7 @@
   ;; `:plugins` initialization is ok when loading test namespaces. Nothing else is tho (e.g. starting up the
   ;; application DB, or starting up the web server).
   (when-not (= steps [:plugins])
-    (test-runner.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
+    (hawk.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)

@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("issue 17551", () => {
@@ -54,7 +54,7 @@ describe("issue 17551", () => {
 
         cy.editDashboardCard(card, mapFilterToCard);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       });
     });
   });

@@ -2,27 +2,33 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as joins]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.data :as data]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [hawk.init]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-implicit-joins
+    :as qp.add-implicit-joins]
+   [metabase.test.data :as data]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Non-"normal" drivers are tested in `timeseries-query-processor-test` and elsewhere
+;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
 (def ^:private abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
   #{:druid :googleanalytics})
@@ -33,16 +39,19 @@
   (set/difference (tx.env/test-drivers) abnormal-drivers))
 
 (defn normal-drivers-with-feature
-  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
-  ;; Can't use `normal-drivers-with-feature` during test initialization, because it means we end up having to load
+  {:pre [(every? keyword? (cons feature more-features))]}
+  ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
+  (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
-               :when  (set/subset? features (driver.u/features driver (data/db)))]
+               :when  (driver/with-driver driver
+                        (let [db (data/db)]
+                          (every? #(driver/database-supports? driver % db) features)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
@@ -67,6 +76,7 @@
   {:description     nil
    :visibility_type :normal
    :settings        nil
+   :nfc_path        nil
    :parent_id       nil
    :source          :fields})
 
@@ -150,7 +160,7 @@
     (field-literal-col :venues :price)
     (field-literal-col (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (-> col
        (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
@@ -168,7 +178,7 @@
     (field-literal-col-keep-extra-cols :venues :price)
     (field-literal-col-keep-extra-cols (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (assoc col
           :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))
@@ -185,20 +195,20 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
-                                                 (:name source-col))))))
+               :source_alias (#'qp.add-implicit-joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                                 (:name source-col))))))
 
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols
        (qp/process-query
          {:database db-id
           :type     :native
-          :native   (qp/query->native
+          :native   (qp/compile
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
@@ -292,7 +302,7 @@
 
   ([format-fns format-nil-values? response]
    (when (= (:status response) :failed)
-     (println "Error running query:" (u/pprint-to-str 'red response))
+     (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
@@ -314,7 +324,11 @@
                       (try
                         (f v)
                         (catch Throwable e
-                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s"
+                                                  (pr-str f)
+                                                  (.getName (class v))
+                                                  (pr-str v)
+                                                  (.getMessage e))
                                    {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 
@@ -417,30 +431,76 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks [d f]
-  (if-not (= driver/*driver* d)
-    (f)
-    (let [supports? driver/supports?]
-      (with-redefs [driver/supports? (fn [driver feature]
-                                       (if (= [driver feature] [d :foreign-keys])
-                                         true
-                                         (supports? driver feature)))]
-        (let [thunk (reduce
-                     (fn [thunk [source dest]]
-                       (fn []
-                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
-                                                                                :semantic_type      "type/FK"}
-                           (thunk))))
-                     f
-                     {[:checkins :user_id]   [:users :id]
-                      [:checkins :venue_id]  [:venues :id]
-                      [:venues :category_id] [:categories :id]})]
-          (thunk))))))
+(defn do-with-bigquery-fks [driver-or-drivers thunk]
+  {:pre [((some-fn keyword? coll?) driver-or-drivers)]}
+  (letfn [(add-fks? [driver]
+            (if (coll? driver-or-drivers)
+              (contains? (set driver-or-drivers) driver)
+              (= driver driver-or-drivers)))]
+    (if-not (add-fks? driver/*driver*)
+      (thunk)
+      (let [supports? driver/supports?]
+        (with-redefs [driver/supports? (fn [driver feature]
+                                         (if (and (add-fks? driver)
+                                                  (= feature :foreign-keys))
+                                           true
+                                           (supports? driver feature)))]
+          (let [thunk (reduce
+                       (fn [thunk [source dest]]
+                         (fn []
+                           (testing (format "With FK %s -> %s" source dest)
+                             (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                    :semantic_type      "type/FK"}
+                               (thunk)))))
+                       thunk
+                       (if (str/includes? (:name (data/db)) "sample")
+                         {[:orders :product_id]  [:products :id]
+                          [:orders :user_id]     [:people :id]
+                          [:reviews :product_id] [:products :id]}
+                         {[:checkins :user_id]   [:users :id]
+                          [:checkins :venue_id]  [:venues :id]
+                          [:venues :category_id] [:categories :id]}))]
+            (thunk)))))))
 
 (defmacro with-bigquery-fks
-  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
-  keys and with `:foreign-keys` a supported feature when testing against BigQuery, for the BigQuery based driver `d`.
-  BigQuery does not support Foreign Key constraints, but we still let people mark them manually. The macro helps
-  replicate the situation where somebody has manually marked FK relationships for BigQuery."
-  [d & body]
-  `(do-with-bigquery-fks ~d (fn [] ~@body)))
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
+  other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
+  when testing against BigQuery, for the BigQuery based driver `driver-or-drivers`. BigQuery does not support Foreign Key
+  constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
+  manually marked FK relationships for BigQuery."
+  [driver-or-drivers & body]
+  `(do-with-bigquery-fks ~driver-or-drivers (fn [] ~@body)))
+
+(deftest preprocess-caching-test
+  (testing "`preprocess` should work the same even if query has cached results (#18579)"
+    ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
+    ;; this test.
+    (data/with-temp-copy-of-db
+      (tu/with-temporary-setting-values [enable-query-caching  true
+                                         query-caching-min-ttl 0]
+        (let [query            (assoc (data/mbql-query venues {:order-by [[:asc $id]], :limit 5})
+                                      :cache-ttl 10)
+              run-query        (fn []
+                                 (let [results (qp/process-query query)]
+                                   {:cached?  (boolean (:cached results))
+                                    :num-rows (count (rows results))}))
+              expected-results (qp/preprocess query)]
+          (testing "Check preprocess before caching to make sure results make sense"
+            (is (schema= {:database (s/eq (data/id))
+                          s/Keyword s/Any}
+                         expected-results)))
+          (testing "Run the query a few of times so we know it's cached"
+            (testing "first run"
+              (is (= {:cached?  false
+                      :num-rows 5}
+                     (run-query))))
+            ;; run a few more times to make sure stuff got a chance to be cached.
+            (run-query)
+            (run-query)
+            (testing "should be cached now"
+              (is (= {:cached?  true
+                      :num-rows 5}
+                     (run-query))))
+            (testing "preprocess should return same results even when query was cached."
+              (is (= expected-results
+                     (qp/preprocess query))))))))))

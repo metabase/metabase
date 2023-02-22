@@ -2,8 +2,8 @@ import { assoc, assocIn, chain } from "icepick";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
-import { isPK } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { isTypePK } from "metabase-lib/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -26,11 +26,12 @@ export const databaseToForeignKeys = database =>
         // ignore tables without primary key
         .filter(
           table =>
-            table && table.fields.find(field => isPK(field.semantic_type)),
+            table && table.fields.find(field => isTypePK(field.semantic_type)),
         )
         .map(table => ({
           table: table,
-          field: table && table.fields.find(field => isPK(field.semantic_type)),
+          field:
+            table && table.fields.find(field => isTypePK(field.semantic_type)),
         }))
         .map(({ table, field }) => ({
           id: field.id,
@@ -44,15 +45,6 @@ export const databaseToForeignKeys = database =>
         }))
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
-
-export const fieldsToFormFields = fields =>
-  Object.keys(fields)
-    .map(key => [
-      `${key}.display_name`,
-      `${key}.semantic_type`,
-      `${key}.fk_target_field_id`,
-    ])
-    .reduce((array, keys) => array.concat(keys), []);
 
 // TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
 export const getQuestion = ({
@@ -105,21 +97,7 @@ export const getQuestion = ({
 };
 
 export const getQuestionUrl = getQuestionArgs =>
-  Urls.question(null, getQuestion(getQuestionArgs));
-
-export const typeToLinkClass = {
-  dashboard: "text-green",
-  metric: "text-brand",
-  segment: "text-purple",
-  table: "text-purple",
-};
-
-export const typeToBgClass = {
-  dashboard: "bg-green",
-  metric: "bg-brand",
-  segment: "bg-purple",
-  table: "bg-purple",
-};
+  Urls.question(null, { hash: getQuestion(getQuestionArgs) });
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states

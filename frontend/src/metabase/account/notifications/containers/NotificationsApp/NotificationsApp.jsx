@@ -2,7 +2,11 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
-import { getUser, getUserId } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserId,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 import {
   navigateToArchive,
   navigateToHelp,
@@ -14,6 +18,7 @@ import NotificationList from "../../components/NotificationList";
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
   items: getNotifications(props),
+  canManageSubscriptions: canManageSubscriptions(state),
 });
 
 const mapDispatchToProps = {
@@ -28,11 +33,9 @@ export default _.compose(
     reload: true,
   }),
   Pulses.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+    // Load all pulses the current user can read (i.e. is a creator or recipient of)
+    query: state => ({ can_read: true }),
     reload: true,
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NotificationList);

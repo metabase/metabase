@@ -1,7 +1,7 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitDashboard, filterWidget } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 // After January 1st, 2020
 const dashboardFilter = {
@@ -23,31 +23,29 @@ const questionDetails = {
         "display-name": "Filter",
         type: "dimension",
         dimension: ["field", ORDERS.CREATED_AT, null],
-        "widget-type": "date/month-year",
+        "widget-type": "date/all-options",
         default: null,
       },
     },
   },
 };
 
-describe.skip("issue 12720", () => {
+describe("issue 12720", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/1/query").as("cardQuery");
-
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", () => {
     // In this test we're using already present question ("Orders") and the dashboard with that question ("Orders in a dashboard")
     cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id: 1 });
 
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: SQL_ID } }) => {
-        cy.intercept("POST", `/api/card/${SQL_ID}/query`).as("sqlQuery");
-
         cy.request("POST", "/api/dashboard/1/cards", {
           cardId: SQL_ID,
+          row: 0,
+          col: 6, // making sure it doesn't overlap the existing card
+          size_x: 5,
+          size_y: 5,
         }).then(({ body: { id: SQL_DASH_CARD_ID } }) => {
           cy.log(
             "Edit both cards (adjust their size and connect them to the filter)",
@@ -60,8 +58,8 @@ describe.skip("issue 12720", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                sizeX: 5,
-                sizeY: 5,
+                size_x: 5,
+                size_y: 5,
                 parameter_mappings: [
                   {
                     parameter_id: dashboardFilter.id,
@@ -75,9 +73,9 @@ describe.skip("issue 12720", () => {
                 id: SQL_DASH_CARD_ID,
                 card_id: SQL_ID,
                 row: 0,
-                col: 6, // previous card's sizeX + 1 (making sure they don't overlap)
-                sizeX: 5,
-                sizeY: 5,
+                col: 6,
+                size_x: 5,
+                size_y: 5,
                 parameter_mappings: [
                   {
                     parameter_id: dashboardFilter.id,
@@ -92,8 +90,10 @@ describe.skip("issue 12720", () => {
         });
       },
     );
+  });
 
-    cy.signIn("nodata");
+  it("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", () => {
+    cy.signIn("readonly");
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
@@ -101,11 +101,9 @@ describe.skip("issue 12720", () => {
 });
 
 function clickThrough(title) {
-  cy.visit("/dashboard/1");
-  cy.wait("@cardQuery");
-  cy.wait("@sqlQuery");
-  cy.get(".LegendItem")
-    .contains(title)
-    .click();
-  cy.findByText(/^January 17, 2020/);
+  visitDashboard(1);
+  cy.get(".DashCard").contains(title).click();
+
+  cy.location("search").should("contain", dashboardFilter.default);
+  filterWidget().contains("After January 1, 2020");
 }

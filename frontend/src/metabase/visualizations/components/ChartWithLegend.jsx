@@ -1,21 +1,18 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import styles from "./ChartWithLegend.css";
 
 import LegendVertical from "./LegendVertical";
 import LegendHorizontal from "./LegendHorizontal";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-
-import cx from "classnames";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 
 const DEFAULT_GRID_SIZE = 100;
 
-@ExplicitSize({ wrapped: true })
-export default class ChartWithLegend extends Component {
+class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
@@ -83,7 +80,7 @@ export default class ChartWithLegend extends Component {
       type = "vertical";
       LegendComponent = LegendHorizontal;
       legendTitles = legendTitles.map(title =>
-        Array.isArray(title) ? title[0] : title,
+        Array.isArray(title) ? title.join(" – ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {
@@ -144,3 +141,8 @@ export default class ChartWithLegend extends Component {
     );
   }
 }
+
+export default ExplicitSize({
+  wrapped: true,
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+})(ChartWithLegend);

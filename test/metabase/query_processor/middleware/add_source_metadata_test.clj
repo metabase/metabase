@@ -1,30 +1,32 @@
 (ns metabase.query-processor.middleware.add-source-metadata-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-source-metadata
+    :as add-source-metadata]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
     (mt/with-everything-store
-      (:pre (mt/test-qp-middleware add-source-metadata/add-source-metadata-for-source-queries query)))))
+      (add-source-metadata/add-source-metadata-for-source-queries query))))
 
 (defn- results-metadata [query-results]
   (for [col (-> query-results :data :cols)]
     (select-keys
      col
      [:id :table_id :name :display_name :base_type :effective_type :coercion_strategy
-      :semantic_type :unit :fingerprint :settings :field_ref :parent_id])))
+      :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
 
 (defn- venues-source-metadata
   ([]
    (venues-source-metadata :id :name :category_id :latitude :longitude :price))
 
   ([& field-names]
-   (let [field-ids (map #(mt/id :venues (keyword (str/lower-case (name %))))
+   (let [field-ids (map #(mt/id :venues (keyword (u/lower-case-en (name %))))
                         field-names)]
      (results-metadata
       (mt/run-mbql-query venues {:fields (for [id field-ids] [:field id nil])
@@ -291,7 +293,7 @@
       (letfn [(ean-metadata [query]
                 (as-> query query
                   (get-in query [:query :source-metadata])
-                  (u/key-by :name query)
+                  (m/index-by :name query)
                   (get query "EAN")
                   (select-keys query [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (let [base-query (mt/mbql-query orders

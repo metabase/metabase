@@ -1,38 +1,25 @@
 import React from "react";
-import ReactDOM from "react-dom";
-
-import {
-  NumberColumn,
-  StringColumn,
-  createFixture,
-  cleanupFixture,
-} from "../__support__/visualizations";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { delay } from "metabase/lib/promise";
 
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 describe("Visualization", () => {
-  // eslint-disable-next-line no-unused-vars
-  let element;
-  const qs = s => element.querySelector(s);
-  const qsa = s => [...element.querySelectorAll(s)];
-
   const renderViz = async series => {
-    ReactDOM.render(<Visualization rawSeries={series} />, element);
+    const utils = renderWithProviders(<Visualization rawSeries={series} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
+    return utils;
   };
 
-  beforeEach(() => {
-    element = createFixture();
-  });
-  afterEach(() => {
-    ReactDOM.unmountComponentAtNode(element);
-    cleanupFixture(element);
-  });
+  const getBarColors = container => {
+    const bars = [...container.querySelectorAll(".bar")];
+    return bars.map(bar => bar.getAttribute("fill"));
+  };
 
   describe("scalar", () => {
     it("should render", async () => {
@@ -42,15 +29,15 @@ describe("Visualization", () => {
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
-      expect(qs("h1").textContent).toEqual("1");
+
+      expect(screen.getByTestId("scalar-value")).toHaveTextContent("1");
     });
   });
 
   describe("bar", () => {
-    const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
     describe("single series", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -58,11 +45,14 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 1], ["bar", 2]],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
         ]);
@@ -70,7 +60,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: multiple metrics", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -79,11 +69,14 @@ describe("Visualization", () => {
                 NumberColumn({ name: "Count" }),
                 NumberColumn({ name: "Sum" }),
               ],
-              rows: [["foo", 1, 3], ["bar", 2, 4]],
+              rows: [
+                ["foo", 1, 3],
+                ["bar", 2, 4],
+              ],
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
           color("accent1"), // "sum"
@@ -93,7 +86,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: multiple breakouts", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -111,7 +104,7 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("accent1"), // "a"
           color("accent1"), // "a"
           color("accent2"), // "b"
@@ -121,7 +114,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: dashcard", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card1", display: "bar" },
             data: {
@@ -129,7 +122,10 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 1], ["bar", 2]],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
             },
           },
           {
@@ -139,11 +135,14 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 3], ["bar", 4]],
+              rows: [
+                ["foo", 3],
+                ["bar", 4],
+              ],
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
           color("accent2"), // "Card2"

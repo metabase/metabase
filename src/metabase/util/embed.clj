@@ -1,20 +1,23 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.sign.jwt :as jwt]
-            [cheshire.core :as json]
-            [clojure.string :as str]
-            [hiccup.core :refer [html]]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [ring.util.codec :as codec]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.sign.jwt :as jwt]
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [hiccup.core :refer [html]]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [ring.util.codec :as codec]))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
 
 (defn- oembed-url
-  "Return an oEmbed URL for the RELATIVE-PATH.
+  "Return an oEmbed URL for the `relative-path`.
 
      (oembed-url \"/x\") -> \"http://localhost:3000/api/public/oembed?url=x&format=json\""
   ^String [^String relative-url]
@@ -52,17 +55,17 @@
 
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
-(setting/defsetting ^:private embedding-secret-key
+(setting/defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :visibility :admin
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)
                 (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
-            (setting/set-string! :embedding-secret-key new-value)))
+            (setting/set-value-of-type! :string :embedding-secret-key new-value)))
 
 (defn- jwt-header
-  "Parse a JWT MESSAGE and return the header portion."
+  "Parse a JWT `message` and return the header portion."
   [^String message]
   (let [[header] (str/split message #"\.")]
     (json/parse-string (codecs/bytes->str (codec/base64-decode header)) keyword)))

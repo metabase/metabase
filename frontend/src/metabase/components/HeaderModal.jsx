@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";
 import { t } from "ttag";
+import BodyComponent from "metabase/components/BodyComponent";
 
-@BodyComponent
-export default class HeaderModal extends Component {
+class HeaderModal extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -42,7 +41,7 @@ export default class HeaderModal extends Component {
             className="Button Button--borderless text-brand bg-white text-bold"
             onClick={onDone}
           >{t`Done`}</button>
-          {onCancel && <span className="text-white mx1">or</span>}
+          {onCancel && <span className="text-white mx1">{t`or`}</span>}
           {onCancel && (
             <a
               className="cursor-pointer text-white text-bold"
@@ -54,3 +53,5 @@ export default class HeaderModal extends Component {
     );
   }
 }
+
+export default BodyComponent(HeaderModal);

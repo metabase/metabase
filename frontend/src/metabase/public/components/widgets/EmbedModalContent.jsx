@@ -1,12 +1,11 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
 import { t } from "ttag";
 
+import _ from "underscore";
 import Icon from "metabase/components/Icon";
-
-import SharingPane from "./SharingPane";
-import AdvancedEmbedPane from "./AdvancedEmbedPane";
 
 import {
   getSignedPreviewUrl,
@@ -15,87 +14,35 @@ import {
 } from "metabase/public/lib/embed";
 import { color } from "metabase/lib/colors";
 
-import {
-  getSiteUrl,
-  getEmbeddingSecretKey,
-  getIsPublicSharingEnabled,
-  getIsApplicationEmbeddingEnabled,
-} from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-export type Pane = "preview" | "code";
-export type EmbedType = null | "simple" | "application";
-
-export type DisplayOptions = {
-  theme: ?string,
-  bordered: boolean,
-  titled: boolean,
-};
-
-type Props = {
-  className?: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  resourceParameters: Parameter[],
-
-  isAdmin: boolean,
-  siteUrl: string,
-  secretKey: string,
-
-  // Flow doesn't understand these are provided by @connect?
-  // isPublicSharingEnabled: bool,
-  // isApplicationEmbeddingEnabled: bool,
-
-  getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
-
-  onUpdateEnableEmbedding: (enable_embedding: boolean) => Promise<void>,
-  onUpdateEmbeddingParams: (embedding_params: EmbeddingParams) => Promise<void>,
-  onCreatePublicLink: () => Promise<void>,
-  onDisablePublicLink: () => Promise<void>,
-  onClose: () => void,
-};
-
-type State = {
-  pane: Pane,
-  embedType: EmbedType,
-  embeddingParams: EmbeddingParams,
-  displayOptions: DisplayOptions,
-  parameterValues: { [id: ParameterId]: string },
-};
+import AdvancedEmbedPane from "./AdvancedEmbedPane";
+import SharingPane from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
-  siteUrl: getSiteUrl(state, props),
-  secretKey: getEmbeddingSecretKey(state, props),
-  isPublicSharingEnabled: getIsPublicSharingEnabled(state, props),
-  isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
+  siteUrl: getSetting(state, "site-url"),
+  secretKey: getSetting(state, "embedding-secret-key"),
+  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
+  isApplicationEmbeddingEnabled: getSetting(state, "enable-embedding"),
 });
 
-@connect(mapStateToProps)
-export default class EmbedModalContent extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+class EmbedModalContent extends Component {
+  constructor(props) {
     super(props);
+    const displayOptions = {
+      font: null,
+      theme: null,
+      bordered: true,
+      titled: true,
+    };
     this.state = {
       pane: "preview",
       embedType: null,
-      embeddingParams: props.resource.embedding_params || {},
-      displayOptions: {
-        theme: null,
-        bordered: true,
-        titled: true,
-      },
-
+      embeddingParams: getDefaultEmbeddingParams(props),
+      displayOptions,
       parameterValues: {},
     };
   }
@@ -127,8 +74,7 @@ export default class EmbedModalContent extends Component {
   };
 
   handleDiscard = () => {
-    const { resource } = this.props;
-    this.setState({ embeddingParams: resource.embedding_params || {} });
+    this.setState({ embeddingParams: getDefaultEmbeddingParams(this.props) });
   };
 
   getPreviewParameters(resourceParameters, embeddingParams) {
@@ -289,16 +235,27 @@ export default class EmbedModalContent extends Component {
   }
 }
 
-export const EmbedTitle = ({
-  type,
-  onClick,
-}: {
-  type: ?string,
-  onClick: () => any,
-}) => (
+function getDefaultEmbeddingParams(props) {
+  const { resource, resourceParameters } = props;
+
+  return filterValidResourceParameters(
+    resource.embedding_params || {},
+    resourceParameters,
+  );
+}
+
+function filterValidResourceParameters(embeddingParams, resourceParameters) {
+  const validParameters = resourceParameters.map(parameter => parameter.slug);
+
+  return _.pick(embeddingParams, validParameters);
+}
+
+export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>
     <span className="text-brand-hover">{t`Sharing`}</span>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}
     {type}
   </a>
 );
+
+export default connect(mapStateToProps)(EmbedModalContent);

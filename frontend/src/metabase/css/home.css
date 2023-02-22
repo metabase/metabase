@@ -11,6 +11,7 @@
   border-radius: 99px;
   border: 3px solid currentcolor;
   text-align: center;
+  line-height: normal;
 }
 
 .break-word {

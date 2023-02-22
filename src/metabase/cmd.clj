@@ -14,16 +14,19 @@
 
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
-  (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:refer-clojure :exclude [load import])
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
@@ -31,7 +34,7 @@
   (System/exit return-code))
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`."
   [direction]
   (classloader/require 'metabase.cmd.migrate)
   ((resolve 'metabase.cmd.migrate/migrate!) direction))
@@ -73,12 +76,6 @@
   (classloader/require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
-(defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
-  []
-  (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
-  ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
-
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
   []
@@ -115,12 +112,20 @@
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
-(defn ^:command driver-methods
-  "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
-  driver."
+(defn ^:command environment-variables-documentation
+  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase."
   []
-  (classloader/require 'metabase.cmd.driver-methods)
-  ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
+  (classloader/require 'metabase.cmd.env-var-dox)
+  ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
+
+(defn ^:command driver-methods
+  "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
+  ([]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) false))
+  ([_docs]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
 (defn- cmd-args->map
   [args]
@@ -137,27 +142,79 @@
                       {:command symb}
                       e)))))
 
-(defn ^:command load
-  "Load serialized metabase instance as created by `dump` command from directory `path`.
+;;; [[load]] and [[dump]] are the SerDes v1 versions. [[import]] and [[export]] are SerDes v2 versions of [[load]]
+;;; and [[dump]]. The v1 versions are deprecated.
 
-   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
-  ([path] (load path {"--mode" :skip
-                      "--on-error" :continue}))
+(defn- import*
+  "Impl for [[load]] (v1) and [[import]] (v2)."
+  ([path v2?]
+   (import* path v2? "--mode" :skip "--on-error" :continue))
 
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
-     (cmd path (->> args
+  ([path v2? & options]
+   (when-not v2?
+     (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''."))))
+   (let [options (cond-> options
+                   v2?
+                   (concat ["--v2" "true"]))
+         cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
+     (cmd path (->> options
                     cmd-args->map
                     (m/map-vals mbql.u/normalize-token))))))
 
-(defn ^:command dump
-  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+(defn ^:command ^:deprecated load
+  "Deprecated: prefer [[import]] instead.
+
+  Load serialized metabase instance as created by [[dump]] command from directory `path`.
+
+  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+  [path & options]
+  (apply import* path false options))
+
+(defn ^:command import
+  "Load serialized Metabase instance as created by the [[export]] command from directory `path`. Replaces the [[load]]
+  command. Options are the same as for `load`.
+
+  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+  [path & options]
+  (apply import* path true options))
+
+(defn- export*
+  ([path v2?]
+   (export* path v2? "--state" :active))
+
+  ([path v2? & options]
+   (when-not v2?
+     (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''."))))
+   (let [options (cond-> options
+                   v2?
+                   (concat ["--v2" true]))
+         cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
+     (cmd path (cmd-args->map options)))))
+
+(defn ^:command ^:deprecated dump
+  "Deprecated: prefer [[export]] instead.
+
+  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
   `active` (default), `all`. With `active` option, do not dump archived entities."
-  ([path] (dump path {"--state" :active}))
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)
-         {:keys [user]} (cmd-args->map args)]
-     (cmd path user))))
+  [path & options]
+  (apply export* path false options))
+
+(defn ^:command export
+  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command. Options are the same as for `path`.
+
+  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
+  archived entities."
+  [path & options]
+  (apply export* path true options))
+
+(defn ^:command seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them."
+  [& options]
+  (let [cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/seed-entity-ids)
+        options (cmd-args->map options)]
+    (system-exit! (if (cmd options)
+                    0
+                    1))))
 
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
@@ -168,28 +225,64 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable e
+    (catch Throwable _e
       (log/error "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
+;;; ------------------------------------------------ Validate Commands ----------------------------------------------
+
+(defn- cmd->var [command-name]
+  (ns-resolve 'metabase.cmd (symbol command-name)))
+
+(defn- arg-list-count-ok? [arg-list arg-count]
+  (if (some #{'&} arg-list)
+    ;; subtract 1 for the & and 1 for the symbol after &
+    ;; e.g. [a b & c] => 2
+    (>= arg-count (- (count arg-list) 2))
+    (= arg-count (count arg-list))))
+
+(defn- arg-count-good? [command-name args]
+  (let [arg-lists (-> command-name cmd->var meta :arglists)
+        arg-count-matches (mapv #(arg-list-count-ok? % (count args)) arg-lists)]
+    (if (some true? arg-count-matches)
+      [true]
+      [false (str "The '" command-name "' command requires "
+                  (when (> 1 (count arg-lists)) "one of ")
+                  "the following arguments: "
+                  (str/join " | " (map pr-str arg-lists))
+                  ", but received: " (pr-str (vec args)) ".")])))
+
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
-(defn- cmd->fn [command-name]
-  (or (when (seq command-name)
-        (when-let [varr (ns-resolve 'metabase.cmd (symbol command-name))]
-          (when (:command (meta varr))
-            @varr)))
-      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
-          (help)
-          (System/exit 1))))
+(defn- cmd->fn
+  "Returns [error-message] if there is an error, otherwise [nil command-fn]"
+  [command-name args]
+  (cond
+    (not (seq command-name))
+    ["No command given."]
+
+    (nil? (:command (meta (cmd->var command-name))))
+    [(str "Unrecognized command: '" command-name "'")]
+
+    (let [[ok? _message] (arg-count-good? command-name args)]
+      (not ok?))
+    [(second (arg-count-good? command-name args))]
+
+    :else
+    [nil @(cmd->var command-name)]))
 
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
   [cmd args]
-  (try (apply (cmd->fn cmd) args)
-       (catch Throwable e
-         (.printStackTrace e)
-         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1)))
+  (let [[error-msg command-fn] (cmd->fn cmd args)]
+    (if error-msg
+      (do
+        (println (u/format-color 'red error-msg))
+        (System/exit 1))
+      (try (apply command-fn args)
+           (catch Throwable e
+             (.printStackTrace e)
+             (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+             (System/exit 1)))))
   (System/exit 0))

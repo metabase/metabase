@@ -20,13 +20,8 @@ export default class ChannelSetupModal extends Component {
   };
 
   render() {
-    const {
-      onClose,
-      user,
-      entityNamePlural,
-      fullPageModal,
-      channels,
-    } = this.props;
+    const { onClose, user, entityNamePlural, fullPageModal, channels } =
+      this.props;
 
     return (
       <ModalContent

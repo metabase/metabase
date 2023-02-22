@@ -1,4 +1,11 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openNativeEditor,
+  startNewQuestion,
+  openNavigationSidebar,
+  navigationSidebar,
+} from "__support__/e2e/helpers";
 
 const QUESTION_NAME = "Foo";
 
@@ -7,14 +14,13 @@ describe("issue 9027", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
 
     // Wait for the existing questions to load
     cy.findByText("Orders");
 
-    cy.icon("sql").click();
+    openNativeEditor({ fromCurrentPage: true });
 
     cy.get(".ace_content").type("select 0");
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -24,42 +30,42 @@ describe("issue 9027", () => {
 
   it("should display newly saved question in the 'Saved Questions' list immediately (metabase#9027)", () => {
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
+    openNavigationSidebar();
     archiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME, false);
+    openNavigationSidebar();
     unarchiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
   });
 });
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
-  cy.findByText("Ask a question").click();
-  cy.findByText("Custom question").click();
+  startNewQuestion();
   cy.findByText("Saved Questions").click();
 
   cy.findByText(questionName).should(exists ? "exist" : "not.exist");
 }
 
 function saveQuestion(name) {
+  cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").type(name);
+  cy.findByLabelText("Name").clear().type(name);
   cy.button("Save").click();
   cy.button("Not now").click();
+  cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {
-  cy.findByTestId("main-logo").click();
-  cy.findByText("Browse all items").click();
+  navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
-  popover()
-    .findByText("Archive this item")
-    .click();
+  popover().findByText("Archive").click();
 }
 
 function unarchiveQuestion(questionName) {
-  cy.findByTestId("main-logo").click();
-  cy.findByText("Browse all items").click();
-  // Button is covered with an undo toast
-  cy.findByText("View archive").click({ force: true });
+  navigationSidebar().within(() => {
+    cy.icon("ellipsis").click();
+  });
+  popover().findByText("View archive").click();
   cy.findByText(questionName)
     .parent()
     .within(() => {

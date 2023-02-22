@@ -4,10 +4,13 @@ import {
   modal,
   openOrdersTable,
   visualize,
-} from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+  summarize,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
@@ -29,7 +32,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Common Metrics").click();
     cy.findByText("Revenue").click();
 
@@ -39,16 +42,12 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
-    popover()
-      .contains("Revenue")
-      .click();
+    popover().contains("Revenue").click();
 
     // Let's make sure it's possible to sort descending as well
     cy.icon("arrow_up").click();
 
-    cy.icon("arrow_down")
-      .parent()
-      .contains("Revenue");
+    cy.icon("arrow_down").parent().contains("Revenue");
 
     visualize();
     // Visualization will render line chart by default. Switch to the table.
@@ -59,20 +58,14 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .first()
       .as("tableHeader")
       .within(() => {
-        cy.get(".cellData")
-          .eq(1)
-          .invoke("text")
-          .should("eq", "Revenue");
+        cy.get(".cellData").eq(1).invoke("text").should("eq", "Revenue");
       });
 
     cy.get("@table")
       .last()
       .as("tableBody")
       .within(() => {
-        cy.get(".cellData")
-          .eq(1)
-          .invoke("text")
-          .should("eq", "50,072.98");
+        cy.get(".cellData").eq(1).invoke("text").should("eq", "50,072.98");
       });
   });
 
@@ -84,27 +77,46 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    it.skip("should have 'Custom expression' in a filter list (metabase#13069)", () => {
-      cy.visit("/admin/datamodel/metrics");
-      cy.findByText("New metric").click();
-      cy.findByText("Select a table").click();
-      popover().within(() => {
-        cy.findByText("Orders").click();
-      });
-      cy.findByText("Add filters to narrow your answer").click();
-
-      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
-      popover().within(() => {
-        cy.findByText("Custom Expression");
-      });
-    });
-
     it("should show how to create metrics", () => {
       cy.visit("/reference/metrics");
       cy.findByText(
         "Metrics are the official numbers that your team cares about",
       );
       cy.findByText("Learn how to create metrics");
+    });
+
+    it("custom expression aggregation should work in metrics (metabase#22700)", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const customExpression = "Count / Distinct([Product ID])";
+
+      cy.visit("/admin/datamodel/metrics");
+
+      cy.button("New metric").click();
+      selectTable("Orders");
+      // It sees that there is one dataset query for each of the fields:
+      // `data`, `filtered by` and `view`
+      cy.wait(["@dataset", "@dataset", "@dataset"]);
+
+      cy.findByText("Count").click();
+      popover().contains("Custom Expression").click();
+
+      cy.get(".ace_text-input")
+        .click()
+        .type(`{selectall}{del}${customExpression}`)
+        .blur();
+
+      cy.findByPlaceholderText("Name (required)").type("Foo");
+
+      cy.button("Done").click();
+      cy.wait("@dataset");
+
+      // The test should fail on this step first
+      cy.findByText("Result: 93.8");
+
+      // Let's make sure the custom expression is still preserved
+      cy.findByText("Foo").click();
+      cy.get(".ace_content").should("contain", customExpression);
     });
   });
 
@@ -136,19 +148,17 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
-      cy.get(".full")
-        .find(".Button")
-        .click();
-      cy.findByText("Filter").click();
-      cy.findByText("Total").click();
-      cy.findByText("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type("50");
-      cy.findByText("Add filter").click();
+      cy.get(".full").find(".Button").click();
+
+      filter();
+      filterField("Total", {
+        placeholder: "min",
+        value: "50",
+      });
+
+      cy.findByTestId("apply-filters").click();
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();
 
       // Check the list
@@ -181,18 +191,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.url().should("match", /metric\/1$/);
       cy.contains("Edit Your Metric");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("Result: 18758");
@@ -217,12 +219,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Metric").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 
@@ -262,5 +260,35 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("13022_Metric"); // Name
       cy.findByText("Orders, CE"); // Definition
     });
+
+    it("should show CE that uses 'AND/OR' (metabase#13069, metabase#13070)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+
+      selectTable("Orders");
+
+      cy.findByText("Add filters to narrow your answer").click();
+      cy.findByText("Custom Expression").click();
+      cy.get(".ace_text-input").clear().type("[ID] > 0 OR [ID] < 9876543210");
+      cy.button("Done").click();
+
+      cy.log("**Assert that there is a filter text visible**");
+      cy.findByText("ID > 0 OR ID < 9876543210");
+    });
   });
 });
+
+// Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
+// For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
+// Sample Database (collapsed) only. We need to click on it to expand it.
+// This conditional mechanism prevents failures even if that popover opens expanded in the future.
+function selectTable(tableName) {
+  cy.findByText("Select a table").click();
+
+  cy.get(".List-section").then($list => {
+    if ($list.length !== 5) {
+      cy.findByText("Sample Database").click();
+    }
+    cy.findByText(tableName).click();
+  });
+}

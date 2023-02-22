@@ -1,17 +1,19 @@
 (ns metabase.shared.models.visualization-settings-test
   "Tests for the shared visualization-settings namespace functions"
   #?@
-      (:clj
-       [(:require [clojure.spec.test.alpha :as stest]
-                  [clojure.test :as t]
-                  [clojure.walk :as walk]
-                  [metabase.shared.models.visualization-settings :as mb.viz])]
-       :cljs
-       [(:require [clojure.spec.test.alpha :as stest]
-                  [clojure.test :as t]
-                  [clojure.walk :as walk]
-                  [goog.string :as gstring]
-                  [metabase.shared.models.visualization-settings :as mb.viz])]))
+   (:clj
+    [(:require
+      [clojure.spec.test.alpha :as stest]
+      [clojure.test :as t]
+      [clojure.walk :as walk]
+      [metabase.shared.models.visualization-settings :as mb.viz])]
+    :cljs
+    [(:require
+      [clojure.spec.test.alpha :as stest]
+      [clojure.test :as t]
+      [clojure.walk :as walk]
+      [goog.string :as gstring]
+      [metabase.shared.models.visualization-settings :as mb.viz])]))
 
 (def all-instrument-fns
   [`mb.viz/field-id->column-ref
@@ -98,14 +100,21 @@
           (let [to-db (mb.viz/norm->db to-norm)]
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
-      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map)))))
+      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
 
+(t/deftest form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
     (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}
           db-col-settings-new {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "HH:mm"}}}
           norm-col-settings   {::mb.viz/column-settings {{::mb.viz/column-name "Column Name"} {::mb.viz/time-style "HH:mm"}}}]
       (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
-      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings))))))
+      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings)))))
+
+  (t/testing "Invalid column refs are dropped when viz settings are normalized (#18972)"
+    (t/is (= {::mb.viz/column-settings {}}
+             (mb.viz/db->norm {:column_settings {"[\"ref\",null]" {:column_title "invalid"}}})))
+    (t/is (= {::mb.viz/column-settings {}}
+             (mb.viz/db->norm {:column_settings {"bad-column-ref" {:column_title "invalid"}}})))))
 
 (t/deftest virtual-card-test
   (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"
@@ -167,7 +176,7 @@
 
 (defn- all-keywords [m]
   (let [all-kws (atom #{})]
-    (walk/postwalk (fn [v] (if (keyword? v) (swap! all-kws #(conj % v)))) m)
+    (walk/postwalk (fn [v] (when (keyword? v) (swap! all-kws #(conj % v)))) m)
     @all-kws))
 
 (t/deftest comprehensive-click-actions-test

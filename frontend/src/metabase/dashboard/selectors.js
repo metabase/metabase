@@ -1,38 +1,19 @@
 import _ from "underscore";
 
 import { createSelector } from "reselect";
-
 import { getMetadata } from "metabase/selectors/metadata";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
-import {
-  getParameterMappingOptions as _getParameterMappingOptions,
-  getMappingsByParameter as _getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
-} from "metabase/meta/Dashboard";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import type { CardId, Card } from "metabase-types/types/Card";
-import type { DashCardId } from "metabase-types/types/Dashboard";
-import type {
-  ParameterId,
-  Parameter,
-  ParameterMapping,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-export type AugmentedParameterMapping = ParameterMapping & {
-  dashcard_id: DashCardId,
-  values: Array<string>,
-};
+import Question from "metabase-lib/Question";
 
-export type MappingsByParameter = {
-  [key: ParameterId]: {
-    [key: DashCardId]: {
-      [key: CardId]: AugmentedParameterMapping,
-    },
-  },
-};
+import { isVirtualDashCard } from "./utils";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
@@ -48,6 +29,16 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getFavicon = state =>
+  state.dashboard.loadingControls?.showLoadCompleteFavicon
+    ? LOAD_COMPLETE_FAVICON
+    : null;
+
+export const getIsRunning = state =>
+  state.dashboard.loadingDashCards.loadingStatus === "running";
+export const getIsLoadingComplete = state =>
+  state.dashboard.loadingDashCards.loadingStatus === "complete";
+
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>
@@ -64,10 +55,41 @@ export const getShowAddQuestionSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.addQuestion,
 );
 
+export const getIsShowDashboardInfoSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.info,
+);
+
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) => dashboards[dashboardId],
 );
+
+export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
+export const getDashCardById = (state, dashcardId) => {
+  const dashcards = getDashcards(state);
+  return dashcards[dashcardId];
+};
+
+export const getSingleDashCardData = (state, dashcardId) => {
+  const dashcard = getDashCardById(state, dashcardId);
+  const cardDataMap = getCardData(state);
+  if (!dashcard || !cardDataMap) {
+    return;
+  }
+  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
+};
+
+export const getDashCardTable = (state, dashcardId) => {
+  const dashcard = getDashCardById(state, dashcardId);
+  if (!dashcard || isVirtualDashCard(dashcard)) {
+    return null;
+  }
+  const metadata = getMetadata(state);
+  const question = new Question(dashcard.card, metadata);
+  return question.table();
+};
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
@@ -79,6 +101,15 @@ export const getDashboardComplete = createSelector(
         .filter(dc => !dc.isRemoved),
     },
 );
+
+export const getDocumentTitle = state =>
+  state.dashboard.loadingControls.documentTitle;
+
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === props.dashboardId,
+  );
 
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
@@ -97,14 +128,15 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getEditingParameterId = createSelector(
-  [getSidebar],
-  sidebar => {
-    return sidebar.name === SIDEBAR_NAME.editParameter
-      ? sidebar.props?.parameterId
-      : null;
-  },
-);
+export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
+  return sidebar?.props?.dashcardId;
+});
+
+export const getEditingParameterId = createSelector([getSidebar], sidebar => {
+  return sidebar.name === SIDEBAR_NAME.editParameter
+    ? sidebar.props?.parameterId
+    : null;
+});
 
 export const getIsEditingParameter = createSelector(
   [getEditingParameterId],
@@ -129,33 +161,28 @@ export const getParameterTarget = createSelector(
       return null;
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
-      card_id: card.id,
       parameter_id: parameter.id,
+      ...(card && card.id && { card_id: card.id }),
     });
     return mapping && mapping.target;
   },
 );
 
-export const getMappingsByParameter = createSelector(
-  [getMetadata, getDashboardComplete],
-  _getMappingsByParameter,
-);
-
-/** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
-  [getMetadata, getDashboard, getMappingsByParameter],
-  getDashboardParametersWithFieldMetadata,
+  [getDashboardComplete, getMetadata],
+  (dashboard, metadata) => {
+    if (!dashboard || !metadata) {
+      return [];
+    }
+    return getDashboardUiParameters(dashboard, metadata);
+  },
 );
 
 export const makeGetParameterMappingOptions = () => {
   const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard],
-    (
-      metadata,
-      parameter: Parameter,
-      card: Card,
-    ): Array<ParameterMappingUIOption> => {
-      return _getParameterMappingOptions(metadata, parameter, card);
+    [getMetadata, getEditingParameter, getCard, getDashCard],
+    (metadata, parameter, card, dashcard) => {
+      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
     },
   );
   return getParameterMappingOptions;
@@ -171,4 +198,14 @@ export const getDefaultParametersById = createSelector(
 
       return map;
     }, {}),
+);
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );

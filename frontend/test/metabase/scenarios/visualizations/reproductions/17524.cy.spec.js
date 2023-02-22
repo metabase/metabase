@@ -1,7 +1,12 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  filterWidget,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const nativeQuestionDetails = {
   native: {
@@ -53,9 +58,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.get("polygon");
       cy.findByText("Save").should("not.exist");
@@ -70,15 +73,13 @@ describe("issue 17524", () => {
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
       cy.get("polygon");
 
-      cy.findAllByRole("button")
-        .contains("Filter")
-        .click();
-      cy.findByText("ID").click();
-      cy.findByText("Is").click();
-      cy.findByText("Greater than").click();
+      filter();
 
-      cy.findByPlaceholderText("Enter an ID").type("1");
-      cy.button("Add filter").click();
+      filterField("ID", {
+        operator: "Greater than",
+        value: "1",
+      });
+      cy.findByTestId("apply-filters").click();
 
       cy.get("polygon");
     });

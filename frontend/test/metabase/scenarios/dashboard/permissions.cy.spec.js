@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -38,7 +39,7 @@ describe("scenarios > dashboard > permissions", () => {
 
       cy.request("POST", "/api/card", {
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           type: "native",
           native: { query: "select 'foo'" },
         },
@@ -50,7 +51,7 @@ describe("scenarios > dashboard > permissions", () => {
 
       cy.request("POST", "/api/card", {
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           type: "native",
           native: { query: "select 'bar'" },
         },
@@ -62,40 +63,28 @@ describe("scenarios > dashboard > permissions", () => {
     });
 
     cy.createDashboard().then(({ body: { id: dashId } }) => {
+      dashboardId = dashId;
+
       cy.request("POST", `/api/dashboard/${dashId}/cards`, {
         cardId: firstQuestionId,
+        row: 0,
+        col: 0,
+        size_x: 6,
+        size_y: 6,
       }).then(({ body: { id: dashCardIdA } }) => {
         cy.request("POST", `/api/dashboard/${dashId}/cards`, {
           cardId: secondQuestionId,
-        }).then(({ body: { id: dashCardIdB } }) => {
-          cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
-            cards: [
-              {
-                id: dashCardIdA,
-                card_id: firstQuestionId,
-                row: 0,
-                col: 0,
-                sizeX: 6,
-                sizeY: 6,
-              },
-              {
-                id: dashCardIdB,
-                card_id: secondQuestionId,
-                row: 0,
-                col: 6,
-                sizeX: 6,
-                sizeY: 6,
-              },
-            ],
-          });
+          row: 0,
+          col: 6,
+          size_x: 6,
+          size_y: 6,
         });
       });
-      dashboardId = dashId;
-      cy.visit(`/dashboard/${dashId}`);
     });
   });
 
   it("should let admins view all cards in a dashboard", () => {
+    visitDashboard(dashboardId);
     // Admin can see both questions
     cy.findByText("First Question");
     cy.findByText("foo");
@@ -105,7 +94,7 @@ describe("scenarios > dashboard > permissions", () => {
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
-    cy.visit(`/dashboard/${dashboardId}`);
+    visitDashboard(dashboardId);
     cy.findByText("Sorry, you don't have permission to see this card.");
     cy.findByText("Second Question");
     cy.findByText("bar");
@@ -113,7 +102,7 @@ describe("scenarios > dashboard > permissions", () => {
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
-    cy.visit(`/dashboard/${dashboardId}`);
+    visitDashboard(dashboardId);
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });

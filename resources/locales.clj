@@ -8,6 +8,7 @@
    "fa"
    "vi"
    "zh-TW"
+   "id"
    "uk"
    "pl"
    "ca"

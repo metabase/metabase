@@ -1,13 +1,11 @@
 import {
   createAction,
-  handleActions,
   createThunkAction,
+  handleActions,
 } from "metabase/lib/redux";
-
-import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
-import { LOGOUT } from "metabase/auth/auth";
-
 import { UserApi } from "metabase/services";
+import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
+import Users from "metabase/entities/users";
 
 export const REFRESH_CURRENT_USER = "metabase/user/REFRESH_CURRENT_USER";
 export const refreshCurrentUser = createAction(REFRESH_CURRENT_USER, () => {
@@ -33,11 +31,22 @@ export const clearCurrentUser = createAction(CLEAR_CURRENT_USER);
 
 export const currentUser = handleActions(
   {
-    [LOGOUT]: { next: (state, { payload }) => null },
     [CLEAR_CURRENT_USER]: { next: (state, payload) => null },
     [REFRESH_CURRENT_USER]: { next: (state, { payload }) => payload },
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, is_qbnewb: false }),
+    },
+    [Users.actionTypes.UPDATE]: {
+      next: (state, { payload }) => {
+        const isCurrentUserUpdated = state.id === payload.user.id;
+        if (isCurrentUserUpdated) {
+          return {
+            ...state,
+            ...payload.user,
+          };
+        }
+        return state;
+      },
     },
   },
   null,

@@ -1,15 +1,20 @@
 (ns metabase.driver.mongo.parameters-test
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as common.params]
-            [metabase.driver.mongo.parameters :as params]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.models :refer [NativeQuerySnippet]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ->utc-instant-test
   (doseq [t [#t "2020-03-14"
@@ -18,28 +23,31 @@
              #t "2020-03-13T17:00:00-07:00[America/Los_Angeles]"]]
     (testing (format "%s %s" (class t) (pr-str t))
       (is (= (t/instant "2020-03-14T00:00:00Z")
-             (#'params/->utc-instant t))))))
+             (#'mongo.params/->utc-instant t))))))
 
 (defn- substitute [param->value xs]
-  (#'params/substitute param->value xs))
+  (#'mongo.params/substitute param->value xs))
 
 (defn- param [k]
-  (common.params/->Param k))
+  (params/->Param k))
 
 (defn- optional [& xs]
-  (common.params/->Optional xs))
+  (params/->Optional xs))
 
 (defn- field-filter
   ([field-name value-type value]
    (field-filter field-name nil value-type value))
   ([field-name base-type value-type value]
-   (common.params/->FieldFilter (cond-> {:name (name field-name)}
-                                  base-type
-                                  (assoc :base_type base-type))
-                                {:type value-type, :value value})))
+   (params/->FieldFilter (cond-> {:name (name field-name)}
+                           base-type
+                           (assoc :base_type base-type))
+                         {:type value-type, :value value})))
 
 (defn- comma-separated-numbers [nums]
-  (common.params/->CommaSeparatedNumbers nums))
+  (params/->CommaSeparatedNumbers nums))
+
+(defn- multiple-values [& values]
+  (params/->MultipleValues values))
 
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -92,6 +100,14 @@
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
            (substitute {:id (comma-separated-numbers [1 2 3])}
+                       [(param :id)]))))
+  (testing "multiple-values single (#22486)"
+    (is (= "{$in: [\"33 Taps\"]}"
+           (substitute {:id (multiple-values "33 Taps")}
+                       [(param :id)]))))
+  (testing "multiple-values multi (#22486)"
+    (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
+           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON
@@ -138,15 +154,15 @@
       (letfn [(substitute-date-range [s]
                 (substitute {:date (field-filter "date" :date/range s)}
                             ["[{$match: " (param :date) "}]"]))]
-        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
-                                          {"date" {:$lt  (ISODate "2019-12-13")}}]}}])
+        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08T00:00:00Z")}}
+                                          {"date" {:$lt  (ISODate "2019-12-13T00:00:00Z")}}]}}])
                (substitute-date-range "past5days")))
         (testing "Make sure ranges like last[x]/this[x] include the full range (#11715)"
-          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01")}}
-                                            {"date" {:$lt  (ISODate "2020-01-01")}}]}}])
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01T00:00:00Z")}}
+                                            {"date" {:$lt  (ISODate "2020-01-01T00:00:00Z")}}]}}])
                  (substitute-date-range "thismonth")))
-          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01")}}
-                                            {"date" {:$lt  (ISODate "2019-12-01")}}]}}])
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01T00:00:00Z")}}
+                                            {"date" {:$lt  (ISODate "2019-12-01T00:00:00Z")}}]}}])
                  (substitute-date-range "lastmonth")))))))
   (testing "multiple values"
     (doseq [[message v] {"values are a vector of numbers" [1 2 3]
@@ -162,7 +178,7 @@
                        ["[{$match: " (param :date) "}]"]))))
   (testing "parameter not supplied"
     (is (= (to-bson [{:$match {}}])
-           (substitute {:date (common.params/->FieldFilter {:name "date"} common.params/no-value)} ["[{$match: " (param :date) "}]"]))))
+           (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"]))))
   (testing "operators"
     (testing "string"
       (doseq [[operator form input] [[:string/starts-with {"$regex" "^foo"} ["foo"]]
@@ -219,6 +235,11 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
+(deftest ^:parallel substitute-native-query-snippets-test
+  (testing "Native query snippet substitution"
+    (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
+           (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
+                              ["[{$match: " (param "snippet: high price") "}]"]))))))
 (defn- json-raw
   "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
   [^String s]
@@ -243,6 +264,7 @@
                                  :template-tags {"date" {:name         "date"
                                                          :display-name "Date"
                                                          :type         :dimension
+                                                         :widget-type  :date/all-options
                                                          :dimension    $date}}}
                     :parameters [{:type   :date/range
                                   :target [:dimension [:template-tag "date"]]
@@ -261,6 +283,7 @@
                                  :template-tags {"id" {:name         "id"
                                                        :display-name "ID"
                                                        :type         :dimension
+                                                       :widget-type  :number
                                                        :dimension    $id}}}
                     :parameters [{:type   :number
                                   :target [:dimension [:template-tag "id"]]
@@ -279,11 +302,12 @@
                              :template-tags {"date" {:name         "date"
                                                      :display-name "Date"
                                                      :type         :dimension
+                                                     :widget-type  :date/all-options
                                                      :dimension    $date}}}}))))))
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
         (mt/dataset geographical-tips
-          (is (= [[5 "tupac"]]
+          (is (= [["tupac" 5]]
                  (mt/rows
                    (qp/process-query
                      (mt/query tips
@@ -291,12 +315,14 @@
                         :native     {:query         (json/generate-string
                                                      [{:$match (json-raw "{{username}}")}
                                                       {:$sort {:_id 1}}
-                                                      {:$project {"username" "$source.username"}}
+                                                      {:$project {"username" "$source.username"
+                                                                  "_id" 1}}
                                                       {:$limit 1}])
                                      :collection    "tips"
                                      :template-tags {"username" {:name         "username"
                                                                  :display-name "Username"
                                                                  :type         :dimension
+                                                                 :widget-type  :text
                                                                  :dimension    $tips.source.username}}}
                         :parameters [{:type   :text
                                       :target [:dimension [:template-tag "username"]]
@@ -322,6 +348,7 @@
                                          :template-tags {"username" {:name         "username"
                                                                      :display-name "Username"
                                                                      :type         :dimension
+                                                                     :widget-type  :text
                                                                      :dimension    $tips.source.username}}}
                             :parameters [{:type   operator
                                           :target [:dimension [:template-tag "username"]]
@@ -346,6 +373,7 @@
                                             :template-tags {"price" {:name "price"
                                                                      :display-name "Price"
                                                                      :type         :dimension
+                                                                     :widget-type  :number
                                                                      :dimension    $price}}}
                                :parameters [{:type   operator
                                              :target [:dimension [:template-tag "price"]]
@@ -366,6 +394,7 @@
                                                    :template-tags {"username" {:name         "username"
                                                                                :display-name "Username"
                                                                                :type         :dimension
+                                                                               :widget-type  :text
                                                                                :dimension    $tips.source.username}}}
                                       :parameters [{:type   operator
                                                     :target [:dimension [:template-tag "username"]]
@@ -374,9 +403,29 @@
                    (into #{} (map second)
                          (run-query! :string/=))))
             (is (= #{}
-                     (set/intersection
-                      #{"bob" "tupac"}
-                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
-                      ;; mongo. maybe they might want present but not equal semantics
-                      (into #{} (map second)
-                            (run-query! :string/!=)))))))))))
+                    (set/intersection
+                     #{"bob" "tupac"}
+                     ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
+                     ;; mongo. maybe they might want present but not equal semantics
+                     (into #{} (map second)
+                           (run-query! :string/!=)))))))))))
+
+(deftest e2e-snippet-test
+  (mt/test-driver :mongo
+    (is (= [[1 "African"]
+            [2 "American"]
+            [3 "Artisan"]]
+           (mt/with-temp NativeQuerySnippet [snippet {:name    "first 3 checkins"
+                                                      :content (to-bson {:_id {:$in [1 2 3]}})}]
+             (mt/rows
+               (qp/process-query
+                 (mt/query categories
+                           {:type       :native
+                            :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                                         :collection    "categories"
+                                         :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
+                                                                                      :display-name "Snippet: First 3 checkins"
+                                                                                      :type         :snippet
+                                                                                      :snippet-name "first 3 checkins"
+                                                                                      :snippet-id   (:id snippet)}}}
+                            :parameters []}))))))))

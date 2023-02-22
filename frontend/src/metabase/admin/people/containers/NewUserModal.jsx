@@ -17,10 +17,7 @@ const NewUserModal = ({ onClose, onSaved, ...props }) => (
   />
 );
 
-export default connect(
-  null,
-  {
-    onClose: goBack,
-    onSaved: user => push(Urls.newUserSuccess(user.id)),
-  },
-)(NewUserModal);
+export default connect(null, {
+  onClose: goBack,
+  onSaved: user => push(Urls.newUserSuccess(user.id)),
+})(NewUserModal);

@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Field]]
-            [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Field]]
+   [metabase.query-processor.middleware.validate-temporal-bucketing
+    :as validate-temporal-bucketing]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (defn- validate [query]
-  (:pre (mt/test-qp-middleware validate-temporal-bucketing/validate-temporal-bucketing query)))
+  (validate-temporal-bucketing/validate-temporal-bucketing query))
 
 (deftest validate-temporal-bucketing-test
   (mt/dataset attempted-murders

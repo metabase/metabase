@@ -6,26 +6,33 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
-  (:require [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.dates :as date-params]
-            [metabase.driver.common.parameters.operators :as ops]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import clojure.lang.Keyword
-           honeysql.types.SqlCall
-           java.time.temporal.Temporal
-           java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.wrap-value-literals
+    :as qp.wrap-value-literals]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (clojure.lang Keyword)
+   (honeysql.types SqlCall)
+   (java.time.temporal Temporal)
+   (java.util UUID)
+   (metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -51,7 +58,7 @@
 (s/defn ^:private honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.qp/format-honeysql driver x)]
     (make-stmt-subs snippet args)))
 
 (s/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -64,7 +71,7 @@
 
 (s/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver num))
+  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
 
 (s/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -80,11 +87,11 @@
 
 ;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (s/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
-  [driver date]
+  [_driver date]
   (make-stmt-subs "?" [date]))
 
 (s/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
-  [driver t]
+  [_driver t]
   (make-stmt-subs "?" [t]))
 
 
@@ -127,7 +134,7 @@
 
 (defmethod ->replacement-snippet-info [:sql Keyword]
   [driver this]
-  (if (= this i/no-value)
+  (if (= this params/no-value)
     {:replacement-snippet ""}
     (create-replacement-snippet driver this)))
 
@@ -136,11 +143,11 @@
   (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql UUID]
-  [driver this]
+  [_driver this]
   {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
 
 (defmethod ->replacement-snippet-info [:sql CommaSeparatedNumbers]
-  [driver {:keys [numbers]}]
+  [_driver {:keys [numbers]}]
   {:replacement-snippet (str/join ", " numbers)})
 
 (defmethod ->replacement-snippet-info [:sql MultipleValues]
@@ -199,8 +206,8 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [driver value]
-  (->> (date-params/date-string->range value)
-       i/map->DateRange
+  (->> (params.dates/date-string->range value)
+       params/map->DateRange
        (->replacement-snippet-info driver)))
 
 (s/defn ^:private field-filter->equals-clause-sql :- ParamSnippetInfo
@@ -210,55 +217,70 @@
 
 (s/defn ^:private field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
   [driver values]
-  (-> (->replacement-snippet-info driver (i/map->MultipleValues {:values values}))
+  (-> (->replacement-snippet-info driver (params/map->MultipleValues {:values values}))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
-  (let [[snippet & args] (hsql/format hsql-form, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
+
+(s/defn ^:private field->clause :- mbql.s/field
+  [_driver {table-id :table_id, field-id :id, :as field} param-type]
+  ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
+  ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
+  ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
+  ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
+  ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
+  ;; I haven't figured out what that is yet
+  (qp.store/fetch-and-store-fields! #{field-id})
+  (qp.store/fetch-and-store-tables! #{table-id})
+  [:field
+   (u/the-id field)
+   {:base-type                (:base_type field)
+    :temporal-unit            (when (params.dates/date-type? param-type)
+                                :day)
+    ::add/source-table        (:table_id field) ; TODO -- are we sure we want to qualify this?
+    ;; in case anyone needs to know we're compiling a Field filter.
+    ::compiling-field-filter? true}])
 
 (s/defn ^:private field->identifier :- su/NonBlankString
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver {semantic-type :semantic_type, :as field} param-type]
-  (:replacement-snippet
-   (honeysql->replacement-snippet-info
-    driver
-    (let [identifier (sql.qp/cast-field-if-needed driver field (sql.qp/->honeysql driver (sql.qp/field->identifier driver field)))]
-      (if (date-params/date-type? param-type)
-        (sql.qp/date driver :day identifier)
-        identifier)))))
+  [driver field param-type]
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    (->> (field->clause driver field param-type)
+         (sql.qp/->honeysql driver)
+         (honeysql->replacement-snippet-info driver)
+         :replacement-snippet)))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value :as params} :value field :field :as _field-filter}]
-  (let [prepend-field
-        (fn [x]
-          (update x :replacement-snippet
-                  (partial str (field->identifier driver field param-type) " ")))]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
+  (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
+  (letfn [(prepend-field [x]
+            (update x :replacement-snippet
+                    (partial str (field->identifier driver field param-type) " ")))]
     (cond
-      (ops/operator? param-type)
+      (params.ops/operator? param-type)
       (let [[snippet & args]
-            (->> (assoc params :target
-                        [:template-tag [:field (field->identifier driver field param-type)
-                                        {:base-type (:base_type field)}]])
-                 i/throw-if-field-filter-operators-not-enabled
-                 ops/to-clause
-                 mbql.u/desugar-filter-clause
-                 wrap-value-literals/wrap-value-literals-in-mbql
-                 (sql.qp/->honeysql driver)
-                 hsql/format-predicate)]
+            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+              (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
+                (params.ops/to-clause form)
+                (mbql.u/desugar-filter-clause form)
+                (qp.wrap-value-literals/wrap-value-literals-in-mbql form)
+                (sql.qp/->honeysql driver form)
+                (sql.qp/format-honeysql driver form)))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
-      (date-params/date-range-type? param-type) (prepend-field
-                                                 (date-range-field-filter->replacement-snippet-info driver value))
+      (params.dates/date-range-type? param-type) (prepend-field
+                                                  (date-range-field-filter->replacement-snippet-info driver value))
       ;; convert all other dates to `= <date>`
-      (date-params/date-type? param-type)       (prepend-field
-                                                 (field-filter->equals-clause-sql driver (i/map->Date {:s value})))
+      (params.dates/date-type? param-type)       (prepend-field
+                                                  (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
       ;; for sequences of multiple values we want to generate an `IN (...)` clause
       (sequential? value)                       (prepend-field
                                                  (field-filter-multiple-values->in-clause-sql driver value))
@@ -271,11 +293,11 @@
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
     ;; = 1`). This is only used for field filters outside of optional clauses
-    (= value i/no-value) {:replacement-snippet "1 = 1"}
+    (= value params/no-value) {:replacement-snippet "1 = 1"}
     ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
     ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
     ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (vector? value)
+    (sequential? value)
     (combine-replacement-snippet-maps (for [v value]
                                         (->replacement-snippet-info driver (assoc field-filter :value v))))
     ;; otherwise convert single value to SQL.

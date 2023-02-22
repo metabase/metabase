@@ -1,11 +1,14 @@
 (ns metabase.task.task-history-cleanup
-  (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase.models.task-history :as task-history]
-            [metabase.task :as task]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.models.task-history :as task-history]
+   [metabase.task :as task]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private history-rows-to-keep
   "Maximum number of TaskHistory rows."
@@ -22,7 +25,9 @@
          (trs "Task history cleanup successful, rows were deleted")
          (trs "Task history cleanup successful, no rows were deleted"))))))
 
-(jobs/defjob TaskHistoryCleanup [_]
+(jobs/defjob
+  ^{:doc "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."}
+  TaskHistoryCleanup [_]
   (task-history-cleanup!))
 
 (def ^:private job-key     "metabase.task.task-history-cleanup.job")

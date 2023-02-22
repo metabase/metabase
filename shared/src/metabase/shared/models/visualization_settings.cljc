@@ -20,17 +20,19 @@
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
   "
   #?@
-      (:clj
-       [(:require [cheshire.core :as json]
-                  [clojure.set :as set]
-                  [clojure.spec.alpha :as s]
-                  [medley.core :as m]
-                  [metabase.mbql.normalize :as mbql.normalize])]
-       :cljs
-       [(:require [clojure.set :as set]
-                  [clojure.spec.alpha :as s]
-                  [medley.core :as m]
-                  [metabase.mbql.normalize :as mbql.normalize])]))
+   (:clj
+    [(:require
+      [cheshire.core :as json]
+      [clojure.set :as set]
+      [clojure.spec.alpha :as s]
+      [medley.core :as m]
+      [metabase.mbql.normalize :as mbql.normalize])]
+    :cljs
+    [(:require
+      [clojure.set :as set]
+      [clojure.spec.alpha :as s]
+      [medley.core :as m]
+      [metabase.mbql.normalize :as mbql.normalize])]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
@@ -420,11 +422,12 @@
   (set/map-invert db->norm-param-ref-keys))
 
 (def ^:private db->norm-table-columns-keys
-  {:name     ::table-column-name
+  {:name      ::table-column-name
    ; for now, do not translate the value of this key (the field vector)
-   :fieldref ::table-column-field-ref
-   :fieldRef ::table-column-field-ref
-   :enabled  ::table-column-enabled})
+   :fieldref  ::table-column-field-ref
+   :field_ref ::table-column-field-ref
+   :fieldRef  ::table-column-field-ref
+   :enabled   ::table-column-enabled})
 
 (def ^:private norm->db-table-columns-keys
   (set/map-invert db->norm-table-columns-keys))
@@ -553,13 +556,17 @@
   (reduce-kv db->norm-column-settings-entry {} entries))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
   [settings]
-  (m/map-kv (fn [k v]
-              (let [k1 (parse-db-column-ref k)
-                    v1 (db->norm-column-settings-entries v)]
-                [k1 v1]))
-            settings))
+  (reduce-kv (fn [m k v]
+               (try
+                 (let [k1 (parse-db-column-ref k)
+                       v1 (db->norm-column-settings-entries v)]
+                   (assoc m k1 v1))
+                 (catch #?(:clj Throwable :cljs js/Error) _e
+                   m)))
+             {}
+             settings))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent

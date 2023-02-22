@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useState } from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
+import _ from "underscore";
+import { t } from "ttag";
 
 import { replace } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
@@ -30,40 +32,58 @@ const mapDispatchToProps = {
   onReplaceLocation: replace,
 };
 
-@withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
-class DashboardCopyModal extends React.Component {
-  render() {
-    const {
-      onClose,
-      onReplaceLocation,
-      copyDashboard,
-      dashboard,
-      initialCollectionId,
-      params,
-      ...props
-    } = this.props;
-    const initialDashboardId = Urls.extractEntityId(params.slug);
-    return (
-      <EntityCopyModal
-        entityType="dashboards"
-        entityObject={{
-          ...dashboard,
-          collection_id: initialCollectionId,
-        }}
-        overwriteOnInitialValuesChange
-        copy={object =>
-          copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
-        }
-        onClose={onClose}
-        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
-        {...props}
-      />
-    );
+const getTitle = (dashboard, isShallowCopy) => {
+  if (!dashboard?.name) {
+    return "";
+  } else if (isShallowCopy) {
+    return t`Duplicate "${dashboard.name}"`;
+  } else {
+    return t`Duplicate "${dashboard.name}" and its questions`;
   }
-}
+};
+
+const DashboardCopyModalInner = ({
+  onClose,
+  onReplaceLocation,
+  copyDashboard,
+  dashboard,
+  initialCollectionId,
+  params,
+  ...props
+}) => {
+  const [isShallowCopy, setIsShallowCopy] = useState(true);
+  const initialDashboardId = Urls.extractEntityId(params.slug);
+
+  const title = getTitle(dashboard, isShallowCopy);
+
+  const handleValuesChange = ({ is_shallow_copy }) => {
+    setIsShallowCopy(is_shallow_copy);
+  };
+
+  return (
+    <EntityCopyModal
+      entityType="dashboards"
+      entityObject={{
+        ...dashboard,
+        collection_id: initialCollectionId,
+      }}
+      form={Dashboards.forms.duplicate}
+      title={title}
+      overwriteOnInitialValuesChange
+      copy={object =>
+        copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
+      }
+      onClose={onClose}
+      onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
+      {...props}
+      onValuesChange={handleValuesChange}
+    />
+  );
+};
+
+const DashboardCopyModal = _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardCopyModalInner);
 
 export default DashboardCopyModal;

@@ -1,18 +1,19 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
-  (:require [clojure.test :refer :all]
-            [metabase.http-client :as http]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.revision :refer [Revision]]
-            [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.server.middleware.util :as middleware.u]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :refer [Revision]]
+   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;; ## Helper Fns
 
@@ -25,6 +26,7 @@
   (-> (into {} segment)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
+      (update :entity_id some?)
       (update :created_at some?)
       (update :updated_at some?)))
 
@@ -33,11 +35,11 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :get 401 "segment")))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :get 401 "segment")))
 
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :put 401 "segment/13"))))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment
 
@@ -80,6 +82,7 @@
             :points_of_interest      nil
             :creator_id              (mt/user->id :crowberto)
             :creator                 (user-details (mt/fetch-user :crowberto))
+            :entity_id               true
             :created_at              true
             :updated_at              true
             :archived                false
@@ -91,7 +94,7 @@
                                                     :caveats                 nil
                                                     :points_of_interest      nil
                                                     :table_id                id
-                                                    :definition              {:filter [:= [:field-id 10] 20]}}))))))
+                                                    :definition              {:filter [:= [:field 10 nil] 20]}}))))))
 
 
 ;; ## PUT /api/segment
@@ -135,6 +138,7 @@
               :points_of_interest      nil
               :creator_id              (mt/user->id :rasta)
               :creator                 (user-details (mt/fetch-user :rasta))
+              :entity_id               true
               :created_at              true
               :updated_at              true
               :archived                false
@@ -150,7 +154,7 @@
                 :points_of_interest      nil
                 :table_id                456
                 :revision_message        "I got me some revisions"
-                :definition              {:filter [:!= [:field-id 2] "cans"]}})))))))
+                :definition              {:filter [:!= [:field 2 nil] "cans"]}})))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
@@ -216,6 +220,7 @@
                 :creator                 (user-details (mt/fetch-user :rasta))
                 :created_at              true
                 :updated_at              true
+                :entity_id               true
                 :archived                true
                 :definition              nil}
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
@@ -231,7 +236,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
@@ -241,7 +246,7 @@
                     Table    [{table-id :id} {:db_id database-id}]
                     Segment  [{:keys [id]}   {:creator_id (mt/user->id :crowberto)
                                               :table_id   table-id
-                                              :definition {:filter [:= [:field-id 2] "cans"]}}]]
+                                              :definition {:filter [:= [:field 2 nil] "cans"]}}]]
       (is (= {:name                    "Toucans in the rainforest"
               :description             "Lookin' for a blueberry"
               :show_in_getting_started false
@@ -251,6 +256,7 @@
               :creator                 (user-details (mt/fetch-user :crowberto))
               :created_at              true
               :updated_at              true
+              :entity_id               true
               :archived                false
               :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
              (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
@@ -266,7 +272,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
 
@@ -278,7 +284,7 @@
                     Segment  [{:keys [id]} {:creator_id (mt/user->id :crowberto)
                                             :table_id   table-id
                                             :definition {:database 123
-                                                         :query    {:filter [:= [:field-id 2] "cans"]}}}]
+                                                         :query    {:filter [:= [:field 2 nil] "cans"]}}}]
                     Revision [_ {:model       "Segment"
                                  :model_id    id
                                  :object      {:name       "b"
@@ -337,7 +343,7 @@
                                                  :show_in_getting_started false
                                                  :caveats                 nil
                                                  :points_of_interest      nil
-                                                 :definition              {:filter [:= [:field-id 2] "cans"]}}]
+                                                 :definition              {:filter [:= [:field 2 nil] "cans"]}}]
                     Revision [{revision-id :id} {:model       "Segment"
                                                  :model_id    id
                                                  :object      {:creator_id              (mt/user->id :crowberto)
@@ -347,7 +353,7 @@
                                                                :show_in_getting_started false
                                                                :caveats                 nil
                                                                :points_of_interest      nil
-                                                               :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                               :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :is_creation true}]
                     Revision [_                 {:model    "Segment"
                                                  :model_id id
@@ -359,7 +365,7 @@
                                                             :show_in_getting_started false
                                                             :caveats                 nil
                                                             :points_of_interest      nil
-                                                            :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                            :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :message  "updated"}]]
       (testing "the api response"
         (is (= {:is_reversion true

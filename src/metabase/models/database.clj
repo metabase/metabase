@@ -1,25 +1,33 @@
 (ns metabase.models.database
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user*]]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perm-group]
-            [metabase.models.secret :as secret]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [medley.core :as m]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.setting :as setting]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
+
+(doto Database
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -45,27 +53,59 @@
 
 (defn- post-insert [database]
   (u/prog1 database
-    ;; add this database to the All Users permissions groups
-    (perms/grant-full-db-permissions! (perm-group/all-users) database)
+    ;; add this database to the All Users permissions group
+    (perms/grant-full-data-permissions! (perms-group/all-users) database)
+    ;; give full download perms for this database to the All Users permissions group
+    (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
+(def ^:private ^:dynamic *normalizing-details*
+  "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
+  recursion. [[driver/normalize-db-details]] is actually done for side effects!"
+  false)
+
 (defn- post-select [{driver :engine, :as database}]
-  (cond-> database
-    (driver/initialized? driver)
-    ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (as-> db* ; database from outer cond->
-        (assoc db* :features (driver.u/features driver database))
-        (if (:details db*)
-          (driver/normalize-db-details driver db*)
-          db*))))
+  (letfn [(normalize-details [db]
+            (binding [*normalizing-details* true]
+              (driver/normalize-db-details driver db)))]
+    (cond-> database
+      ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
+      (driver.impl/registered? driver)
+      (assoc :features (driver.u/features driver database))
+
+      (and (driver.impl/registered? driver)
+           (:details database)
+           (not *normalizing-details*))
+      normalize-details)))
+
+(defn- delete-orphaned-secrets!
+  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
+  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
+  is exclusively associated with a single Database.
+
+  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
+  change and become more complicated (likely by consulting a many-to-many join table)."
+  [{:keys [id details] :as database}]
+  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
+          possible-secret-prop-names (keys (secret/conn-props->secret-props-by-name conn-props))]
+      (doseq [secret-id (reduce (fn [acc prop-name]
+                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)
+                                    acc))
+                                []
+                                possible-secret-prop-names)]
+        (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
+                       secret-id
+                       id))
+        (db/delete! Secret :id secret-id)))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from (db/resolve-model 'Permissions)
-                :where       [:or
-                              [:like :object (str (perms/data-perms-path id) "%")]
-                              [:= :object (perms/database-block-perms-path id)]]})
+  (db/execute! {:delete-from :permissions
+                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
+  (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -76,132 +116,128 @@
   each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
   (or update an existing) Secret instance and point to the inserted -id instead."
   [database details conn-prop-nm conn-prop]
-  (let [sub-prop  (fn [suffix]
-                    (keyword (str conn-prop-nm suffix)))
-        id-kw     (sub-prop "-id")
-        new-name  (format "%s for %s" (:display-name conn-prop) (:name database))
+  (let [sub-prop   (fn [suffix]
+                     (keyword (str conn-prop-nm suffix)))
+        id-kw      (sub-prop "-id")
+        value-kw   (sub-prop "-value")
+        new-name   (format "%s for %s" (:display-name conn-prop) (:name database))
+        kind       (:secret-kind conn-prop)
         ;; in the future, when secret values can simply be changed by passing
         ;; in a new ID (as opposed to a new value), this behavior will change,
         ;; but for now, we should simply look for the value
-        path-kw   (sub-prop "-path")
-        value-kw  (sub-prop "-value")
-        value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
-                    v
-                    (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
-                      path))
-        kind      (:secret-kind conn-prop)
-        source    (when (path-kw details)
-                    :file-path)]                     ; set the :source due to the -path suffix (see above)
+        secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
+        value      (:value secret-map)
+        src        (:source secret-map)] ; set the :source due to the -path suffix (see above)]
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
-      (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
-                                                 (id-kw details)
-                                                 new-name
-                                                 kind
-                                                 source
-                                                 value)]
-        ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
+      (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
+                                       (id-kw details)
+                                       new-name
+                                       kind
+                                       src
+                                       value)]
         (-> details
-          (dissoc value-kw)
-          (assoc id-kw id)
-          (assoc (sub-prop "-source") source)
-          (assoc (sub-prop "-creator-id") creator_id)
-          (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
+            ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
+            ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
+            (dissoc value-kw (sub-prop "-path"))
+            (assoc id-kw id)
+            (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
 
 (defn- handle-secrets-changes [{:keys [details] :as database}]
-  (let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (cond (nil? conn-props-fn)
-          database ; no connection-properties multimethod defined; can't check secret types so do nothing
-
-          details ; we have details populated in this Database instance, so handle them
-          (let [conn-props            (conn-props-fn (driver.u/database->driver database))
-                conn-secrets-by-name  (->> (filter #(= "secret" (:type %)) conn-props)
-                                           (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {}))
-                ;; saved-details         (db/select-field :details Database id)
-                 updated-details      (reduce-kv (partial handle-db-details-secret-prop! database)
-                                                 details
-                                                 conn-secrets-by-name)]
-           (assoc database :details updated-details))
-
-          :else ; no details populated; do nothing
-          database)))
+  (if (map? details)
+    (let [updated-details (secret/reduce-over-details-secret-values
+                            (driver.u/database->driver database)
+                            details
+                            (partial handle-db-details-secret-prop! database))]
+      (assoc database :details updated-details))
+    database))
 
 (defn- pre-update
-  [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
-  (u/prog1 (handle-secrets-changes database)
-    ;; TODO - this logic would make more sense in post-update if such a method existed
-    ;; if the sync operation schedules have changed, we need to reschedule this DB
-    (when (or new-metadata-schedule new-fieldvalues-schedule)
-      (let [{old-metadata-schedule    :metadata_sync_schedule
-             old-fieldvalues-schedule :cache_field_values_schedule
-             existing-engine          :engine
-             existing-name            :name} (db/select-one [Database
-                                                             :metadata_sync_schedule
-                                                             :cache_field_values_schedule
-                                                             :engine
-                                                             :name]
-                                                            :id (u/the-id database))
-            ;; if one of the schedules wasn't passed continue using the old one
-            new-metadata-schedule            (or new-metadata-schedule old-metadata-schedule)
-            new-fieldvalues-schedule         (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-        (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
-                     [old-metadata-schedule old-fieldvalues-schedule])
-          (log/info
-           (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
-           "\n"
-           (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
-           "\n"
-           (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
-          ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
-          (schedule-tasks!
-           (assoc database
-             :metadata_sync_schedule      new-metadata-schedule
-             :cache_field_values_schedule new-fieldvalues-schedule)))))))
+  [{new-metadata-schedule    :metadata_sync_schedule,
+    new-fieldvalues-schedule :cache_field_values_schedule,
+    new-engine               :engine
+    :as                      database}]
+  (let [{is-sample?               :is_sample
+         old-metadata-schedule    :metadata_sync_schedule
+         old-fieldvalues-schedule :cache_field_values_schedule
+         existing-engine          :engine
+         existing-name            :name} (db/select-one [Database
+                                                         :metadata_sync_schedule
+                                                         :cache_field_values_schedule
+                                                         :engine
+                                                         :name
+                                                         :is_sample] :id (u/the-id database))
+        new-engine                       (some-> new-engine keyword)]
+    (if (and is-sample?
+             new-engine
+             (not= new-engine existing-engine))
+      (throw (ex-info (trs "The engine on a sample database cannot be changed.")
+                      {:status-code     400
+                       :existing-engine existing-engine
+                       :new-engine      new-engine}))
+      (u/prog1 (handle-secrets-changes database)
+        ;; TODO - this logic would make more sense in post-update if such a method existed
+        ;; if the sync operation schedules have changed, we need to reschedule this DB
+        (when (or new-metadata-schedule new-fieldvalues-schedule)
+          ;; if one of the schedules wasn't passed continue using the old one
+          (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
+                new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
+            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
+                        [old-metadata-schedule old-fieldvalues-schedule])
+              (log/info
+               (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
+               "\n"
+               (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
+               "\n"
+               (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
+              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
+              (schedule-tasks!
+               (assoc database
+                      :metadata_sync_schedule      new-metadata-schedule
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))))))
 
-(defn- pre-insert [database]
-  (handle-secrets-changes database))
+(defn- pre-insert [{:keys [details], :as database}]
+  (-> (cond-> database
+        (not details) (assoc :details {}))
+      handle-secrets-changes
+      (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database _]
-  #{(perms/data-perms-path (u/the-id database))})
+(defmethod mi/perms-objects-set Database
+  [{db-id :id} read-or-write]
+  #{(case read-or-write
+      :read  (perms/data-perms-path db-id)
+      :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend (class Database)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details                     :encrypted-json
-                                       :options                     :json
-                                       :engine                      :keyword
-                                       :metadata_sync_schedule      :cron-string
-                                       :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword})
-          :properties     (constantly {:timestamped? true})
-          :post-insert    post-insert
-          :post-select    post-select
-          :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+(mi/define-methods
+ Database
+ {:hydration-keys (constantly [:database :db])
+  :types          (constantly {:details                     :encrypted-json
+                               :options                     :json
+                               :engine                      :keyword
+                               :metadata_sync_schedule      :cron-string
+                               :cache_field_values_schedule :cron-string
+                               :start_of_week               :keyword
+                               :settings                    :encrypted-json
+                               :dbms_version                :json})
+  :post-insert    post-insert
+  :post-select    post-select
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
+
+(defmethod serdes.hash/identity-hash-fields Database
+  [_database]
+  [:name :engine])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn ^:hydrate tables
+(mi/define-simple-hydration-method tables
+  :tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
   (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
-
-(defn schema-names
-  "Return a *sorted set* of schema names (as strings) associated with this `Database`."
-  [{:keys [id]}]
-  (when id
-    (apply sorted-set (db/select-field :schema 'Table
-                        :db_id id
-                        {:modifiers [:DISTINCT]}))))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
@@ -209,11 +245,6 @@
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
       (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
-
-(defn schema-exists?
-  "Does `database` have any tables with `schema`?"
-  ^Boolean [{:keys [id]}, schema]
-  (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -234,17 +265,81 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
-;; the `details` but remove anything resembling a password. No one gets to see this in an API response!
-(add-encoder
- DatabaseInstance
- (fn [db json-generator]
-   (encode-map
-    (if (not (:is_superuser @*current-user*))
-      (dissoc db :details)
-      (update db :details (fn [details]
-                            (reduce
-                             #(m/update-existing %1 %2 (constantly protected-password))
-                             details
-                             (sensitive-fields-for-db db)))))
-    json-generator)))
+(methodical/defmethod mi/to-json Database
+  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
+  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+  an API response!
+
+  Also remove settings that the User doesn't have read perms for."
+  [db json-generator]
+  (next-method
+   (let [db (if (not (mi/can-write? db))
+              (dissoc db :details)
+              (update db :details (fn [details]
+                                    (reduce
+                                     #(m/update-existing %1 %2 (constantly protected-password))
+                                     details
+                                     (sensitive-fields-for-db db)))))]
+     (update db :settings (fn [settings]
+                            (when settings
+                              (into {}
+                                    (filter (fn [[setting-name _v]]
+                                              (setting/can-read-setting? setting-name
+                                                                         (setting/current-user-readable-visibilities))))
+                                    settings)))))
+   json-generator))
+
+;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
+(defmethod serdes.base/extract-one "Database"
+  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
+  ;; TODO Support alternative encryption of secret database details.
+  ;; There's one optional foreign key: creator_id. Resolve it as an email.
+  (cond-> (serdes.base/extract-one-basics "Database" entity)
+    true                 (update :creator_id serdes.util/export-user)
+    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
+    (= :exclude secrets) (dissoc :details)))
+
+(defmethod serdes.base/serdes-entity-id "Database"
+  [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-generate-path "Database"
+  [_ {:keys [name]}]
+  [{:model "Database" :id name}])
+
+(defmethod serdes.base/load-find-local "Database"
+  [[{:keys [id]}]]
+  (db/select-one Database :name id))
+
+(defmethod serdes.base/load-xform "Database"
+  [database]
+  (-> database
+      serdes.base/load-xform-basics
+      (update :creator_id serdes.util/import-user)))
+
+(defmethod serdes.base/load-insert! "Database" [_ ingested]
+  (let [m (get-method serdes.base/load-insert! :default)]
+    (m "Database"
+       (if (:details ingested)
+         ingested
+         (assoc ingested :details {})))))
+
+(defmethod serdes.base/load-update! "Database" [_ ingested local]
+  (let [m (get-method serdes.base/load-update! :default)]
+    (m "Database"
+       (update ingested :details #(or % (:details local) {}))
+       local)))
+
+(defmethod serdes.base/storage-path "Database" [{:keys [name]} _]
+  ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
+  ["databases" name name])
+
+(serdes.base/register-ingestion-path!
+  "Database"
+  ;; ["databases" "my-db" "my-db"]
+  (fn [[a b c :as path]]
+    (when (and (= (count path) 3)
+               (= a "databases")
+               (= b c))
+      [{:model "Database" :id c}])))

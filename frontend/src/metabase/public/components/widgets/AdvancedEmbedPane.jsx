@@ -1,51 +1,15 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-
-import ToggleLarge from "metabase/components/ToggleLarge";
-import Button from "metabase/components/Button";
-import ActionButton from "metabase/components/ActionButton";
-import { t } from "ttag";
-import AdvancedSettingsPane from "./AdvancedSettingsPane";
-import PreviewPane from "./PreviewPane";
-import EmbedCodePane from "./EmbedCodePane";
-
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import type { Pane, EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
 
 import _ from "underscore";
 
-type Props = {
-  className?: string,
-
-  pane: Pane,
-  embedType: EmbedType,
-
-  resourceType: string,
-  resource: EmbeddableResource,
-  resourceParameters: Parameter[],
-
-  token: string,
-  iframeUrl: string,
-  siteUrl: string,
-  secretKey: string,
-  params: { [slug: string]: any },
-
-  displayOptions: DisplayOptions,
-  previewParameters: Parameter[],
-  parameterValues: { [id: ParameterId]: any },
-  embeddingParams: EmbeddingParams,
-
-  onChangeDisplayOptions: DisplayOptions => void,
-  onChangeEmbeddingParameters: EmbeddingParams => void,
-  onChangeParameterValue: (id: ParameterId, value: any) => void,
-  onChangePane: (pane: Pane) => void,
-  onSave: () => Promise<void>,
-  onUnpublish: () => Promise<void>,
-  onDiscard: () => void,
-};
+import { t } from "ttag";
+import ToggleLarge from "metabase/components/ToggleLarge";
+import Button from "metabase/core/components/Button";
+import ActionButton from "metabase/components/ActionButton";
+import AdvancedSettingsPane from "./AdvancedSettingsPane";
+import PreviewPane from "./PreviewPane";
+import EmbedCodePane from "./EmbedCodePane";
 
 const AdvancedEmbedPane = ({
   pane,
@@ -69,7 +33,7 @@ const AdvancedEmbedPane = ({
   onSave,
   onUnpublish,
   onDiscard,
-}: Props) => (
+}) => (
   <div className="full flex">
     <div className="flex-full p4 flex flex-column">
       {!resource.enable_embedding ||
@@ -110,7 +74,11 @@ const AdvancedEmbedPane = ({
         onChange={() => onChangePane(pane === "preview" ? "code" : "preview")}
       />
       {pane === "preview" ? (
-        <PreviewPane className="flex-full" previewUrl={iframeUrl} />
+        <PreviewPane
+          className="flex-full"
+          previewUrl={iframeUrl}
+          isTransparent={displayOptions.theme === "transparent"}
+        />
       ) : pane === "code" ? (
         <EmbedCodePane
           className="flex-full"

@@ -1,5 +1,9 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
+import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import lineAreaBarRenderer, {
+  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
+} from "metabase/visualizations/lib/LineAreaBarRenderer";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -8,11 +12,6 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "../__support__/visualizations";
-
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import lineAreaBarRenderer, {
-  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
-} from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
 window.SVGElement.prototype.getBBox = () => ({
@@ -25,7 +24,7 @@ window.SVGElement.prototype.getBBox = () => ({
 describe("LineAreaBarRenderer", () => {
   let element;
 
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.insertAdjacentHTML(
       "afterbegin",
       '<div id="fixture-parent" style="height: 800px; width: 1200px;"><div id="fixture" /></div>',
@@ -33,14 +32,20 @@ describe("LineAreaBarRenderer", () => {
     element = document.getElementById("fixture");
   });
 
-  afterEach(function() {
+  afterEach(function () {
     document.body.removeChild(document.getElementById("fixture-parent"));
   });
 
   it("should display numeric year in X-axis and tooltip correctly", () => {
     const onHoverChange = jest.fn();
     renderTimeseriesLine({
-      rowsOfSeries: [[[2015, 1], [2016, 2], [2017, 3]]],
+      rowsOfSeries: [
+        [
+          [2015, 1],
+          [2016, 2],
+          [2017, 3],
+        ],
+      ],
       unit: "year",
       onHoverChange,
     });
@@ -61,7 +66,13 @@ describe("LineAreaBarRenderer", () => {
   it("should display a warning for invalid dates", () => {
     const onRender = jest.fn();
     renderTimeseriesLine({
-      rowsOfSeries: [[["2019-W52", 1], ["2019-W53", 2], ["2019-W01", 3]]],
+      rowsOfSeries: [
+        [
+          ["2019-W52", 1],
+          ["2019-W53", 2],
+          ["2019-W01", 3],
+        ],
+      ],
       unit: "week",
       onRender,
     });
@@ -159,7 +170,10 @@ describe("LineAreaBarRenderer", () => {
   });
 
   it("should use column settings for tick formatting and tooltips", () => {
-    const rows = [["2016-01-01", 1], ["2016-02-01", 2]];
+    const rows = [
+      ["2016-01-01", 1],
+      ["2016-02-01", 2],
+    ];
 
     // column settings are cached based on name.
     // we need something unique to not conflict with other tests.
@@ -196,7 +210,11 @@ describe("LineAreaBarRenderer", () => {
   });
 
   describe("should render correctly a compound line graph", () => {
-    const rowsOfNonemptyCard = [[2015, 1], [2016, 2], [2017, 3]];
+    const rowsOfNonemptyCard = [
+      [2015, 1],
+      [2016, 2],
+      [2017, 3],
+    ];
 
     it("when only second series is not empty", () => {
       renderTimeseriesLine({
@@ -217,7 +235,7 @@ describe("LineAreaBarRenderer", () => {
       expect(qs(".line")).not.toBe(null);
     });
 
-    it("when there are many empty and nonempty values ", () => {
+    it("when there are many empty and nonempty values", () => {
       renderTimeseriesLine({
         rowsOfSeries: [
           [],
@@ -237,14 +255,20 @@ describe("LineAreaBarRenderer", () => {
   describe("should render correctly a compound bar graph", () => {
     it("when only second series is not empty", () => {
       renderScalarBar({
-        scalars: [["Non-empty value", null], ["Empty value", 25]],
+        scalars: [
+          ["Non-empty value", null],
+          ["Empty value", 25],
+        ],
       });
       expect(qs(".bar")).not.toBe(null);
     });
 
     it("when only first series is not empty", () => {
       renderScalarBar({
-        scalars: [["Non-empty value", 15], ["Empty value", null]],
+        scalars: [
+          ["Non-empty value", 15],
+          ["Empty value", null],
+        ],
       });
       expect(qs(".bar")).not.toBe(null);
     });
@@ -267,7 +291,10 @@ describe("LineAreaBarRenderer", () => {
 
   describe("goals", () => {
     it("should render a goal line", () => {
-      const rows = [["2016", 1], ["2017", 2]];
+      const rows = [
+        ["2016", 1],
+        ["2017", 2],
+      ];
 
       renderTimeseriesLine({
         rowsOfSeries: [rows],
@@ -280,11 +307,14 @@ describe("LineAreaBarRenderer", () => {
 
       expect(qs(".goal .line")).not.toBe(null);
       expect(qs(".goal text")).not.toBe(null);
-      expect(qs(".goal text").textContent).toEqual("Goal");
+      expect(qs(".goal text")).toHaveTextContent("Goal");
     });
 
     it("should render a goal tooltip with the proper value", () => {
-      const rows = [["2016", 1], ["2017", 2]];
+      const rows = [
+        ["2016", 1],
+        ["2017", 2],
+      ];
 
       const goalValue = 30;
       const onHoverChange = jest.fn();
@@ -314,7 +344,11 @@ describe("LineAreaBarRenderer", () => {
           {
             data: {
               cols: [NumberColumn(), NumberColumn()],
-              rows: [[1, 1], [2, 2], [3, 1]],
+              rows: [
+                [1, 1],
+                [2, 2],
+                [3, 1],
+              ],
             },
             card: {
               display: "bar",
@@ -337,13 +371,10 @@ describe("LineAreaBarRenderer", () => {
       const data = [[["a", 1]]];
       const warn = jest.fn();
 
-      const {
-        groups,
-        dimension,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, dimension, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups[0][0].all()[0]).toEqual({ key: "a", value: 1 });
       expect(dimension.top(1)).toEqual([["a", 1]]);
       expect(yExtents).toEqual([[1, 1]]);
@@ -351,17 +382,27 @@ describe("LineAreaBarRenderer", () => {
 
     it("should group multiple series", () => {
       const props = { settings: {}, chartType: "bar" };
-      const data = [[["a", 1], ["b", 2]], [["a", 2], ["b", 3]]];
+      const data = [
+        [
+          ["a", 1],
+          ["b", 2],
+        ],
+        [
+          ["a", 2],
+          ["b", 3],
+        ],
+      ];
       const warn = jest.fn();
 
-      const {
-        groups,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups.length).toEqual(2);
-      expect(yExtents).toEqual([[1, 2], [2, 3]]);
+      expect(yExtents).toEqual([
+        [1, 2],
+        [2, 3],
+      ]);
     });
 
     it("should group stacked series", () => {
@@ -369,15 +410,22 @@ describe("LineAreaBarRenderer", () => {
         settings: { "stackable.stack_type": "stacked" },
         chartType: "bar",
       };
-      const data = [[["a", 1], ["b", 2]], [["a", 2], ["b", 3]]];
+      const data = [
+        [
+          ["a", 1],
+          ["b", 2],
+        ],
+        [
+          ["a", 2],
+          ["b", 3],
+        ],
+      ];
       const warn = jest.fn();
 
-      const {
-        groups,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups.length).toEqual(1);
       expect(yExtents).toEqual([[3, 5]]);
     });

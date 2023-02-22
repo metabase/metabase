@@ -1,18 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import EntityName from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
 
-import EntityName from "metabase/entities/containers/EntityName";
-
 import * as DatabaseDetailCards from "../lib/cards/database_detail";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditDatabaseDetail = ({ params, ...props }: Props) => {
+const AuditDatabaseDetail = ({ params, ...props }) => {
   const databaseId = parseInt(params.databaseId);
   return (
     <AuditContent
@@ -21,7 +16,7 @@ const AuditDatabaseDetail = ({ params, ...props }: Props) => {
         <EntityName
           entityType="databases"
           entityId={databaseId}
-          property={"name"}
+          property="name"
         />
       }
       tabs={AuditDatabaseDetail.tabs}

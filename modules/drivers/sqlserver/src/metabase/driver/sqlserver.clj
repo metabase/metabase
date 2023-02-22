@@ -1,26 +1,33 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql :as sql]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection ResultSet Time Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.util.Date))
+  (:require
+   [clojure.data.xml :as xml]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -30,6 +37,15 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+(defmethod driver/supports? [:sqlserver :now] [_ _] true)
+(defmethod driver/supports? [:sqlserver :datetime-diff] [_ _] true)
+
+(defmethod driver/database-supports? [:sqlserver :convert-timezone]
+  [_driver _feature _database]
+  true)
+(defmethod driver/database-supports? [:sqlserver :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -75,7 +91,6 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
-
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
@@ -106,12 +121,25 @@
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
+(def ^:private ^:dynamic *field-options*
+  "The options part of the `:field` clause we're currently compiling."
+  nil)
+
+(defmethod sql.qp/->honeysql [:sqlserver :field]
+  [driver [_ _ options :as field-clause]]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    (binding [*field-options* options]
+      (parent-method driver field-clause))))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (hsql/call :datepart (hsql/raw (name unit)) expr))
+  (hx/call :datepart (hx/raw (name unit)) expr))
 
 (defn- date-add [unit & exprs]
-  (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
+  (apply hx/call :dateadd (hx/raw (name unit)) exprs))
+
+(defn- date-diff [unit x y]
+  (hx/call :datediff_big (hx/raw (name unit)) x y))
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -119,6 +147,10 @@
 (defmethod sql.qp/date [:sqlserver :default]
   [_ _ expr]
   expr)
+
+(defmethod sql.qp/date [:sqlserver :second-of-minute]
+  [_ _ expr]
+  (date-part :second expr))
 
 (defmethod sql.qp/date [:sqlserver :minute]
   [_ _ expr]
@@ -130,7 +162,7 @@
 
 (defmethod sql.qp/date [:sqlserver :hour]
   [_ _ expr]
-  (hsql/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
+  (hx/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
 
 (defmethod sql.qp/date [:sqlserver :hour-of-day]
   [_ _ expr]
@@ -140,9 +172,9 @@
   [_ _ expr]
   ;; `::optimized-bucketing?` is added by `optimized-temporal-buckets`; this signifies that we can use more efficient
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/day expr)
-    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
+    (hx/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
@@ -156,21 +188,30 @@
   [_ _ expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
-;; The equivalent SQL looks like:
-;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
+(defn- trunc-week
+  [expr]
+  (let [original-type (if (= "datetimeoffset" (hx/type-info->db-type (hx/type-info expr)))
+                        "datetimeoffset"
+                        "datetime")]
+    (hx/cast original-type
+      (date-add :day
+                (hx/- 1 (date-part :weekday expr))
+                (hx/->date expr)))))
+
 (defmethod sql.qp/date [:sqlserver :week]
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver trunc-week expr))
+
+(defmethod sql.qp/date [:sqlserver :week-of-year-iso]
   [_ _ expr]
-  (hx/->datetime
-   (date-add :day
-             (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
-             (hx/->date expr))))
+  (date-part :iso_week expr))
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/month expr)
-    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
+    (hx/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_ _ expr]
@@ -183,7 +224,7 @@
   [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
-            (hsql/call :DateFromParts (hx/year expr) 1 1)))
+            (hx/call :DateFromParts (hx/year expr) 1 1)))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_ _ expr]
@@ -191,9 +232,13 @@
 
 (defmethod sql.qp/date [:sqlserver :year]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
-    (hsql/call :DateFromParts (hx/year expr) 1 1)))
+    (hx/call :DateFromParts (hx/year expr) 1 1)))
+
+(defmethod sql.qp/date [:sqlserver :year-of-era]
+  [_ _ expr]
+  (date-part :year expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
@@ -206,6 +251,78 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
+(defonce
+  ^{:private true
+    :doc     "A map of all zone-id to the corresponding window-zone.
+             I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
+  zone-id->windows-zone
+  (let [data (-> (io/resource "timezones/windowsZones.xml")
+                 io/reader
+                 xml/parse
+                 :content
+                 second
+                 :content
+                 first
+                 :content)]
+    (->> (for [mapZone data
+               :let [attrs       (:attrs mapZone)
+                     window-zone (:other attrs)
+                     zone-ids    (str/split (:type attrs) #" ")]]
+           (zipmap zone-ids (repeat window-zone)))
+         (apply merge {"UTC" "UTC"}))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr            (sql.qp/->honeysql driver arg)
+        datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
+    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+    (-> (if datetimeoffset?
+          expr
+          (hx/at-time-zone expr (zone-id->windows-zone source-timezone)))
+        (hx/at-time-zone (zone-id->windows-zone target-timezone))
+        hx/->datetime)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
+        x (if (hx/is-of-type? x "datetimeoffset")
+            (hx/at-time-zone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            x)
+        x (hx/cast "datetime2" x)
+        y (if (hx/is-of-type? y "datetimeoffset")
+            (hx/at-time-zone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            y)
+        y (hx/cast "datetime2" y)]
+    (sql.qp/datetime-diff driver unit x y)))
+
+(defmethod sql.qp/datetime-diff [:sqlserver :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:sqlserver :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:sqlserver :month]
+  [_driver _unit x y]
+  (hx/+ (date-diff :month x y)
+        ;; datediff counts month boundaries not whole months, so we need to adjust
+        ;; if x<y but x>y in the month calendar then subtract one month
+        ;; if x>y but x<y in the month calendar then add one month
+        (hx/call
+         :case
+         (hx/call :and (hx/call :< x y) (hx/call :> (date-part :day x) (date-part :day y))) -1
+         (hx/call :and (hx/call :> x y) (hx/call :< (date-part :day x) (date-part :day y))) 1
+         :else 0)))
+
+(defmethod sql.qp/datetime-diff [:sqlserver :week] [_driver _unit x y] (hx// (date-diff :day x y) 7))
+(defmethod sql.qp/datetime-diff [:sqlserver :day] [_driver _unit x y] (date-diff :day x y))
+(defmethod sql.qp/datetime-diff [:sqlserver :hour] [_driver _unit x y] (hx// (date-diff :millisecond x y) 3600000))
+(defmethod sql.qp/datetime-diff [:sqlserver :minute] [_driver _unit x y] (date-diff :minute x y))
+(defmethod sql.qp/datetime-diff [:sqlserver :second] [_driver _unit x y] (date-diff :second x y))
+
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (hx/->datetime expr))
@@ -215,7 +332,7 @@
   ;; "20190421164300" -> "2019-04-21 16:43:00"
   ;;                          5  8  11 14 17
   (let [formatted (reduce (fn [expr [index c]]
-                            (hsql/call :stuff expr index 0 c))
+                            (hx/call :stuff expr index 0 c))
                           expr
                           [[5 "-"]
                            [8 "-"]
@@ -225,7 +342,7 @@
     ;; 20 is ODBC canonical yyyy-mm-dd hh:mi:ss (24h). I couldn't find a way to use an arbitrary format string when
     ;; parsing and SO seems to push towards manually formatting a string and then parsing with one of the available
     ;; formats. Not great.
-    (hsql/call :convert (hsql/raw "datetime2") formatted 20)))
+    (hx/call :convert (hx/raw "datetime2") formatted 20)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_ _ honeysql-form {value :limit}]
@@ -233,9 +350,9 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_ _ honeysql-form {{:keys [items page]} :page}]
-  (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                                 (* items (dec page))
-                                                 items))))
+  (assoc honeysql-form :offset (hx/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
+                                               (* items (dec page))
+                                               items))))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -285,7 +402,7 @@
     breakout-clauses)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
   ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
   (let [optimized      (optimize-breakout-clauses breakout-fields)
@@ -294,17 +411,17 @@
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
       ;;    SELECT DateFromParts(year(field), month(field), 1)
-      (apply h/merge-select new-hsql (->> breakout-fields
-                                          (remove (set fields-fields))
-                                          (mapv (fn [field-clause]
-                                                  (sql.qp/as driver field-clause unique-name-fn)))))
+      (apply hh/merge-select new-hsql (->> breakout-fields
+                                           (remove (set fields-fields))
+                                           (mapv (fn [field-clause]
+                                                   (sql.qp/as driver field-clause unique-name-fn)))))
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply hh/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
-  "Optimize `:order-by` `subclauses` using `optimized-temporal-buckets`, if possible."
+  "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
   [subclauses]
   (vec
    (mapcat
@@ -315,24 +432,13 @@
         [subclause]))
     subclauses)))
 
-;; From the dox:
-;;
-;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
-;; expressions, unless TOP, OFFSET or FOR XML is also specified.
-;;
-;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
-;; but not for `top-level` queries (since it's not needed there)
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
-  [driver _ honeysql-form {:keys [limit], :as query}]
+  [driver _ honeysql-form query]
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
-        add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
-        honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
-                       driver :order-by honeysql-form query)]
-    (if-not add-limit?
-      honeysql-form
-      (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
+        parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
+    (parent-method driver :order-by honeysql-form query)))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -345,33 +451,33 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
   [driver [_ field]]
-  (hsql/call :stdevp (sql.qp/->honeysql driver field)))
+  (hx/call :stdevp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :var]
   [driver [_ field]]
-  (hsql/call :varp (sql.qp/->honeysql driver field)))
+  (hx/call :varp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
   (if length
-    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
-    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hx/call :len (sql.qp/->honeysql driver arg)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :length]
   [driver [_ arg]]
-  (hsql/call :len (sql.qp/->honeysql driver arg)))
+  (hx/call :len (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :ceil]
   [driver [_ arg]]
-  (hsql/call :ceiling (sql.qp/->honeysql driver arg)))
+  (hx/call :ceiling (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :round]
   [driver [_ arg]]
-  (hsql/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
+  (hx/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
 
 (defmethod sql.qp/->honeysql [:sqlserver :power]
   [driver [_ arg power]]
-  (hsql/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
+  (hx/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
@@ -389,14 +495,80 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
+(defmethod sql.qp/current-datetime-honeysql-form :sqlserver
+  [_]
+  (hx/with-database-type-info :%getdate "datetime"))
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
-;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
-;; the same as the default
+;; From the dox:
+;;
+;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
+;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this :
+;;
+;; - Remove `:order-by` without a corresponding `:limit` inside a `:join` (since it usually doesn't really accomplish
+;;   anything anyway; if you really need it you can always specify a limit yourself)
+;;
+;;   TODO - I'm not actually sure about this. What about a RIGHT JOIN? Postgres at least seems to ignore the ORDER BY
+;;   inside a subselect RIGHT JOIN, altho I can imagine other DBMSes actually returning results in that order. I guess
+;;   we will see what happens down the road.
+;;
+;; - Add a max-results `:limit` to source queries if there's not already one
+
+(defn- fix-order-bys [inner-query]
+  (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
+          ;; `:limit`, and the only two possible parents there are `:query` (for top-level queries) or `:source-query`.
+          (in-source-query? [path]
+            (= (last path) :source-query))
+          ;; `in-join-source-query?` = whether the parent is `:source-query`, and the grandparent is `:joins`, i.e. we
+          ;; are a source query being joined against. In this case it's apparently ok to remove the ORDER BY.
+          ;;
+          ;; What about source-query in source-query in Join? Not sure about that case. Probably better to be safe and
+          ;; not do the aggressive optimizations. See
+          ;; https://github.com/metabase/metabase/pull/19384#discussion_r787002558 for more details.
+          (in-join-source-query? [path]
+            (and (in-source-query? path)
+                 (= (last (butlast path)) :joins)))
+          (has-order-by-without-limit? [m]
+            (and (map? m)
+                 (:order-by m)
+                 (not (:limit m))))
+          (remove-order-by? [path m]
+            (and (has-order-by-without-limit? m)
+                 (in-join-source-query? path)))
+          (add-limit? [path m]
+            (and (has-order-by-without-limit? m)
+                 (not (in-join-source-query? path))
+                 (in-source-query? path)))]
+    (mbql.u/replace inner-query
+      ;; remove order by and then recurse in case we need to do more tranformations at another level
+      (m :guard (partial remove-order-by? &parents))
+      (fix-order-bys (dissoc m :order-by))
+
+      (m :guard (partial add-limit? &parents))
+      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+
+(defmethod sql.qp/preprocess :sqlserver
+  [driver inner-query]
+  (let [parent-method (get-method sql.qp/preprocess :sql)]
+    (fix-order-bys (parent-method driver inner-query))))
+
+;; In order to support certain native queries that might return results at the end, we have to use only prepared
+;; statements (see #9940)
+(defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
+  false)
+
+;; SQL server only supports setting holdability at the connection level, not the statement level, as per
+;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
+;; and
+;; https://github.com/microsoft/mssql-jdbc/blob/v9.2.1/src/main/java/com/microsoft/sqlserver/jdbc/SQLServerConnection.java#L5349-L5357
+;; an exception is thrown if they do not match, so it's safer to simply NOT try to override it at the statement level,
+;; because it's not supported anyway
+;; this impl is otherwise the same as the default
 (defmethod sql-jdbc.execute/prepared-statement :sqlserver
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql
@@ -405,6 +577,22 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :sqlserver
+  [_ ^Connection conn]
+  (let [stmt (.createStatement conn
+               ResultSet/TYPE_FORWARD_ONLY
+               ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -465,45 +653,15 @@
     (.getObject rs i OffsetDateTime)))
 
 ;; SQL Server doesn't really support boolean types so use bits instead (#11592)
-(defmethod sql/->prepared-substitution [:sqlserver Boolean]
+(defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
-  (sql/->prepared-substitution driver (if bool 1 0)))
+  (driver.sql/->prepared-substitution driver (if bool 1 0)))
 
-;; SQL server only supports setting holdability at the connection level, not the statement level, as per
-;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
-;; and
-;; https://github.com/microsoft/mssql-jdbc/blob/v9.2.1/src/main/java/com/microsoft/sqlserver/jdbc/SQLServerConnection.java#L5349-L5357
-;; an exception is thrown if they do not match, so it's safer to simply NOT try to override it at the statement level,
-;; because it's not supported anyway
-(defmethod sql-jdbc.execute/prepared-statement :sqlserver
-  [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn
-                                sql
-                                ResultSet/TYPE_FORWARD_ONLY
-                                ResultSet/CONCUR_READ_ONLY)]
-    (try
-      (try
-        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-        (catch Throwable e
-          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
-      (sql-jdbc.execute/set-parameters! driver stmt params)
-      stmt
-      (catch Throwable e
-        (.close stmt)
-        (throw e)))))
-
-;; similar rationale to prepared-statement above
-(defmethod sql-jdbc.execute/statement :sqlserver
-  [_ ^Connection conn]
-  (let [stmt (.createStatement conn
-                               ResultSet/TYPE_FORWARD_ONLY
-                               ResultSet/CONCUR_READ_ONLY)]
-    (try
-      (try
-        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-        (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
-      stmt
-      (catch Throwable e
-        (.close stmt)
-        (throw e)))))
+(defmethod driver/normalize-db-details :sqlserver
+  [_ database]
+  (if-let [rowcount-override (-> database :details :rowcount-override)]
+    ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
+    ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
+    (-> (update database :details #(dissoc % :rowcount-override))
+        (update :settings #(assoc % :max-results-bare-rows rowcount-override)))
+    database))

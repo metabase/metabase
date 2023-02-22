@@ -1,6 +1,7 @@
 import { normalize } from "normalizr";
 import _ from "underscore";
 
+import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -12,9 +13,6 @@ import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
-import { createSelector } from "reselect";
-
-import forms from "./databases/forms";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -37,27 +35,31 @@ const Databases = createEntity({
   objectActions: {
     fetchDatabaseMetadata: createThunkAction(
       FETCH_DATABASE_METADATA,
-      ({ id }, { reload = false, params } = {}) => (dispatch, getState) =>
-        fetchData({
-          dispatch,
-          getState,
-          requestStatePath: ["metadata", "databases", id],
-          existingStatePath: ["metadata", "databases", id],
-          getData: async () => {
-            const databaseMetadata = await MetabaseApi.db_metadata({
-              dbId: id,
-              ...params,
-            });
-            return normalize(databaseMetadata, DatabaseSchema);
-          },
-          reload,
-        }),
+      ({ id }, { reload = false, params } = {}) =>
+        (dispatch, getState) =>
+          fetchData({
+            dispatch,
+            getState,
+            requestStatePath: ["metadata", "databases", id],
+            existingStatePath: ["metadata", "databases", id],
+            getData: async () => {
+              const databaseMetadata = await MetabaseApi.db_metadata({
+                dbId: id,
+                ...params,
+              });
+              return normalize(databaseMetadata, DatabaseSchema);
+            },
+            reload,
+          }),
     ),
 
     fetchIdfields: createThunkAction(
       FETCH_DATABASE_IDFIELDS,
-      ({ id }) => async () =>
-        normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]),
+      ({ id }, params = {}) =>
+        async () =>
+          normalize(await MetabaseApi.db_idfields({ dbId: id, ...params }), [
+            Fields.schema,
+          ]),
     ),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
@@ -73,8 +75,8 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
-    getHasSampleDataset: state =>
-      _.any(Databases.selectors.getList(state), db => db.is_sample),
+    getHasSampleDatabase: (state, props) =>
+      _.any(Databases.selectors.getList(state, props), db => db.is_sample),
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue
       [state => getFields(state), (state, props) => props.databaseId],
@@ -85,9 +87,6 @@ const Databases = createEntity({
         }),
     ),
   },
-
-  // FORM
-  forms,
 });
 
 export default Databases;

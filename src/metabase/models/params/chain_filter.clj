@@ -61,32 +61,37 @@
   FROM category
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Database Dimension Field FieldValues Table]]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params :as params]
-            [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.models.table :as table]
-            [metabase.query-processor :as qp]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Field FieldValues Table]]
+   [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params :as params]
+   [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.models.table :as table]
+   [metabase.query-processor :as qp]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
+
+;; for [[memoize/ttl]] keys
+(comment mdb.connection/keep-me)
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
@@ -102,6 +107,8 @@
   "Whether Field with `field-id` is a temporal Field such as a Date or Datetime. Cached for 10 minutes to avoid hitting
   the DB too much since this is unlike to change often, if ever."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[field-id]]
+                         [(mdb.connection/unique-identifier) field-id])}
    (fn [field-id]
      (types/temporal-field? (db/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
@@ -175,21 +182,21 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (db/query {:select    [[:fk-field.id :f1]
-                                    [:fk-table.id :t1]
-                                    [:pk-field.id :f2]
-                                    [:pk-field.table_id :t2]]
-                        :from      [[Field :fk-field]]
-                        :left-join [[Table :fk-table]    [:= :fk-field.table_id :fk-table.id]
-                                    [Database :database] [:= :fk-table.db_id :database.id]
-                                    [Field :pk-field]    [:= :fk-field.fk_target_field_id :pk-field.id]]
-                        :where     [:and
-                                    [:= :database.id database-id]
-                                    [:not= :fk-field.fk_target_field_id nil]]})]
+  (let [rows (mdb.query/query {:select    [[:fk-field.id :f1]
+                                           [:fk-table.id :t1]
+                                           [:pk-field.id :f2]
+                                           [:pk-field.table_id :t2]]
+                               :from      [[:metabase_field :fk-field]]
+                               :left-join [[:metabase_table :fk-table]    [:= :fk-field.table_id :fk-table.id]
+                                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                           [:metabase_field :pk-field]    [:= :fk-field.fk_target_field_id :pk-field.id]]
+                               :where     [:and
+                                           [:= :database.id database-id]
+                                           [:not= :fk-field.fk_target_field_id nil]]})]
     (reduce
      (partial merge-with merge)
      {}
-     (for [{:keys [t1 f1 t2 f2] :as m} rows]
+     (for [{:keys [t1 f1 t2 f2]} rows]
        (merge
         {t1 {t2 [{:lhs {:table t1, :field f1}, :rhs {:table t2, :field f2}}]}}
         (let [reverse-join {:lhs {:table t2, :field f2}, :rhs {:table t1, :field f1}}]
@@ -210,7 +217,11 @@
   right-hand-side of the join. Of course, you can join in either direction (e.g. `FROM B JOIN A ...` or `FROM A JOIN
   B`), so both `A -> B` and `B -> A` versions of the relationship are returned; having both possibilities simplifies
   the implementation of `find-joins` below."
-  (memoize/ttl database-fk-relationships* :ttl/threshold find-joins-cache-duration-ms))
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[database-id enable-reverse-joins?]]
+                         [(mdb.connection/unique-identifier) database-id enable-reverse-joins?])}
+   database-fk-relationships*
+   :ttl/threshold find-joins-cache-duration-ms))
 
 (defn- traverse-graph
   "A breadth first traversal of graph, not probing any paths that are over `max-depth` in length."
@@ -264,13 +275,21 @@
     (find-joins my-database-id <airport> <country>)
     ;; ->
     ;; 3 joins needed: airport -> municipality; municipality -> region; region -> country
-    [{:lhs {:table <airport>, :field <airport.municipality-id>}
+    [{:lhs {:table <airport>, :field <airport.municipality_id>}
       :rhs {:table <municipality>, :field <municipality.id>}}
      {:lhs {:table <municipality>, :field <region.id>}
       :rhs {:table <region>, :field <country.id>}}
      {:lhs {:table <region>, :field <region.country_id>}
       :rhs {:table <country>, :field <country.id>}}]"
-  (let [f (memoize/ttl find-joins* :ttl/threshold find-joins-cache-duration-ms)]
+  (let [f (memoize/ttl
+           ^{::memoize/args-fn (fn [[database-id source-table-id other-table-id enable-reverse-joins?]]
+                                 [(mdb.connection/unique-identifier)
+                                  database-id
+                                  source-table-id
+                                  other-table-id
+                                  enable-reverse-joins?])}
+           find-joins*
+           :ttl/threshold find-joins-cache-duration-ms)]
     (fn
       ([database-id source-table-id other-table-id]
        (f database-id source-table-id other-table-id *enable-reverse-joins*))
@@ -279,6 +298,8 @@
 
 (def ^:private ^{:arglists '([source-table other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[source-table-id other-table-ids enable-reverse-joins?]]
+                         [(mdb.connection/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
    (fn [source-table-id other-table-ids enable-reverse-joins?]
      (let [db-id     (table/table-id->database-id source-table-id)
            all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
@@ -391,7 +412,8 @@
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))})
+                   (add-filters source-table-id joined-table-ids constraints)))
+   :middleware {:disable-remaps? true}})
 
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
@@ -404,27 +426,35 @@
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
-      (qp/process-query
-       mbql-query
-       {:rff (constantly (if original-field-id
-                           ;; if original-field-id is specified (for Field->Field remapping) just return each row,
-                           ;; which will be [original-value remapped-value], as-is. reducing function is conj, so rff,
-                           ;; which is of the form
-                           ;;
-                           ;;     (f metadata) -> rf
-                           ;;
-                           ;; will be (constantly conj).
-                           conj
-                           ;; if we're just returning values for a single field with no remapping (or if the mapping
-                           ;; is human-readable values, which is done in Clojure-land), then just return the first
-                           ;; value in each row. e.g.
-                           ;;
-                           ;;    [v] -> v
-                           ;;
-                           ;; Thus rff is
-                           ;;
-                           ;;    (f metadata) -> ((map first) conj)
-                           ((map first) conj)))})
+      (let [query-limit (get-in mbql-query [:query :limit])
+            values      (qp/process-query
+                         mbql-query
+                         {:rff (constantly (if original-field-id
+                                             ;; if original-field-id is specified (for Field->Field remapping) just return each row,
+                                             ;; which will be [original-value remapped-value], as-is. reducing function is conj, so rff,
+                                             ;; which is of the form
+                                             ;;
+                                             ;;     (f metadata) -> rf
+                                             ;;
+                                             ;; will be (constantly conj).
+                                             conj
+                                             ;; if we're just returning values for a single field with no remapping (or if the mapping
+                                             ;; is human-readable values, which is done in Clojure-land), then just return the first
+                                             ;; value in each row. e.g.
+                                             ;;
+                                             ;;    [v] -> v
+                                             ;;
+                                             ;; Thus rff is
+                                             ;;
+                                             ;;    (f metadata) -> ((map first) conj)
+                                             ((map first) conj)))})]
+        {:values          values
+         ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
+         ;; so that calling chain-filter-search on the same field will search from DB.
+         :has_more_values (if (nil? query-limit)
+                            true
+                            (= (count values) query-limit))})
+
       (catch Throwable e
         (throw (ex-info (tru "Error executing chain filter query")
                         {:field-id    field-id
@@ -440,6 +470,7 @@
   [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
+                                                                        [:= :type "full"]
                                                                         [:= :field_id field-id]
                                                                         [:not= :human_readable_values nil]
                                                                         [:not= :human_readable_values "{}"]]})]
@@ -462,8 +493,8 @@
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
    options           :- (s/maybe Options)]
-  (let [values (unremapped-chain-filter field-id constraints options)]
-    (add-human-readable-values values v->human-readable)))
+  (let [result (unremapped-chain-filter field-id constraints options)]
+    (update result :values add-human-readable-values v->human-readable)))
 
 (s/defn ^:private field-to-field-remapped-chain-filter
   "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
@@ -474,57 +505,60 @@
    options           :- (s/maybe Options)]
   (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
 
-(defmethod hformat/fn-handler (u/qualified-name ::parens) [_ x]
-  (str "(" (hformat/to-sql x) ")"))
+(defn- format-union
+  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
+  fail on Postgres."
+  [_clause exprs]
+  (let [[sqls args] (sql/format-expr-list exprs)
+        sql         (str/join " UNION " sqls)]
+    (into [sql] args)))
 
-(defn- parens [x]
-  (hsql/call (u/qualified-name ::parens) x))
+(sql/register-clause! ::union format-union :union)
+
+(defn- remapped-field-id-query [field-id]
+  {:select [[:ids.id :id]]
+   :from   [[{::union [{:select [[:dimension.human_readable_field_id :id]]
+                        :from   [[:dimension :dimension]]
+                        :where  [:and
+                                 [:= :dimension.field_id field-id]
+                                 [:not= :dimension.human_readable_field_id nil]]
+                        :limit  1}
+                       {:select    [[:dest.id :id]]
+                        :from      [[:metabase_field :source]]
+                        :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+                                    [:metabase_field :dest] [:= :dest.table_id :table.id]]
+                        :where     [:and
+                                    [:= :source.id field-id]
+                                    (mdb.u/isa :source.semantic_type :type/PK)
+                                    (mdb.u/isa :dest.semantic_type :type/Name)]
+                        :limit     1}]}
+             :ids]]
+   :limit  1})
 
 ;; TODO -- add some caching here?
 (s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZero)
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- su/IntGreaterThanZero]
-  (let [[{:keys [id]}] (db/query {:select [[:ids.id :id]]
-                                  :from   [[{:union [(parens
-                                                      {:select [[:dimension.human_readable_field_id :id]]
-                                                       :from   [[Dimension :dimension]]
-                                                       :where  [:and
-                                                                [:= :dimension.field_id field-id]
-                                                                [:not= :dimension.human_readable_field_id nil]]
-                                                       :limit  1})
-                                                     (parens
-                                                      {:select    [[:dest.id :id]]
-                                                       :from      [[Field :source]]
-                                                       :left-join [[Table :table] [:= :source.table_id :table.id]
-                                                                   [Field :dest] [:= :dest.table_id :table.id]]
-                                                       :where     [:and
-                                                                   [:= :source.id field-id]
-                                                                   (mdb.u/isa :source.semantic_type :type/PK)
-                                                                   (mdb.u/isa :dest.semantic_type :type/Name)]
-                                                       :limit     1})]}
-                                            :ids]]
-                                  :limit  1})]
-    id))
+  (:id (first (mdb.query/query (remapped-field-id-query field-id)))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
-  [field-id constraints]
+  [field-id]
   (and
-   field-id
-   ;; only use cached Field values if there are no additional constraints (i.e. if this is just a simple "fetch all
-   ;; values" call)
-   (empty? constraints)
-   ;; check whether the Field *should* have Field values. Not whether it actually does.
-   (field-values/field-should-have-field-values? field-id)
-   ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
-   ;; human-readable remap, which is handled by [[human-readable-values-remapped-chain-filter]].
-   (db/exists? FieldValues :field_id field-id, :values [:not= nil], :human_readable_values nil)))
+    field-id
+    (field-values/field-should-have-field-values? field-id)))
 
-(defn- cached-field-values [field-id {:keys [limit]}]
-  (let [{:keys [values]} (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))]
-    (cond->> (map first values)
-      limit (take limit))))
+(defn- cached-field-values [field-id constraints {:keys [limit]}]
+  ;; TODO: why don't we remap the human readable values here?
+  (let [{:keys [values has_more_values]} (if (empty? constraints)
+                                           (params.field-values/get-or-create-field-values-for-current-user! (db/select-one Field :id field-id))
+                                           (params.field-values/get-or-create-linked-filter-field-values! (db/select-one Field :id field-id) constraints))]
+    {:values          (cond->> (map first values)
+                        limit (take limit))
+     :has_more_values (or (when limit
+                            (< limit (count values)))
+                          has_more_values)}))
 
 (s/defn chain-filter
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
@@ -533,7 +567,8 @@
 
     ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
     (chain-filter %venues.price {%categories.name \"BBQ\"})
-    ;; -> [1 2 3] (there are no BBQ places with price = 4)
+    ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
+           :has_more_values false}
 
   `options` are key-value options. Currently only one option is supported, `:limit`:
 
@@ -548,8 +583,8 @@
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
       (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if (use-cached-field-values? field-id constraints)
-        (cached-field-values field-id options)
+      (if (use-cached-field-values? field-id)
+        (cached-field-values field-id constraints options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
           (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
           (unremapped-chain-filter field-id constraints options))))))
@@ -585,10 +620,10 @@
     (unremapped-chain-filter field-id constraints options)))
 
 (defn- matching-unremapped-values [query v->human-readable]
-  (let [query (str/lower-case query)]
+  (let [query (u/lower-case-en query)]
     (for [[orig remapped] v->human-readable
           :when           (and (string? remapped)
-                               (str/includes? (str/lower-case remapped) query))]
+                               (str/includes? (u/lower-case-en remapped) query))]
       orig)))
 
 (s/defn ^:private human-readable-values-remapped-chain-filter-search
@@ -603,23 +638,37 @@
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
         (let [query-constraint  {field-id (set unremapped-values)}
               constraints       (merge constraints query-constraint)
-              values            (unremapped-chain-filter field-id constraints options)]
-          (add-human-readable-values values v->human-readable)))
-      []))
+              result            (unremapped-chain-filter field-id constraints options)]
+          (update result :values add-human-readable-values v->human-readable)))
+      {:values          []
+       :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (and (use-cached-field-values? field-id constraints)
-       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)))
+  (and (use-cached-field-values? field-id)
+       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)
+       (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                  ;; if we are doing a search, make sure we only use field values
+                                  ;; when we're certain the fieldvalues we stored are all the possible values.
+                                  ;; otherwise, we should search directly from DB
+                                  {:has_more_values false}
+                                  (if-not (empty? constraints)
+                                    {:type     "linked-filter"
+                                     :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                    (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                      {:type    "sandbox"
+                                       :hash_key hash-key}
+                                      {:type "full"}))))))
 
 (defn- cached-field-values-search
-  [field-id query {:keys [limit]}]
-  (let [values (cached-field-values field-id nil)
-        query  (str/lower-case query)]
-    (cond->> (filter (fn [s]
-                       (when s
-                         (str/includes? (str/lower-case s) query)))
-                     values)
-      limit (take limit))))
+  [field-id query constraints {:keys [limit]}]
+  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints nil)
+        query                            (u/lower-case-en query)]
+    {:values (cond->> (filter (fn [s]
+                                (when s
+                                  (str/includes? (u/lower-case-en s) query)))
+                              values)
+               limit (take limit))
+     :has_more_values has_more_values}))
 
 (s/defn ^:private field-to-field-remapped-chain-filter-search
   "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
@@ -646,7 +695,7 @@
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
         (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
         (if (search-cached-field-values? field-id constraints)
-          (cached-field-values-search field-id query options)
+          (cached-field-values-search field-id query constraints options)
           (if-let [remapped-field-id (remapped-field-id field-id)]
             (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
             (unremapped-chain-filter-search field-id constraints query options)))))))

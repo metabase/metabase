@@ -1,4 +1,10 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  visitDashboard,
+  sendEmailAndAssert,
+} from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const {
@@ -12,7 +18,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 18352", () => {
+describe("issue 18352", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -21,19 +27,15 @@ describe("issue 18352", () => {
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+        visitQuestion(card_id);
 
-        cy.visit(`/question/${card_id}`);
-        cy.wait("@cardQuery");
-
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
 
     cy.findByText("Email it").click();
 
@@ -42,18 +44,13 @@ describe("issue 18352", () => {
     // Click this just to close the popover that is blocking the "Send email now" button
     cy.findByText(`To:`).click();
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent");
+    sendEmailAndAssert(({ html }) => {
+      expect(html).not.to.include(
+        "An error occurred while displaying this card.",
+      );
 
-    cy.request("GET", "http://localhost:80/email").then(
-      ({ body: [{ html }] }) => {
-        expect(html).not.to.include(
-          "An error occurred while displaying this card.",
-        );
-
-        expect(html).to.include("foo");
-        expect(html).to.include("bar");
-      },
-    );
+      expect(html).to.include("foo");
+      expect(html).to.include("bar");
+    });
   });
 });

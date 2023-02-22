@@ -1,28 +1,14 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ParameterTargetList from "../components/ParameterTargetList";
-import SelectButton from "metabase/components/SelectButton";
-
 import _ from "underscore";
 import cx from "classnames";
-
-import type {
-  ParameterMappingUIOption,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
-
-type Props = {
-  target: ?ParameterTarget,
-  onChange: (target: ?ParameterTarget) => void,
-  mappingOptions: ParameterMappingUIOption[],
-  placeholder?: string,
-  children?: React.Element | (any => React.Element),
-};
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import SelectButton from "metabase/core/components/SelectButton";
+import ParameterTargetList from "../components/ParameterTargetList";
 
 export default class ParameterTargetWidget extends React.Component {
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.popover = React.createRef();
@@ -37,13 +23,8 @@ export default class ParameterTargetWidget extends React.Component {
   };
 
   render() {
-    const {
-      target,
-      onChange,
-      mappingOptions,
-      placeholder,
-      children,
-    } = this.props;
+    const { target, onChange, mappingOptions, placeholder, children } =
+      this.props;
 
     const disabled = mappingOptions.length === 0;
     const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));

@@ -1,0 +1,32 @@
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createMockTimeline } from "metabase-types/api/mocks";
+import EditTimelineModal, { EditTimelineModalProps } from "./EditTimelineModal";
+
+describe("EditTimelineModal", () => {
+  it("should submit modal", async () => {
+    const props = getProps();
+    const name = "Another timeline";
+
+    render(<EditTimelineModal {...props} />);
+    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.type(screen.getByLabelText("Name"), name);
+    userEvent.click(screen.getByText("Update"));
+
+    await waitFor(() => {
+      expect(props.onSubmit).toHaveBeenCalledWith({ ...props.timeline, name });
+    });
+  });
+});
+
+const getProps = (
+  opts?: Partial<EditTimelineModalProps>,
+): EditTimelineModalProps => ({
+  timeline: createMockTimeline(),
+  onSubmit: jest.fn(),
+  onArchive: jest.fn(),
+  onCancel: jest.fn(),
+  onClose: jest.fn(),
+  ...opts,
+});

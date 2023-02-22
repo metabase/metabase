@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { recipientIsValid } from "metabase/lib/pulse";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
 import UserPicker from "metabase/components/UserPicker";
@@ -17,6 +17,7 @@ const propTypes = {
   onUpdate: PropTypes.func,
   onDelete: PropTypes.func,
   onClose: PropTypes.func,
+  isAdmin: PropTypes.bool,
 };
 
 const AuditNotificationEditModal = ({
@@ -24,6 +25,7 @@ const AuditNotificationEditModal = ({
   type,
   users,
   invalidRecipientText,
+  isAdmin,
   onUpdate,
   onDelete,
   onClose,
@@ -83,6 +85,7 @@ const AuditNotificationEditModal = ({
     >
       {channels.map((channel, index) => (
         <UserPicker
+          canAddItems={isAdmin}
           key={index}
           value={channel.recipients}
           validateValue={recipientIsValid}

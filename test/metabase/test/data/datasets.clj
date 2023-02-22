@@ -12,11 +12,12 @@
 
   TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
   that?"
-  (:require [clojure.test :as t]
-            [colorize.core :as colorize]
-            [metabase.driver :as driver]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.data.interface :as tx]))
+  (:require
+   [clojure.test :as t]
+   [colorize.core :as colorize]
+   [metabase.driver :as driver]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]))
 
 (defn do-when-testing-driver
   "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`
@@ -48,8 +49,8 @@
   `(do-with-driver-when-testing ~driver (fn [] ~@body)))
 
 (defmacro test-driver
-  "Like `test-drivers`, but for a single driver."
-  {:style/indent 1}
+  "Like [[test-drivers]], but for a single driver."
+  {:style/indent :defn}
   [driver & body]
   `(with-driver-when-testing ~driver
      (t/testing (str "\n" (colorize/cyan ~driver))
@@ -58,7 +59,7 @@
 (defmacro test-drivers
   "Execute body (presumably containing tests) against the drivers in `drivers` that  we're currently testing against
   (i.e., if they're listed in the env var `DRIVERS`)."
-  {:style/indent 1}
+  {:style/indent :defn}
   [drivers & body]
   `(doseq [driver# ~drivers]
      (test-driver driver#

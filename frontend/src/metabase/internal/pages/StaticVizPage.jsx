@@ -1,14 +1,77 @@
-import React from "react";
-import { Box } from "grid-styled";
+import React, { useState } from "react";
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
+import {
+  STATIC_CHART_TYPES,
+  STATIC_CHART_DEFAULT_OPTIONS,
+} from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
+import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
+import {
+  GAUGE_CHART_DEFAULT_OPTIONS,
+  GAUGE_CHART_WITH_COLUMN_SETTINGS_OPTIONS,
+} from "metabase/static-viz/components/Gauge/constants.dev";
+import {
+  CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
+  CATEGORICAL_DONUT_CHART_TYPE,
+} from "../../static-viz/components/CategoricalDonutChart/constants";
+import {
+  PROGRESS_BAR_DEFAULT_DATA_1,
+  PROGRESS_BAR_DEFAULT_DATA_2,
+  PROGRESS_BAR_DEFAULT_DATA_3,
+  PROGRESS_BAR_DEFAULT_DATA_4,
+  PROGRESS_BAR_TYPE,
+} from "../../static-viz/components/ProgressBar/constants";
+import {
+  TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS,
+  CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS,
+  WATERFALL_CHART_TYPE,
+} from "../../static-viz/components/WaterfallChart/constants";
+import {
+  FUNNEL_CHART_DEFAULT_OPTIONS,
+  FUNNEL_CHART_TYPE,
+} from "../../static-viz/components/FunnelChart/constants";
+import {
+  LINE_AREA_BAR_CHART_TYPE,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_1,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_2,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_3,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_4,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_5,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_6,
+  LINE_AREA_BAR_DEFAULT_OPTIONS_7,
+} from "../../static-viz/components/LineAreaBarChart/constants";
+import { PageRoot, PageSection } from "./StaticVizPage.styled";
+
+function chartOptionsToStr(options) {
+  if (typeof options === "object") {
+    return JSON.stringify(options, null, 2);
+  }
+  return String(options);
+}
 
 export default function StaticVizPage() {
+  const [staticChartType, setStaticChartType] = useState(null);
+  const [staticChartCustomOptions, setStaticChartCustomOptions] =
+    useState(null);
+  const [staticChartError, setStaticChartError] = useState(null);
+
+  function chartOptionsToObj(optionsStr) {
+    try {
+      const chartOptions = JSON.parse(optionsStr);
+      setStaticChartError(null);
+      return chartOptions;
+    } catch (err) {
+      console.error(err);
+      setStaticChartError(err.toString());
+    }
+    return optionsStr;
+  }
+
   return (
-    <Box py={4}>
-      <Box className="wrapper wrapper--trim">
+    <PageRoot>
+      <div className="wrapper wrapper--trim">
         <Heading>Static Visualisations</Heading>
         <Text>
           These visualizations are used in dashboard subscriptions. They have no
@@ -17,199 +80,195 @@ export default function StaticVizPage() {
           /static-viz/ and see the effects. You might need to hard refresh to
           see updates.
         </Text>
-        <Box py={3}>
-          <Subhead>Line chart with timeseries data</Subhead>
-          <StaticChart
-            type="timeseries/line"
-            options={{
-              data: [
-                ["2020-01-10", 10],
-                ["2020-06-10", 60],
-                ["2020-12-10", 80],
-              ],
-              accessors: {
-                x: row => new Date(row[0]).valueOf(),
-                y: row => row[1],
-              },
-              labels: {
-                left: "Count",
-                bottom: "Created At",
-              },
-            }}
-          />
-        </Box>
-        <Box py={3}>
-          <Subhead>Area chart with timeseries data</Subhead>
-          <StaticChart
-            type="timeseries/area"
-            options={{
-              data: [
-                ["2020-01-10", 10],
-                ["2020-06-10", 60],
-                ["2020-12-10", 80],
-              ],
-              accessors: {
-                x: row => new Date(row[0]).valueOf(),
-                y: row => row[1],
-              },
-              settings: {
-                x: {
-                  date_style: "MMM",
-                },
-              },
-              labels: {
-                left: "Count",
-                bottom: "Created At",
-              },
-              colors: {
-                brand: "#88BF4D",
-              },
-            }}
-          />
-        </Box>
-        <Box py={3}>
-          <Subhead>Bar chart with timeseries data</Subhead>
-          <StaticChart
-            type="timeseries/bar"
-            options={{
-              data: [
-                ["2020-10-21", 20],
-                ["2020-10-22", 30],
-                ["2020-10-23", 25],
-                ["2020-10-24", 10],
-                ["2020-10-25", 15],
-              ],
-              accessors: {
-                x: row => new Date(row[0]).valueOf(),
-                y: row => row[1],
-              },
-              settings: {
-                x: {
-                  date_style: "MM/DD/YYYY",
-                },
-                y: {
-                  number_style: "currency",
-                  currency: "USD",
-                  currency_style: "symbol",
-                  decimals: 0,
-                },
-              },
-              labels: {
-                left: "Price",
-                bottom: "Created At",
-              },
-            }}
-          />
-        </Box>
 
-        <Box py={3}>
-          <Subhead>Line chart with categorical data</Subhead>
-          <StaticChart
-            type="categorical/line"
-            options={{
-              data: [
-                ["Alden Sparks", 70],
-                ["Areli Guerra", 30],
-                ["Arturo Hopkins", 80],
-                ["Beatrice Lane", 120],
-                ["Brylee Davenport", 100],
-                ["Cali Nixon", 60],
-                ["Dane Terrell", 150],
-                ["Deshawn Rollins", 40],
-                ["Isabell Bright", 70],
-                ["Kaya Rowe", 20],
-                ["Roderick Herman", 50],
-                ["Ruth Dougherty", 75],
-              ],
-              accessors: {
-                x: row => row[0],
-                y: row => row[1],
-              },
-              labels: {
-                left: "Tasks",
-                bottom: "People",
-              },
+        <PageSection>
+          <Subhead>Chart tester</Subhead>
+
+          <select
+            className="w-full mt1"
+            onChange={e => {
+              const index = parseInt(e.target.value);
+              setStaticChartType(STATIC_CHART_TYPES[index]);
+              setStaticChartCustomOptions({
+                ...STATIC_CHART_DEFAULT_OPTIONS[index],
+              });
             }}
-          />
-        </Box>
-        <Box py={3}>
-          <Subhead>Area chart with categorical data</Subhead>
-          <StaticChart
-            type="categorical/area"
-            options={{
-              data: [
-                ["Alden Sparks", 70],
-                ["Areli Guerra", 30],
-                ["Arturo Hopkins", 80],
-                ["Beatrice Lane", 120],
-                ["Brylee Davenport", 100],
-                ["Cali Nixon", 60],
-                ["Dane Terrell", 150],
-                ["Deshawn Rollins", 40],
-                ["Isabell Bright", 70],
-                ["Kaya Rowe", 20],
-                ["Roderick Herman", 50],
-                ["Ruth Dougherty", 75],
-              ],
-              accessors: {
-                x: row => row[0],
-                y: row => row[1],
-              },
-              labels: {
-                left: "Tasks",
-                bottom: "People",
-              },
-            }}
-          />
-        </Box>
-        <Box py={3}>
-          <Subhead>Bar chart with categorical data</Subhead>
-          <StaticChart
-            type="categorical/bar"
-            options={{
-              data: [
-                ["Alden Sparks", 70],
-                ["Areli Guerra", 30],
-                ["Arturo Hopkins", 80],
-                ["Beatrice Lane", 120],
-                ["Brylee Davenport", 100],
-                ["Cali Nixon", 60],
-                ["Dane Terrell", 150],
-                ["Deshawn Rollins", 40],
-                ["Isabell Bright", 70],
-                ["Kaya Rowe", 20],
-                ["Roderick Herman", 50],
-                ["Ruth Dougherty", 75],
-              ],
-              accessors: {
-                x: row => row[0],
-                y: row => row[1],
-              },
-              labels: {
-                left: "Tasks",
-                bottom: "People",
-              },
-            }}
-          />
-        </Box>
-        <Box py={3}>
+          >
+            <option id="">---</option>
+            {STATIC_CHART_TYPES.map((chartType, chartTypeIndex) => {
+              if (chartType === WATERFALL_CHART_TYPE) {
+                return (
+                  <option key={chartTypeIndex} value={chartTypeIndex}>
+                    waterfall (
+                    {chartTypeIndex === 1 ? "categorical" : "timeseries"})
+                  </option>
+                );
+              }
+              return (
+                <option key={chartType} value={chartTypeIndex}>
+                  {chartType}
+                </option>
+              );
+            })}
+          </select>
+
+          {(staticChartCustomOptions ||
+            typeof staticChartCustomOptions === "string") && (
+            <textarea
+              className="w-full mt1"
+              value={chartOptionsToStr(staticChartCustomOptions)}
+              onChange={e => {
+                const chartOptionsStr = e.target.value;
+                if (chartOptionsStr.length > 0) {
+                  setStaticChartCustomOptions(
+                    chartOptionsToObj(chartOptionsStr),
+                  );
+                } else {
+                  setStaticChartCustomOptions(chartOptionsStr);
+                }
+              }}
+            />
+          )}
+
+          {staticChartError && (
+            <p className="text-bold text-error mt1 mb0">{staticChartError}</p>
+          )}
+
+          {!staticChartError && staticChartType && staticChartCustomOptions && (
+            <div className="text-code-plain w-full mt1">
+              <StaticChart
+                type={staticChartType}
+                options={{ ...staticChartCustomOptions }}
+              />
+            </div>
+          )}
+        </PageSection>
+        <PageSection>
           <Subhead>Donut chart with categorical data</Subhead>
           <StaticChart
-            type="categorical/donut"
-            options={{
-              data: [["donut", 2000], ["cronut", 3100]],
-              colors: {
-                donut: "#509EE3",
-                cronut: "#DDECFA",
-              },
-              accessors: {
-                dimension: row => row[0],
-                metric: row => row[1],
-              },
-            }}
+            type={CATEGORICAL_DONUT_CHART_TYPE}
+            options={CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS}
           />
-        </Box>
-      </Box>
-    </Box>
+        </PageSection>
+        <PageSection>
+          <Subhead>Gauge</Subhead>
+          <StaticChart
+            type={GAUGE_CHART_TYPE}
+            options={GAUGE_CHART_DEFAULT_OPTIONS}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>Gauge with column settings</Subhead>
+          <StaticChart
+            type={GAUGE_CHART_TYPE}
+            options={GAUGE_CHART_WITH_COLUMN_SETTINGS_OPTIONS}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>Progress bar</Subhead>
+          <StaticChart
+            type={PROGRESS_BAR_TYPE}
+            options={PROGRESS_BAR_DEFAULT_DATA_1}
+          />
+          <StaticChart
+            type={PROGRESS_BAR_TYPE}
+            options={PROGRESS_BAR_DEFAULT_DATA_2}
+          />
+          <StaticChart
+            type={PROGRESS_BAR_TYPE}
+            options={PROGRESS_BAR_DEFAULT_DATA_3}
+          />
+          <StaticChart
+            type={PROGRESS_BAR_TYPE}
+            options={PROGRESS_BAR_DEFAULT_DATA_4}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>Waterfall chart with timeseries data and no total</Subhead>
+          <StaticChart
+            type={WATERFALL_CHART_TYPE}
+            options={TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>
+            Waterfall chart with categorical data and total (rotated X-axis tick
+            labels)
+          </Subhead>
+          <StaticChart
+            type={WATERFALL_CHART_TYPE}
+            options={CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>Line/Area/Bar chart with multiple series</Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_1}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>
+            Line/Area/Bar chart with negative values, different X ranges, and
+            right Y-axis
+          </Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_2}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>
+            Combo chart with ordinal X-axis and more than 10 ticks
+          </Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_3}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Stacked area chart</Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_4}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 48 items</Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_5}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 200 items</Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_6}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 20 items</Subhead>
+          <StaticChart
+            type={LINE_AREA_BAR_CHART_TYPE}
+            options={LINE_AREA_BAR_DEFAULT_OPTIONS_7}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Funnel</Subhead>
+          <StaticChart
+            type={FUNNEL_CHART_TYPE}
+            options={FUNNEL_CHART_DEFAULT_OPTIONS}
+          />
+        </PageSection>
+      </div>
+    </PageRoot>
   );
 }

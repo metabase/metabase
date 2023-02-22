@@ -36,11 +36,6 @@
   padding: 10px;
 }
 
-.Calendar-day:hover {
-  background-color: var(--color-accent7);
-  color: white;
-}
-
 .Calendar-day-name {
   cursor: inherit;
 }
@@ -51,13 +46,6 @@
 
 .Calendar-day-name {
   color: inherit !important;
-}
-
-.Calendar-day--selected,
-.Calendar-day--selected-end {
-  color: white !important;
-  background-color: var(--color-accent7);
-  z-index: 1;
 }
 
 .Calendar--range .Calendar-day--selected {
@@ -73,43 +61,6 @@
 .Calendar-day--in-range {
   border-radius: 0;
   background-color: var(--color-bg-medium);
-}
-
-.circle-button {
-  display: block;
-  font-size: 20px;
-  color: var(--color-text-medium);
-  border: 2px solid var(--color-border);
-  border-radius: 99px;
-  width: 24px;
-  height: 24px;
-  background-color: white;
-  text-align: center;
-  vertical-align: middle;
-  line-height: 20px;
-  z-index: 2;
-}
-
-.circle-button:hover {
-  color: var(--color-accent2);
-  border-color: var(--color-accent2);
-}
-
-.circle-button--top {
-  position: absolute;
-  top: -12px;
-}
-.circle-button--bottom {
-  position: absolute;
-  bottom: -12px;
-}
-.circle-button--left {
-  position: absolute;
-  left: -12px;
-}
-.circle-button--right {
-  position: absolute;
-  right: -12px;
 }
 
 .Calendar--noContext .Calendar-day {

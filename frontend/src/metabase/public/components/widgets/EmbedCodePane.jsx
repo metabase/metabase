@@ -1,13 +1,14 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import ExternalLink from "metabase/components/ExternalLink";
-import CodeSample from "./CodeSample";
 import { t, jt } from "ttag";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,
   getSignTokenOptions,
 } from "../../lib/code";
+import CodeSample from "./CodeSample";
 
 import "metabase/lib/ace/theme-metabase";
 
@@ -17,30 +18,7 @@ import "ace/mode-ruby";
 import "ace/mode-html";
 import "ace/mode-jsx";
 
-import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-type Props = {
-  className: string,
-  embedType: EmbedType,
-  iframeUrl: string,
-  token: string,
-  siteUrl: string,
-  secretKey: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  params: EmbeddingParams,
-  displayOptions: DisplayOptions,
-};
-
 export default class EmbedCodePane extends Component {
-  props: Props;
-
-  _embedSample: ?CodeSample;
-
   render() {
     const {
       className,
@@ -78,12 +56,14 @@ export default class EmbedCodePane extends Component {
                   this._embedSample.setOption(option.embedOption);
                 }
               }}
+              dataTestId="embed-backend"
             />
             <CodeSample
               className="mt2"
               ref={embedSample => (this._embedSample = embedSample)}
               title={t`Then insert this code snippet in your HTML template or single page app.`}
               options={getSignedEmbedOptions({ iframeUrl })}
+              dataTestId="embed-frontend"
             />
           </div>
         ) : (

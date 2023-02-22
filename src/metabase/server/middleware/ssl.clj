@@ -1,10 +1,13 @@
 (ns metabase.server.middleware.ssl
   "Middleware for redirecting users to HTTPS sessions"
-  (:require [clojure.string :as str]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.request.util :as request.u]
-            [ring.util.request :as req]
-            [ring.util.response :as resp]))
+  (:require
+   [clojure.string :as str]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.request.util :as request.u]
+   [ring.util.request :as req]
+   [ring.util.response :as response]))
+
+(set! *warn-on-reflection* true)
 
 (def no-redirect-https-uris
   "The set of URLs that should not be forced to redirect to their HTTPS equivalents"
@@ -22,8 +25,8 @@
 (defn- ssl-redirect-response
   "Given a HTTP request, return a redirect response to the equivalent HTTPS URL."
   [request]
-  (-> (resp/redirect (https-url (req/request-url request)))
-      (resp/status   (if (get-request? request) 301 307))))
+  (-> (response/redirect (https-url (req/request-url request)))
+      (response/status   (if (get-request? request) 301 307))))
 
 (defn redirect-to-https-middleware
   "Redirect users to HTTPS sessions when certain conditions are met.

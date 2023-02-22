@@ -1,6 +1,6 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
-describe("scenarios > alert > email_alert", () => {
+describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 
@@ -50,15 +50,12 @@ describe("scenarios > alert > email_alert", () => {
 });
 
 function openAlertForQuestion(id = 1) {
-  cy.visit(`/question/${id}`);
+  visitQuestion(id);
   cy.icon("bell").click();
 
   cy.findByText("Set up an alert").click();
 }
 
 function toggleChannel(channel) {
-  cy.findByText(channel)
-    .parent()
-    .find("a")
-    .click();
+  cy.findByText(channel).parent().find("input").click();
 }

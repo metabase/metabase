@@ -1,12 +1,10 @@
 (ns metabase-enterprise.audit-app.pages.users
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
-
-(def ^:private ^:const date-cardinality-limit 25000)
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.honey-sql-2 :as h2x]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for
 ;; purposes of this query if they ran at least one query that day), and total number of queries ran. Broken out by
@@ -19,7 +17,7 @@
    :results  (common/reducible-query
               {:with     [[:user_qe {:select   [:executor_id
                                                 [:%count.* :executions]
-                                                [(hx/cast :date :started_at) :day]]
+                                                [(h2x/cast :date :started_at) :day]]
                                      :from     [:query_execution]
                                      :group-by [:executor_id :day]}]]
                :select   [[:%count.* :users]
@@ -40,17 +38,15 @@
    ;; them(!)
    :results  (let [active       (common/query
                                  {:select   [[(common/grouped-datetime datetime-unit :started_at) :date]
-                                             [:%distinct-count.executor_id :count]]
+                                             [[::h2x/distinct-count :executor_id] :count]]
                                   :from     [:query_execution]
-                                  :group-by [(common/grouped-datetime datetime-unit :started_at)]
-                                  :limit    date-cardinality-limit})
+                                  :group-by [(common/grouped-datetime datetime-unit :started_at)]})
                    date->active (zipmap (map :date active) (map :count active))
                    new          (common/query
                                  {:select   [[(common/grouped-datetime datetime-unit :date_joined) :date]
                                              [:%count.* :count]]
                                   :from     [:core_user]
-                                  :group-by [(common/grouped-datetime datetime-unit :date_joined)]
-                                  :limit    date-cardinality-limit})
+                                  :group-by [(common/grouped-datetime datetime-unit :date_joined)]})
                    date->new    (zipmap (map :date new) (map :count new))
                    all-dates    (sort (keep identity (distinct (concat (keys date->active)
                                                                        (keys date->new)))))]
@@ -63,7 +59,7 @@
 (defmethod audit.i/internal-query ::most-active
   [_]
   {:metadata [[:user_id {:display_name "User ID",          :base_type :type/Integer, :remapped_to   :name}]
-              [:name    {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+              [:name    {:display_name "Member",           :base_type :type/Name,    :remapped_from :user_id}]
               [:count   {:display_name "Query Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:qe_count {:select   [[:%count.* :count]
@@ -79,15 +75,16 @@
                :from      [[:core_user :u]]
                :left-join [:qe_count [:= :qe_count.executor_id :u.id]]
                :order-by  [[:count :desc]
-                           [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]]
+                           [[:lower :u.last_name] :asc]
+                           [[:lower :u.first_name] :asc]
+                           [[:lower :u.email] :asc]]
                :limit     10})})
 
 ;; Query that returns the 10 Users with the most saved objects in descending order.
 (defmethod audit.i/internal-query ::most-saves
   [_]
   {:metadata [[:user_id   {:display_name "User ID",       :base_type :type/Integer, :remapped_to :user_name}]
-              [:user_name {:display_name "Name",          :base_type :type/Name,    :remapped_from :user_id}]
+              [:user_name {:display_name "Member",        :base_type :type/Name,    :remapped_from :user_id}]
               [:saves     {:display_name "Saved Objects", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:card_saves       {:select   [:creator_id
@@ -104,7 +101,7 @@
                                               :group-by [:creator_id]}]]
                :select    [[:u.id :user_id]
                            [(common/user-full-name :u) :user_name]
-                           [(hx/+ (common/zero-if-null :card_saves.count)
+                           [(h2x/+ (common/zero-if-null :card_saves.count)
                                   (common/zero-if-null :dashboard_saves.count)
                                   (common/zero-if-null :pulse_saves.count))
                             :saves]]
@@ -114,14 +111,15 @@
                            :pulse_saves     [:= :u.id :pulse_saves.creator_id]]
                :order-by  [[:saves :desc]
                            [:u.last_name :asc]
-                           [:u.first_name :asc]]
+                           [:u.first_name :asc]
+                           [:u.email :asc]]
                :limit     10})})
 
 ;; Query that returns the total time spent executing queries, broken out by User, for the top 10 Users.
 (defmethod audit.i/internal-query ::query-execution-time-per-user
   [_]
   {:metadata [[:user_id           {:display_name "User ID",                   :base_type :type/Integer, :remapped_to   :name}]
-              [:name              {:display_name "Name",                      :base_type :type/Name,    :remapped_from :user_id}]
+              [:name              {:display_name "Member",                    :base_type :type/Name,    :remapped_from :user_id}]
               [:execution_time_ms {:display_name "Total Execution Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
               {:with      [[:exec_time {:select   [[:%sum.running_time :execution_time_ms]
@@ -133,14 +131,15 @@
                                         :limit    10}]]
                :select    [[:u.id :user_id]
                            [(common/user-full-name :u) :name]
-                           [(hsql/call :case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
-                              :else 0)
+                           [[:case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
+                             :else 0]
                             :execution_time_ms]]
                :from      [[:core_user :u]]
                :left-join [:exec_time [:= :exec_time.executor_id :u.id]]
                :order-by  [[:execution_time_ms :desc]
-                           [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]]
+                           [[:lower :u.last_name] :asc]
+                           [[:lower :u.first_name] :asc]
+                           [[:lower :u.email] :asc]]
                :limit     10})})
 
 ;; A table of all the Users for this instance, and various statistics about them (see metadata below).
@@ -150,7 +149,7 @@
 
   ([_ query-string :- (s/maybe s/Str)]
    {:metadata [[:user_id          {:display_name "User ID",          :base_type :type/Integer, :remapped_to :name}]
-               [:name             {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+               [:name             {:display_name "Member",           :base_type :type/Name,    :remapped_from :user_id}]
                [:role             {:display_name "Role",             :base_type :type/Text}]
                [:groups           {:display_name "Groups",           :base_type :type/Text}]
                [:date_joined      {:display_name "Date Joined",      :base_type :type/DateTime}]
@@ -187,19 +186,19 @@
                                              :left-join [[:core_user :u] [:= :u.id :p.creator_id]]
                                              :group-by  [:u.id]}]
                              [:users {:select [[(common/user-full-name :u) :name]
-                                               [(hsql/call :case
-                                                  [:= :u.is_superuser true]
-                                                  (hx/literal "Admin")
-                                                  :else
-                                                  (hx/literal "User"))
+                                               [[:case
+                                                 [:= :u.is_superuser true]
+                                                 (h2x/literal "Admin")
+                                                 :else
+                                                 (h2x/literal "User")]
                                                 :role]
                                                :id
                                                :date_joined
-                                               [(hsql/call :case
-                                                  [:= nil :u.sso_source]
-                                                  (hx/literal "Email")
-                                                  :else
-                                                  :u.sso_source)
+                                               [[:case
+                                                 [:= nil :u.sso_source]
+                                                 (h2x/literal "Email")
+                                                 :else
+                                                 :u.sso_source]
                                                 :signup_method]
                                                :last_name
                                                :first_name]
@@ -220,8 +219,8 @@
                              :questions_saved  [:= :u.id :questions_saved.id]
                              :dashboards_saved [:= :u.id :dashboards_saved.id]
                              :pulses_saved     [:= :u.id :pulses_saved.id]]
-                 :order-by  [[:%lower.u.last_name :asc]
-                             [:%lower.u.first_name :asc]]}
+                 :order-by  [[[:lower :u.last_name] :asc]
+                             [[:lower :u.first_name] :asc]]}
                 (common/add-search-clause query-string :u.first_name :u.last_name)))}))
 
 ;; Return a log of all query executions, including information about the Card associated with the query and the
@@ -288,7 +287,7 @@
                           [:u.id :user_id]
                           [(common/user-full-name :u) :user_name]]
               :from      [[:view_log :vl]]
-              :where     [:= :vl.model (hx/literal "dashboard")]
+              :where     [:= :vl.model (h2x/literal "dashboard")]
               :join      [[:report_dashboard :dash] [:= :vl.model_id :dash.id]
                           [:core_user :u]           [:= :vl.user_id :u.id]]
               :left-join [[:collection :coll] [:= :dash.collection_id :coll.id]]

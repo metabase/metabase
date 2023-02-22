@@ -1,7 +1,13 @@
 (ns metabase.pulse.render.style
   "CSS styles and related helper code for Pulse rendering."
-  (:require [clojure.string :as str]
-            [metabase.public-settings :as public-settings]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.public-settings :as public-settings]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.
@@ -16,14 +22,6 @@
                       :when (seq v)]
                   (str (name k) ": " v ";"))))
 
-(def ^:const color-brand
-  "Classic Metabase blue."
-  "#2D86D4")
-
-(def ^:const color-purple
-  "Used as background color for cells in bar chart tables."
-  "#875DAF")
-
 (def ^:const color-gold
   "Used as color for 'We were unable to display this Pulse' messages."
   "#F9D45C")
@@ -31,10 +29,6 @@
 (def ^:const color-error
   "Color for error messages."
   "#EF8C8C")
-
-(def ^:const color-gray-1
-  "~97% gray."
-  "#F8F8F8")
 
 (def ^:const color-gray-2
   "~75% gray."
@@ -60,13 +54,9 @@
   "Color for dark text."
   "#4C5773")
 
-(def ^:const color-header-row-border
-  "Used as color for the bottom border of table headers for charts with `:table` vizualization."
-  "#EDF0F1")
-
-(def ^:const color-body-row-border
-  "Used as color for the bottom border of table body rows for charts with `:table` vizualization."
-  "#F0F0F04D")
+(def ^:const color-border
+  "Used as color for the border of table, table header, and table body rows for charts with `:table` vizualization."
+  "#F0F0F0")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
@@ -95,7 +85,7 @@
   []
   (merge
    (font-style)
-   {:font-size       :14px
+   {:font-size       :18px
     :font-weight     700
     :color           (primary-color)
     :text-decoration :none}))
@@ -108,3 +98,26 @@
    {:font-size   :24px
     :font-weight 700
     :color       color-text-dark}))
+
+(defn- register-font! [filename]
+  (with-open [is (io/input-stream (io/resource filename))]
+    (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+                   (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
+
+(defn- register-fonts! []
+  (try
+    (doseq [weight ["regular" "700" "900"]]
+      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
+    (catch Throwable e
+      (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
+                         " "
+                         (trs "This is a known issue with certain JVMs. See {0} and for more details."
+                              "https://github.com/metabase/metabase/issues/7986"))]
+        (log/error e message)
+        (throw (ex-info message {} e))))))
+
+(defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."
+           :arglists '([])} register-fonts-if-needed!
+  (let [register!* (delay (register-fonts!))]
+    (fn []
+      @register!*)))

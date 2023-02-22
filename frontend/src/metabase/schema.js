@@ -1,9 +1,13 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { entityTypeForObject } from "metabase/lib/schema";
+import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
 
 export const QuestionSchema = new schema.Entity("questions");
+export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
@@ -35,15 +39,32 @@ export const TableSchema = new schema.Entity(
           },
         };
       }
+
       return table;
     },
   },
 );
-export const FieldSchema = new schema.Entity("fields");
+
+export const FieldSchema = new schema.Entity("fields", undefined, {
+  processStrategy(field) {
+    const uniqueId = getUniqueFieldId(field);
+    return {
+      ...field,
+      uniqueId,
+    };
+  },
+  idAttribute: field => {
+    return getUniqueFieldId(field);
+  },
+});
+
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
+export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const TimelineSchema = new schema.Entity("timelines");
+export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -80,15 +101,14 @@ MetricSchema.define({
   table: TableSchema,
 });
 
-// backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
-  model === "card" ? "questions" : `${model}s`;
-
-export const entityTypeForObject = object =>
-  object && entityTypeForModel(object.model);
+TimelineSchema.define({
+  collection: CollectionSchema,
+  events: [TimelineEventSchema],
+});
 
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
+  bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,
@@ -107,19 +127,11 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const getSchemaName = id => parseSchemaId(id)[1];
-export const parseSchemaId = id => {
-  const schemaId = String(id || "");
-  const firstColonIndex = schemaId.indexOf(":");
-  const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName = schemaId.substring(firstColonIndex + 1);
+export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
+  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+});
 
-  return [dbId, schemaName];
-};
-export const generateSchemaId = (dbId, schemaName) =>
-  `${dbId}:${schemaName || ""}`;
-
-export const RecentsSchema = new schema.Entity("recents", undefined, {
+export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });
 

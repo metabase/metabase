@@ -1,24 +1,20 @@
 (ns metabase.query-processor.reducible-test
   "Some basic tests around very-low-level QP logic, and some of the new features of the QP (such as support for
   different reducing functions.)"
-  (:require [clojure.core.async :as a]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
-(deftest quit-test
-  (testing "async-qp should properly handle `quit` exceptions"
-    (let [out-chan ((qp.reducible/async-qp (fn [query rff context]
-                                             (throw (qp.reducible/quit ::bye)))) {})]
-      (is (= ::bye
-             (metabase.test/wait-for-result out-chan))))))
+(set! *warn-on-reflection* true)
 
-(defn- print-rows-rff [metadata]
+(defn- print-rows-rff [_metadata]
   (fn
     ([] 0)
 
@@ -27,6 +23,7 @@
      acc)
 
     ([row-count row]
+     #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 
@@ -154,7 +151,7 @@
   (testing "Rows don't actually have to be reducible. And you can build your own QP with your own middleware."
     (is (= {:data {:cols [{:name "n"}]
                    :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
-           ((qp.reducible/sync-qp (qp.reducible/async-qp qp.reducible/pivot))
+           ((qp.reducible/sync-qp (qp.reducible/async-qp qp.reducible/identity-qp))
             {}
             {:executef (fn [_ _ _ respond]
                          (respond {:cols [{:name "n"}]}
@@ -184,7 +181,7 @@
                          {:database (mt/id)
                           :type     :query
                           :query    {:source-table (mt/id :venues)
-                                     :fields       [[:field-id (mt/id :venues :id)]]}}
+                                     :fields       [[:field (mt/id :venues :id) nil]]}}
                          additional-options)
                         rows)))]
               (is (= [[1]

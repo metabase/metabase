@@ -8,20 +8,29 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color(var(--color-border) blackness(+ 5%));
+  border: 1px solid color-mod(var(--color-border) blackness(5%));
   color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 
 .Button:hover {
   color: var(--color-brand);
-  border-color: color(var(--color-border) blackness(+ 12%));
+  border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
   transition: all 200ms linear;
+  transition-property: color, border-color, background-color;
+}
+
+.Button:focus {
+  outline: 2px solid var(--color-focus);
+}
+
+.Button:focus:not(:focus-visible) {
+  outline: none;
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -61,7 +70,7 @@
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
-  background-color: color(var(--color-brand) alpha(-12%));
+  background-color: color-mod(var(--color-brand) alpha(-12%));
 }
 
 .Button--warning {
@@ -84,18 +93,6 @@
   background-color: white;
   color: var(--color-text-dark);
   border-color: var(--color-border);
-}
-
-.Button--purple {
-  color: white;
-  background-color: var(--color-accent7);
-  border: 1px solid var(--color-accent7);
-}
-
-.Button--purple:hover {
-  color: white;
-  background-color: color(var(--color-accent7) alpha(-12%));
-  border-color: color(var(--color-accent7) alpha(-12%));
 }
 
 .Button--borderless {
@@ -206,4 +203,8 @@
 
 .Button--withIcon {
   line-height: 1;
+}
+
+.Button--fullWidth {
+  width: 100%;
 }

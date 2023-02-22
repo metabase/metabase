@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.pages.common.pulses
   "Shared code for [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]
   and [[metabase-enterprise.audit-app.pages.alerts]]."
-  (:require [cheshire.core :as json]
-            [clojure.tools.logging :as log]
-            [metabase.models.collection :as collection]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]))
+  (:require
+   [cheshire.core :as json]
+   [metabase.models.collection :as collection]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (def table-metadata
   "Common Metadata for the columns returned by both the [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]
@@ -63,7 +64,7 @@
                :channel.schedule_day
                :channel.schedule_frame
                [:creator.id :creator_id]
-               [(hx/concat :creator.first_name (hx/literal " ") :creator.last_name) :creator_name]
+               [(h2x/concat :creator.first_name (h2x/literal " ") :creator.last_name) :creator_name]
                [:channel.created_at :created_at]
                [:pulse.parameters :pulse_parameters]]
    :from      [[:pulse_channel :channel]]
@@ -84,8 +85,7 @@
   "Return the number of recipients for email `PulseChannel`s. Includes both User recipients (represented by
   `PulseChannelRecipient` rows) and plain email recipients (stored directly in the `PulseChannel` `:details`). Returns
   `nil` for Slack channels."
-  [{channel-id        :channel_id
-    subscription-type :subscription_type
+  [{subscription-type :subscription_type
     channel-details   :channel_details
     num-recipients    :num_user_recipients}]
   (let [details (json/parse-string channel-details true)]

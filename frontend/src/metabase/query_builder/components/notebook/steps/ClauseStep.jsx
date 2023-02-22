@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import {
   NotebookCell,
   NotebookCellItem,
   NotebookCellAdd,
 } from "../NotebookCell";
-
-import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 export default function ClauseStep({
   color,
@@ -23,7 +22,7 @@ export default function ClauseStep({
   ...props
 }) {
   return (
-    <NotebookCell color={color}>
+    <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
         <PopoverWithTrigger
           tetherOptions={tetherOptions}

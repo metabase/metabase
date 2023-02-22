@@ -1,103 +1,241 @@
-# Metabase documentation and resources
+---
+title: Metabase documentation
+redirect_from:
+  - /docs/latest/enterprise-guide
+  - /docs/latest/users-guide
+  - /docs/latest/administration-guide
+  - /docs/latest/operations-guide
+---
 
-## Tutorials
+# Metabase documentation
 
-### [Learn Metabase][learn]
+Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
-Learn how to set Metabase up, build out your analytics, organize things and set permissions, and how to do data ops right.
+## First steps
+
+### [Installing Metabase](./installation-and-operation/installing-metabase.md)
+
+Run as a JAR, using Docker, or on Metabase Cloud.
+
+### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+
+Once installed, set up your Metabase and connect to your data.
+
+### [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
+
+With your data connected, get started asking questions, creating dashboards, and sharing your work.
+
+### [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+
+## Documentation topics
+
+Metabase's reference documentation.
+
+### Installation
+
+- [Installation overview](./installation-and-operation/start.md)
+- [Installing Metabase](./installation-and-operation/installing-metabase.md)
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md)
+- [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
+- [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
+- [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
+- [Java versions](./installation-and-operation/java-versions.md)
+- [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
+- [Serialization](./installation-and-operation/serialization.md)
+- [Supported browsers](./installation-and-operation/supported-browsers.md)
+- [Privacy](./installation-and-operation/privacy.md)
+
+### Databases
+
+- [Databases overview](./databases/start.md)
+- [Adding and managing databases](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
+- [SSL certificate](./databases/ssl-certificates.md)
+
+### Questions
+
+- [Questions overview](./questions/start.md)
+
+#### Query builder
+
+- [Asking questions](./questions/query-builder/introduction.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
+- [Custom expressions](./questions/query-builder/expressions.md)
+- [List of expressions](./questions/query-builder/expressions-list.md)
+- [Joining data](./questions/query-builder/join.md)
+
+#### SQL and native queries
+
+- [The SQL editor](./questions/native-editor/writing-sql.md)
+- [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
+- [SQL snippets](./questions/native-editor/sql-snippets.md)
+- [SQL snippet folder permissions](./permissions/snippets.md)
+
+#### Sharing
+
+- [Sharing answers](./questions/sharing/answers.md)
+- [Alerts](./questions/sharing/alerts.md)
+- [Public sharing](./questions/sharing/public-links.md)
+
+### Dashboards
+
+- [Dashboards overview](./dashboards/start.md)
+- [Introduction to dashboards](./dashboards/introduction.md)
+- [Dashboard filters](./dashboards/filters.md)
+- [Interactive dashboards](./dashboards/interactive.md)
+- [Charts with multiple series](./dashboards/multiple-series.md)
+- [Dashboard subscriptions](./dashboards/subscriptions.md)
+
+### Data modeling
+
+- [Data modeling overview](./data-modeling/start.md)
+- [Models](./data-modeling/models.md)
+- [Data model admin settings](./data-modeling/metadata-editing.md)
+- [Field types](./data-modeling/field-types.md)
+- [Formatting defaults](./data-modeling/formatting.md)
+- [Segments and metrics](./data-modeling/segments-and-metrics.md)
+
+### Organization
+
+- [Organization overview](./exploration-and-organization/start.md)
+- [Basic exploration](./exploration-and-organization/exploration.md)
+- [Collections](./exploration-and-organization/collections.md)
+- [History](./exploration-and-organization/history.md)
+- [Data reference](./exploration-and-organization/data-model-reference.md)
+- [Events and timelines](./exploration-and-organization/events-and-timelines.md)
+- [X-rays](./exploration-and-organization/x-rays.md)
+
+### People
+
+- [People overview](./people-and-groups/start.md)
+- [Account settings](./people-and-groups/account-settings.md)
+- [Managing people and groups](./people-and-groups/managing.md)
+- [Password complexity](./people-and-groups/changing-password-complexity.md)
+- [Session expiration](./people-and-groups/changing-session-expiration.md)
+- [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+
+#### Paid SSO options
+
+- [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
+- [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
+  - [SAML with Auth0](./people-and-groups/saml-auth0.md)
+  - [SAML with Azure AD](./people-and-groups/saml-azure.md)
+  - [SAML with Google](./people-and-groups/saml-google.md)
+  - [SAML with Keycloak](./people-and-groups/saml-keycloak.md)
+  - [SAML with Okta](./people-and-groups/saml-okta.md)
+
+### Permissions
+
+- [Permissions overview](./permissions/start.md)
+- [Permissions introduction](./permissions/introduction.md)
+- [Data permissions](./permissions/data.md)
+- [Collection permissions](./permissions/collections.md)
+- [Application permissions](./permissions/application.md)
+- [Data sandboxes](./permissions/data-sandboxes.md)
+- [SQL snippets folder permissions](./permissions/snippets.md)
+
+### Embedding
+
+- [Embedding overview](./embedding/start.md)
+- [Embedding introduction](./embedding/introduction.md)
+- [Full-app embedding](./embedding/full-app-embedding.md)
+- [Signed embedding](./embedding/signed-embedding.md)
+- [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
+
+### Configuration
+
+- [Configuration overview](./configuring-metabase/start.md)
+- [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+- [General settings](./configuring-metabase/settings.md)
+- [Email](./configuring-metabase/email.md)
+- [Slack](./configuring-metabase/slack.md)
+- [Environment variables](./configuring-metabase/environment-variables.md)
+- [Configuration file](./configuring-metabase/config-file.md)
+- [Metabase log configuration](./configuring-metabase/log-configuration.md)
+- [Timezones](./configuring-metabase/timezones.md)
+- [Languages and localization](./configuring-metabase/localization.md)
+- [Appearance](./configuring-metabase/appearance.md)
+- [Caching query results](./configuring-metabase/caching.md)
+- [Custom maps](./configuring-metabase/custom-maps.md)
+- [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
+
+### Tools
+
+- [Tools overview](./usage-and-performance-tools/start.md)
+- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Admin tools](./usage-and-performance-tools/tools.md)
+
+### Metabase API
+
+- [Metabase API documentation](./api-documentation.md)
+- [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
+
+### Troubleshooting
+
+- [Troubleshooting guides](./troubleshooting-guide/index.md)
+
+### Developer guide
+
+- [Developer guide](./developers-guide/start.md)
 
 ## Getting help
 
-### [Troubleshooting Guide][troubleshooting]
+### Troubleshooting
 
-Problems, their causes, how to detect them, and how to fix them.
+- [Troubleshooting guides](troubleshooting-guide/index.md)
+- [Metabase forum](https://discourse.metabase.com/)
+- [Configuring logging](./configuring-metabase/log-configuration.md)
 
-### [Metabase forum][forum]
+### [Tutorials and guides](https://www.metabase.com/learn)
 
-A place to get help on installation, setting up as well as sharing tips and tricks.
+[Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
-### [FAQs][faq]
+## More resources
 
-Frequently asked questions about Metabase.
+### [Discussion](https://discourse.metabase.com)
 
-## Metabase reference guides
+Share and connect with other Metabasers.
 
-Documentation guides for the Metabase application.
+### [Paid features](./paid-features/start.md)
 
-### [Users Guide][users-guide]
+Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
-How to ask questions, how to visualize answers, as well as how to share questions and create dashboards.
+### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
-### [Admin Guide][admin-guide]
+For docs specific to Metabase Cloud plans.
 
-How to set up Metabase, configure common settings, manage accounts and permissions, and add databases.
+### [Community stories](https://www.metabase.com/community)
 
-### [Operations Guide][operations-guide]
+Practical advice from our community.
 
-Learn how to install Metabase for production use. The guide covers topics like SSL termination, deploying via Docker Containers vs. JAR files, as well as the tradeoffs involved.
+### [Metabase blog](https://www.metabase.com/blog)
 
-### [Enterprise Guide][enterprise]
+News, updates, and ideas.
 
-Here’s where to go for help using the features included in [Metabase Enterprise Edition][enterprise-landing].
+### [Customers](https://www.metabase.com/case_studies)
 
-## Metabase for developers
+Real companies, real data, real stories.
 
-### [Developers Guide][developers]
+### [Metabase Twitter](https://twitter.com/metabase)
 
-Learn how to contribute to the Metabase open source project.
+We tweet stuff.
 
-### [Driver Development][drivers]
+### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
-This guide lists existing community drivers, and shows how to get started with driver development.
+Follow us on GitHub.
 
-### [Embedding reference apps][embedding-ref-apps]
+### [Developers guide](./developers-guide/start.md)
 
-Code examples for embedding Metabase in applications.
+Contribute to the Metabase open source project!
 
-## Metabase community
+### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
-Connect with others using Metabase and catch up on the latest news.
+Data jargon explained.
 
-### [Metabase forum][forum]
+### [Metabase Experts](https://www.metabase.com/partners/)
 
-A place to get help on installation, setting up as well as sharing tips and tricks.
-
-### [Data Bytes][data-bytes]
-
-Real stories about teams working and learning with data. You can also share your own stories.
-
-### [Case studies][case-studies]
-
-See how other organizations, big and small, have leveled up using Metabase.
-
-### [Blog][blog]
-
-Stay up to date on the latest from Metabase.
-
-### [Source code repository on GitHub][source-code]
-
-Metabase is open source: come on over and check out the code.
-
-## Reference
-
-### [Anonymous Information Collection Reference][info-collection]
-
-This page describes the anonymous usage information we collect (only if you opt-in), why we collect it, and how we use it to improve Metabase.
-
-[admin-guide]: administration-guide/start.md
-[blog]: /blog
-[case-studies]: https://www.metabase.com/case_studies/
-[embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
-[enterprise]: enterprise-guide/start.md
-[enterprise-landing]: /enterprise
-[data-bytes]: /community
-[developers]: developers-guide/start.md
-[drivers]: developers-guide-drivers.md
-[faq]: faq/start.md
-[forum]: https://discourse.metabase.com/
-[info-collection]: information-collection.md
-[learn]: /learn
-[operations-guide]: operations-guide/start.md
-[source-code]: https://github.com/metabase/metabase
-[troubleshooting]: troubleshooting-guide/index.md
-[users-guide]: users-guide/start.md
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

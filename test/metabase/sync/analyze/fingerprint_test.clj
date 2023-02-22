@@ -1,19 +1,20 @@
 (ns metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
-  (:require [clojure.test :refer :all]
-            [metabase.db.util :as mdb.u]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync.analyze.fingerprint :as fingerprint]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.sync.interface :as i]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.db.util :as mdb.u]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.interface :as i]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
@@ -232,7 +233,7 @@
                     fingerprinters/fingerprinter       (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
         (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
                 :updated-fingerprints 1, :fingerprints-attempted 1}
-               (#'fingerprint/fingerprint-table! (Table (data/id :venues)) [field])))
+               (#'fingerprint/fingerprint-table! (db/select-one Table :id (data/id :venues)) [field])))
         (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                 :fingerprint_version 3
                 :last_analyzed       nil}
@@ -242,7 +243,7 @@
   (testing "if fingerprinting fails, the exception should not propagate"
     (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
       (is (= (fingerprint/empty-stats-map 0)
-             (fingerprint/fingerprint-fields! (Table (data/id :venues))))))))
+             (fingerprint/fingerprint-fields! (db/select-one Table :id (data/id :venues))))))))
 
 (deftest test-fingerprint-skipped-for-ga
   (testing "Google Analytics doesn't support fingerprinting fields"
@@ -250,7 +251,7 @@
                       (assoc :engine :googleanalytics))]
       (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
         (is (= (fingerprint/empty-stats-map 0)
-               (fingerprint/fingerprint-fields-for-db! fake-db [(Table (data/id :venues))] (fn [_ _]))))))))
+               (fingerprint/fingerprint-fields-for-db! fake-db [(db/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
@@ -268,8 +269,8 @@
 (deftest fingerprinting-test
   (testing "fingerprinting truncates text fields (see #13288)"
     (doseq [size [4 8 10]]
-      (let [table (Table (mt/id :categories))
-            field (Field (mt/id :categories :name))]
+      (let [table (db/select-one Table :id (mt/id :categories))
+            field (db/select-one Field :id (mt/id :categories :name))]
         (with-redefs [fingerprint/truncation-size size]
           (#'fingerprint/fingerprint-table! table [field])
           (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
@@ -281,15 +282,15 @@
     (testing "refingerprints up to a limit"
       (with-redefs [fingerprint/save-fingerprint! (constantly nil)
                     fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
-        (let [table (Table (mt/id :checkins))
+        (let [table (db/select-one Table :id (mt/id :checkins))
               results (fingerprint/refingerprint-fields-for-db! (mt/db)
-                                                                (repeat (* fingerprint/max-refingerprint-field-count 2) table)
+                                                                (repeat (* @#'fingerprint/max-refingerprint-field-count 2) table)
                                                                 (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
-          (is (<= fingerprint/max-refingerprint-field-count attempted))
+          (is (<= @#'fingerprint/max-refingerprint-field-count attempted))
           ;; but it is bounded.
-          (is (< attempted (+ fingerprint/max-refingerprint-field-count 10))))))))
+          (is (< attempted (+ @#'fingerprint/max-refingerprint-field-count 10))))))))
 
 (deftest fingerprint-schema-test
   (testing "allows for extra keywords"

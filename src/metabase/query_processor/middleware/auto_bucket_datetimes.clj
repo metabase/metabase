@@ -2,16 +2,17 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
   {:base-type                      (s/maybe su/FieldType)
@@ -69,8 +70,9 @@
       ;; *  shouldn't assume they want to bucket by day
       (let [[_ _ & vs] x]
         (not (every? auto-bucketable-value? vs)))))
-   ;; do not auto-bucket fields inside a `:time-interval` filter -- it already supplies its own unit
-   (mbql.u/is-clause? :time-interval x)
+   ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
+   ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
+   (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
    ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
    (and (mbql.u/is-clause? :field x)
         (let [[_ _ opts] x]
@@ -121,7 +123,15 @@
     ;; otherwise if there are no unbucketed breakouts/filters return the query as-is
     inner-query))
 
-(defn- auto-bucket-datetimes-all-levels [{query-type :type, :as query}]
+(defn auto-bucket-datetimes
+  "Middleware that automatically adds `:temporal-unit` `:day` to breakout and filter `:field` clauses if the Field they
+  refer to has a type that derives from `:type/Temporal` (but not `:type/Time`). (This is done for historic reasons,
+  before datetime bucketing was added to MBQL; datetime Fields defaulted to breaking out by day. We might want to
+  revisit this behavior in the future.)
+
+  Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
+  format datetime strings."
+  [{query-type :type, :as query}]
   (if (not= query-type :query)
     query
     ;; walk query, looking for inner-query forms that have a `:filter` key
@@ -133,15 +143,3 @@
          (auto-bucket-datetimes-this-level form)
          form))
      query)))
-
-(defn auto-bucket-datetimes
-  "Middleware that automatically adds `:temporal-unit` `:day` to breakout and filter `:field` clauses if the Field they
-  refer to has a type that derives from `:type/Temporal` (but not `:type/Time`). (This is done for historic reasons,
-  before datetime bucketing was added to MBQL; datetime Fields defaulted to breaking out by day. We might want to
-  revisit this behavior in the future.)
-
-  Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
-  format datetime strings."
-  [qp]
-  (fn [query rff context]
-    (qp (auto-bucket-datetimes-all-levels query) rff context)))

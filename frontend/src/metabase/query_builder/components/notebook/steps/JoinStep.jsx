@@ -5,40 +5,41 @@ import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { DATA_BUCKET } from "metabase/query_builder/components/DataSelector/constants";
 import FieldList from "metabase/query_builder/components/FieldList";
-import Join from "metabase-lib/lib/queries/structured/Join";
-import { isDateTimeField } from "metabase/lib/query/field_ref";
+import Select from "metabase/core/components/Select";
+import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
+import Join from "metabase-lib/queries/structured/Join";
 
+import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
 import {
-  NotebookCell,
-  NotebookCellItem,
-  NotebookCellAdd,
-} from "../NotebookCell";
-import {
-  FieldsPickerIcon,
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
+  FieldsPickerIcon,
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
   DimensionContainer,
   DimensionSourceName,
-  JoinStepRoot,
-  JoinClausesContainer,
-  JoinClauseRoot,
   JoinClauseContainer,
-  JoinStrategyIcon,
-  JoinTypeSelectRoot,
-  JoinTypeOptionRoot,
-  JoinTypeIcon,
-  JoinDimensionControlsContainer,
-  JoinWhereConditionLabelContainer,
-  JoinWhereConditionLabel,
+  JoinClauseRoot,
+  JoinClausesContainer,
   JoinConditionLabel,
+  JoinDimensionControlsContainer,
+  JoinOperatorButton,
+  JoinStepRoot,
+  JoinStrategyIcon,
+  JoinTypeIcon,
+  JoinTypeOptionRoot,
+  JoinTypeSelectRoot,
+  JoinWhereConditionLabel,
+  JoinWhereConditionLabelContainer,
+  PrimaryJoinCell,
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
+  SecondaryJoinCell,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -54,10 +55,9 @@ const stepShape = {
   revert: PropTypes.func.isRequired,
   clean: PropTypes.func.isRequired,
   actions: PropTypes.array.isRequired,
-
-  previous: stepShape,
-  next: stepShape,
 };
+stepShape.previous = stepShape;
+stepShape.next = stepShape;
 
 const joinStepPropTypes = {
   query: PropTypes.object.isRequired,
@@ -65,7 +65,17 @@ const joinStepPropTypes = {
   color: PropTypes.string,
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
+  sourceQuestion: PropTypes.object,
 };
+
+const JOIN_OPERATOR_OPTIONS = [
+  { name: "=", value: "=" },
+  { name: ">", value: ">" },
+  { name: "<", value: "<" },
+  { name: "≥", value: ">=" },
+  { name: "≤", value: "<=" },
+  { name: "≠", value: "!=" },
+];
 
 export default function JoinStep({
   color,
@@ -73,6 +83,7 @@ export default function JoinStep({
   step,
   updateQuery,
   isLastOpened,
+  sourceQuestion,
 }) {
   const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
@@ -86,7 +97,7 @@ export default function JoinStep({
   const valid = _.all(joins, join => join.isValid());
 
   function addNewJoinClause() {
-    query.join(new Join({ fields: "all" })).update(updateQuery);
+    updateQuery(query.join(new Join({ fields: "all" })));
   }
 
   return (
@@ -102,6 +113,7 @@ export default function JoinStep({
                 showRemove={joins.length > 1}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened && isLast}
+                sourceQuestion={sourceQuestion}
               />
             </JoinClauseContainer>
           );
@@ -123,11 +135,12 @@ JoinStep.propTypes = joinStepPropTypes;
 const joinClausePropTypes = {
   color: PropTypes.string,
   join: PropTypes.object,
-  updateQuery: PropTypes.func,
+  sourceQuestion: PropTypes.object,
   showRemove: PropTypes.bool,
+  updateQuery: PropTypes.func,
 };
 
-function JoinClause({ color, join, updateQuery, showRemove }) {
+function JoinClause({ color, join, sourceQuestion, updateQuery, showRemove }) {
   const joinDimensionPickersRef = useRef([]);
   const parentDimensionPickersRef = useRef([]);
 
@@ -167,36 +180,35 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   function onParentDimensionChange(index, fieldRef, { overwrite } = {}) {
-    join
-      .setParentDimension({
-        index,
-        dimension: fieldRef,
-        overwriteTemporalUnit: overwrite,
-      })
-      .setDefaultAlias()
-      .parent()
-      .update(updateQuery);
+    updateQuery(
+      join
+        .setParentDimension({
+          index,
+          dimension: fieldRef,
+          overwriteTemporalUnit: overwrite,
+        })
+        .setDefaultAlias()
+        .parent(),
+    );
     if (!join.joinDimensions()[index]) {
       joinDimensionPickersRef.current[index]?.open();
     }
   }
 
   function onJoinDimensionChange(index, fieldRef, { overwrite } = {}) {
-    join
-      .setJoinDimension({
-        index,
-        dimension: fieldRef,
-        overwriteTemporalUnit: overwrite,
-      })
-      .parent()
-      .update(updateQuery);
+    updateQuery(
+      join
+        .setJoinDimension({
+          index,
+          dimension: fieldRef,
+          overwriteTemporalUnit: overwrite,
+        })
+        .parent(),
+    );
   }
 
   function addNewDimensionsPair(index) {
-    join
-      .addEmptyDimensionsPair()
-      .parent()
-      .update(updateQuery);
+    updateQuery(join.addEmptyDimensionsPair().parent());
 
     // Need to wait, so a new dimensions pair renders
     // and a corresponding ref is created, so we can reference it here
@@ -206,12 +218,12 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   function removeJoin() {
-    join.remove().update(updateQuery);
+    updateQuery(join.remove());
   }
 
   return (
     <JoinClauseRoot>
-      <NotebookCell color={color} flex={1} alignSelf="start">
+      <PrimaryJoinCell color={color}>
         <NotebookCellItem color={color}>
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
@@ -223,46 +235,47 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           query={query}
           joinedTable={joinedTable}
           color={color}
+          sourceQuestion={sourceQuestion}
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
-      </NotebookCell>
+      </PrimaryJoinCell>
 
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabelContainer>
             <JoinWhereConditionLabel />
           </JoinWhereConditionLabelContainer>
-          <NotebookCell
+          <SecondaryJoinCell
             color={color}
-            flex={1}
-            flexDirection="column"
-            align="start"
             padding={hasAtLeastOneDimensionSelected && "8px"}
           >
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
               const isLast = index === displayConditions.length - 1;
+              const operator = condition[0] ?? "=";
+              const operatorSymbol = JOIN_OPERATOR_OPTIONS.find(
+                o => o.value === operator,
+              )?.name;
 
               function removeParentDimension() {
-                join
-                  .setParentDimension({ index, dimension: null })
-                  .parent()
-                  .update(updateQuery);
+                updateQuery(
+                  join.setParentDimension({ index, dimension: null }).parent(),
+                );
               }
 
               function removeJoinDimension() {
-                join
-                  .setJoinDimension({ index, dimension: null })
-                  .parent()
-                  .update(updateQuery);
+                updateQuery(
+                  join.setJoinDimension({ index, dimension: null }).parent(),
+                );
               }
 
               function removeDimensionPair() {
-                join
-                  .removeCondition(index)
-                  .parent()
-                  .update(updateQuery);
+                updateQuery(join.removeCondition(index).parent());
+              }
+
+              function updateOperator({ target: { value } }) {
+                updateQuery(join.setOperator(index, value).parent());
               }
 
               return (
@@ -286,7 +299,20 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       }
                       data-testid="parent-dimension"
                     />
-                    <JoinConditionLabel>=</JoinConditionLabel>
+                    <JoinConditionLabel>
+                      <Select
+                        hiddenIcons
+                        width={80}
+                        value={operator ?? "="}
+                        onChange={updateOperator}
+                        options={JOIN_OPERATOR_OPTIONS}
+                        triggerElement={
+                          <JoinOperatorButton primary>
+                            {operatorSymbol}
+                          </JoinOperatorButton>
+                        }
+                      />
+                    </JoinConditionLabel>
                   </Row>
                   <Row>
                     <JoinDimensionPicker
@@ -320,7 +346,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                 </JoinDimensionControlsContainer>
               );
             })}
-          </NotebookCell>
+          </SecondaryJoinCell>
         </React.Fragment>
       )}
 
@@ -374,6 +400,7 @@ const joinTablePickerPropTypes = {
   query: PropTypes.object,
   joinedTable: PropTypes.object,
   color: PropTypes.string,
+  sourceQuestion: PropTypes.object,
   updateQuery: PropTypes.func,
   onSourceTableSet: PropTypes.func.isRequired,
 };
@@ -383,6 +410,7 @@ function JoinTablePicker({
   query,
   joinedTable,
   color,
+  sourceQuestion,
   updateQuery,
   onSourceTableSet,
 }) {
@@ -391,12 +419,18 @@ function JoinTablePicker({
     query.database().savedQuestionsDatabase(),
   ].filter(Boolean);
 
+  const sourceDataBucketId =
+    sourceQuestion != null && sourceQuestion.isDataset()
+      ? DATA_BUCKET.DATASETS
+      : undefined;
+  const hasSourceTable = join.joinSourceTableId() != null;
+
   function onChange(tableId) {
     const newJoin = join
       .setJoinSourceTableId(tableId)
       .setDefaultCondition()
       .setDefaultAlias();
-    newJoin.parent().update(updateQuery);
+    updateQuery(newJoin.parent());
     onSourceTableSet(newJoin);
   }
 
@@ -417,15 +451,16 @@ function JoinTablePicker({
       containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
       rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
     >
-      <DatabaseSchemaAndTableDataSelector
+      <DataSourceSelector
         hasTableSearch
         canChangeDatabase={false}
         databases={databases}
         tableFilter={table => table.db_id === query.database().id}
+        selectedDataBucketId={hasSourceTable ? undefined : sourceDataBucketId}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={join.joinSourceTableId()}
         setSourceTableFn={onChange}
-        isInitiallyOpen={join.joinSourceTableId() == null}
+        isInitiallyOpen={!hasSourceTable}
         triggerElement={
           <FieldPickerContentContainer>
             {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
@@ -448,10 +483,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
   const strategyOption = join.strategyOption();
 
   function onChange(strategy) {
-    join
-      .setStrategy(strategy)
-      .parent()
-      .update(updateQuery);
+    updateQuery(join.setStrategy(strategy).parent());
   }
 
   return (
@@ -464,7 +496,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
           />
         ) : (
           <NotebookCellItem color={color}>
-            {`Choose a join type`}
+            {t`Choose a join type`}
           </NotebookCellItem>
         )
       }
@@ -547,7 +579,7 @@ function getDimensionDisplayName(dimension) {
   if (!dimension) {
     return t`Pick a column...`;
   }
-  if (dimension.temporalUnit()) {
+  if (isDateTimeField(dimension.mbql())) {
     return `${dimension.displayName()}: ${dimension.subDisplayName()}`;
   }
   return dimension.displayName();
@@ -629,6 +661,7 @@ class JoinDimensionPicker extends React.Component {
               onClose();
             }}
             enableSubDimensions
+            preventNumberSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}
@@ -650,34 +683,29 @@ const JoinFieldsPicker = ({ join, updateQuery, ...props }) => {
   const selected = new Set(selectedDimensions.map(d => d.key()));
 
   function onSelectAll() {
-    join
-      .setFields("all")
-      .parent()
-      .update(updateQuery);
+    updateQuery(join.setFields("all").parent());
   }
 
   function onSelectNone() {
-    join
-      .setFields("none")
-      .parent()
-      .update(updateQuery);
+    updateQuery(join.setFields("none").parent());
   }
 
   function onToggleDimension(dimension) {
-    join
-      .setFields(
-        dimensions
-          .filter(d => {
-            if (d === dimension) {
-              return !selected.has(d.key());
-            } else {
-              return selected.has(d.key());
-            }
-          })
-          .map(d => d.mbql()),
-      )
-      .parent()
-      .update(updateQuery);
+    updateQuery(
+      join
+        .setFields(
+          dimensions
+            .filter(d => {
+              if (d === dimension) {
+                return !selected.has(d.key());
+              } else {
+                return selected.has(d.key());
+              }
+            })
+            .map(d => d.mbql()),
+        )
+        .parent(),
+    );
   }
 
   return (

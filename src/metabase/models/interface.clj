@@ -1,24 +1,56 @@
 (ns metabase.models.interface
-  (:require [buddy.core.codecs :as codecs]
-            [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin.types :as p.types]
-            [schema.core :as s]
-            [taoensso.nippy :as nippy]
-            [toucan.models :as models])
-  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
-           java.sql.Blob
-           java.util.zip.GZIPInputStream))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [camel-snake-kebab.core :as csk]
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.core.memoize :as memoize]
+   [clojure.spec.alpha :as s]
+   [clojure.walk :as walk]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.json-migration :as jm]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.encryption :as encryption]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [schema.core :as schema]
+   [taoensso.nippy :as nippy]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.util :as t2.u])
+  (:import
+   (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
+   (java.sql Blob)
+   (java.util.zip GZIPInputStream)
+   (toucan2.instance Instance)))
+
+(set! *warn-on-reflection* true)
+
+(p/import-vars
+ [models.dispatch
+  toucan-instance?
+  instance-of?
+  InstanceOf
+  model
+  instance])
+
+(def ^:dynamic *deserializing?*
+  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
+  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
+  on a future deserialization."
+  false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -67,9 +99,9 @@
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
   (cond-> query
-    (seq query) normalize/normalize))
+    (seq query) mbql.normalize/normalize))
 
-(defn- catch-normalization-exceptions
+(defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
   letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
@@ -86,18 +118,28 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
+(defn normalize-parameters-list
+  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameters]
+  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
+      []))
+
+(models/add-type! :parameters-list
+  :in  (comp json-in normalize-parameters-list)
+  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
+
 (def ^:private MetricSegmentDefinition
-  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
-   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
-   s/Keyword                     s/Any})
+  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
+   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
+   schema/Keyword                     schema/Any})
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (s/validator MetricSegmentDefinition))
+  (schema/validator MetricSegmentDefinition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when (seq definition)
-    (u/prog1 (normalize/normalize-fragment [:query] definition)
+    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
       (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
@@ -109,7 +151,7 @@
   ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
   ;; to modern MBQL clauses so things work correctly
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
+            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -122,7 +164,7 @@
             (walk/postwalk
              (fn [form]
                (cond-> form
-                 (mbql-field-clause? form) normalize/normalize))
+                 (mbql-field-clause? form) mbql.normalize/normalize))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -131,19 +173,31 @@
       ;; the word "expression" but it is not MBQL (metabase#15882)
       (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
+(jm/def-json-migration migrate-viz-settings*)
+
+(def ^:private viz-settings-current-version 2)
+
+(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
+  (let [{percent? :pie.show_legend_perecent ;; [sic]
+         legend?  :pie.show_legend} viz-settings]
+    (if-let [new-value (cond
+                         legend?  "inside"
+                         percent? "legend")]
+      (assoc viz-settings :pie.percent_visibility new-value)
+      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+
+(defn- migrate-viz-settings
+  [viz-settings]
+  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
+    (cond-> new-viz-settings
+      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
+
+;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
+;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
+
 (models/add-type! :visualization-settings
-  :in  json-in
-  :out (comp normalize-visualization-settings json-out-without-keywordization))
-
-;; For DashCard parameter lists
-(defn- normalize-parameter-mapping-targets [parameter-mappings]
-  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
-      []))
-
-(models/add-type! :parameter-mappings
-  :in  (comp json-in normalize-parameter-mapping-targets)
-  :out (comp (catch-normalization-exceptions normalize-parameter-mapping-targets) json-out-with-keywordization))
-
+  :in  (comp json-in migrate-viz-settings)
+  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
@@ -194,7 +248,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe cron-util/CronScheduleString) s))
+  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string
@@ -209,100 +263,212 @@
 
 ;;; properties
 
-;; use now() for Postgres and H2. now() for MySQL/MariaDB only returns second resolution. So use now(6) which uses the
-;; max (nanosecond) resolution.
-(defn- now []
+(defn now
+  "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
+  and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
+  max (nanosecond) resolution)."
+  []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
+  (binding [hx/*honey-sql-version* 2]
+    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type))))
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (now)))
+  (cond-> obj
+    (not (:created_at obj)) (assoc :created_at (now))))
 
-(defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (now)))
+(defn- add-updated-at-timestamp [obj]
+  ;; don't stomp on `:updated_at` if it's already explicitly specified.
+  (let [changes-already-include-updated-at? (if (t2/instance? obj)
+                                              (:updated_at (t2/changes obj))
+                                              (:updated_at obj))]
+    (cond-> obj
+      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
 
-(models/add-property! :timestamped?
+(models/add-property! ::timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
+;; like `timestamped?`, but for models that only have an `:created_at` column
+(models/add-property! ::created-at-timestamped?
+  :insert add-created-at-timestamp)
+
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
-(models/add-property! :updated-at-timestamped?
+(models/add-property! ::updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
+
+(defn- add-entity-id [obj & _]
+  (if (or (contains? obj :entity_id)
+          *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
+
+(models/add-property! ::entity-id
+  :insert add-entity-id)
+
+(methodical/prefer-method! #'t2.before-insert/before-insert ::timestamped? ::entity-id)
+
+;;;; [[define-simple-hydration-method]] and [[define-batched-hydration-method]]
+
+(s/def ::define-hydration-method
+  (s/cat :fn-name       symbol?
+         :hydration-key keyword?
+         :docstring     string?
+         :fn-tail       (s/alt :arity-1 :clojure.core.specs.alpha/params+body
+                               :arity-n (s/+ (s/spec :clojure.core.specs.alpha/params+body)))))
+
+(defonce ^:private defined-hydration-methods
+  (atom {}))
+
+(defn- define-hydration-method [hydration-type fn-name hydration-key fn-tail]
+  {:pre [(#{:hydrate :batched-hydrate} hydration-type)]}
+  ;; Let's be EXTRA nice and make sure there are no duplicate hydration keys!
+  (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
+    (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
+      (when (not= fn-symb existing-fn-symb)
+        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                        {:hydration-key       hydration-key
+                         :existing-definition existing-fn-symb}))))
+    (swap! defined-hydration-methods assoc hydration-key fn-symb))
+  `(do
+     (defn ~fn-name
+       ~@fn-tail)
+     ~(case hydration-type
+        :hydrate
+        `(methodical/defmethod t2.hydrate/simple-hydrate
+           [:default ~hydration-key]
+           [~'_model k# row#]
+           (assoc row# k# (~fn-name row#)))
+
+        :batched-hydrate
+        `(methodical/defmethod t2.hydrate/batched-hydrate
+           [:default ~hydration-key]
+           [~'_model ~'_k rows#]
+           (~fn-name rows#)))))
+
+(defmacro define-simple-hydration-method
+  "Define a Toucan hydration function (Toucan 1) or method (Toucan 2) to do 'simple' hydration (this function is called
+  for each individual object that gets hydrated). This helper is in place to make the switch to Toucan 2 easier to
+  accomplish. Toucan 2 uses multimethods instead of regular functions with `:hydrate` metadata. When we switch to
+  Toucan 2, we won't need to rewrite all of our hydration methods at once -- we can just change the implementation of
+  this function, and eventually remove it entirely."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-simple-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
+
+(defmacro define-batched-hydration-method
+  "Like [[define-simple-hydration-method]], but defines a Toucan 'batched' hydration function (Toucan 1) or
+  method (Toucan 2). 'Batched' hydration means this function can be used to hydrate a sequence of objects in one call.
+
+  See docstring for [[define-simple-hydration-method]] for more information as to why this macro exists."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :batched-hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-batched-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defprotocol+ IObjectPermissions
-  "Methods for determining whether the current user has read/write permissions for a given object. See documentation
-  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
+(def ^{:arglists '([x & _args])} dispatch-on-model
+  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
+  t2.u/dispatch-on-first-arg)
 
-  (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
-    "Return a set of permissions object paths that a user must have access to in order to access this object. This
-    should be something like #{\"/db/1/schema/public/table/20/\"}. `read-or-write` will be either `:read` or `:write`,
-    depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore
-    this param).")
+(defmulti perms-objects-set
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
+  something like
 
-  (can-read? [instance] [entity ^Integer id]
-    "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
+    #{\"/db/1/schema/public/table/20/\"}
+
+  `read-or-write` will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be
+  the same sets for most models; they can ignore this param)."
+  {:arglists '([instance read-or-write])}
+  dispatch-on-model)
+
+(defmethod perms-objects-set :default
+  [_instance _read-or-write]
+  nil)
+
+(defmulti can-read?
+  "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
+  one of these implementations:
 
   *  `(constantly true)`
   *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :read)` (you must also implement `perms-objects-set` to use this)
-  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement `perms-objects-set` to use
-     this)")
+  *  `(partial current-user-has-full-permissions? :read)` (you must also implement [[perms-objects-set]] to use this)
+  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement [[perms-objects-set]] to use
+     this)"
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
 
-  (^{:hydrate :can_write} can-write? [instance] [entity ^Integer id]
-   "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
+(defmulti can-write?
+  "Return whether [[metabase.api.common/*current-user*]] has *write* permissions for an object. You should typically use
+  one of these implementations:
 
   *  `(constantly true)`
   *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :write)` (you must also implement `perms-objects-set` to use this)
-  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
-      this)")
+  *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
+  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
+      this)"
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
 
-  (^{:added "0.32.0"} can-create? [entity m]
-    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+#_{:clj-kondo/ignore [:unused-private-var]}
+(define-simple-hydration-method ^:private hydrate-can-write
+  :can_write
+  "Hydration method for `:can_write`."
+  [instance]
+  (can-write? instance))
+
+(defmulti can-create?
+  "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
     `m`.
 
-  Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
+  Because this method was added YEARS after [[can-read?]] and [[can-write?]], most models do not have an implementation
   for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
-  Implement this method as you come across models that are missing it.")
+  Implement this method as you come across models that are missing it."
+  {:added "0.32.0", :arglists '([model m])}
+  dispatch-on-model)
 
-  (^{:added "0.36.0"} can-update? [instance changes]
-   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
-   the `changes` map. This is equivalent to checking whether you're allowed to perform `(toucan.db/update! entity id
-   changes)`.
+(defmethod can-create? :default
+  [model _m]
+  (throw
+   (NoSuchMethodException.
+    (str (format "%s does not yet have an implementation for [[can-create?]]. " (name model))
+         "Please consider adding one. See dox for [[can-create?]] for more details."))))
 
-  This method is appropriate for powering `PUT` API endpoints. Like `can-create?` this method was added YEARS after
-  most of the current API endpoints were written, so it is used in very few places, and this logic is determined
-  ad-hoc in the API endpoints themselves. Use this method going forward!"))
+(defmulti can-update?
+  "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
+   the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-(def IObjectPermissionsDefaults
-  "Default implementations for `IObjectPermissions`."
-  {:perms-objects-set
-   (constantly nil)
+    (toucan.db/update! model id changes)
 
-   :can-create?
-   (fn [entity _]
-     (throw
-      (NoSuchMethodException.
-       (str (format "%s does not yet have an implementation for `can-create?`. " (name entity))
-            "Please consider adding one. See dox for `can-create?` for more details."))))
+  This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
+  most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
+  in the API endpoints themselves. Use this method going forward!"
+  {:added "0.36.0", :arglists '([instance changes])}
+  dispatch-on-model)
 
-   :can-update?
-   (fn
-     [instance _]
-     (throw
-      (NoSuchMethodException.
-       (str (format "%s does not yet have an implementation for `can-update?`. " (name instance))
-            "Please consider adding one. See dox for `can-update?` for more details."))))})
+(defmethod can-update? :default
+  [instance _changes]
+  (throw
+   (NoSuchMethodException.
+    (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
+         "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defn superuser?
-  "Is `*current-user*` is a superuser? Ignores args.
-   Intended for use as an implementation of `can-read?` and/or `can-write?`."
+  "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
+  of [[can-read?]] and/or [[can-write?]]."
   [& _]
   @(requiring-resolve 'metabase.api.common/*is-superuser?*))
 
@@ -313,9 +479,9 @@
   (contains? (current-user-permissions-set) "/"))
 
 (defn- check-perms-with-fn
-  ([fn-symb read-or-write entity object-id]
+  ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (entity object-id))))
+       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
@@ -327,16 +493,105 @@
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
   current-user-has-full-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
+  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
+  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
   current-user-has-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
+  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
+  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
+
+(defmethod can-read? ::read-policy.always-allow
+  ([_instance]
+   true)
+  ([_model _pk]
+   true))
+
+(defmethod can-write? ::write-policy.always-allow
+  ([_instance]
+   true)
+  ([_model _pk]
+   true))
+
+(defmethod can-read? ::read-policy.partial-perms-for-perms-set
+  ([instance]
+   (current-user-has-partial-permissions? :read instance))
+  ([model pk]
+   (current-user-has-partial-permissions? :read model pk)))
+
+(defmethod can-read? ::read-policy.full-perms-for-perms-set
+  ([instance]
+   (current-user-has-full-permissions? :read instance))
+  ([model pk]
+   (current-user-has-full-permissions? :read model pk)))
+
+(defmethod can-write? ::write-policy.partial-perms-for-perms-set
+  ([instance]
+   (current-user-has-partial-permissions? :write instance))
+  ([model pk]
+   (current-user-has-partial-permissions? :write model pk)))
+
+(defmethod can-write? ::write-policy.full-perms-for-perms-set
+  ([instance]
+   (current-user-has-full-permissions? :write instance))
+  ([model pk]
+   (current-user-has-full-permissions? :write model pk)))
+
+(defmethod can-read? ::read-policy.superuser
+  ([_instance]
+   (superuser?))
+  ([_model _pk]
+   (superuser?)))
+
+(defmethod can-write? ::write-policy.superuser
+  ([_instance]
+   (superuser?))
+  ([_model _pk]
+   (superuser?)))
+
+(defmethod can-create? ::create-policy.superuser
+  [_model _m]
+  (superuser?))
+
+;;;; [[define-methods]]
+
+(defn define-methods
+  "Helper for defining Toucan 2 methods using a Toucan-1-style `IModel` method map. This should be considered deprecated
+  and will be removed at some point in the future."
+  {:style/indent [:form]}
+  [model method-map]
+  (models/define-methods-with-IModel-method-map model method-map))
+
+;;;; [[to-json]]
+
+(methodical/defmulti to-json
+  "Serialize an `instance` to JSON."
+  {:arglists            '([instance json-generator])
+   :defmethod-arities   #{2}
+   :dispatch-value-spec (some-fn keyword? symbol?)} ; dispatch value should be either keyword model name or symbol
+  t2.u/dispatch-on-first-arg)
+
+(methodical/defmethod to-json :default
+  "Default method for encoding instances of a Toucan model to JSON."
+  [instance json-generator]
+  (json.generate/encode-map instance json-generator))
+
+(json.generate/add-encoder
+ Instance
+ #'to-json)
+
+;;;; etc
+
+;;; Trigger errors when hydrate encounters a key that has no corresponding method defined.
+(reset! t2.hydrate/global-error-on-unknown-key true)
+
+(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
+  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  [_original-model dest-key _hydrated-key]
+  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])

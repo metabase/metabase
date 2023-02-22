@@ -7,7 +7,7 @@ VERSION_PROPERTY_NAME="src_hash"
 source-hash() {
   # hash all the files that might change a backend-only uberjar build (for integration tests)
   (
-    find src deps.edn resources/sample-dataset.db.mv.db -type f -print0 | xargs -0 shasum ;
+    find src deps.edn resources/sample-database.db.mv.db -type f -print0 | xargs -0 shasum ;
     find resources -type f \( -iname \*.clj -o -iname \*.edn -o -iname \*.yaml -o -iname \*.properties -o -iname \*.html \) -not -name "version.properties" -print0 | xargs -0 shasum ;
   ) | shasum | awk '{ print $1 }'
 }

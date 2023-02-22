@@ -1,11 +1,14 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  ensureDcChartVisibility,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > visualizations > bar", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with stacked series", () => {
@@ -16,7 +19,7 @@ describe("visual tests > visualizations > bar", () => {
           "SELECT X, A, B, C " +
           "FROM (VALUES (1,20,30,30),(2,10,-40,-20),(3,20,10,30)) T (X, A, B, C)",
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     };
 
     visitQuestionAdhoc({
@@ -29,9 +32,8 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with an invalid SQL query and a long error message", () => {
@@ -42,7 +44,7 @@ describe("visual tests > visualizations > bar", () => {
           .fill("SELECT A, B, C FROM EXAMPLE")
           .join(" UNION ALL\n"),
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     };
 
     visitQuestionAdhoc({
@@ -55,8 +57,6 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

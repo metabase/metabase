@@ -1,31 +1,50 @@
 (ns metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
-  (:require [clojure.data :as diff]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing use-fixtures]]
-            [metabase-enterprise.serialization.cmd :refer [dump load]]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
-                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
-                                     Segment Table User]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.shared.models.visualization-settings-test :as mb.viz-test]
-            [metabase.shared.util.log :as log]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import org.apache.commons.io.FileUtils))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.serialization.cmd :refer [dump load]]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Pulse
+            PulseCard
+            PulseChannel
+            Segment
+            Table
+            User]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db])
+  (:import
+   (org.apache.commons.io FileUtils)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once
-              mb.viz-test/with-spec-instrumentation-fixture
-              (fixtures/initialize :test-users-personal-collections))
+  mb.viz-test/with-spec-instrumentation-fixture
+  (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
   [file-or-filename]
@@ -36,7 +55,7 @@
 (defn- world-snapshot
   []
   (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
-                        Card DashboardCardSeries FieldValues Dimension Dependency PulseCard PulseChannel User
+                        Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
                         NativeQuerySnippet]]
              [model (db/select-field :id model)])))
 
@@ -46,7 +65,7 @@
      (try
        ~@body
        (finally
-         (doseq [[model# ids#] (second (diff/diff snapshot# (world-snapshot)))]
+         (doseq [[model# ids#] (second (data/diff snapshot# (world-snapshot)))]
            (some->> ids#
                     not-empty
                     (vector :in)
@@ -92,7 +111,7 @@
   "Create a map from card names to their query results"
   [card-ids]
   (reduce (fn [acc card-id]
-            (let [card (Card card-id)]
+            (let [card (db/select-one Card :id card-id)]
               (assoc acc (:name card) (card-query-results card))))
           {}
           card-ids))
@@ -101,16 +120,17 @@
   "Create a map from card names to their collection names"
   [card-ids]
   (reduce (fn [acc card-id]
-            (let [card (Card card-id)]
+            (let [card (db/select-one Card :id card-id)]
               (assoc acc (:name card) (collection-name-for-card card))))
           {}
           card-ids))
 
 (defmulti ^:private assert-loaded-entity
-  (fn [entity fingerprint]
-    (type entity)))
+  {:arglists '([instance fingerprint])}
+  (fn [instance _fingerprint]
+    (mi/model instance)))
 
-(defmethod assert-loaded-entity (type Card)
+(defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]
   (testing (format "Card: %s" card-name)
     (query-res-match query-results card)
@@ -123,27 +143,27 @@
               [col-key col-val] col
               col-ref (mb.viz/parse-db-column-ref col-key)
               {:keys [::mb.viz/field-id]} col-ref
-              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as tbl-col} & _] (:table.columns vs)
+              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
               [_ col-field-id _] col-field-ref]
           (is (some? (:table.columns vs)))
           (is (some? (:column_settings vs)))
           (is (integer? field-id))
           (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
-                              str/lower-case)))
+                              u/lower-case-en)))
           (is (= {:show_mini_bar true
                   :column_title "Parallel"} col-val))
           (is (= "Venue Category" col-name))
           (is (true? col-enabled))
           (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
           (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
-                                   str/lower-case))))))
+                                   u/lower-case-en))))))
     card))
 
 (defn- collection-parent-name [collection]
   (let [[_ ^String parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
     (db/select-one-field :name Collection :id (Integer. parent-id))))
 
-(defmethod assert-loaded-entity (type Collection)
+(defmethod assert-loaded-entity Collection
   [collection _]
   (case (:name collection)
     "My Nested Collection"              (is (= "My Collection" (collection-parent-name collection)))
@@ -161,9 +181,9 @@
                                             "Should not have loaded different user's PC"))
   collection)
 
-(defmethod assert-loaded-entity (type NativeQuerySnippet)
+(defmethod assert-loaded-entity NativeQuerySnippet
   [snippet {:keys [entities]}]
-  (when-let [orig-snippet (first (filter (every-pred #(= (type NativeQuerySnippet) (type %))
+  (when-let [orig-snippet (first (filter (every-pred #(mi/instance-of? NativeQuerySnippet %)
                                                      #(= (:name snippet) (:name %))) (map last entities)))]
     (is (some? orig-snippet))
     (is (= (select-keys orig-snippet [:name :description :content])
@@ -193,7 +213,7 @@
       (is (contains? #{"price" "PRICE"} (:name f2)))
       (is (= {:dimension [:field (u/the-id f2) {:source-field (u/the-id f1)}]} dimension)))))
 
-(defmethod assert-loaded-entity (type Dashboard)
+(defmethod assert-loaded-entity Dashboard
   [dashboard _]
   (testing "The dashboard card series were loaded correctly"
     (when (= "My Dashboard" (:name dashboard))
@@ -250,7 +270,7 @@
           (is (= "Textbox Card" (get-in dashcard [:visualization_settings :text])))))))
   dashboard)
 
-(defmethod assert-loaded-entity (type Pulse)
+(defmethod assert-loaded-entity Pulse
   [pulse _]
   (is (some? pulse))
   (let [pulse-cards (db/select PulseCard :pulse_id (u/the-id pulse))]
@@ -282,7 +302,6 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
-                               :presto    ; no bare table names allowed
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
@@ -290,16 +309,15 @@
                                :sqlite    ; foreign-keys is not supported by this driver
                                :sparksql  ; foreign-keys is not supported by this driver
                                ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk
-                               ))
-
+                               :bigquery-cloud-sdk))
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
                           (qp.store/fetch-and-store-tables! [table-id
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
+                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                          :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root
@@ -328,59 +346,59 @@
                                                                card-id-with-native-snippet
                                                                card-id-temporal-unit
                                                                card-join-card-id])
-                           :entities      [[Database           (Database db-id)]
-                                           [Table              (Table table-id)]
-                                           [Table              (Table table-id-categories)]
-                                           [Table              (Table table-id-users)]
-                                           [Table              (Table table-id-checkins)]
-                                           [Field              (Field numeric-field-id)]
-                                           [Field              (Field name-field-id)]
-                                           [Field              (Field category-field-id)]
-                                           [Field              (Field latitude-field-id)]
-                                           [Field              (Field longitude-field-id)]
-                                           [Field              (Field category-pk-field-id)]
-                                           [Field              (Field date-field-id)]
-                                           [Field              (Field user-id-field-id)]
-                                           [Field              (Field users-pk-field-id)]
-                                           [Field              (Field last-login-field-id)]
-                                           [Collection         (Collection collection-id)]
-                                           [Collection         (Collection collection-id-nested)]
-                                           [Collection         (Collection personal-collection-id)]
-                                           [Collection         (Collection pc-nested-id)]
-                                           [Collection         (Collection pc-deeply-nested-id)]
-                                           [Metric             (Metric metric-id)]
-                                           [Segment            (Segment segment-id)]
-                                           [Dashboard          (Dashboard dashboard-id)]
-                                           [Dashboard          (Dashboard root-dashboard-id)]
-                                           [Card               (Card card-id)]
-                                           [Card               (Card card-arch-id)]
-                                           [Card               (Card card-id-root)]
-                                           [Card               (Card card-id-nested)]
-                                           [Card               (Card card-id-nested-query)]
-                                           [Card               (Card card-id-native-query)]
-                                           [DashboardCard      (DashboardCard dashcard-id)]
-                                           [DashboardCard      (DashboardCard dashcard-top-level-click-id)]
-                                           [DashboardCard      (DashboardCard dashcard-with-click-actions)]
-                                           [Card               (Card card-id-root-to-collection)]
-                                           [Card               (Card card-id-collection-to-root)]
-                                           [Card               (Card card-id-template-tags)]
-                                           [Card               (Card card-id-filter-agg)]
-                                           [Card               (Card card-id-temporal-unit)]
-                                           [Pulse              (Pulse pulse-id)]
-                                           [DashboardCard      (DashboardCard dashcard-with-textbox-id)]
-                                           [NativeQuerySnippet (NativeQuerySnippet snippet-id)]
-                                           [Collection         (Collection snippet-collection-id)]
-                                           [Collection         (Collection snippet-nested-collection-id)]
-                                           [NativeQuerySnippet (NativeQuerySnippet nested-snippet-id)]
-                                           [Card               (Card card-id-with-native-snippet)]
-                                           [Card               (Card card-join-card-id)]]})]
+                           :entities      [[Database           (db/select-one Database :id db-id)]
+                                           [Table              (db/select-one Table :id table-id)]
+                                           [Table              (db/select-one Table :id table-id-categories)]
+                                           [Table              (db/select-one Table :id table-id-users)]
+                                           [Table              (db/select-one Table :id table-id-checkins)]
+                                           [Field              (db/select-one Field :id numeric-field-id)]
+                                           [Field              (db/select-one Field :id name-field-id)]
+                                           [Field              (db/select-one Field :id category-field-id)]
+                                           [Field              (db/select-one Field :id latitude-field-id)]
+                                           [Field              (db/select-one Field :id longitude-field-id)]
+                                           [Field              (db/select-one Field :id category-pk-field-id)]
+                                           [Field              (db/select-one Field :id date-field-id)]
+                                           [Field              (db/select-one Field :id user-id-field-id)]
+                                           [Field              (db/select-one Field :id users-pk-field-id)]
+                                           [Field              (db/select-one Field :id last-login-field-id)]
+                                           [Collection         (db/select-one Collection :id collection-id)]
+                                           [Collection         (db/select-one Collection :id collection-id-nested)]
+                                           [Collection         (db/select-one Collection :id personal-collection-id)]
+                                           [Collection         (db/select-one Collection :id pc-nested-id)]
+                                           [Collection         (db/select-one Collection :id pc-deeply-nested-id)]
+                                           [Metric             (db/select-one Metric :id metric-id)]
+                                           [Segment            (db/select-one Segment :id segment-id)]
+                                           [Dashboard          (db/select-one Dashboard :id dashboard-id)]
+                                           [Dashboard          (db/select-one Dashboard :id root-dashboard-id)]
+                                           [Card               (db/select-one Card :id card-id)]
+                                           [Card               (db/select-one Card :id card-arch-id)]
+                                           [Card               (db/select-one Card :id card-id-root)]
+                                           [Card               (db/select-one Card :id card-id-nested)]
+                                           [Card               (db/select-one Card :id card-id-nested-query)]
+                                           [Card               (db/select-one Card :id card-id-native-query)]
+                                           [DashboardCard      (db/select-one DashboardCard :id dashcard-id)]
+                                           [DashboardCard      (db/select-one DashboardCard :id dashcard-top-level-click-id)]
+                                           [DashboardCard      (db/select-one DashboardCard :id dashcard-with-click-actions)]
+                                           [Card               (db/select-one Card :id card-id-root-to-collection)]
+                                           [Card               (db/select-one Card :id card-id-collection-to-root)]
+                                           [Card               (db/select-one Card :id card-id-template-tags)]
+                                           [Card               (db/select-one Card :id card-id-filter-agg)]
+                                           [Card               (db/select-one Card :id card-id-temporal-unit)]
+                                           [Pulse              (db/select-one Pulse :id pulse-id)]
+                                           [DashboardCard      (db/select-one DashboardCard :id dashcard-with-textbox-id)]
+                                           [NativeQuerySnippet (db/select-one NativeQuerySnippet :id snippet-id)]
+                                           [Collection         (db/select-one Collection :id snippet-collection-id)]
+                                           [Collection         (db/select-one Collection :id snippet-nested-collection-id)]
+                                           [NativeQuerySnippet (db/select-one NativeQuerySnippet :id nested-snippet-id)]
+                                           [Card               (db/select-one Card :id card-id-with-native-snippet)]
+                                           [Card               (db/select-one Card :id card-join-card-id)]]})]
         (with-world-cleanup
           (load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
                 (is (or (-> entity :name nil?)
-                        (if-let [loaded (db/select-one model :name (:name entity))]
+                        (when-let [loaded (db/select-one model :name (:name entity))]
                           (assert-loaded-entity loaded fingerprint))
                         (and (-> entity :archived) ; archived card hasn't been dump-loaded
                              (= (:name entity) "My Arch Card"))

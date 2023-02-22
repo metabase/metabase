@@ -14,61 +14,59 @@ function toJSMap(m) {
   return o;
 }
 
-const date_accessors = {
-  x: row => new Date(row[0]).valueOf(),
-  y: row => row[1],
-};
+function row_chart(settings, data, colors) {
+  return StaticViz.RenderChart("row", {
+    settings: JSON.parse(settings),
+    data: JSON.parse(data),
+    colors: JSON.parse(colors),
+  });
+}
 
-const positional_accessors = {
-  x: row => row[0],
-  y: row => row[1],
-};
+function combo_chart(series, settings, instanceColors) {
+  // Thinking of combo as similar to multiple, although they're different in BE
+  return StaticViz.RenderChart("combo-chart", {
+    multipleSeries: JSON.parse(series),
+    settings: JSON.parse(settings),
+    colors: JSON.parse(instanceColors),
+  });
+}
 
-const dimension_accessors = {
-  dimension: row => row[0],
-  metric: row => row[1],
-};
+function gauge(card, data) {
+  return StaticViz.RenderChart("gauge", {
+    card: JSON.parse(card),
+    data: JSON.parse(data),
+  });
+}
 
-function timeseries_line(data, labels, settings) {
-  return StaticViz.RenderChart("timeseries/line", {
+function waterfall(data, labels, settings, waterfallType, instanceColors) {
+  return StaticViz.RenderChart("waterfall", {
     data: toJSArray(data),
     labels: toJSMap(labels),
-    accessors: date_accessors,
+    settings: JSON.parse(settings),
+    type: waterfallType,
+    colors: JSON.parse(instanceColors),
+  });
+}
+
+function funnel(data, settings) {
+  return StaticViz.RenderChart("funnel", {
+    data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }
 
-function timeseries_bar(data, labels, settings) {
-  return StaticViz.RenderChart("timeseries/bar", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: date_accessors,
-    settings: JSON.parse(settings),
-  });
-}
-
-function categorical_bar(data, labels, settings) {
-  return StaticViz.RenderChart("categorical/bar", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: positional_accessors,
-    settings: JSON.parse(settings),
-  });
-}
-
-function categorical_line(data, labels, settings) {
-  return StaticViz.RenderChart("categorical/line", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: positional_accessors,
-    settings: JSON.parse(settings),
-  });
-}
-
-function categorical_donut(rows, colors) {
+function categorical_donut(rows, legendColors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
-    colors: toJSMap(colors),
-    accessors: dimension_accessors,
+    colors: toJSMap(legendColors),
+    settings: JSON.parse(settings),
+  });
+}
+
+function progress(data, settings, instanceColors) {
+  return StaticViz.RenderChart("progress", {
+    data: JSON.parse(data),
+    settings: JSON.parse(settings),
+    colors: JSON.parse(instanceColors),
   });
 }

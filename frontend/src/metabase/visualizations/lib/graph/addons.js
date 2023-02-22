@@ -1,17 +1,17 @@
 import dc from "dc";
-import moment from "moment";
+import moment from "moment-timezone";
 
 export const lineAddons = _chart => {
-  _chart.fadeDeselectedArea = function() {
+  _chart.fadeDeselectedArea = function () {
     const dots = _chart.chartBodyG().selectAll(".dot");
     const extent = _chart.brush().extent();
 
     if (_chart.isOrdinal()) {
       if (_chart.hasFilter()) {
-        dots.classed(dc.constants.SELECTED_CLASS, function(d) {
+        dots.classed(dc.constants.SELECTED_CLASS, function (d) {
           return _chart.hasFilter(d.x);
         });
-        dots.classed(dc.constants.DESELECTED_CLASS, function(d) {
+        dots.classed(dc.constants.DESELECTED_CLASS, function (d) {
           return !_chart.hasFilter(d.x);
         });
       } else {

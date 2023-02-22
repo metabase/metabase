@@ -1,18 +1,9 @@
+/* eslint-disable react/prop-types */
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
-import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-
-import { keyForColumn } from "metabase/lib/dataset";
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-} from "metabase/lib/schema_metadata";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -22,57 +13,48 @@ function getVisualizationRaw(...args) {
 
 import {
   formatColumn,
-  numberFormatterForOptions,
+  formatDateTimeWithUnit,
+  getCurrencySymbol,
 } from "metabase/lib/formatting";
-import {
-  getDateFormatFromStyle,
-  hasDay,
-  hasHour,
-} from "metabase/lib/formatting/date";
+
+import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
-import type { Settings, SettingDef } from "../settings";
-import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
-import type { DatetimeUnit } from "metabase-types/types/Query";
-import type { Column } from "metabase-types/types/Dataset";
-import type { Series } from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-
-type ColumnSettings = Settings;
-
-type ColumnGetter = (
-  series: Series,
-  vizSettings: VisualizationSettings,
-) => Column[];
-
-const DEFAULT_GET_COLUMNS: ColumnGetter = (series, vizSettings) =>
+const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => (s.data && s.data.cols) || []));
-
-type ColumnSettingDef = SettingDef & {
-  getColumns?: ColumnGetter,
-};
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  hidden,
   ...def
-}: ColumnSettingDef = {}) {
+} = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
-    getObjectKey: keyForColumn,
-    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getObjectKey: getColumnKey,
+    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
+    hidden,
     ...def,
   });
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+  isDateWithoutTime,
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { nestedSettings } from "./nested";
 
-export function getGlobalSettingsForColumn(column: Column) {
+export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
@@ -84,11 +66,11 @@ export function getGlobalSettingsForColumn(column: Column) {
   return columnSettings;
 }
 
-function getLocalSettingsForColumn(column: Column): Settings {
+function getLocalSettingsForColumn(column) {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column: Column): Settings {
+function getInhertiedSettingsForColumn(column) {
   return {
     ...getGlobalSettingsForColumn(column),
     ...getLocalSettingsForColumn(column),
@@ -97,11 +79,7 @@ function getInhertiedSettingsForColumn(column: Column): Settings {
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
-function getDateStyleOptionsForUnit(
-  unit: ?DatetimeUnit,
-  abbreviate?: boolean = false,
-  separator?: string,
-) {
+function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   // hour-of-day shouldn't have any date style. It's handled as a time instead.
   // Other date parts are handled as dates, but hour-of-day needs to use the
   // time settings for 12/24 hour clock.
@@ -137,35 +115,37 @@ function getDateStyleOptionsForUnit(
   ];
   const seen = new Set();
   return options.filter(option => {
-    const format = getDateFormatFromStyle(option.value, unit);
-    if (seen.has(format)) {
+    const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+      date_style: option.value,
+    });
+    if (seen.has(formatted)) {
       return false;
     } else {
-      seen.add(format);
+      seen.add(formatted);
       return true;
     }
   });
 }
 
 function dateStyleOption(
-  style: DateStyle,
-  unit: ?DatetimeUnit,
-  description?: ?string,
-  abbreviate?: boolean = false,
-  separator?: string,
+  style,
+  unit,
+  description,
+  abbreviate = false,
+  separator,
 ) {
-  let format = getDateFormatFromStyle(style, unit, separator);
-  if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
-  }
+  const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+    date_style: style,
+    date_separator: separator,
+    output_density: abbreviate ? "condensed" : "default",
+  });
   return {
-    name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    name: formatted + (description ? ` (${description})` : ``),
     value: style,
   };
 }
 
-function timeStyleOption(style: TimeStyle, description?: ?string) {
+function timeStyleOption(style, description) {
   const format = style;
   return {
     name:
@@ -174,35 +154,60 @@ function timeStyleOption(style: TimeStyle, description?: ?string) {
   };
 }
 
+function getTimeEnabledOptionsForUnit(unit) {
+  const options = [
+    { name: t`Off`, value: null },
+    { name: t`HH:MM`, value: "minutes" },
+  ];
+
+  if (
+    !unit ||
+    unit === "default" ||
+    unit === "second" ||
+    unit === "millisecond"
+  ) {
+    options.push({ name: t`HH:MM:SS`, value: "seconds" });
+  }
+
+  if (!unit || unit === "default" || unit === "millisecond") {
+    options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
+  }
+
+  if (options.length === 2) {
+    options[1].name = t`On`;
+  }
+
+  return options;
+}
+
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
     widget: "select",
-    getDefault: ({ unit }: Column) => {
+    getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
-    isValid: ({ unit }: Column, settings: ColumnSettings) => {
+    isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings["date_style"] });
     },
-    getProps: ({ unit }: Column, settings: ColumnSettings) => ({
+    getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
         unit,
         settings["date_abbreviate"],
         settings["date_separator"],
       ),
     }),
-    getHidden: ({ unit }: Column) =>
-      getDateStyleOptionsForUnit(unit).length < 2,
+    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_separator: {
     title: t`Date separators`,
     widget: "radio",
     default: "/",
-    getProps: (column: Column, settings: ColumnSettings) => {
+    getProps: (column, settings) => {
       const style = /\//.test(settings["date_style"])
         ? settings["date_style"]
         : "M/D/YYYY";
@@ -214,54 +219,42 @@ export const DATE_COLUMN_SETTINGS = {
         ],
       };
     },
-    getHidden: ({ unit }: Column, settings: ColumnSettings) =>
-      !/\//.test(settings["date_style"] || ""),
+    getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate names of days and months`,
+    title: t`Abbreviate days and months`,
     widget: "toggle",
     default: false,
-    getHidden: ({ unit }: Column, settings: ColumnSettings) => {
-      const format = getDateFormatFromStyle(settings["date_style"], unit);
-      return !format.match(/MMMM|dddd/);
+    inline: true,
+    getHidden: ({ unit }, settings) => {
+      const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
+        date_style: settings["date_style"],
+      });
+      // If it contains a full month name or full weekday, abbreviation should be an option, ie. not hidden.
+      return !formatted.match(/January|Sunday/);
     },
     readDependencies: ["date_style"],
   },
   time_enabled: {
     title: t`Show the time`,
     widget: "radio",
-    isValid: ({ unit }: Column, settings: ColumnSettings) =>
-      !settings["time_enabled"] || hasHour(unit),
-    getProps: ({ unit }: Column, settings: ColumnSettings) => {
-      const options = [
-        { name: t`Off`, value: null },
-        { name: t`HH:MM`, value: "minutes" },
-      ];
-      if (
-        !unit ||
-        unit === "default" ||
-        unit === "second" ||
-        unit === "millisecond"
-      ) {
-        options.push({ name: t`HH:MM:SS`, value: "seconds" });
-      }
-      if (!unit || unit === "default" || unit === "millisecond") {
-        options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
-      }
-      if (options.length === 2) {
-        options[1].name = t`On`;
-      }
+    isValid: ({ unit }, settings) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
+      return !!_.findWhere(options, { value: settings["time_enabled"] });
+    },
+    getProps: ({ unit }, settings) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
-    getHidden: (column: Column, settings: ColumnSettings) =>
+    getHidden: (column, settings) =>
       !hasHour(column.unit) || isDateWithoutTime(column),
-    getDefault: ({ unit }: Column) => (hasHour(unit) ? "minutes" : null),
+    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
     title: t`Time style`,
     widget: "radio",
     default: "h:mm A",
-    getProps: (column: Column, settings: ColumnSettings) => ({
+    getProps: (column, settings) => ({
       options: [
         timeStyleOption("h:mm A", t`12-hour clock`),
         ...(column.unit === "hour-of-day"
@@ -270,7 +263,7 @@ export const DATE_COLUMN_SETTINGS = {
         timeStyleOption("HH:mm", t`24-hour clock`),
       ],
     }),
-    getHidden: (column: Column, settings: ColumnSettings) =>
+    getHidden: (column, settings) =>
       !settings["time_enabled"] || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
@@ -299,10 +292,10 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "Currency", value: "currency" },
       ],
     },
-    getDefault: (column: Column, settings: ColumnSettings) =>
+    getDefault: (column, settings) =>
       isCurrency(column) && settings["currency"] ? "currency" : "decimal",
     // hide this for currency
-    getHidden: (column: Column, settings: ColumnSettings) =>
+    getHidden: (column, settings) =>
       isCurrency(column) && settings["number_style"] === "currency",
     readDependencies: ["currency"],
   },
@@ -311,25 +304,22 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: currency.map(
-        ([_, currency: { name: string, code: string }]) => ({
-          name: currency.name,
-          value: currency.code,
-        }),
-      ),
+      options: currency.map(([_, currency]) => ({
+        name: currency.name,
+        value: currency.code,
+      })),
       searchProp: "name",
       searchCaseSensitive: false,
     },
     default: "USD",
-    getHidden: (column: Column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
+    getHidden: (column, settings) => settings["number_style"] !== "currency",
   },
   currency_style: {
     title: t`Currency label style`,
     widget: "radio",
-    getProps: (column: Column, settings: ColumnSettings) => {
+    getProps: (column, settings) => {
       const c = settings["currency"] || "USD";
-      const symbol = getCurrency(c, "symbol");
+      const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
       const name = getCurrency(c, "name");
       return {
@@ -353,14 +343,13 @@ export const NUMBER_COLUMN_SETTINGS = {
         ],
       };
     },
-    getDefault: (column: Column, settings: ColumnSettings) => {
+    getDefault: (column, settings) => {
       const c = settings["currency"] || "USD";
-      return getCurrency(c, "symbol") !== getCurrency(c, "code")
+      return getCurrencySymbol(c) !== getCurrency(c, "code")
         ? "symbol"
         : "code";
     },
-    getHidden: (column: Column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
+    getHidden: (column, settings) => settings["number_style"] !== "currency",
     readDependencies: ["number_style"],
   },
   currency_in_header: {
@@ -373,11 +362,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: true,
-    getHidden: (
-      column: Column,
-      settings: ColumnSettings,
-      { series }: { series: Series },
-    ) =>
+    getHidden: (column, settings, { series }) =>
       settings["number_style"] !== "currency" ||
       series[0].card.display !== "table",
     readDependencies: ["number_style"],
@@ -400,6 +385,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   decimals: {
     title: t`Minimum number of decimal places`,
     widget: "number",
+    props: {
+      placeholder: "1",
+    },
   },
   scale: {
     title: t`Multiply by a number`,
@@ -411,29 +399,26 @@ export const NUMBER_COLUMN_SETTINGS = {
   prefix: {
     title: t`Add a prefix`,
     widget: "input",
+    props: {
+      placeholder: "$",
+    },
   },
   suffix: {
     title: t`Add a suffix`,
     widget: "input",
-  },
-  // Optimization: build a single NumberFormat object that is used by formatting.js
-  _numberFormatter: {
-    getValue: (column: Column, settings: ColumnSettings) =>
-      numberFormatterForOptions(settings),
-    // NOTE: make sure to include every setting that affects the number formatter here
-    readDependencies: [
-      "number_style",
-      "currency_style",
-      "currency",
-      "decimals",
-    ],
+    props: {
+      placeholder: t`dollars`,
+    },
   },
   _header_unit: {
-    getValue: (column: Column, settings: ColumnSettings) => {
+    getValue: (column, settings) => {
       if (
         settings["number_style"] === "currency" &&
         settings["currency_in_header"]
       ) {
+        if (settings["currency_style"] === "symbol") {
+          return getCurrencySymbol(settings["currency"]);
+        }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
       return null;
@@ -459,7 +444,7 @@ const COMMON_COLUMN_SETTINGS = {
     getValue: column => column,
   },
   _column_title_full: {
-    getValue: (column: Column, settings: ColumnSettings) => {
+    getValue: (column, settings) => {
       let columnTitle = settings["column_title"] || formatColumn(column);
       const headerUnit = settings["_header_unit"];
       if (headerUnit) {
@@ -471,7 +456,7 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(series: Series, column: Column) {
+export function getSettingDefinitionsForColumn(series, column) {
   const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"

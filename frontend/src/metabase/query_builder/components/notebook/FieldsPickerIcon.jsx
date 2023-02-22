@@ -1,10 +1,10 @@
 import React from "react";
 import PropTypes from "prop-types";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { NotebookCell } from "./NotebookCell";
 
 export const FieldPickerContentContainer = styled.div`
@@ -25,8 +25,8 @@ export function FieldsPickerIcon({ isTriggeredComponentOpen }) {
       tooltip={<span>{t`Pick columns`}</span>}
       isEnabled={!isTriggeredComponentOpen}
     >
-      <FieldPickerContentContainer>
-        <StyledIcon name="table" size={14} />
+      <FieldPickerContentContainer data-testid="fields-picker">
+        <StyledIcon name="chevrondown" size={14} />
       </FieldPickerContentContainer>
     </Tooltip>
   );

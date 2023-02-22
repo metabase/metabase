@@ -1,5 +1,3 @@
-import type { DashCard } from "metabase-types/types/Dashboard";
-
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
 
@@ -19,27 +17,20 @@ export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
 export const MIN_ROW_HEIGHT = 54;
 
-type DashCardPosition = {
-  col: number,
-  row: number,
-  sizeY: number,
-  sizeX: number,
-};
-
 // returns the first available position from left to right, top to bottom,
 // based on the existing cards,  item size, and grid width
 export function getPositionForNewDashCard(
-  cards: Array<DashCard>,
-  sizeX: number = DEFAULT_CARD_SIZE.width,
-  sizeY: number = DEFAULT_CARD_SIZE.height,
-  width: number = GRID_WIDTH,
-): DashCardPosition {
+  cards,
+  size_x = DEFAULT_CARD_SIZE.width,
+  size_y = DEFAULT_CARD_SIZE.height,
+  width = GRID_WIDTH,
+) {
   let row = 0;
   let col = 0;
   while (row < 1000) {
-    while (col <= width - sizeX) {
+    while (col <= width - size_x) {
       let good = true;
-      const position = { col, row, sizeX, sizeY };
+      const position = { col, row, size_x, size_y };
       for (const card of cards) {
         if (intersects(card, position)) {
           good = false;
@@ -55,15 +46,15 @@ export function getPositionForNewDashCard(
     row++;
   }
   // this should never happen but flow complains if we return undefined
-  return { col, row, sizeX, sizeY };
+  return { col, row, size_x, size_y };
 }
 
-function intersects(a: DashCardPosition, b: DashCardPosition): boolean {
+function intersects(a, b) {
   return !(
-    b.col >= a.col + a.sizeX ||
-    b.col + b.sizeX <= a.col ||
-    b.row >= a.row + a.sizeY ||
-    b.row + b.sizeY <= a.row
+    b.col >= a.col + a.size_x ||
+    b.col + b.size_x <= a.col ||
+    b.row >= a.row + a.size_y ||
+    b.row + b.size_y <= a.row
   );
 }
 
@@ -72,8 +63,8 @@ function intersects(a: DashCardPosition, b: DashCardPosition): boolean {
 function printGrid(cards, width) {
   let grid = [];
   for (let card of cards) {
-    for (let col = card.col; col < card.col + card.sizeX; col++) {
-      for (let row = card.row; row < card.row + card.sizeY; row++) {
+    for (let col = card.col; col < card.col + card.size_x; col++) {
+      for (let row = card.row; row < card.row + card.size_y; row++) {
         grid[row] =
           grid[row] ||
           Array(width)

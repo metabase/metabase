@@ -1,24 +1,10 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Select, { Option } from "metabase/components/Select";
-
 import cx from "classnames";
-
-import type {
-  FilterOperator,
-  FilterOperatorName,
-} from "metabase-types/types/Metadata";
-
-type Props = {
-  operator: string,
-  operators: FilterOperator[],
-  onOperatorChange: (name: FilterOperatorName) => void,
-  className?: string,
-};
+import Select, { Option } from "metabase/core/components/Select";
 
 export default class OperatorSelector extends Component {
-  props: Props;
-
   static propTypes = {
     operator: PropTypes.string,
     operators: PropTypes.array.isRequired,

@@ -1,15 +1,22 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React from "react";
+import cx from "classnames";
 
-import ColorPicker from "metabase/components/ColorPicker";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import ColorSelector from "metabase/core/components/ColorSelector";
 
-export default class ChartSettingColorPicker extends Component {
-  render() {
-    return (
-      <div className="flex align-center mb1">
-        <ColorPicker {...this.props} triggerSize={12} />
-        {this.props.title && <h4 className="ml1">{this.props.title}</h4>}
-      </div>
-    );
-  }
+export default function ChartSettingColorPicker(props) {
+  const { value, onChange, className, pillSize } = props;
+
+  return (
+    <div className={cx("flex align-center mb1", className)}>
+      <ColorSelector
+        value={value}
+        colors={getAccentColors()}
+        onChange={onChange}
+        pillSize={pillSize}
+      />
+      {props.title && <h4 className="ml1">{props.title}</h4>}
+    </div>
+  );
 }

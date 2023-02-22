@@ -1,56 +1,61 @@
 import {
   restore,
-  describeWithToken,
-  mockSessionProperty,
-  modal,
-} from "__support__/e2e/cypress";
+  describeEE,
+  visitQuestion,
+  questionInfoButton,
+  rightSidebar,
+  popover,
+} from "__support__/e2e/helpers";
 
-describeWithToken("scenarios > question > caching", () => {
+describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
-    mockSessionProperty("enable-query-caching", true);
     cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   it("can set cache ttl for a saved question", () => {
     cy.intercept("PUT", "/api/card/1").as("updateQuestion");
-    cy.visit("/question/1");
+    visitQuestion(1);
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByPlaceholderText("24")
-        .clear()
-        .type("48")
-        .blur();
-      cy.button("Save").click();
+    questionInfoButton().click();
+
+    rightSidebar().within(() => {
+      cy.findByText("Cache Configuration").click();
+    });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("24").clear().type("48").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateQuestion");
+    cy.button(/Saved/);
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByDisplayValue("48")
-        .clear()
-        .type("0")
-        .blur();
-      cy.button("Save").click();
+    questionInfoButton().click();
+
+    rightSidebar().within(() => {
+      cy.findByText("Cache Configuration").click();
+    });
+
+    popover().within(() => {
+      cy.findByDisplayValue("48").clear().type("0").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateQuestion");
+    cy.button(/Saved/);
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
+    questionInfoButton().click();
+
+    rightSidebar().within(() => {
+      cy.findByText("Cache Configuration").click();
+    });
+
+    popover().within(() => {
       cy.findByPlaceholderText("24");
     });
   });
 });
-
-function openEditingModalForm() {
-  cy.findByTestId("saved-question-header-button").click();
-  cy.findByTestId("edit-details-button").click();
-}

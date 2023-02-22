@@ -1,6 +1,7 @@
 (ns metabase.automagic-dashboards.rules-test
-  (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.rules :as rules]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.rules :as rules]))
 
 (deftest ga-dimension?-test
   (are [x expected] (= expected
@@ -26,8 +27,8 @@
   (is (some? (rules/get-rules ["table" "GenericTable" "ByCountry"]))))
 
 (deftest dimension-form?-test
-  (are [x expected] (is (= expected
-                           (rules/dimension-form? x)))
+  (are [x expected] (= expected
+                       (rules/dimension-form? x))
     [:dimension "Foo"]  true
     ["dimension" "Foo"] true
     ["DIMENSION" "Foo"] true

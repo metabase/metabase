@@ -2,60 +2,17 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
+import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import Utils from "metabase/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 
-import Utils from "metabase/lib/utils";
-
-import cx from "classnames";
-
-import Question from "metabase-lib/lib/Question";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Table from "metabase-lib/lib/metadata/Table";
-import type { DatasetQuery } from "metabase-types/types/Card";
-
-import type { ParameterValues } from "metabase-types/types/Parameter";
-
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
-
-type Props = {
-  question: Question,
-  originalQuestion: Question,
-  result?: Object,
-  databases?: Database[],
-  tableMetadata?: Table,
-  tableForeignKeys?: [],
-  tableForeignKeyReferences?: {},
-  onUpdateVisualizationSettings: any => void,
-  onReplaceAllVisualizationSettings: any => void,
-  onOpenChartSettings: any => void,
-  cellIsClickableFn?: any => void,
-  cellClickedFn?: any => void,
-  isRunning: boolean,
-  isRunnable: boolean,
-  isAdmin: boolean,
-  isResultDirty: boolean,
-  isObjectDetail: boolean,
-  isNativeEditorOpen: boolean,
-  runQuestionQuery: any => void,
-  cancelQuery?: any => void,
-  className: string,
-};
-
-type State = {
-  lastRunDatasetQuery: DatasetQuery,
-  lastRunParameterValues: ParameterValues,
-  warnings: string[],
-};
-
 export default class QueryVisualization extends Component {
-  props: Props;
-  state: State;
-
   constructor(props, context) {
     super(props, context);
     this.state = this._getStateFromProps(props);
@@ -99,11 +56,17 @@ export default class QueryVisualization extends Component {
       isResultDirty,
       isNativeEditorOpen,
       result,
+      loadingMessage,
     } = this.props;
 
     return (
       <div className={cx(className, "relative stacking-context")}>
-        {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
+        {isRunning ? (
+          <VisualizationRunningState
+            className="spread z2"
+            loadingMessage={loadingMessage}
+          />
+        ) : null}
         <VisualizationDirtyState
           {...this.props}
           hidden={!isResultDirty || isRunning || isNativeEditorOpen}
@@ -118,11 +81,10 @@ export default class QueryVisualization extends Component {
         )}
         <div
           className={cx("spread Visualization z1", {
-            "Visualization--errors": result && result.error,
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error ? (
+          {result?.error ? (
             <VisualizationError
               className="spread"
               error={result.error}
@@ -130,7 +92,7 @@ export default class QueryVisualization extends Component {
               card={question.card()}
               duration={result.duration}
             />
-          ) : result && result.data ? (
+          ) : result?.data ? (
             <VisualizationResult
               {...this.props}
               className="spread"
@@ -152,7 +114,7 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export const VisualizationRunningState = ({ className }) => (
+export const VisualizationRunningState = ({ className, loadingMessage }) => (
   <div
     className={cx(
       className,
@@ -161,7 +123,7 @@ export const VisualizationRunningState = ({ className }) => (
   >
     <LoadingSpinner />
     <h2 className="Loading-message text-brand text-uppercase my3">
-      {t`Doing science`}...
+      {loadingMessage}
     </h2>
   </div>
 );

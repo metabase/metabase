@@ -2,11 +2,10 @@
 /* eslint-disable react/no-string-refs */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import cx from "classnames";
 import styles from "./Legend.css";
 
 import LegendItem from "./LegendItem";
-
-import cx from "classnames";
 
 export default class LegendHorizontal extends Component {
   render() {

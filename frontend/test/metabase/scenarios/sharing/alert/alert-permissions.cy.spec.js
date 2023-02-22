@@ -1,6 +1,14 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  getFullName,
+} from "__support__/e2e/helpers";
+import { USERS } from "__support__/e2e/cypress_data";
 
-describe("scenarios > alert > alert permissions", () => {
+const { normal, admin } = USERS;
+
+describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
   // Make sure that all tests are always able to run independently!
   before(() => {
@@ -10,16 +18,16 @@ describe("scenarios > alert > alert permissions", () => {
     setupSMTP();
 
     // Create alert as admin
-    cy.visit("/question/1");
+    visitQuestion(1);
     createBasicAlert({ firstAlert: true });
 
     // Create alert as admin that user can see
-    cy.visit("/question/2");
+    visitQuestion(2);
     createBasicAlert({ includeNormal: true });
 
     // Create alert as normal user
     cy.signInAsNormalUser();
-    cy.visit("/question/3");
+    visitQuestion(3);
     createBasicAlert();
   });
 
@@ -36,7 +44,7 @@ describe("scenarios > alert > alert permissions", () => {
       cy.intercept("PUT", "/api/alert/1").as("updatedAlert");
 
       // Change alert
-      cy.visit(`/question/1`);
+      visitQuestion(1);
       cy.icon("bell").click();
       cy.findByText("Edit").click();
 
@@ -56,7 +64,7 @@ describe("scenarios > alert > alert permissions", () => {
     beforeEach(cy.signInAsNormalUser);
 
     it("should not let you see other people's alerts", () => {
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.icon("bell").click();
 
       cy.findByText("Unsubscribe").should("not.exist");
@@ -64,15 +72,15 @@ describe("scenarios > alert > alert permissions", () => {
     });
 
     it("should let you see other alerts where you are a recipient", () => {
-      cy.visit("/question/2");
+      visitQuestion(2);
       cy.icon("bell").click();
 
-      cy.findByText("You're receiving Bobby's alerts");
+      cy.findByText(`You're receiving ${getFullName(admin)}'s alerts`);
       cy.findByText("Set up your own alert");
     });
 
     it("should let you see your own alerts", () => {
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.icon("bell").click();
 
       cy.findByText("You set up an alert");
@@ -80,14 +88,14 @@ describe("scenarios > alert > alert permissions", () => {
 
     it("should let you unsubscribe from both your own and others' alerts", () => {
       // Unsubscribe from your own alert
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.icon("bell").click();
       cy.findByText("Unsubscribe").click();
 
       cy.findByText("Okay, you're unsubscribed");
 
       // Unsubscribe from others' alerts
-      cy.visit("/question/2");
+      visitQuestion(2);
       cy.icon("bell").click();
       cy.findByText("Unsubscribe").click();
 
@@ -104,12 +112,8 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
-    cy.findByText("Email alerts to:")
-      .parent()
-      .children()
-      .last()
-      .click();
-    cy.findByText("Robert Tableton").click();
+    cy.findByText("Email alerts to:").parent().children().last().click();
+    cy.findByText(getFullName(normal)).click();
   }
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");

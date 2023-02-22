@@ -1,8 +1,13 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.test :as mt]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -20,11 +25,11 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :breakout    [$city_id->cities.name]
-                    :order-by    [[:desc [:aggregation 0]]]
-                    :limit       10}))))))))
+                                  (mt/run-mbql-query sightings
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$city_id->cities.name]
+                                                      :order-by    [[:desc [:aggregation 0]]]
+                                                      :limit       10}))))))))
 
 (deftest filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -106,7 +111,7 @@
   (testing "Implicit joins should come back with `:fk->` field refs"
     (is (= (mt/$ids venues $category_id->categories.name)
            (-> (mt/cols
-                 (mt/run-mbql-query :venues
+                 (mt/run-mbql-query venues
                    {:fields   [$category_id->categories.name]
                     :order-by [[:asc $id]]
                     :limit    1}))
@@ -142,21 +147,23 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset sample-dataset
-        (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
-                ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
-                ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
-                ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
-                ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
-               (mt/formatted-rows [str str str int int]
-                 (mt/run-mbql-query orders
-                   {:aggregation [[:count]]
-                    :breakout    [$product_id->products.category
-                                  $user_id->people.source
-                                  !year.orders.created_at
-                                  [:expression "pivot-grouping"]]
-                    :filter      [:and
-                                  [:= $user_id->people.source "Facebook" "Google"]
-                                  [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                  [:time-interval $created_at -2 :year]]
-                    :expressions {:pivot-grouping [:abs 0]}
-                    :limit       5}))))))))
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [$product_id->products.category
+                                     $user_id->people.source
+                                     !year.orders.created_at
+                                     [:expression "pivot-grouping"]]
+                       :filter      [:and
+                                     [:= $user_id->people.source "Facebook" "Google"]
+                                     [:= $product_id->products.category "Doohickey" "Gizmo"]
+                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year]]
+                       :expressions {:pivot-grouping [:abs 0]}
+                       :limit       5})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
+                    ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
+                    ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
+                    ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
+                    ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
+                   (mt/formatted-rows [str str str int int]
+                     (qp/process-query query))))))))))

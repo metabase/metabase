@@ -1,32 +1,50 @@
 (ns metabase.models.setting.cache
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
-  (:require [clojure.core :as core]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :as ui18n :refer [trs]]
-            [toucan.db :as db])
-  (:import java.util.concurrent.locks.ReentrantLock))
+  (:require
+   [clojure.core :as core]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db])
+  (:import
+   (java.util.concurrent.locks ReentrantLock)))
 
-(defonce ^:private ^{:doc "Settings cache. Map of Setting key (string) -> Setting value (string)."}
-  cache*
-  (atom nil))
+(set! *warn-on-reflection* true)
+
+(defmulti call-on-change
+  "Whenever something changes in the Settings cache it will invoke
+
+    (call-on-change old-cache new-cache
+
+  Actual implementation is provided in [[metabase.models.setting]] rather than here (to prevent
+  circular references)."
+  {:arglists '([old new])}
+  (constantly :default))
+
+;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
+;; cache.
+(def ^:private ^{:arglists '([])} cache*
+  (mdb.connection/memoize-for-application-db
+   (fn []
+     (doto (atom nil)
+       (add-watch :call-on-change (fn [_key _ref old new]
+                                    (call-on-change old new)))))))
 
 (defn cache
   "Fetch the current contents of the Settings cache, a map of key (string) -> value (string)."
   []
-  @cache*)
+  @(cache*))
 
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
   [setting-name, ^String new-value]
   (if (seq new-value)
-    (swap! cache* assoc  setting-name new-value)
-    (swap! cache* dissoc setting-name)))
+    (swap! (cache*) assoc  setting-name new-value)
+    (swap! (cache*) dissoc setting-name)))
 
 ;; CACHE SYNCHRONIZATION
 ;;
@@ -55,8 +73,8 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
-                                                      (hsql/raw "current_timestamp"))]
+  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
+                                                       [:raw "current_timestamp"])]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! 'Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
@@ -68,17 +86,17 @@
           (db/simple-insert! 'Setting :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
             ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-            (log/error (trs "Error inserting a new Setting: {0}"
+            (log/error (trs "Error updating Settings last updated value: {0}"
                             (with-out-str (jdbc/print-sql-exception-chain e))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! cache* assoc settings-last-updated-key (db/select-one-field :value 'Setting :key settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (db/select-one-field :value 'Setting :key settings-last-updated-key)))
 
 (defn- cache-out-of-date?
   "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
   conditions is true:
 
-   *  The cache is empty (the `cache*` atom is `nil`), which of course means it needs to be updated
+   *  The cache is empty (the `(cache*` atom is `nil`), which of course means it needs to be updated
    *  There is a value of `settings-last-updated` in the cache, and it is older than the value of in the DB. (There
       will be no value until the first time a normal Setting is updated; thus if it is not yet set, we do not yet need
       to invalidate our cache.)"
@@ -119,7 +137,7 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug (trs "Refreshing Settings cache..."))
-  (reset! cache* (db/select-field->field :key :value 'Setting)))
+  (reset! (cache*) (db/select-field->field :key :value 'Setting)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 
@@ -142,11 +160,8 @@
       ;; attempt to acquire the lock. Returns immediately if lock is is already held.
       (when (.tryLock restore-cache-lock)
         (try
-          ;; don't try to restore the cache before the application DB is ready, it's not going to work...
-          (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
-            (when (db-is-set-up?)
-              (reset! last-update-check (System/currentTimeMillis))
-              (when (cache-out-of-date?)
-                (restore-cache!))))
+          (reset! last-update-check (System/currentTimeMillis))
+          (when (cache-out-of-date?)
+            (restore-cache!))
           (finally
             (.unlock restore-cache-lock)))))))

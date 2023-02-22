@@ -1,11 +1,26 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PulseCard :pulse_card)
+
+(mi/define-methods
+ PulseCard
+ {:properties (constantly {::mi/entity-id true})})
+
+(defmethod serdes.hash/identity-hash-fields PulseCard
+  [_pulse-card]
+  [(serdes.hash/hydrated-hash :pulse)
+   (serdes.hash/hydrated-hash :card)
+   :position])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"
@@ -20,7 +35,7 @@
   {:card_id                      su/IntGreaterThanZero
    :pulse_id                     su/IntGreaterThanZero
    :dashboard_card_id            su/IntGreaterThanZero
-   (s/optional-key :position)    (s/maybe su/NonNegativeInt)
+   (s/optional-key :position)    (s/maybe su/IntGreaterThanOrEqualToZero)
    (s/optional-key :include_csv) (s/maybe s/Bool)
    (s/optional-key :include_xls) (s/maybe s/Bool)})
 
@@ -36,3 +51,32 @@
        :position          (u/or-with some? position (next-position-for pulse_id))
        :include_csv       (u/or-with some? include_csv false)
        :include_xls       (u/or-with some? include_xls false)})))
+
+; ----------------------------------------------------- Serialization -------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "PulseCard"
+  [_ {:keys [pulse_id] :as card}]
+  [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+   (serdes.base/infer-self-path "PulseCard" card)])
+
+(defmethod serdes.base/extract-one "PulseCard"
+  [_model-name _opts card]
+  (cond-> (serdes.base/extract-one-basics "PulseCard" card)
+    true                      (update :card_id            serdes.util/export-fk 'Card)
+    true                      (update :pulse_id           serdes.util/export-fk 'Pulse)
+    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/export-fk 'DashboardCard)))
+
+(defmethod serdes.base/load-xform "PulseCard" [card]
+  (cond-> (serdes.base/load-xform-basics card)
+    true                      (update :card_id            serdes.util/import-fk 'Card)
+    true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
+    true                      (dissoc :dashboard_id)
+    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
+
+;; Depends on the Pulse, Card and (optional) dashboard card.
+(defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
+  (let [base [[{:model "Card" :id card_id}]
+              [{:model "Pulse" :id pulse_id}]]]
+    (if-let [[dash-id _] dashboard_card_id]
+      (conj base [{:model "Dashboard" :id dash-id}])
+      base)))

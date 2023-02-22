@@ -3,7 +3,14 @@ import {
   popover,
   modal,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+  summarize,
+  visitQuestion,
+  openQuestionActions,
+  questionInfoButton,
+  rightSidebar,
+  appbar,
+  getCollectionIdFromSlug,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -12,11 +19,12 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    openOrdersTable();
+    cy.icon("notebook").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText("Total").click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -27,7 +35,9 @@ describe("scenarios > question > saved", () => {
 
     // Add a filter in order to be able to save question again
     cy.findByText("Filter").click();
-    cy.findByText(/^Total$/).click();
+    popover()
+      .findByText(/^Total$/)
+      .click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than").click();
     cy.findByPlaceholderText("Enter a number").type("60");
@@ -58,7 +68,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("view and filter saved question", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
@@ -66,7 +76,8 @@ describe("scenarios > question > saved", () => {
     popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
-      cy.findByText("Update filter").click();
+      cy.findByText("100").click();
+      cy.findByText("Add filter").click();
     });
     cy.findByText("Quantity is equal to 100");
     cy.findByText("Showing 2 rows"); // query updated
@@ -87,66 +98,125 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question", () => {
-    cy.server();
-    cy.route("POST", "/api/card").as("cardCreate");
-    cy.route("POST", "/api/card/1/query").as("query");
+    cy.intercept("POST", "/api/card").as("cardCreate");
 
-    cy.visit("/question/1");
-    cy.wait("@query");
+    visitQuestion(1);
 
-    cy.findByTestId("saved-question-header-button").click();
-    cy.icon("segment").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.icon("segment").click();
+    });
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
   });
 
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
-    cy.visit("/question/1");
-    cy.findByTestId("saved-question-header-button").click();
-    cy.findByText("History").click();
+    visitQuestion(1);
+    questionInfoButton().click();
 
-    cy.findByTestId("edit-details-button").click();
-    cy.findByLabelText("Description")
-      .click()
-      .type("This is a question");
+    rightSidebar().within(() => {
+      cy.findByText("History");
 
-    cy.button("Save").click();
-    cy.wait("@updateQuestion");
+      cy.findByPlaceholderText("Add description")
+        .type("This is a question")
+        .blur();
 
-    cy.findByText(/added a description/i);
+      cy.wait("@updateQuestion");
 
-    cy.findByRole("button", { name: "Revert" }).click();
+      cy.findByText(/added a description/i);
 
-    cy.findByText(/Reverted to an earlier revision/i);
+      cy.findByTestId("question-revert-button").click();
+    });
+
+    cy.findByText(/reverted to an earlier revision/i);
+    cy.findByText(/This is a question/i).should("not.exist");
   });
 
-  it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
-    cy.createNativeQuestion({
-      name: "15808",
-      native: { query: "select * from products" },
+  it("should show table name in header with a table info popover on hover", () => {
+    visitQuestion(1);
+    cy.findByTestId("question-table-badges").trigger("mouseenter");
+    cy.findByText("9 columns");
+  });
+
+  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", "/api/card/1", { collection_id });
     });
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("15808").click();
-    cy.findAllByText("Filter")
-      .first()
-      .click();
-    cy.findByTestId("sidebar-right")
-      .findByText(/Rating/i)
-      .click();
-    cy.get(".AdminSelect").findByText("Equal to");
-    cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
-    cy.findByText("Synergistic Granite Chair");
-    cy.findByText("Rustic Paper Wallet").should("not.exist");
+
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Second collection").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show the question lineage when a saved question is changed", () => {
+    visitQuestion(1);
+
+    summarize();
+    rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    appbar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
+  });
+
+  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+    cy.signIn("readonly");
+    visitQuestion(1);
+
+    cy.findByText("Tax")
+      .closest(".TableInteractive-headerCellData")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
+
+        // Retries the assertion a few times to ensure it waits for DOM changes
+        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+        function assertColumnResized(attempt = 0) {
+          cy.get("@headerCell").then($newCell => {
+            const newWidth = $newCell[0].getBoundingClientRect().width;
+            if (newWidth === originalWidth && attempt < 3) {
+              cy.wait(100);
+              assertColumnResized(++attempt);
+            } else {
+              expect(newWidth).to.be.gt(originalWidth);
+            }
+          });
+        }
+
+        cy.wrap($cell)
+          .find(".react-draggable")
+          .trigger("mousedown", 0, 0, { force: true })
+          .trigger("mousemove", 100, 0, { force: true })
+          .trigger("mouseup", 100, 0, { force: true });
+
+        assertColumnResized();
+      });
   });
 });

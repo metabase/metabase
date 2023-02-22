@@ -1,10 +1,11 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
-  (:require [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]))
+  (:require
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]))
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
 
@@ -22,6 +23,7 @@
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "DOUBLE"
                                    :type/Integer        "INTEGER"
+                                   :type/JSON           "JSON"
                                    :type/Text           "TEXT"
                                    :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:mysql base-type] [_ _] database-type))

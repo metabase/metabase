@@ -1,9 +1,8 @@
 import React from "react";
-import { render } from "@testing-library/react";
-
-import { NumberColumn } from "../__support__/visualizations";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn } from "../__support__/visualizations";
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];
@@ -19,6 +18,10 @@ const series = (rows, settings = {}) => {
 };
 
 describe("Table", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
   it("should render correct background colors", () => {
     const rows = [[1], [2], [3], [4]];
     const settings = {
@@ -33,12 +36,13 @@ describe("Table", () => {
         },
       ],
     };
-    const { getByText } = render(
-      <Visualization rawSeries={series(rows, settings)} />,
-    );
-    const bgColors = rows.map(
-      ([v]) => getByText(String(v)).parentNode.style["background-color"],
-    );
+
+    renderWithProviders(<Visualization rawSeries={series(rows, settings)} />);
+    jest.runAllTimers();
+
+    const bgColors = rows
+      .map(([value]) => screen.getByText(String(value)))
+      .map(element => element.parentNode.style["background-color"]);
     expect(bgColors).toEqual([
       "",
       "",

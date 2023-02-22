@@ -1,7 +1,13 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  visitQuestionAdhoc,
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > scalar", () => {
   beforeEach(() => {
@@ -35,6 +41,10 @@ describe("scenarios > visualizations > scalar", () => {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            row: 0,
+            col: 0,
+            size_x: 4,
+            size_y: 4,
           }).then(({ body: { id: dashCardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
@@ -43,14 +53,14 @@ describe("scenarios > visualizations > scalar", () => {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  sizeX: 4,
-                  sizeY: 4,
+                  size_x: 4,
+                  size_y: 4,
                   parameter_mappings: [],
                 },
               ],
             });
           });
-          cy.visit(`/dashboard/${dashboardId}`);
+          visitDashboard(dashboardId);
           cy.findByText("1.5T");
         });
       });
@@ -65,7 +75,7 @@ describe("scenarios > visualizations > scalar", () => {
           query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "scalar",
     });

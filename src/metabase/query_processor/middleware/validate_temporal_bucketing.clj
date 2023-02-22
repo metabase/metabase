@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing
-  (:require [clojure.set :as set]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.set :as set]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private valid-date-units
   #{:default :day :day-of-week :day-of-month :day-of-year
@@ -26,7 +27,10 @@
 (defmethod valid-units-for-base-type :type/Time     [_] valid-time-units)
 (defmethod valid-units-for-base-type :type/DateTime [_] valid-datetime-units)
 
-(defn- validate-temporal-bucketing* [query]
+(defn validate-temporal-bucketing
+  "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
+  of Field base-type and unit. For example, you should not be allowed to bucket a `:type/Date` Field by `:minute`."
+  [query]
   (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match query [:field _ (_ :guard :temporal-unit)])]
     (let [base-type (if (integer? id-or-name)
                       (:base_type (qp.store/field id-or-name))
@@ -39,12 +43,5 @@
                          :field       clause
                          :base-type   base-type
                          :unit        temporal-unit
-                         :valid-units valid-units}))))))
-
-(defn validate-temporal-bucketing
-  "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
-  of Field base-type and unit. For example, you should not be allowed to bucket a `:type/Date` Field by `:minute`."
-  [qp]
-  (fn [query rff context]
-    (validate-temporal-bucketing* query)
-    (qp query rff context)))
+                         :valid-units valid-units})))))
+  query)

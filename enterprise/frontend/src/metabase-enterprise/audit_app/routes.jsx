@@ -1,10 +1,11 @@
 import React from "react";
 
-import { Route } from "metabase/hoc/Title";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
+import { Route } from "metabase/hoc/Title";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 
 import AuditApp from "./containers/AuditApp";
 import UnsubscribeUserModal from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
@@ -27,17 +28,7 @@ import AuditUserDetail from "./pages/AuditUserDetail";
 import AuditDownloads from "./pages/AuditDownloads";
 import AuditSubscriptions from "./pages/AuditSubscriptions";
 
-type Page = {
-  tabs?: Tab[],
-};
-
-type Tab = {
-  path: string,
-  title: string,
-  component?: any,
-};
-
-function getPageRoutes(path, page: Page) {
+function getPageRoutes(path, page) {
   const subRoutes = [];
   // add a redirect for the default tab
   const defaultTab = getDefaultTab(page);
@@ -73,7 +64,7 @@ function getPageRoutes(path, page: Page) {
   );
 }
 
-function getDefaultTab(page: Page): ?Tab {
+function getDefaultTab(page) {
   // use the tab with "default = true" or the first
   return (
     _.findWhere(page.tabs, { default: true }) ||
@@ -82,8 +73,13 @@ function getDefaultTab(page: Page): ?Tab {
   );
 }
 
-const getRoutes = (store: any) => (
-  <Route key="audit" path="audit" title={t`Audit`} component={AuditApp}>
+const getRoutes = store => (
+  <Route
+    key="audit"
+    path="audit"
+    title={t`Audit`}
+    component={createAdminRouteGuard("audit", AuditApp)}
+  >
     {/* <IndexRedirect to="overview" /> */}
     <IndexRedirect to="members" />
 

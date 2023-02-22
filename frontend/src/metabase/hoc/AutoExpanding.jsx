@@ -9,21 +9,22 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 // beyond their initial size we want to fix their size to be larger so it doesn't
 // jump around, etc
 export default ComposedComponent =>
-  @ExplicitSize()
-  class AutoExpanding extends React.Component {
-    state = {
-      expand: false,
-    };
-    UNSAFE_componentWillReceiveProps(nextProps) {
-      if (
-        nextProps.width != null &&
-        this.props.width != null &&
-        nextProps.width > this.props.width
-      ) {
-        this.setState({ expand: true });
+  ExplicitSize()(
+    class AutoExpanding extends React.Component {
+      state = {
+        expand: false,
+      };
+      UNSAFE_componentWillReceiveProps(nextProps) {
+        if (
+          nextProps.width != null &&
+          this.props.width != null &&
+          nextProps.width > this.props.width
+        ) {
+          this.setState({ expand: true });
+        }
       }
-    }
-    render() {
-      return <ComposedComponent {...this.props} {...this.state} />;
-    }
-  };
+      render() {
+        return <ComposedComponent {...this.props} {...this.state} />;
+      }
+    },
+  );

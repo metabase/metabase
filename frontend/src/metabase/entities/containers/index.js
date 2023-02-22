@@ -11,8 +11,13 @@ export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
   // Entity.load higher-order component
-  entity.load = ({ id, ...props } = {}) =>
-    entityObjectLoader({ entityType: entity.name, entityId: id, ...props });
+  entity.load = ({ id, query, ...props } = {}) =>
+    entityObjectLoader({
+      entityType: entity.name,
+      entityId: id,
+      entityQuery: query,
+      ...props,
+    });
 
   // Entity.Loader component
   entity.Loader = ({ id, ...props }) => (
