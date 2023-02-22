@@ -61,7 +61,9 @@ function SavedQuestionPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const targetModels = isDatasets ? ["dataset"] : ["card", "dataset"];
+    const modelFilter = isDatasets
+      ? model => model === "dataset"
+      : model => model === "card";
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -92,7 +94,7 @@ function SavedQuestionPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, { targetModels }),
+      ...buildCollectionTree(preparedCollections, modelFilter),
     ];
   }, [collections, rootCollection, currentUser, isDatasets]);
 

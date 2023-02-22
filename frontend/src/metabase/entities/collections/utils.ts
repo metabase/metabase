@@ -59,30 +59,24 @@ export interface CollectionTreeItem extends Collection {
   children: CollectionTreeItem[];
 }
 
-export interface CollectionTreeOpts {
-  targetModels?: CollectionContentModel[];
-}
-
 export function buildCollectionTree(
   collections: Collection[],
-  { targetModels }: CollectionTreeOpts = {},
+  modelFilter?: (model: CollectionContentModel) => boolean,
 ): CollectionTreeItem[] {
-  const targetModelSet = new Set(targetModels);
-
   return collections.flatMap(collection => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
-    const hasTargetModels =
-      !targetModelSet.size ||
-      collection.here?.some(model => targetModelSet.has(model)) ||
-      collection.below?.some(model => targetModelSet.has(model));
+    const isMatchedByFilter =
+      !modelFilter ||
+      collection.here?.some(modelFilter) ||
+      collection.below?.some(modelFilter);
 
-    if (!isPersonalRoot && !hasTargetModels) {
+    if (!isPersonalRoot && !isMatchedByFilter) {
       return [];
     }
 
     const children = buildCollectionTree(
       collection.children?.filter(child => !child.archived) || [],
-      { targetModels },
+      modelFilter,
     );
 
     if (isPersonalRoot && children.length === 0) {
