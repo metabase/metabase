@@ -140,7 +140,12 @@ export default class ChartClickActions extends Component {
     let clickedValue = "" + this.props.clicked.element.__data__.data.value;
     let tablexAxis = "" + "graph.x_axis.title_text";
     let tableyAxis = "" + "graph.y_axis.title_text";
-    let pointInfo = getPointInfo(clickedKey, clickedValue, tablexAxis, tableyAxis);
+    let pointInfo = getPointInfo(
+      clickedKey,
+      clickedValue,
+      tablexAxis,
+      tableyAxis,
+    );
     let url = this.props.clicked.element.baseURI;
 
     const handlePointSave = () => {
@@ -153,32 +158,53 @@ export default class ChartClickActions extends Component {
       let pointInfo = pointInput.value ? pointInput.value : "erase";
 
       var xhr = new XMLHttpRequest();
-      var url = "api/dbinfo/set/" + clickedKey + "/" + clickedValue + "/" + tablexAxis + "/" + tableyAxis + "/" + pointInfo + "/";
+      var url =
+        "api/dbinfo/set/" +
+        clickedKey +
+        "/" +
+        clickedValue +
+        "/" +
+        tablexAxis +
+        "/" +
+        tableyAxis +
+        "/" +
+        pointInfo +
+        "/";
 
       xhr.open("GET", url);
-      xhr.onreadystatechange = function () {
-       if (xhr.readyState === 4) {
-        pointButton.value = 'Saving...';
-        setTimeout(() => {
-          pointButton.value = 'Saved';
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          pointButton.value = "Saving...";
           setTimeout(() => {
-            pointButton.value = 'Save';
-          }, 400);
-        }, 700);
-      }};
+            pointButton.value = "Saved";
+            setTimeout(() => {
+              pointButton.value = "Save";
+            }, 400);
+          }, 700);
+        }
+      };
 
       xhr.send();
     };
 
-    function getPointInfo (clickedKey, clickedValue, tablexAxis, tableyAxis) {
+    function getPointInfo(clickedKey, clickedValue, tablexAxis, tableyAxis) {
       var xhr = new XMLHttpRequest();
-      var url = "api/dbinfo/get/" + clickedKey + "/" + clickedValue + "/" + tablexAxis + "/" + tableyAxis + "/";
+      var url =
+        "api/dbinfo/get/" +
+        clickedKey +
+        "/" +
+        clickedValue +
+        "/" +
+        tablexAxis +
+        "/" +
+        tableyAxis +
+        "/";
       let innput = document.getElementById("pointInfo");
 
       xhr.open("GET", url);
-      xhr.onreadystatechange = function () {
+      xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          if(xhr.responseText) {
+          if (xhr.responseText) {
             innput.value = xhr.responseText;
           }
         }
@@ -258,24 +284,24 @@ export default class ChartClickActions extends Component {
           popover
         ) : (
           <div className="text-bold px2 pt2 pb1">
-          <div className="p1">
-          <input
-            id="pointInfo"
-            className="p1 bg-white bg-brand token-blue"
-            placeholder="Comment"
-            data-clickedkey={ clickedKey }
-            data-clickedvalue={ clickedValue }
-            data-tablexaxis={ tablexAxis }
-            data-tableyaxis={ tableyAxis }
-          />
-          <input
-            className="ml1 p1 bg-white bg-brand token-blue"
-            id="pointInfoOk"
-            onClick={handlePointSave}
-            type="button"
-            value="Save"
-          />
-          </div>
+            <div className="p1">
+              <input
+                id="pointInfo"
+                className="p1 bg-white bg-brand token-blue"
+                placeholder="Comment"
+                data-clickedkey={clickedKey}
+                data-clickedvalue={clickedValue}
+                data-tablexaxis={tablexAxis}
+                data-tableyaxis={tableyAxis}
+              />
+              <input
+                className="ml1 p1 bg-white bg-brand token-blue"
+                id="pointInfoOk"
+                onClick={handlePointSave}
+                type="button"
+                value="Save"
+              />
+            </div>
             {sections.map(([key, actions]) => (
               <div
                 key={key}
