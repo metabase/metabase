@@ -136,25 +136,27 @@
 (mu/defn ^:private classify-query :- [:map
                                       [:command-types [:vector pos-int?]]
                                       [:remaining-sql [:maybe :string]]]
-  "Takes an h2 db id, and a query, returns the command-classes+types (see: ), and any remaining sql.
+  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+   More info on command types here:
+   https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
 
-  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands in order.
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command-list      (.prepareCommand h2-parser query)
-            command-list-type (.getCommandType ^org.h2.command.CommandList command-list)
+      (let [command           (.prepareCommand h2-parser query)
+            command-list-type (.getCommandType command)
             command-types     (cond-> [command-list-type]
-                                (not (instance? org.h2.command.CommandContainer command-list))
+                                (not (instance? org.h2.command.CommandContainer command))
                                 (into
                                  (map #(.getType ^org.h2.command.Prepared %))
                                  ;; when there are no fields: return no commands
-                                 (get-field command-list "commands" [])))]
+                                 (get-field command "commands" [])))]
         {:command-types command-types
          ;; when there is no remaining sql: return nil for remaining-sql
-         :remaining-sql (get-field command-list "remaining" nil)})
+         :remaining-sql (get-field command "remaining" nil)})
       ;; only valid queries can be classified.
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
@@ -173,11 +175,12 @@
 ;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
 ;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
-(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native :as in}]
-  (let [query-classification (classify-query database query)]
-    (when (and query (contains-ddl? query-classification))
-      (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
-                      {:classification query-classification})))))
+(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
+  (when query
+    (let [query-classification (classify-query database query)]
+      (when (contains-ddl? query-classification)
+        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]

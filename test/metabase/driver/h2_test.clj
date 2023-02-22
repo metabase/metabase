@@ -189,6 +189,8 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
+    (is (= nil (#'h2/check-disallow-ddl-commands {:database (u/the-id (mt/db)) :native {:query nil}})))
+
     (is (= nil (#'h2/check-disallow-ddl-commands
                 {:database (u/the-id (mt/db))
                  :engine :h2
