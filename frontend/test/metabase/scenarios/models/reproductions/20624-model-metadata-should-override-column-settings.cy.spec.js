@@ -1,5 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
-import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
+import { openQuestionActions, restore } from "__support__/e2e/helpers";
 
 const renamedColumn = "TITLE renamed";
 
@@ -12,7 +11,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 20624", () => {
+describe("issue 20624", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
@@ -23,13 +22,13 @@ describe.skip("issue 20624", () => {
   });
 
   it("models metadata should override previously defined column settings (metabase#20624)", () => {
-    openDetailsSidebar();
-    cy.findByText("Customize metadata").click();
+    openQuestionActions();
+    cy.findByText("Edit metadata").click();
 
     // Open settings for this column
-    cy.findByText(renamedColumn).click();
+    cy.findByText("TITLE").click();
     // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
+    cy.findByDisplayValue("TITLE").clear().type("Foo").blur();
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");

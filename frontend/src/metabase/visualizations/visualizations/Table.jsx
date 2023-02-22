@@ -497,6 +497,8 @@ export default class Table extends Component {
     const column = cols[columnIndex];
     if (isPivoted) {
       return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
+    } else if (this.props.card.dataset) {
+      return formatColumn(column);
     } else {
       return (
         settings.column(column)["_column_title_full"] || formatColumn(column)
