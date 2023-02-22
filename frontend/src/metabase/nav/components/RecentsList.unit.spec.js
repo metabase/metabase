@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 import RecentsList from "./RecentsList";
 
@@ -42,7 +42,7 @@ const recentsData = [
 ];
 
 function mockRecentsEndpoint(recents) {
-  nock(location.origin).get("/api/activity/recent_views").reply(200, recents);
+  fetchMock.get("path:/api/activity/recent_views", recents);
 }
 
 async function setup(recents = recentsData) {
@@ -55,7 +55,7 @@ async function setup(recents = recentsData) {
 
 describe("RecentsList", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("shows list of recents", async () => {
