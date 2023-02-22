@@ -23,7 +23,8 @@ You can choose from a number of filter types:
 - [Time](#time-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
-- [Other Categories](#other-categories)
+- [Number](#number-filter)
+- [Text or categories](#text-or-category-filter)
 
 The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
 
@@ -53,27 +54,45 @@ There are four types of Location filters to choose from:
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-### Other Categories
+### Number filter
 
-The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
+You can choose from:
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+- Equal to
+- Not equal to
+- Between
+- Greater than or equal to
+- Less than or equal to
+
+### Text or category filter
+
+A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
+
+- **Is**. Select one or more values from a list or search box.
+- **Is not**. Exclude one or more specific values.
+- **Contains**. Match values that contain the entered text.
+- **Does not contain**. Filter out values that contain the entered text.
+- **Starts with**. Match values that begin with the entered text.
+- **Ends with**. Match values that end with the entered text.
+
+
+## Filtering dashboards with native/SQL questions
+
+If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Example filter
 
-Let's add a filter widget to our dashboard. We'll select a **Time** filter, and then select the **Month and Year** option.
+Let's add a filter widget to our dashboard. We'll select a **Text of Category** filter, and then select the **Is** option to select one or more values from a list.
 
-![Choose filter type](./images/filter-type.png)
+Metabase will display a filter editing sidebar interface where you can wire up your new filter to each applicable card.
 
-Metabase will display a filter editing interface where you can wire up your new filter to each applicable card.
+Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter (to edit a filter, click on the filter's gear button while in dashboard edit mode). If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
 
-![Wiring up the cards](./images/wiring-cards.png)
+Here we've wired up a Text filter to a card on the `Analytics.Event.Button.Label` field:
 
-Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
+![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
 
-So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which column in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered` column, we have to pick which of those columns to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date column to connect to the filter. If one of your cards says there aren’t any valid columns, that just means that card doesn’t contain any columns that match the kind of filter you chose.
-
-![Select fields](./images/select-fields.png)
+![Selectable values](./images/selectable-values.png)
 
 Before we **Save** our changes, we can use the right sidebar to customize the **Label** of our new filter, or set a **Default value**.
 
