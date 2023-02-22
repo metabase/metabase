@@ -15,6 +15,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   Card,
+  CardId,
+  DatabaseId,
   WritebackActionId,
   WritebackAction,
   WritebackQueryAction,
@@ -33,8 +35,9 @@ import CreateActionForm, {
 
 interface OwnProps {
   actionId?: WritebackActionId;
-  modelId: number;
-  databaseId?: number;
+  modelId?: CardId;
+  databaseId?: DatabaseId;
+  onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
@@ -78,6 +81,7 @@ function ActionCreator({
   model,
   onCreateAction,
   onUpdateAction,
+  onSubmit,
   onClose,
 }: Props) {
   const {
@@ -88,39 +92,42 @@ function ActionCreator({
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
-    handleSetupExample,
     renderEditorBody,
   } = useActionContext();
 
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  const isEditable = model.canWriteActions();
+  const isEditable = isNew || model.canWriteActions();
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
       return; // only query action creation is supported now
     }
 
-    await onCreateAction({
+    const reduxAction = await onCreateAction({
       ...action,
       ...values,
       visualization_settings: formSettings,
     } as WritebackQueryAction);
+    const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
     handleActionChange(values);
 
     setShowSaveModal(false);
+    onSubmit?.(createdAction);
     onClose?.();
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (isSavedAction(action)) {
-      onUpdateAction({
+      const reduxAction = await onUpdateAction({
         ...action,
         model_id: model.id(),
         visualization_settings: formSettings,
       });
+      const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      onSubmit?.(updatedAction);
     }
   };
 
@@ -147,7 +154,6 @@ function ActionCreator({
         onChangeAction={handleActionChange}
         onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
-        onClickExample={handleSetupExample}
         onCloseModal={onClose}
       >
         {renderEditorBody({ isEditable })}
@@ -198,7 +204,7 @@ export default _.compose(
     entityAlias: "initialAction",
   }),
   Questions.load({
-    id: (state: State, props: OwnProps) => props.modelId,
+    id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "modelCard",
   }),
   Database.loadList(),

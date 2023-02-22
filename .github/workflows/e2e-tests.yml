@@ -124,7 +124,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.0
+        image: metabase/qa-databases:mongo-sample-4.4
         ports:
           - 27004:27017
         credentials:

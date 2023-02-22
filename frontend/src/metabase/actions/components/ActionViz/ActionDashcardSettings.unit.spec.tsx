@@ -1,7 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import {
   setupActionEndpoints,
@@ -149,9 +149,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
 
     // action name should be visible in library and parameter mapper
-    await waitFor(() =>
-      expect(screen.getAllByText("Action Trois")).toHaveLength(2),
-    );
+    expect(await screen.findByText("Action Trois")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/the values for 'Action Trois'/i),
+    ).toBeInTheDocument();
   });
 
   it("shows parameters for an action", async () => {

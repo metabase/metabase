@@ -180,6 +180,7 @@ type SetupOpts = {
   tab?: string;
   actions?: WritebackAction[];
   hasActionsEnabled?: boolean;
+  hasDataPermissions?: boolean;
   collections?: Collection[];
   usedBy?: Question[];
 };
@@ -191,6 +192,7 @@ async function setup({
   collections = [],
   usedBy = [],
   hasActionsEnabled = false,
+  hasDataPermissions = true,
 }: SetupOpts) {
   const scope = nock(location.origin).persist();
 
@@ -198,9 +200,15 @@ async function setup({
 
   const card = model.card() as Card;
 
-  setupDatabasesEndpoints(scope, [
-    hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
-  ]);
+  if (hasDataPermissions) {
+    setupDatabasesEndpoints(scope, [
+      hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
+    ]);
+  } else {
+    setupDatabasesEndpoints(scope, []);
+    scope.get(`/api/database/${TEST_DATABASE.id}`).reply(403);
+    scope.get(`/api/database/${TEST_DATABASE_WITH_ACTIONS.id}`).reply(403);
+  }
 
   scope
     .get("/api/card")
@@ -220,24 +228,27 @@ async function setup({
   const initialRoute = `${baseUrl}/${tab}`;
 
   const { store, history } = renderWithProviders(
-    <Route path="/model/:slug/detail">
-      <IndexRedirect to="usage" />
-      <Route path="usage" component={ModelDetailPage} />
-      <Route path="schema" component={ModelDetailPage} />
-      <Route path="actions" component={ModelDetailPage}>
-        <ModalRoute
-          path="new"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
-        <ModalRoute
-          path=":actionId"
-          modal={ActionCreator}
-          modalProps={{ enableTransition: false }}
-        />
+    <>
+      <Route path="/model/:slug/detail">
+        <IndexRedirect to="usage" />
+        <Route path="usage" component={ModelDetailPage} />
+        <Route path="schema" component={ModelDetailPage} />
+        <Route path="actions" component={ModelDetailPage}>
+          <ModalRoute
+            path="new"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+          <ModalRoute
+            path=":actionId"
+            modal={ActionCreator}
+            modalProps={{ enableTransition: false }}
+          />
+        </Route>
+        <Redirect from="*" to="usage" />
       </Route>
-      <Redirect from="*" to="usage" />
-    </Route>,
+      <Route path="/question/:slug" component={() => null} />
+    </>,
     { withRouter: true, initialRoute },
   );
 
@@ -549,7 +560,7 @@ describe("ModelDetailPage", () => {
 
           expect(screen.getByText(action.name)).toBeInTheDocument();
           expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
-          expect(screen.getByText("Public Action")).toBeInTheDocument();
+          expect(screen.getByText("Public action form")).toBeInTheDocument();
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
@@ -797,6 +808,29 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
+
+      describe("no data permissions", () => {
+        it("doesn't show model editor links", async () => {
+          await setup({
+            model: getModel(),
+            hasDataPermissions: false,
+            tab: "schema",
+          });
+          expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
+          expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow running actions", async () => {
+          const model = getModel();
+          const actions = [
+            ...createMockImplicitCUDActions(model.id()),
+            createMockQueryAction({ model_id: model.id() }),
+          ];
+          await setupActions({ model, actions, hasDataPermissions: false });
+
+          expect(queryIcon("play")).not.toBeInTheDocument();
+        });
+      });
     });
   });
 
@@ -820,6 +854,18 @@ describe("ModelDetailPage", () => {
         list.getByRole("link", { name: TABLE_1.displayName() }),
       ).toHaveAttribute("href", TABLE_1.newQuestion().getUrl());
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
+    });
+
+    describe("no data permissions", () => {
+      it("shows limited model info", async () => {
+        await setup({ model, hasDataPermissions: false });
+
+        expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
+        expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(TEST_TABLE.display_name),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -887,6 +933,13 @@ describe("ModelDetailPage", () => {
         "aria-selected",
         "true",
       );
+    });
+
+    it("redirects to query builder when trying to open a question", async () => {
+      const question = getSavedStructuredQuestion();
+      const { history } = await setup({ model: question });
+
+      expect(history?.getCurrentLocation().pathname).toBe(question.getUrl());
     });
 
     it("shows 404 when opening an archived model", async () => {

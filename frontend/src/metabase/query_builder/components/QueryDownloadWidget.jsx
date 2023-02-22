@@ -39,6 +39,7 @@ const QueryDownloadWidget = ({
   token,
   dashcardId,
   icon,
+  iconSize = 20,
   params,
   visualizationSettings,
 }) => {
@@ -46,7 +47,7 @@ const QueryDownloadWidget = ({
 
   return (
     <PopoverWithTrigger
-      triggerElement={() => renderIcon({ icon, status })}
+      triggerElement={() => renderIcon({ icon, status, iconSize })}
       triggerClasses={cx(className, "text-brand-hover")}
       triggerClassesClose={classNameClose}
       disabled={status === `pending` ? true : null}
@@ -260,17 +261,24 @@ const DashboardEmbedQueryButton = ({
   </DownloadButton>
 );
 
-const renderIcon = ({ icon, status }) => {
+const LOADER_SCALE_FACTOR = 0.9;
+
+const renderIcon = ({ icon, status, iconSize }) => {
   if ([`idle`, `resolved`, `rejected`].includes(status)) {
     return (
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={20} />
+        <Icon
+          data-testid="download-button"
+          title={t`Download this data`}
+          name={icon}
+          size={iconSize}
+        />
       </Tooltip>
     );
   } else if (status === "pending") {
     return (
       <Tooltip tooltip={t`Downloading…`}>
-        <LoadingSpinner size={18} />
+        <LoadingSpinner size={iconSize * LOADER_SCALE_FACTOR} />
       </Tooltip>
     );
   } else {
@@ -284,6 +292,9 @@ QueryDownloadWidget.propTypes = {
   uuid: PropTypes.string,
   icon: PropTypes.string,
   params: PropTypes.object,
+  className: PropTypes.string,
+  classNameClose: PropTypes.string,
+  visualizationSettings: PropTypes.object,
 };
 
 QueryDownloadWidget.defaultProps = {
