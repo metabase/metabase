@@ -155,10 +155,9 @@
         {:command-types command-types
          ;; when there is no remaining sql: return nil for remaining-sql
          :remaining-sql (get-field command-list "remaining" nil)})
-      ;; if the query is invalid, then it isn't DDL
-      (catch Throwable e
-        (log/warn e)
-        (throw e)))))
+      ;; only valid queries can be classified.
+      (catch org.h2.message.DbException _
+        {:command-types [] :remaining-sql nil}))))
 
 (defn- cmd-type-ddl? [cmd-type]
   ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
@@ -174,7 +173,7 @@
 ;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
 ;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
-(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
+(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native :as in}]
   (let [query-classification (classify-query database query)]
     (when (and query (contains-ddl? query-classification))
       (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
