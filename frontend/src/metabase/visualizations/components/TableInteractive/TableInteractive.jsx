@@ -22,7 +22,6 @@ import {
   getTableHeaderClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
-  cohortFormat,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { getScrollBarSize } from "metabase/lib/dom";
@@ -574,8 +573,6 @@ class TableInteractive extends Component {
           showDetailShortcut ? e => this.handleLeaveRow() : undefined
         }
         tabIndex="0"
-        data-rowindex={rowIndex}
-        data-columnindex={columnIndex}
       >
         {this.props.renderTableCellWrapper(cellData)}
         {isCollapsed && (
@@ -961,12 +958,7 @@ class TableInteractive extends Component {
       className,
       scrollToColumn,
     } = this.props;
-    if (
-      document.getElementsByClassName("table-cell").length &&
-      this.props.isCohorted
-    ) {
-      cohortFormat(this.props.isCohorted);
-    }
+
     if (!width || !height) {
       return <div className={className} />;
     }

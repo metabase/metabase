@@ -69,7 +69,7 @@
                          (:dataset source-card)
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
-      (qp.streaming/streaming-response [context export-format (get query :title)]
+      (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

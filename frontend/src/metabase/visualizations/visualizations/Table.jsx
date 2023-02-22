@@ -35,7 +35,6 @@ import {
 import {
   findColumnIndexForColumnSetting,
   findColumnForColumnSetting,
-  findColumnSettingIndexForColumn,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
@@ -187,17 +186,11 @@ export default class Table extends Component {
           tableColumns &&
           tableColumns.length !== 0 &&
           (extra.isQueryRunning ||
-            _.every(
+            _.all(
               tableColumns,
               columnSetting =>
-                !columnSetting.enabled ||
+                !columnSettings.enabled ||
                 findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-            )) &&
-          (extra.isQueryRunning ||
-            _.every(
-              data.cols,
-              column =>
-                findColumnSettingIndexForColumn(tableColumns, column) >= 0,
             ));
         if (!isValid) {
           return data.cols.map(col => ({
@@ -279,7 +272,6 @@ export default class Table extends Component {
       getProps: (series, settings) => ({
         cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
-        isCohorted: settings["table.pivot_cohort"],
       }),
 
       getHidden: (
@@ -309,13 +301,6 @@ export default class Table extends Component {
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
-    },
-    "table.pivot_cohort": {
-      id: "pivot_cohort",
-      section: t`Columns`,
-      title: t`Show cohort`,
-      widget: "toggle",
-      default: false,
     },
   };
 
@@ -471,11 +456,6 @@ export default class Table extends Component {
           settings,
         ),
       });
-      if (settings["table.pivot_cohort"]) {
-        cohortFormat(true);
-      } else {
-        cohortFormat(false);
-      }
     } else {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
@@ -525,6 +505,7 @@ export default class Table extends Component {
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
+
     if (!data) {
       return null;
     }
@@ -556,7 +537,6 @@ export default class Table extends Component {
         {...this.props}
         data={data}
         isPivoted={isPivoted}
-        isCohorted={isCohorted}
         sort={sort}
         getColumnTitle={this.getColumnTitle}
       />

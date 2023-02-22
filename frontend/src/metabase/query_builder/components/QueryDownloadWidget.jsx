@@ -16,7 +16,6 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import * as Urls from "metabase/lib/urls";
-import * as Dataset from "metabase/lib/dataset";
 
 import {
   WidgetFormat,
@@ -157,10 +156,7 @@ const UnsavedQueryButton = ({
   <DownloadButton
     url={`api/dataset/${type}`}
     params={{
-      query: JSON.stringify(_.omit(json_query, "constraints")).replace(
-        /QPTitle/i,
-        Dataset.getDatsetTitle(),
-      ),
+      query: JSON.stringify(_.omit(json_query, "constraints")),
       visualization_settings: JSON.stringify(visualizationSettings),
     }}
     extensions={[type]}

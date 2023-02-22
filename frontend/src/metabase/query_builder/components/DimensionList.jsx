@@ -232,8 +232,6 @@ export default class DimensionList extends Component {
   };
 
   render() {
-    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display =
-      "bar";
     return (
       <AccordionList
         {...this.props}
