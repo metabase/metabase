@@ -4,6 +4,7 @@ import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";
 import { isWithinIframe } from "metabase/lib/dom";
+import { isTest } from "metabase/env";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -29,7 +30,7 @@ const DEFAULT_OPTIONS = {
 };
 
 export class Api extends EventEmitter {
-  basename = location.origin;
+  basename = "";
 
   GET;
   POST;
@@ -152,12 +153,81 @@ export class Api extends EventEmitter {
     } while (retryCount < maxAttempts);
   }
 
-  // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
-  async _makeRequest(method, url, headers, requestBody, data, options) {
+  _makeRequest(...args) {
+    if (isTest) {
+      return this._makeRequestWithFetch(...args);
+    } else {
+      return this._makeRequestWithXhr(...args);
+    }
+  }
+
+  _makeRequestWithXhr(method, url, headers, body, data, options) {
+    return new Promise((resolve, reject) => {
+      let isCancelled = false;
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, this.basename + url);
+      for (const headerName in headers) {
+        xhr.setRequestHeader(headerName, headers[headerName]);
+      }
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // getResponseHeader() is case-insensitive
+          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
+          if (antiCsrfToken) {
+            ANTI_CSRF_TOKEN = antiCsrfToken;
+          }
+
+          let body = xhr.responseText;
+          if (options.json) {
+            try {
+              body = JSON.parse(body);
+            } catch (e) {}
+          }
+          let status = xhr.status;
+          if (status === 202 && body && body._status > 0) {
+            status = body._status;
+          }
+          if (status >= 200 && status <= 299) {
+            if (options.transformResponse) {
+              body = options.transformResponse(body, { data });
+            }
+            resolve(body);
+          } else {
+            reject({
+              status: status,
+              data: body,
+              isCancelled: isCancelled,
+            });
+          }
+          if (!options.noEvent) {
+            this.emit(status, url);
+          }
+        }
+      };
+      xhr.send(body);
+
+      if (options.cancelled) {
+        options.cancelled.then(() => {
+          isCancelled = true;
+          xhr.abort();
+        });
+      }
+    });
+  }
+
+  async _makeRequestWithFetch(
+    method,
+    url,
+    headers,
+    requestBody,
+    data,
+    options,
+  ) {
     const controller = new AbortController();
     options.cancelled?.then(() => controller.abort());
 
-    const request = new Request(this.basename + url, {
+    const requestUrl = new URL(this.basename + url, location.origin);
+    const request = new Request(requestUrl.href, {
       method,
       headers,
       body: requestBody,
