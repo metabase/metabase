@@ -173,7 +173,7 @@
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
-     (and (every? #{CommandInterface/SELECT
+     (and (every? #{CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
                     CommandInterface/EXPLAIN
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))

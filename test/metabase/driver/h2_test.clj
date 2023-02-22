@@ -212,6 +212,9 @@
       (doseq [query ["select * from orders"
                      "select 1; select 2;"
                      "explain select * from orders"
+                     "values (1, 'Hello'), (2, 'World');"
+                     "show tables"
+                     "table orders"
                      "call 1 + 1"]]
         (is (nil?
              (#'h2/check-read-only-statements
