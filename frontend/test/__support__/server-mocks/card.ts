@@ -9,10 +9,11 @@ import { PERMISSION_ERROR } from "./constants";
 
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
-  fetchMock.put(`path:/api/card/${card.id}`, (url, request) => ({
-    status: 200,
-    body: createMockCard(JSON.parse(String(request.body))),
-  }));
+  fetchMock.put(`path:/api/card/${card.id}`, async (url, request) => {
+    const body = await request.body;
+    const data = typeof body === "string" ? JSON.parse(body) : body;
+    return createMockCard(data);
+  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
   fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
@@ -26,7 +27,7 @@ export function setupCardEndpoints(card: Card) {
 }
 
 export function setupCardsEndpoints(cards: Card[]) {
-  fetchMock.get("path:/api/card", cards);
+  fetchMock.get({ url: "path:/api/card", overwriteRoutes: false }, cards);
   cards.forEach(card => setupCardEndpoints(card));
 }
 
