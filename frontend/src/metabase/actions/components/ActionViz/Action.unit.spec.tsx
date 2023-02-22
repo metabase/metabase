@@ -60,6 +60,14 @@ const defaultProps = {
   parameterValues: {},
 } as unknown as ActionProps;
 
+const databases: Record<number, any> = {
+  1: createMockDatabase({ id: 1 }),
+  2: createMockDatabase({
+    id: 2,
+    settings: { "database-enable-actions": true },
+  }),
+};
+
 async function setup(options?: Partial<ActionProps>) {
   return renderWithProviders(
     <ActionComponent {...defaultProps} {...options} />,
@@ -67,17 +75,17 @@ async function setup(options?: Partial<ActionProps>) {
 }
 
 async function setupActionWrapper(options?: Partial<ActionProps>) {
+  const dbId = options?.dashcard?.action?.database_id ?? 0;
+
+  nock(location.origin)
+    .get(`/api/database/${dbId}`)
+    .reply(200, databases[dbId] ?? null);
+
   return renderWithProviders(<Action {...defaultProps} {...options} />, {
     withSampleDatabase: true,
     storeInitialState: {
       entities: {
-        databases: {
-          1: createMockDatabase({ id: 1 }),
-          2: createMockDatabase({
-            id: 2,
-            settings: { "database-enable-actions": true },
-          }),
-        },
+        databases,
       },
     },
   });
@@ -120,10 +128,10 @@ describe("Actions > ActionViz > ActionComponent", () => {
           }),
         },
       });
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
+      expect(await screen.findByLabelText("bolt icon")).toBeInTheDocument();
+      expect(await screen.findByRole("button")).toBeDisabled();
       expect(
-        screen.getByLabelText(/actions are not enabled/i),
+        await screen.findByLabelText(/actions are not enabled/i),
       ).toBeInTheDocument();
     });
 
@@ -137,7 +145,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           }),
         },
       });
-      expect(screen.getByRole("button")).toBeEnabled();
+      expect(await screen.findByRole("button")).toBeEnabled();
     });
 
     it("should render a button with default text", async () => {
