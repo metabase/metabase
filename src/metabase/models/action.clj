@@ -98,8 +98,8 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action      (db/insert! Action (select-keys action-data action-columns))
-          model       (type->model (:type action))]
+    (let [action (db/insert! Action (select-keys action-data action-columns))
+          model  (type->model (:type action))]
       (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
                                  (assoc :action_id (:id action))
