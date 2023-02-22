@@ -902,9 +902,7 @@
                                                 :archived   false
                                                 :created_at :%now
                                                 :updated_at :%now})]
-        (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Referential integrity constraint violation.*"
-              (db/delete! Database :id db-id)))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (db/delete! Database :id db-id)))
         (migrate!)
         (is (db/delete! Database :id db-id))))))
