@@ -133,7 +133,7 @@ function ActionCreator({
   };
 
   const showSaveModal = () => {
-    maybeCloseAceEditor();
+    ensureAceEditorClosed();
     setShowSaveModal(true);
   };
 
@@ -181,7 +181,7 @@ function ActionCreator({
   );
 }
 
-function maybeCloseAceEditor() {
+function ensureAceEditorClosed() {
   const ace = "ace" in window ? (window.ace as any) : null;
   const editor = ace?.edit(ACE_ELEMENT_ID);
   if (editor) {
