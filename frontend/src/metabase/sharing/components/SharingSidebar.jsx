@@ -59,7 +59,7 @@ const cardsFromDashboard = dashboard => {
 
 const getSupportedCardsForSubscriptions = dashboard => {
   return cardsFromDashboard(dashboard).filter(
-    card => !["text", "action"].includes(card.display),
+    card => !["text", "action", "link"].includes(card.display),
   );
 };
 

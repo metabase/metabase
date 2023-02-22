@@ -8,6 +8,7 @@ import {
   createMockActionDashboardCard,
   createMockDashboardOrderedCard,
   createMockUser,
+  createMockCard,
 } from "metabase-types/api/mocks";
 
 import SharingSidebar from "./SharingSidebar";
@@ -17,11 +18,16 @@ const actionDashcard = createMockActionDashboardCard({
   id: 2,
   name: "actionDashcard",
 });
+const linkDashcard = createMockActionDashboardCard({
+  id: 3,
+  name: "linkDashcard",
+  card: createMockCard({ display: "link" }),
+});
 
 const user = createMockUser();
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard],
+  ordered_cards: [dashcard, actionDashcard, linkDashcard],
 });
 
 function setup({ matchTestSubscriptionPayload }) {
@@ -63,11 +69,12 @@ function setup({ matchTestSubscriptionPayload }) {
         dashcards: {
           [dashcard.id]: dashcard,
           [actionDashcard.id]: actionDashcard,
+          [linkDashcard.id]: linkDashcard,
         },
         dashboards: {
           [dashboard.id]: {
             ...dashboard,
-            ordered_cards: [dashcard.id, actionDashcard.id],
+            ordered_cards: [dashcard.id, actionDashcard.id, linkDashcard.id],
           },
         },
       },
@@ -78,7 +85,7 @@ function setup({ matchTestSubscriptionPayload }) {
 }
 
 describe("SharingSidebar", () => {
-  it("should filter out actions when sending a test subscription", async () => {
+  it("should filter out actions and links when sending a test subscription", async () => {
     const { sendTestSubscriptionScope } = setup({
       matchTestSubscriptionPayload: payload => {
         expect(payload.cards).toHaveLength(1);
