@@ -237,3 +237,29 @@
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                         "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                         "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest disallowed-commands-in-action-test
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
+      (testing "Should not be able to execute query actions with disallowed commands"
+        (let [sql "select * from categories; update categories set name = 'stomp';
+                 CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
+                 EXEC ('open -a Calculator.app')"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:message "Error executing Action: IllegalArgument: DDL commands are not allowed to be used with h2."}
+                    (mt/user-http-request :crowberto
+                                          :post 500
+                                          (format "action/%s/execute" action-id)))))))
+      (testing "Should be able to execute query actions with allowed commands"
+        (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:rows-affected 1}
+                    (mt/user-http-request :crowberto
+                                          :post 200
+                                          (format "action/%s/execute" action-id))))))))))
