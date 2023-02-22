@@ -89,6 +89,7 @@ Metabase's reference documentation.
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
+- [Actions on dashboards](./dashboards/actions.md)
 
 ### Data modeling
 
