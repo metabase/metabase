@@ -59,8 +59,10 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update the name and description", () => {
+    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
+    cy.wait("@getDashboard");
 
     cy.findByTestId("dashboard-name-heading")
       .click()
@@ -68,6 +70,7 @@ describe("scenarios > dashboard", () => {
       .blur();
 
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
 
     cy.get("main header").within(() => {
       cy.icon("info").click();
@@ -80,8 +83,12 @@ describe("scenarios > dashboard", () => {
         .blur();
     });
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
+
     // refresh page and check that title/desc were updated
     visitDashboard(1);
+    cy.wait("@getDashboard");
+
     cy.findByDisplayValue("Orders per year");
 
     cy.get("main header").within(() => {

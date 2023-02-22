@@ -117,6 +117,7 @@ function ModelActionListItem({
                   icon="play"
                   onlyIcon
                   tooltip={t`Run`}
+                  aria-label={t`Run`}
                 />
               </ActionRunButtonContainer>
             }
