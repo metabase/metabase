@@ -9,6 +9,10 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Collect ${{ inputs.junit-name }} Telemetry
+      uses: runforesight/foresight-workflow-kit-action@v1
+      with:
+        api_key: ${{ secrets.FORESIGHT_API_KEY}}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment

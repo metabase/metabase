@@ -62,6 +62,10 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
+    - name: Collect FE Type Check Tests Telemetry
+      uses: runforesight/foresight-workflow-kit-action@v1
+      with:
+        api_key: ${{ secrets.FORESIGHT_API_KEY}}
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
@@ -80,6 +84,10 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 30
     steps:
+    - name: Collect FE Unit Tests Telemetry
+      uses: runforesight/foresight-workflow-kit-action@v1
+      with:
+        api_key: ${{ secrets.FORESIGHT_API_KEY}}
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
@@ -101,6 +109,10 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
+    - name: Collect FE Timezones Tests Telemetry
+      uses: runforesight/foresight-workflow-kit-action@v1
+      with:
+        api_key: ${{ secrets.FORESIGHT_API_KEY}}
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend

@@ -40,6 +40,10 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
+      - name: Collect Build ${{ matrix.edition }} Telemetry
+        uses: runforesight/foresight-workflow-kit-action@v1
+        with:
+          api_key: ${{ secrets.FORESIGHT_API_KEY}}
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -138,6 +142,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+      - name: Collect E2E ${{ matrix.folder }}${{ matrix.context }} Tests Telemetry
+        uses: runforesight/foresight-workflow-kit-action@v1
+        with:
+          api_key: ${{ secrets.FORESIGHT_API_KEY}}
       - uses: actions/checkout@v3
       - name: Record runs using Deploysentinel except for the release branch
         if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
@@ -256,6 +264,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+      - name: Collect Percy Visual Tests Telemetry
+        uses: runforesight/foresight-workflow-kit-action@v1
+        with:
+          api_key: ${{ secrets.FORESIGHT_API_KEY}}
       - uses: actions/checkout@v3
       - name: Enable Percy recording on master only
         if: github.ref == 'refs/heads/master'
