@@ -98,13 +98,18 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action (db/insert! Action (select-keys action-data action-columns))
-          model  (type->model (:type action))]
+    (let [action      (db/insert! Action (select-keys action-data action-columns))
+          model       (type->model (:type action))]
       (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
-                                 (u/update-if-exists :template json/encode)
-                                 (u/update-if-exists :dataset_query json/encode)
-                                 (assoc :action_id (:id action)))]})
+                                 (assoc :action_id (:id action))
+                                 (cond->
+                                   (= (:type action) :implicit)
+                                   (dissoc :database_id)
+                                   (= (:type action) :http)
+                                   (update :template json/encode)
+                                   (= (:type action) :query)
+                                   (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!
@@ -113,7 +118,10 @@
   [{:keys [id] :as action} existing-action]
   (when-let [action-row (not-empty (select-keys action action-columns))]
     (db/update! Action id action-row))
-  (when-let [type-row (not-empty (apply dissoc action :id action-columns))]
+  (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
+                                         (= (or (:type action) (:type existing-action))
+                                            :implicit)
+                                         (dissoc :database_id)))]
     (let [type-row (assoc type-row :action_id id)
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
