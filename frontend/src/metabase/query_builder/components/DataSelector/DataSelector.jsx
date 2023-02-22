@@ -184,7 +184,6 @@ class DataSelectorInner extends Component {
 
 const DataSelector = _.compose(
   Databases.loadList({
-    query: { saved: true },
     loadingAndErrorWrapper: false,
     listName: "allDatabases",
   }),
