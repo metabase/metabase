@@ -20,20 +20,24 @@ export function setupActionsEndpoints(
     {
       url: "path:/api/action",
       query: { "model-id": modelId },
+      overwriteRoutes: false,
     },
     actions,
   );
 
-  fetchMock.post("path:/api/action", async (uri, request) => {
-    const data = await getRequestBody(request);
-    if (data.type === "implicit") {
-      return createMockImplicitQueryAction(data);
-    }
-    if (data.type === "query") {
-      return createMockQueryAction(data);
-    }
-    throw new Error(`Unknown action type: ${data.type}`);
-  });
+  fetchMock.post(
+    { url: "path:/api/action", overwriteRoutes: true },
+    async (uri, request) => {
+      const data = await getRequestBody<WritebackAction>(request);
+      if (data.type === "implicit") {
+        return createMockImplicitQueryAction(data);
+      }
+      if (data.type === "query") {
+        return createMockQueryAction(data);
+      }
+      throw new Error(`Unknown action type: ${data.type}`);
+    },
+  );
 
   actions.forEach(action => setupActionEndpoints(action));
 }
