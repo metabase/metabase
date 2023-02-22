@@ -59,34 +59,41 @@ export interface CollectionTreeItem extends Collection {
   children: CollectionTreeItem[];
 }
 
+export interface CollectionTreeOpts {
+  targetModels?: CollectionContentModel[];
+}
+
 export function buildCollectionTree(
   collections: Collection[],
-  { targetModels }: { targetModels?: CollectionContentModel[] } = {},
+  { targetModels }: CollectionTreeOpts = {},
 ): CollectionTreeItem[] {
-  if (collections == null) {
-    return [];
-  }
-
   const targetModelSet = new Set(targetModels);
 
   return collections.flatMap(collection => {
+    const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
     const hasTargetModels =
       !targetModelSet.size ||
       collection.here?.some(model => targetModelSet.has(model)) ||
       collection.below?.some(model => targetModelSet.has(model));
 
-    return hasTargetModels
-      ? {
-          ...collection,
-          schemaName: collection.originalName || collection.name,
-          icon: getCollectionIcon(collection),
-          children: buildCollectionTree(
-            collection.children?.filter(child => !child.archived) || [],
-            {
-              targetModels,
-            },
-          ),
-        }
-      : [];
+    if (!isPersonalRoot && !hasTargetModels) {
+      return [];
+    }
+
+    const children = buildCollectionTree(
+      collection.children?.filter(child => !child.archived) || [],
+      { targetModels },
+    );
+
+    if (isPersonalRoot && children.length === 0) {
+      return [];
+    }
+
+    return {
+      ...collection,
+      schemaName: collection.originalName || collection.name,
+      icon: getCollectionIcon(collection),
+      children,
+    };
   });
 }
