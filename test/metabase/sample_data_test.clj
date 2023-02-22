@@ -2,8 +2,10 @@
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Database Field Table]]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
@@ -99,3 +101,42 @@
                  (hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
+
+(deftest write-rows-sample-database-test
+  (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
+    (with-temp-sample-database-db [db]
+      (mt/with-db db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (testing "update row"
+            (let [quantity (fn []
+                             (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
+                                  (map :quantity)))]
+              (testing "before"
+                (is (= [2]
+                       (quantity))))
+              (is (= [1]
+                     (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 1 WHERE ID = 1;")))
+              (testing "after"
+                (is (= [1]
+                       (quantity))))
+              ;; TODO: this shouldn't be necessary, since we're modifying a temp sample database.
+              (testing "restore"
+                (is (= [1]
+                       (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 2 WHERE ID = 1;"))))))
+          (let [rating (fn []
+                         (->> (jdbc/query conn-spec "SELECT RATING FROM PRODUCTS WHERE PRICE = 12.345;")
+                              (map :rating)))]
+            (testing "insert row"
+              (is (= [1]
+                     (jdbc/execute! conn-spec "INSERT INTO PRODUCTS (price, rating) VALUES (12.345, 6.789);")))
+              (is (= [6.789]
+                     (rating))))
+            (testing "delete row"
+              (testing "before"
+                (is (= [6.789]
+                       (rating))))
+              (is (= [1]
+                     (jdbc/execute! conn-spec "DELETE FROM PRODUCTS WHERE PRICE = 12.345;")))
+              (testing "after"
+                (is (= []
+                       (rating)))))))))))
