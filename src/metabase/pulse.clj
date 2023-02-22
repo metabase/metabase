@@ -2,16 +2,18 @@
   "Public API for sending Pulses."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.serialization.util :as serdes.util]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
@@ -29,7 +31,8 @@
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -48,12 +51,12 @@
      (dissoc parameter :default))))
 
 (defn- execute-dashboard-subscription-card
-  [owner-id dashboard dashcard card-or-id parameters]
+  [dashboard dashcard card-or-id parameters]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
-          result  (mw.session/with-current-user owner-id
-                    (qp.dashboard/run-query-for-dashcard-async
+          result  (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
                      :card-id       card-id
                      :dashcard-id   (u/the-id dashcard)
@@ -65,7 +68,7 @@
                      :run           (fn [query info]
                                       (qp/process-query-and-save-with-max-results-constraints!
                                        (assoc query :async? false)
-                                       info))))]
+                                       info)))]
       {:card     card
        :dashcard dashcard
        :result   result})
@@ -82,11 +85,12 @@
 
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."
-  [{viz-settings :visualization_settings :as dashcard} {pulse-creator-id :creator_id, :as pulse} dashboard]
+  [{viz-settings :visualization_settings :as dashcard} pulse dashboard]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) parameters))
+      (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
     (pu/virtual-card-of-type? viz-settings "action")
@@ -94,8 +98,16 @@
 
     ;; link cards
     (pu/virtual-card-of-type? viz-settings "link")
-    (:visualization_settings dashcard)
+    (let [viz-settings       (:visualization_settings dashcard)
+          {:keys [model id]} (get-in viz-settings [:link :entity])]
 
+      (if model
+        (let [instance (t2/query-one
+                         (dashboard-card/link-card-info-query-for-model [model [id]]))]
+             (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
+               (assoc-in viz-settings [:link :entity] instance)))
+        ;; url
+        viz-settings))
     ;; text cards has existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
@@ -106,14 +118,15 @@
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [pulse dashboard & {:as _options}]
+  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
-    (for [dashcard ordered-dashcards
-          :let  [content (dashcard->content dashcard pulse dashboard)]
-          :when (some? content)]
-      content)))
+    (mw.session/with-current-user pulse-creator-id
+      (doall (for [dashcard ordered-dashcards
+                   :let  [content (dashcard->content dashcard pulse dashboard)]
+                   :when (some? content)]
+               content)))))
 
 (defn- database-id [card]
   (or (:database_id card)

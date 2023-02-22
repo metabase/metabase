@@ -445,10 +445,8 @@
   (let [icon (icon-bundle (link-card->icon-name link-card))]
     {:content     (html
                     [:div
-
                      [:a {:href  (link-card->url link-card)
                           :style (style/style {:line-height :25px})}
-
                       [:img {:class "icon"
                              :style (style/style {:margin-right   :10px
                                                   :vertical-align :middle

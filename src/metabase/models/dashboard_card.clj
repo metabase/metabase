@@ -282,7 +282,8 @@
 (def ^:private link-card-models
   (set (keys serdes.util/link-card-model->toucan-model)))
 
-(defn- link-card-info-query-for-model
+(defn link-card-info-query-for-model
+  "A DOC"
   [[model ids]]
   {:select (select-clause-for-link-card-model model)
    :from   (t2/table-name (serdes.util/link-card-model->toucan-model model))
@@ -321,8 +322,6 @@
                                (if (mi/can-read? (t2/instance (serdes.util/link-card-model->toucan-model model) instance))
                                  instance
                                  {:restricted true}))))]
-
-
         (map (fn [card]
                (if-let [model-info (->> (get-in card entity-path)
                                         ((juxt :model :id))
