@@ -212,6 +212,11 @@ describe("LinkViz", () => {
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
       userEvent.click(searchInput);
+      // There's a race here: as soon the search input is clicked into the text
+      // "Loading..." appears and is then replaced by "Question Uno". On CI,
+      // `findByText` was sometimes running while "Loading..." was still
+      // visible, so the extra expectation ensures good timing
+      expect(await screen.findByText("Loading...")).toBeInTheDocument();
       userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
