@@ -18,6 +18,7 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.secret :as secret]
@@ -851,6 +852,35 @@
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :postgres
+    (testing "actions with enums"
+      (do-with-enums-db
+       (fn [enums-db]
+         (mt/with-db enums-db
+           (mt/with-actions-enabled
+             (mt/with-actions [{model-id :id :as model} {:dataset true
+                                                         :dataset_query
+                                                         (mt/mbql-query birds)}
+                               {action-id :action-id} {:type :implicit
+                                                       :kind "row/create"}]
+               (testing "Enum fields are a valid implicit parameter target"
+                 (let [columns        (->> model :result_metadata (map :name) set)
+                       action-targets (->> (action/select-action :id action-id)
+                                           :parameters
+                                           (map :id)
+                                           set)]
+                   (is (= columns action-targets))))
+               (testing "Can create new records with an enum value"
+                 (is (= {:created-row
+                         {:name "new bird", :status "good bird", :type "turkey"}}
+                        (mt/user-http-request :crowberto
+                                              :post 200
+                                              (format "action/%s/execute" action-id)
+                                              {:parameters {"name" "new bird"
+                                                            "status" "good bird"
+                                                            "type" "turkey"}}))))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
