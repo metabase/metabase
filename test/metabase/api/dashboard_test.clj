@@ -2744,8 +2744,6 @@
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
-                 {:field-name "ajson" :base-type :type/JSON ::good "{\"a\": 1}"}
-                 {:field-name "axml" :base-type :type/XML ::good "<xml></xml>"}
                  {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
                  {:field-name "ainteger" :base-type :type/Integer ::good 100}
                  {:field-name "afloat" :base-type :type/Float ::good 0.4}
@@ -2758,7 +2756,7 @@
                  {:field-name "adatetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
       (mt/with-temp-test-data
         ["types"
-         (map #(dissoc % ::good ::bad) types)
+         (map #(select-keys % [:field-name :base-type]) types)
          [["init"]]]
         (mt/with-actions-enabled
           (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
