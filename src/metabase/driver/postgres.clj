@@ -575,8 +575,8 @@
    :int4          :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
-   :json          :type/JSON
-   :jsonb         :type/JSON
+   :json          :type/Structured
+   :jsonb         :type/Structured
    :line          :type/*
    :lseg          :type/*
    :macaddr       :type/Structured
