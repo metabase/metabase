@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import { screen, queryIcon } from "__support__/ui";
 
 import {
@@ -18,10 +16,6 @@ async function setup({
 }
 
 describe("ActionCreator > Implicit Actions", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("renders correctly", async () => {
     const { action } = await setup();
 

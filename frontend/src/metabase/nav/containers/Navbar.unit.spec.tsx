@@ -64,10 +64,6 @@ async function setup({
 }
 
 describe("nav > containers > Navbar > Core App", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should be open when isOpen is true", async () => {
     await setup({ isOpen: true });
     const navbar = screen.getByTestId("main-navbar-root");

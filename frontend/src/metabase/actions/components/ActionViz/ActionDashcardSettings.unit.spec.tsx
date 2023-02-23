@@ -1,5 +1,4 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -105,10 +104,6 @@ const setup = (
 };
 
 describe("ActionViz > ActionDashcardSettings", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("shows the action dashcard settings component", () => {
     setup();
 

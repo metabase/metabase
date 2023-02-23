@@ -19,7 +19,7 @@ import {
 
 export interface EntitiesState {
   actions?: Record<WritebackActionId, WritebackAction>;
-  collections?: Record<CollectionId, Collection>;
+  collections?: Partial<Record<CollectionId, Collection>>;
   dashboards?: Record<DashboardId, Dashboard>;
   databases?: Record<number, Database>;
   fields?: Record<FieldId, Field>;

@@ -12,10 +12,6 @@ describe("schema entity", () => {
     store = getStore();
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should save metadata from fetching a schema's tables", async () => {
     fetchMock.get("path:/api/database/1/schema/public", [
       { id: 123, name: "foo" },

@@ -242,7 +242,6 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "nock": "^13.2.9",
     "node-polyfill-webpack-plugin": "2.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
@@ -268,7 +267,8 @@
   "resolutions": {
     "ansi-regex": "5.0.1",
     "set-value": "4.0.1",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
+    "unset-value": "2.0.1"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",

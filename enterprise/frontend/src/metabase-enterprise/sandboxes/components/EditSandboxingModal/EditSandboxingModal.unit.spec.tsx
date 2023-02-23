@@ -59,7 +59,6 @@ const setup = ({
 describe("EditSandboxingModal", () => {
   afterEach(() => {
     jest.clearAllMocks();
-    fetchMock.reset();
   });
 
   describe("EditSandboxingModal", () => {

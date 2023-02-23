@@ -510,7 +510,7 @@ Key points:
 
 ### Request mocking
 
-We use `nock` to mock requests:
+We use `fetchMock` to mock requests:
 
 ```tsx
 import fetchMock from "fetch-mock";
@@ -527,8 +527,9 @@ const setup = ({ collections }: SetupOpts) => {
 };
 
 describe("Component", () => {
-  afterEach(() => {
-    fetchMock.reset();
+  it("renders correclty", async () => {
+    setup();
+    expect(await screen.findByText("Collection")).toBeInTheDocument();
   });
 });
 ```
