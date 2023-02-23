@@ -3,9 +3,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [malli.core :as mc]
-   [malli.util :as mut]))
+   [metabase.util.malli.schema :as ms]))
 
 (comment metabase.types/keep-me)
 
@@ -123,50 +121,69 @@
    :mbql/asc
    :mbql/desc])
 
-(mr/def ::source-table-or-source-query
-  [:fn
-   {:error/fn (fn [& _]
-                (i18n/tru "Query must have either :source-table or :source-query, but not both."))}
-   (fn [{:keys [source-table source-query]}]
-     ;; actually, don't enforce the requirement that we have both for the time being, because in a `:pipeline` query
-     ;; the `:source-query` part is implied if there is a previous stage.
-     (and #_(or source-table source-query)
-          (not (and source-table source-query))))])
-
 (mr/def :mbql/join
-  [:and
-   [:map
-    [:lib/type [:= :lib/join]]
-    [:lib/options :lib/options]
-    [:source-table {:optional true} ms/IntGreaterThanZero]
-    [:source-query {:optional true} [:ref :mbql/inner-query]]
-    [:condition :mbql/boolean-expression]]
-   ::source-table-or-source-query])
+  [:map
+   [:lib/type [:= :lib/join]]
+   [:lib/options :lib/options]
+   [:stages [:ref :mbql/stages]]
+   [:condition :mbql/boolean-expression]])
 
-(mr/def :mbql/inner-query
-  [:and
-   [:map
-    [:lib/type [:= :lib/inner-query]]
-    [:lib/options :lib/options]
-    [:source-table {:optional true} ms/IntGreaterThanZero]
-    [:source-query {:optional true} [:ref :mbql/inner-query]]
-    [:order-by {:optional true} [:sequential :mbql/order-by]]
-    [:joins {:optional true} [:sequential :mbql/join]]
-    [:filter {:optional true} :mbql/boolean-expression]]
-   ::source-table-or-source-query])
+(mr/def :stage/native
+  [:map
+   [:lib/type [:= :stage/native]]
+   [:lib/options :lib/options]
+   [:native any?]
+   [:args {:optional true} [:sequential any?]]])
 
-(mr/def :mbql/query-type
-  [:enum :native :query])
+(mr/def :stage/mbql
+  [:map
+   [:lib/type [:= :stage/mbql]]
+   [:lib/options :lib/options]
+   [:source-table {:optional true} ms/IntGreaterThanZero]
+   [:source-query {:optional true} [:ref :stage/mbql]]
+   [:order-by {:optional true} [:sequential :mbql/order-by]]
+   [:joins {:optional true} [:sequential [:ref :mbql/join]]]
+   [:filter {:optional true} :mbql/boolean-expression]])
+
+(mr/def :stage/mbql.with-source
+  [:and
+   :stage/mbql
+   [:fn
+    {:error/fn (fn [& _]
+                 (i18n/tru "Query must have either :source-table or :source-query, but not both."))}
+    (fn [{:keys [source-table source-query]}]
+      (and (or source-table source-query)
+           (not (and source-table source-query))))]])
+
+(mr/def :stage/mbql.without-source
+  [:and
+   :stage/mbql
+   [:fn
+    {:error/fn (fn [& _]
+                 (i18n/tru "Only the initial stage can have a :source-table or :source-query"))}
+    (fn [stage]
+      (not ((some-fn :source-table :source-query) stage)))]])
+
+(mr/def :stage/initial
+  [:or
+   :stage/native
+   :stage/mbql.with-source])
+
+(mr/def :stage/additional
+  :stage/mbql.without-source)
+
+(mr/def :mbql/additional-stage
+  [:map
+   [:lib/type [:= :lib/mbql]]])
+
+(mr/def :mbql/stages
+  [:cat
+   :stage/initial
+   [:* :stage/additional]])
 
 (mr/def :mbql/outer-query
-  [:and
-   [:map
-    [:lib/type [:= :lib/outer-query]]
-    [:database ms/IntGreaterThanOrEqualToZero]
-    [:type :mbql/query-type]]
-   [:multi
-    {:dispatch :type}
-    [:query [:map
-             [:query :mbql/inner-query]]]
-    [:native [:map
-              [:native [:map]]]]]])
+  [:map
+   [:lib/type [:= :lib/outer-query]]
+   [:database ms/IntGreaterThanOrEqualToZero]
+   [:type [:= :pipeline]]
+   [:stages :mbql/stages]])

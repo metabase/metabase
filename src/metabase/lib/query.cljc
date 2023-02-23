@@ -5,7 +5,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.util :as lib.util]))
 
 (comment metabase.lib.schema/keep-me)
 
@@ -28,25 +29,24 @@
 (defmethod query* :type/string
   [database-metadata table-name]
   (mc/coerce lib.metadata/DatabaseMetadata database-metadata)
-  {:database     (:id database-metadata)
-   :type         :query
-   :query        (let [table (lib.metadata/table-metadata database-metadata table-name)]
-                   (-> {:lib/type     :lib/inner-query
-                        :source-table (:id table)}
-                       lib.options/ensure-uuid))
-   :lib/type     :lib/outer-query
-   :lib/metadata database-metadata})
+  {:lib/type     :lib/outer-query
+   :lib/metadata database-metadata
+   :database     (:id database-metadata)
+   :type         :pipeline
+   :stages       [(let [table (lib.metadata/table-metadata database-metadata table-name)]
+                    (-> {:lib/type     :stage/mbql
+                         :source-table (:id table)}
+                        lib.options/ensure-uuid))]})
 
 (defmethod query* :type/map
   [metadata query]
-  (cond-> (assoc query
-                 :lib/metadata metadata
-                 :lib/type     :lib/outer-query)
-    (:query query) (update :query (fn add-inner-query-type [inner-query]
-                                    (cond-> (-> inner-query
-                                                (assoc :lib/type :lib/inner-query)
-                                                lib.options/ensure-uuid)
-                                      (:source-query inner-query) (update :source-query add-inner-query-type))))))
+  (-> (lib.util/pipeline query)
+      (assoc :lib/metadata metadata
+             :lib/type     :lib/outer-query)
+      (update :stages (fn [stages]
+                        (mapv
+                         lib.options/ensure-uuid
+                         stages)))))
 
 (mu/defn query :- Query
   "Create a new MBQL query for a Database."
@@ -66,11 +66,13 @@
   ([database-metadata :- lib.metadata/DatabaseMetadata
     results-metadata  :- lib.metadata/SourceQueryMetadata
     query]
-   {:database     (:id database-metadata)
-    :type         :native
-    :native       {:query query}
-    :lib/type     :lib/outer-query
-    :lib/metadata results-metadata}))
+   {:lib/type     :lib/outer-query
+    :lib/metadata results-metadata
+    :database     (:id database-metadata)
+    :type         :pipeline
+    :stages       [(-> {:lib/type :stage/native
+                        :native   query}
+                       lib.options/ensure-uuid)]}))
 
 (mu/defn saved-question-query :- Query
   [{query :dataset_query, metadata :result_metadata}]

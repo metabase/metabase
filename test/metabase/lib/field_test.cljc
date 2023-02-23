@@ -4,15 +4,15 @@
     [(:require
       [clojure.test :as t]
       [metabase.lib :as lib]
+      [metabase.lib.interface :as lib.interface]
       [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.resolve :as lib.resolve]
       [metabase.lib.test-metadata :as meta])]
     :cljs
     [(:require
       [cljs.test :as t :include-macros true]
       [metabase.lib :as lib]
+      [metabase.lib.interface :as lib.interface]
       [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.resolve :as lib.resolve]
       [metabase.lib.test-metadata :as meta])]))
 
 (t/deftest ^:parallel field-test
@@ -28,7 +28,7 @@
     (t/is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
               (lib/field field-metadata)))
     (t/is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-              (lib.resolve/resolve meta/metadata field-metadata)))))
+              (lib.interface/resolve field-metadata meta/metadata)))))
 
 (t/deftest ^:parallel field-from-results-metadata-test
   (let [field-metadata (lib.metadata/field-metadata meta/results-metadata "ID")]
@@ -38,10 +38,10 @@
 
 (t/deftest ^:parallel resolve-field-placeholder-test
   (t/is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-            (lib.resolve/resolve
-             meta/metadata
-             [:lib/field-placeholder {:field-name "ID", :table-name "VENUES"}])))
+            (lib.interface/resolve
+             [:lib/field-placeholder {:field-name "ID", :table-name "VENUES"}]
+             meta/metadata)))
   (t/is (=? [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]
-            (lib.resolve/resolve
-             meta/results-metadata
-             [:lib/field-placeholder {:field-name "ID"}]))))
+            (lib.interface/resolve
+             [:lib/field-placeholder {:field-name "ID"}]
+             meta/results-metadata))))

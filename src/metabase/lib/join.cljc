@@ -3,10 +3,9 @@
    [clojure.spec.alpha :as s]
    [metabase.lib.append :as lib.append]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.interface :as lib.interface]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]
-   [clojure.set :as set]
-   [metabase.lib.resolve :as lib.resolve]))
+   [metabase.lib.util :as lib.util]))
 
 (defmulti ->join
   {:arglists '([x])}
@@ -14,30 +13,24 @@
 
 (defmethod ->join :lib/outer-query
   [query]
-  (if (= (:type query) :native)
-    (-> {:source-query (set/rename-keys (:native query) {:query :native})
-         :lib/type     :lib/join}
-        lib.options/ensure-uuid)
-    (->join (:query query))))
+  (-> {:lib/type :lib/join
+       :stages   (:stages (lib.util/pipeline query))}
+      lib.options/ensure-uuid))
 
-(defmethod ->join :lib/inner-query
-  [query]
-  ;; only nest the thing we're joining in a `:source-query` if it has extra nonsense that can't go directly in the
-  ;; join itself
-  (-> (if (seq (set/difference (set (keys query)) #{:lib/type :lib/options :source-table :source-query}))
-        {:source-query query}
-        query)
-      (assoc :lib/type :lib/join)
+(defmethod ->join :stage/mbql
+  [stage]
+  (-> {:lib/type :lib/join
+       :stages   [stage]}
       lib.options/ensure-uuid))
 
 (defn with-condition [join condition]
   (assoc join :condition condition))
 
-(defmethod lib.resolve/resolve :lib/join
-  [metadata join]
+(defmethod lib.interface/resolve :lib/join
+  [join metadata]
   (cond-> join
-    (:source-query join) (update :source-query (partial lib.resolve/resolve metadata))
-    true                 (update :condition (partial lib.resolve/resolve metadata))))
+    (:source-query join) (update :source-query lib.interface/resolve metadata)
+    true                 (update :condition lib.interface/resolve metadata)))
 
 (defn- query? [x]
   (and (map? x)

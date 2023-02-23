@@ -1,12 +1,14 @@
 (ns metabase.lib.field
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.interface :as lib.interface]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.resolve :as lib.resolve]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
 
 (defmulti ->field
+  "Convert something that represents a Field somehow (such as a string Field name, or Field metadata) to a `:field`
+  clause, or a `:lib/field-placeholder` if we don't have enough information yet."
   {:arglists '([table-name-or-id-or-join-alias-or-nil x])}
   (fn [_table-name-or-id-or-join-alias-or-nil x]
     (lib.dispatch/dispatch-value x)))
@@ -31,8 +33,8 @@
   ([table-name-or-id-or-join-alias-or-nil x]
    (->field table-name-or-id-or-join-alias-or-nil x)))
 
-(defmethod lib.resolve/resolve :lib/field-placeholder
-  [metadata [_clause {:keys [field-name table-name], :as options}]]
+(defmethod lib.interface/resolve :lib/field-placeholder
+  [[_clause {:keys [field-name table-name], :as options}] metadata]
   (let [field-metadata (lib.metadata/field-metadata metadata table-name field-name)
         options        (not-empty (dissoc options :field-name :table-name))]
     (-> (if (:id field-metadata)
@@ -41,8 +43,12 @@
             [:field (:name field-metadata) options]))
         lib.options/ensure-uuid)))
 
-(defmethod lib.resolve/resolve :metadata/field
-  [_metadata field-metadata]
+(defmethod lib.interface/->mbql :metadata/field
+  [x]
+  (field x))
+
+(defmethod lib.interface/resolve :metadata/field
+  [field-metadata _metadata]
   (->field nil field-metadata))
 
 (defmethod lib.options/options :field

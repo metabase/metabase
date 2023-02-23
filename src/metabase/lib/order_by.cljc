@@ -2,23 +2,23 @@
   (:require
    [metabase.lib.append :as lib.append]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.interface :as lib.interface]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.resolve :as lib.resolve]
    [metabase.lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   [metabase.lib.field :as lib.field]))
+   [metabase.util.malli :as mu]))
 
 (comment metabase.lib.schema/keep-me)
 
-(defmethod lib.resolve/resolve :asc
-  [metadata [direction options ref]]
-  [direction options (lib.resolve/resolve metadata ref)])
+(defmethod lib.interface/resolve :asc
+  [[direction options ref] metadata]
+  [direction options (lib.interface/resolve ref metadata)])
 
-(defmethod lib.resolve/resolve :desc
-  [metadata [direction options ref]]
-  [direction options (lib.resolve/resolve metadata ref)])
+(defmethod lib.interface/resolve :desc
+  [[direction options ref] metadata]
+  [direction options (lib.interface/resolve ref metadata)])
 
 (defmulti ->order-by
   "Convert something to an MBQL `:order-by` clause."
@@ -66,8 +66,8 @@
                                     direction (with-direction direction)))))
 
 ;;; TODO -- appending a duplicate order-by should no-op.
-(mu/defn ^:private append-order-by :- :mbql/inner-query
-  [inner-query :- :mbql/inner-query
+(mu/defn ^:private append-order-by :- :stage/mbql
+  [inner-query :- :stage/mbql
    x]
   (update inner-query :order-by (fn [order-bys]
                                   (conj (vec order-bys) (->order-by x)))))

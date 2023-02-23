@@ -1,8 +1,8 @@
 (ns metabase.lib.append
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.interface :as lib.interface]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.resolve :as lib.resolve]
    [metabase.lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -10,28 +10,28 @@
 (comment metabase.lib.schema/keep-me)
 
 (defmulti append*
-  {:arglists '([inner-query x])}
-  (fn [_inner-query x]
+  {:arglists '([stage x])}
+  (fn [_stage x]
     (lib.dispatch/dispatch-value x)))
 
-(mu/defn append-to-inner-query :- :mbql/inner-query
-  [inner-query :- :mbql/inner-query
+(mu/defn append-to-stage :- :stage/mbql
+  [stage :- :stage/mbql
    x]
-  (append* inner-query x))
+  (append* stage x))
 
 (mu/defn append :- lib.query/Query
   ([outer-query x]
-   (append (lib.util/ensure-mbql-final-stage outer-query) -1 x))
+   (append (lib.util/ensure-mbql-final-stage (lib.util/pipeline outer-query)) -1 x))
 
   ([outer-query :- lib.query/Query
     stage       :- [:int]
     x]
    ;; TODO -- not sure about this merging logic, but we can worry about that later.
    (let [metadata (merge (:lib/metadata outer-query)
-                         #_(:lib/metadata inner-query))
-         x        (lib.resolve/resolve metadata x)]
+                         #_(:lib/metadata stage))
+         x        (lib.interface/resolve x metadata)]
      (lib.util/update-query-stage
-      outer-query
+      (lib.util/pipeline outer-query)
       stage
-      append-to-inner-query
+      append-to-stage
       x))))
