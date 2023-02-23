@@ -1,14 +1,14 @@
 ---
-title: Actions
+title: Introduction to actions
 ---
 
-# Actions
+# Introduction to actions
 
 > For now, actions are only available for PostgreSQL and MySQL
 
 ![Example action](./images/example-action.png)
 
-Actions are entities in Metabase that let you build custom forms and business logic.
+**Actions** are entities in Metabase that let you build custom forms and business logic.
 
 ## What are actions?
 
@@ -22,14 +22,16 @@ Here are a few ideas for what you can do with actions:
 
 ## Enabling actions
 
-To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option.
+To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. 
 
-For actions to work, the database user account (the account you're using to connect to the database) must have write permissions.
+For actions to work, the database user account (the account you're using to connect to the database) must have write permissions. And for now, actions are only supported on PostgreSQL, MySQL, and H2 databases.
 
 ## Who can use actions
 
+Actions are associated with models, so you'll need to have created (or access to) at least one model before you can start using actions.
+
 - **To create or edit an action**, a person must be in a group with Native query editing privileges for the relevant database.
--  **To run an action**, all you need is view access to the action's model or dashboard.
+-  **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).
 
 ## Types of actions
 
@@ -43,6 +45,6 @@ There are two types of actions:
 There are multiple ways to run actions:
 
 - [From the model details page](../data-modeling/models.md#model-detail-page) by clicking the **run** button.
-- From a public form created by an action.
+- From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../dashboards/actions.md).
 

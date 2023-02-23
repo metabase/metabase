@@ -14,14 +14,14 @@ Write SQL to update records in your databases.
 
 There are two ways to create a custom action:
 
-- Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model. (NOTE: Action will only show up as an option in the + New menu if you've first created, or have access to, a model in Metabase.)
-- Via the model detail page. From a model, click on the info button in the upper right. In the upper right of the sidebar, click **Model detail** > **Actions** > **New action**.
+1. Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model. (NOTE: the **Action** option will only show up in the **+ New** menu if you've first created, or have access to, a model in Metabase.)
+2. Via the model detail page: from a model, click on the **info** button in the upper right. In the upper right of the sidebar, click **Model detail** > **Actions** > **New action**.
 
 ## Custom action editor
 
 Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a model.
 
-For example, you could write an action that would update the `plan` column for a record in the `Invoices` table in the Sample Database.
+For example, you could write an action that would update the `plan` column for a record in the `Invoices` table in the Sample Database:
 
 ```
 {% raw %}
