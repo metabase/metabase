@@ -8,11 +8,19 @@ import {
   visitDashboard,
   editDashboard,
   saveDashboard,
+  modal,
+  setFilter,
+  sidebar,
+  popover,
+  filterWidget,
+  createImplicitAction,
 } from "__support__/e2e/helpers";
 
 import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
+const MODEL_NAME = "Test Action Model";
 
 ["mysql", "postgres"].forEach(dialect => {
   describe(
@@ -25,6 +33,11 @@ const TEST_TABLE = "scoreboard_actions";
           "getCardAssociations",
         );
         cy.intercept("GET", "/api/action?model-id=*").as("getActions");
+
+        cy.intercept(
+          "GET",
+          "/api/dashboard/*/dashcard/*/execute?parameters=*",
+        ).as("executePrefetch");
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
           "executeAPI",
@@ -64,31 +77,11 @@ const TEST_TABLE = "scoreboard_actions";
         cy.findByPlaceholderText("My new fantastic action").type("Add Zebras");
         cy.findByText("Create").click();
 
-        cy.createDashboard({ name: `action packed dash` }).then(
-          ({ body: { id: dashboardId } }) => {
-            visitDashboard(dashboardId);
-          },
-        );
-
-        editDashboard();
-        cy.icon("click").click();
-        cy.get("aside").within(() => {
-          cy.button("Pick an action").click();
+        createDashboardWithActionButton({
+          actionName: "Add Zebras",
         });
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Test Model").click();
-          cy.findByText("Add Zebras").click();
-          cy.button("Done").click();
-        });
-
-        saveDashboard();
-
-        // this keeps the test from flaking because it's confused about the detached
-        // edit-mode button
-        cy.findByText(/^Edited a few seconds ago/).should("not.be.visible");
-
-        cy.button("Click Me").click();
+        cy.button("Add Zebras").click();
 
         cy.wait("@executeAPI");
 
@@ -97,6 +90,129 @@ const TEST_TABLE = "scoreboard_actions";
           dialect,
         ).then(result => {
           expect(result.rows.length).to.equal(1);
+        });
+      });
+
+      it("adds an implicit create action to a dashboard and runs it", () => {
+        createModelFromTable(TEST_TABLE);
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "create",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName: "Create",
+        });
+
+        cy.button("Create").click();
+
+        modal().within(() => {
+          cy.findByPlaceholderText("team_name").type("Zany Zebras");
+          cy.findByPlaceholderText("score").type("44");
+
+          cy.button("Save").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+
+          expect(result.rows[0].score).to.equal(44);
+        });
+      });
+
+      it("adds an implicit update action to a dashboard and runs it", () => {
+        const actionName = "Update";
+
+        createModelFromTable(TEST_TABLE);
+
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "update",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName,
+          idFilter: true,
+        });
+
+        filterWidget().click();
+        addWidgetStringFilter("5");
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+        // let's check that the existing values are pre-filled correctly
+        modal().within(() => {
+          cy.findByPlaceholderText("team_name")
+            .should("have.value", "Energetic Elephants")
+            .clear()
+            .type("Emotional Elephants");
+
+          cy.findByPlaceholderText("score")
+            .should("have.value", "30")
+            .clear()
+            .type("88");
+
+          cy.button("Update").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+
+          expect(result.rows[0].score).to.equal(88);
+        });
+      });
+
+      it("adds an implicit delete action to a dashboard and runs it", () => {
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+          expect(result.rows[0].id).to.equal(3);
+        });
+
+        createModelFromTable(TEST_TABLE);
+
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "delete",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName: "Delete",
+        });
+
+        cy.button("Delete").click();
+
+        modal().within(() => {
+          cy.findByPlaceholderText("id").type("3");
+          cy.button("Delete").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(0);
         });
       });
     },
@@ -108,7 +224,7 @@ const createModelFromTable = tableName => {
     cy.createQuestion(
       {
         database: WRITABLE_DB_ID,
-        name: "Test Model",
+        name: MODEL_NAME,
         query: {
           "source-table": tableId,
         },
@@ -121,3 +237,52 @@ const createModelFromTable = tableName => {
     );
   });
 };
+
+function createDashboardWithActionButton({
+  actionName,
+  modelName = MODEL_NAME,
+  idFilter = false,
+}) {
+  cy.createDashboard({ name: "action packed dashboard" }).then(
+    ({ body: { id: dashboardId } }) => {
+      visitDashboard(dashboardId);
+    },
+  );
+
+  editDashboard();
+
+  if (idFilter) {
+    setFilter("ID");
+    sidebar().within(() => {
+      cy.button("Done").click();
+    });
+  }
+
+  cy.button("Add action").click();
+  cy.get("aside").within(() => {
+    cy.findByPlaceholderText("Button text").clear().type(actionName);
+    cy.button("Pick an action").click();
+  });
+
+  cy.findByRole("dialog").within(() => {
+    cy.findByText(modelName).click();
+    cy.findByText(actionName).click();
+  });
+
+  if (idFilter) {
+    cy.findByRole("dialog").within(() => {
+      cy.findAllByText(/ask the user/i)
+        .first()
+        .click();
+    });
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+  }
+
+  cy.findByRole("dialog").within(() => {
+    cy.button("Done").click();
+  });
+
+  saveDashboard();
+}
