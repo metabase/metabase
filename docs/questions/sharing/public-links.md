@@ -16,7 +16,7 @@ Sometimes you'll want to share a dashboard or question with someone who isn't a 
 
 In order to share Metabase items like questions and dashboards via a public link or an embedded iframe, an admin needs to enable public sharing for that Metabase instance by going to **Settings gear icon** > **Admin settings** > **Public sharing**.
 
-Once toggled on, the **Public sharing** section will display Metabase questions and dashboards with active public links. To deactivate a public link, click **Revoke link**.
+Once toggled on, the **Public sharing** section will display Metabase questions, dashboards, and actions with active public links. To deactivate a public link, click the **X** in the **Revoke link** column for that item.
 
 ## Enable sharing on your saved question or dashboard
 

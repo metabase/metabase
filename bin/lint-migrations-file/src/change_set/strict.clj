@@ -56,7 +56,7 @@
     :renameTable
     :renameTrigger
     :renameView
-    ;; assumes all custom changes use the `def-migration` or `def-reversible-migration` in
+    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
     ;; metabase.db.custom-migrations
     :customChange})
 

@@ -89,6 +89,7 @@ Metabase's reference documentation.
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
+- [Actions on dashboards](./dashboards/actions.md)
 
 ### Data modeling
 
@@ -98,6 +99,13 @@ Metabase's reference documentation.
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
+
+### Actions
+
+- [Actions overview](./actions/start.md)
+- [Introduction to actions](./actions/introduction.md)
+- [Basic actions](./actions/basic.md)
+- [Custom actions](./actions/custom.md)
 
 ### Organization
 

@@ -37,6 +37,7 @@ export default class Text extends Component {
   static uiName = "Text";
   static identifier = "text";
   static iconName = "text";
+  static canSavePng = false;
 
   static disableSettingsConfig = false;
   static noHeader = true;

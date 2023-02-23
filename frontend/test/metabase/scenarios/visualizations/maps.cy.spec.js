@@ -27,6 +27,9 @@ describe("scenarios > visualizations > maps", () => {
     // switch to a pin map visualization
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
+    cy.findByTestId("Map-button").within(() => {
+      cy.icon("gear").click();
+    });
 
     cy.contains("Map type").next().click();
     popover().contains("Pin map").click();
@@ -69,14 +72,11 @@ describe("scenarios > visualizations > maps", () => {
     );
 
     cy.findByText("Visualization").closest(".Button").as("vizButton");
-    cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
-    cy.findByTestId("display-options-sensible");
+    cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
-    cy.findByTestId("sidebar-left").as("vizSidebar");
-
-    cy.get("@vizSidebar").within(() => {
-      cy.findByText("Map").parent().should("have.css", "opacity", "1");
+    cy.get("@sensibleOptions").within(() => {
+      cy.findByText("Map").should("be.visible");
     });
   });
 

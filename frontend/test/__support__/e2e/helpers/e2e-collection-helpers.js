@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/helpers";
+import { getFullName, popover } from "__support__/e2e/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
@@ -38,4 +38,8 @@ export function visitCollection(id) {
   cy.visit(`/collection/${id}`);
 
   cy.wait([`@${alias}`, `@${alias}`]);
+}
+
+export function getPersonalCollectionName(user) {
+  return `${getFullName(user)}'s Personal Collection`;
 }
