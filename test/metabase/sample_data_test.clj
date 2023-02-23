@@ -126,6 +126,9 @@
           (let [rating (fn []
                          (->> (jdbc/query conn-spec "SELECT RATING FROM PRODUCTS WHERE PRICE = 12.345;")
                               (map :rating)))]
+            (testing "before"
+              (is (= []
+                     (rating))))
             (testing "insert row"
               (is (= [1]
                      (jdbc/execute! conn-spec "INSERT INTO PRODUCTS (price, rating) VALUES (12.345, 6.789);")))
