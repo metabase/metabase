@@ -110,31 +110,28 @@
 
 (defn- link-card->text
   [link-card]
-  (when-let [link-card (:link link-card)]
-    {:text (str (format
-                    "### [%s](%s)"
-                    (link-card->content link-card)
-                    (link-card->url link-card))
-                (when-let [description (link-card->description link-card)]
-                  (format "\n%s" description)))}))
+  {:text (str (format
+                "### [%s](%s)"
+                (link-card->content link-card)
+                (link-card->url link-card))
+              (when-let [description (link-card->description link-card)]
+                (format "\n%s" description)))})
 
 (defn- dashcard-link-card->content
   "Convert a dashcard that is a linkcard to pulse content."
   [{viz-settings :visualization_settings :as _dashcard}]
-  (let [{:keys [url model]} viz-settings
-        link-card           (condp
-                              (some? url)
-                              viz-settings
-                              ;; if link card link to an entity, update the settins because
-                              ;; its stored info might be out-of-date
-                              (some? model)
-                              (let [{:keys [model id]} (get-in viz-settings [:link :entity])
-                                    instance (t2/query-one
-                                               (dashboard-card/link-card-info-query-for-model [model [id]]))]
-                                (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
-                                  (assoc-in viz-settings [:link :entity] instance))))]
-    (when link-card
-      (link-card->text link-card))))
+  (let [link-card (:link viz-settings)]
+    (cond
+      (some? (:url link-card))
+      (link-card->text link-card)
+      ;; if link card link to an entity, update the settins because
+      ;; its stored info might be out-of-date
+      (some? (:entity link-card))
+      (let [{:keys [model id]} (:entity link-card)
+            instance (t2/query-one
+                       (dashboard-card/link-card-info-query-for-model [model [id]]))]
+        (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
+          (link-card->text (assoc link-card :entity instance)))))))
 
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."

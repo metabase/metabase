@@ -27,6 +27,20 @@
   [^Integer id]
   (format "%s/question/%d" (site-url) id))
 
+(defn database-url
+  "Returns an appropriate URL to view a database.
+
+     (database-url 4) -> \"http://localhost:3000/browse/4\""
+  [^Integer db-id]
+  (format "%s/browse/%d" (site-url) db-id))
+
+(defn table-url
+  "Returns an appropriate URL to view a table.
+
+     (table-url 1 10) -> \"http://localhost:3000/question?db=1&table=10\""
+  [^Integer db-id ^Integer table-id]
+  (format "%s/question?db=%d&table=%d" (site-url) db-id table-id))
+
 (defn public-card-prefix
   "URL prefix for a public Cards. Get the complete URL by adding the UUID to the end."
   []
@@ -41,20 +55,6 @@
   "URL for the notification management page in account settings."
   []
   (str (site-url) "/account/notifications"))
-
-(defn table-url
-  "Returns an appropriate URL to view a table.
-
-     (table-url 1 10) -> \"http://localhost:3000/question?db=1&table=10\""
-  [^Integer db-id ^Integer table-id]
-  (format "%s/question?db=%d&table=%d" (site-url) db-id table-id))
-
-(defn database-url
-  "Returns an appropriate URL to view a database
-
-     (database-url 4) -> \"http://localhost:3000/browse/4\""
-  [^Integer db-id]
-  (format "%s/browse/%d" (site-url) db-id))
 
 (defn collection-url
   "Return an appropriate URL for a `Collection` with ID or nil for root.
