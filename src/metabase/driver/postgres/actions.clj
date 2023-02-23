@@ -72,7 +72,6 @@
    :type/Float               "FLOAT"
    :type/Integer             "INTEGER"
    :type/IPAddress           "INET"
-   :type/Structured          "JSON"
    :type/Text                "TEXT"
    :type/Time                "TIME"
    :type/TimeWithTZ          "TIME WITH TIME ZONE"

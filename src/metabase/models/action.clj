@@ -206,7 +206,14 @@
                       exposed-fields (into #{} (keep :id) (:result_metadata card))
                       parameters (->> fields
                                       (filter #(contains? exposed-fields (:id %)))
-                                      (remove :nfc_path) ;; remove exploded json fields
+                                      ;; remove exploded json fields and any structured field
+                                      (remove (some-fn
+                                               ;; exploded json fields can't be recombined in sql yet
+                                               :nfc_path
+                                               ;; their parents, a json field, nor things like cidr, macaddr, xml, etc
+                                               (comp #(isa? % :type/Structured) :effective_type)
+                                               ;; or things which we don't recognize
+                                               (comp #{:type/*} :effective_type)))
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]

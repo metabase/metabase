@@ -1,5 +1,6 @@
 (ns metabase.models.action-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
@@ -23,14 +24,37 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [action-id] :as _context} {:type :implicit}]
-        (is (partial= {:id action-id
-                       :name "Update Example"
+        (is (partial= {:id          action-id
+                       :name        "Update Example"
                        :database_id (mt/id)
-                       :parameters [(if (= driver/*driver* :h2)
-                                      {:type :type/BigInteger}
-                                      {:type :type/Integer})
-                                    {:type :type/Text, :id "name"}]}
-                      (action/select-action :id action-id)))))))
+                       :parameters  [(if (= driver/*driver* :h2)
+                                       {:type :type/BigInteger}
+                                       {:type :type/Integer})
+                                     {:type :type/Text, :id "name"}]}
+                      (action/select-action :id action-id))))))
+  (testing "Implicit actions do not map parameters to json fields (parents or nested)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
+      (mt/dataset json
+        (mt/with-actions-enabled
+          (mt/with-actions [{model-id :id} {:dataset true
+                                            :dataset_query
+                                            (mt/mbql-query json {:limit 2})}
+                            {action-id :action-id} {:type :implicit}]
+            (let [non-json-fields #{"id" "bloop"}
+                  model-columns   (set/union
+                                   non-json-fields
+                                   #{"json_bit"
+                                     "json_bit → 1234" "json_bit → 1234123412314"
+                                     "json_bit → boop" "json_bit → doop" "json_bit → genres"
+                                     "json_bit → noop" "json_bit → published" "json_bit → title"
+                                     "json_bit → zoop" })]
+              (is (= model-columns (t2/select-one-fn (comp set
+                                                           (partial map :name)
+                                                           :result_metadata)
+                                                     Card :id model-id)))
+              (is (= #{"id" "bloop"}
+                     (->> (action/select-action :id action-id)
+                          :parameters (map :id) set))))))))))
 
 (deftest hydrate-http-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
