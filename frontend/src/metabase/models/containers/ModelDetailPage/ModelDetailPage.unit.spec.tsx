@@ -508,7 +508,7 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
-        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+        it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
 
@@ -527,6 +527,7 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
@@ -545,6 +546,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
+          expect(await screen.findByLabelText("Run")).toBeInTheDocument();
         });
 
         it("lists existing public query actions with public label", async () => {
@@ -573,6 +575,7 @@ describe("ModelDetailPage", () => {
           expect(screen.getByText("Create")).toBeInTheDocument();
           expect(screen.getByText("Update")).toBeInTheDocument();
           expect(screen.getByText("Delete")).toBeInTheDocument();
+          expect(await screen.findAllByLabelText("Run")).toHaveLength(3);
         });
 
         it("allows to create a new query action", async () => {
@@ -825,7 +828,7 @@ describe("ModelDetailPage", () => {
           ];
           await setupActions({ model, actions, hasDataPermissions: false });
 
-          expect(queryIcon("play")).not.toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
       });
     });

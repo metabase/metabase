@@ -19,6 +19,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
@@ -111,10 +112,15 @@
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
-  [obj field]
-  (.get (doto (.getDeclaredField (class obj) field)
-          (.setAccessible true))
-        obj))
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
+          or-else))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
@@ -127,22 +133,57 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- contains-ddl?
+(mu/defn ^:private classify-query :- [:maybe
+                                      [:map
+                                       [:command-types [:vector pos-int?]]
+                                       [:remaining-sql [:maybe :string]]]]
+  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+   More info on command types here:
+   https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+
+  If the h2 parser cannot be built, returns `nil`.
+
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
+  - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
+    Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command      (.prepareCommand h2-parser query)
-            command-type (.getCommandType command)]
-        ;; TODO: do we need to handle CommandList?
-        ;; Command types are organized with all DDL commands listed first
-        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< command-type CommandInterface/ALTER_SEQUENCE))
-      ;; if the query is invalid, then it isn't DDL
-      (catch Throwable _ false))))
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
+        {:command-types command-types
+         ;; when there is no remaining sql: return nil for remaining-sql
+         :remaining-sql (get-field command "remaining" nil)})
+      ;; only valid queries can be classified.
+      (catch org.h2.message.DbException _
+        {:command-types [] :remaining-sql nil}))))
+
+(defn- cmd-type-ddl? [cmd-type]
+  ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+  ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+  (< cmd-type CommandInterface/ALTER_SEQUENCE))
+
+(defn- contains-ddl? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (or (some cmd-type-ddl? cmd-type-nums)
+         (some? remaining-sql)))))
+
+;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
+;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when (and query (contains-ddl? database query))
-    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
+  (when query
+    (when-let [query-classification (classify-query database query)]
+      (when (contains-ddl? query-classification)
+        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]

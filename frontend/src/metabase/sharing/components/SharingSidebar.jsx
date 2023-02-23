@@ -57,8 +57,10 @@ const cardsFromDashboard = dashboard => {
   }));
 };
 
-const nonTextCardsFromDashboard = dashboard => {
-  return cardsFromDashboard(dashboard).filter(card => card.display !== "text");
+const getSupportedCardsForSubscriptions = dashboard => {
+  return cardsFromDashboard(dashboard).filter(
+    card => !["text", "action", "link"].includes(card.display),
+  );
 };
 
 const cardsToPulseCards = (cards, pulseCards) => {
@@ -83,7 +85,7 @@ const getEditingPulseWithDefaults = (state, props) => {
       dashboardWrapper.dashboards[dashboardWrapper.dashboardId].id;
   }
   pulse.cards = cardsToPulseCards(
-    nonTextCardsFromDashboard(props.dashboard),
+    getSupportedCardsForSubscriptions(props.dashboard),
     pulse.cards,
   );
 
@@ -149,7 +151,7 @@ class SharingSidebarInner extends React.Component {
     const newPulse = {
       ...NEW_PULSE_TEMPLATE,
       channels: [channel],
-      cards: nonTextCardsFromDashboard(dashboard),
+      cards: getSupportedCardsForSubscriptions(dashboard),
     };
     this.setPulse(newPulse);
   };

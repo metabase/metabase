@@ -27,7 +27,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -343,12 +344,10 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
-      ;; prevent demoting a model if it has actions
+      ;; Archive associated actions
       (when (and (not (:dataset changes))
-                 (:dataset old-card-info)
-                 (db/select-one ['Action :id] :model_id id))
-        (throw (ex-info (tru "Cannot make a question from a model with actions")
-                        {:id id})))
+                 (:dataset old-card-info))
+        (t2/update! 'Action {:model_id id} {:archived true}))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
