@@ -24,7 +24,6 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.pulse.render.style :as style]
-   [metabase.pulse.util :as pu]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -440,36 +439,13 @@
       nil (:url link-card)
       name)))
 
-(defn- render-link-card
-  [link-card]
-  (let [icon (icon-bundle (link-card->icon-name link-card))]
-    {:content     (html
-                    [:div
-                     [:a {:href  (link-card->url link-card)
-                          :style (style/style {:line-height :25px})}
-                      [:img {:class "icon"
-                             :style (style/style {:margin-right   :10px
-                                                  :vertical-align :middle
-                                                  :width          :16px})
-                             :src   (format "cid:%s" (first (keys icon)))}]
-                      (link-card->content link-card)]])
-     :attachments icon}))
-
 (defn- result-attachments [results]
   (filter some? (mapcat result-attachment results)))
 
 (defn- render-result-card
   [timezone result]
-  (cond
-    (:card result)
+  (if (:card result)
     (render/render-pulse-section timezone result)
-
-    (pu/virtual-card-of-type? result "link")
-    (render-link-card (:link result))
-
-    :else
-    ;; text cards has existed for a while and I'm not sure if all existing text cards
-    ;; will have virtual_card.display = "text", so assume everything else is a text card
     {:content (markdown/process-markdown (:text result) :html)}))
 
 (defn- render-filters

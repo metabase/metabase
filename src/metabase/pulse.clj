@@ -83,6 +83,37 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
+(defn- link-card->url
+  [{:keys [entity] :as link-card}]
+  (let [{:keys [db_id id model]} entity]
+   (case model
+     "card"       (urls/card-url id)
+     "dataset"    (urls/card-url id)
+     "collection" (urls/collection-url id)
+     "dashboard"  (urls/dashboard-url id)
+     "database"   (urls/database-url id)
+     "table"      (urls/table-url db_id id)
+     ;; link
+     nil          (:url link-card))))
+
+(defn- link-card->content
+  [{:keys [entity] :as link-card}]
+  (let [{:keys [model name]} entity]
+    (case model
+      nil (:url link-card)
+      name)))
+
+(defn- link-card->text
+  [link-card]
+  (when-let [link-card (:link link-card)]
+    {:text (let [url (link-card->url link-card)]
+             (str (format
+                    "[%s](%s)"
+                    (link-card->content link-card)
+                    url)
+                  (when-let [description (:description link-card)]
+                    (format "\n%s" description))))}))
+
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."
   [{viz-settings :visualization_settings :as dashcard} pulse dashboard]
@@ -100,14 +131,14 @@
     (pu/virtual-card-of-type? viz-settings "link")
     (let [viz-settings       (:visualization_settings dashcard)
           {:keys [model id]} (get-in viz-settings [:link :entity])]
-
-      (if model
-        (let [instance (t2/query-one
-                         (dashboard-card/link-card-info-query-for-model [model [id]]))]
-             (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
-               (assoc-in viz-settings [:link :entity] instance)))
-        ;; url
-        viz-settings))
+      (link-card->text
+        (if model
+          (let [instance (t2/query-one
+                           (dashboard-card/link-card-info-query-for-model [model [id]]))]
+               (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
+                 (assoc-in viz-settings [:link :entity] instance)))
+          ;; url
+          viz-settings)))
     ;; text cards has existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
@@ -160,7 +191,7 @@
         (str "…"))
     mrkdwn))
 
-(defn create-slack-attachment-data
+(defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [channel-id (slack/files-channel)]
@@ -539,4 +570,4 @@
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
 
-#_(send-pulse! (db/select-one Pulse :id 12))
+#_(send-pulse! (db/select-one Pulse :id 1))
