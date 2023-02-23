@@ -14,7 +14,7 @@ Fetch a publicly-accessible Action. Does not require auth credentials. Public sh
 
 ### PARAMS:
 
-*  **`uuid`** regex pattern matching #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+*  **`uuid`** value must be a valid UUID.
 
 ## `GET /api/public/card/:uuid`
 
@@ -259,11 +259,10 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values.
 
 ### PARAMS:
 
-*  **`uuid`** regex pattern matching #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+*  **`uuid`** value must be a valid UUID.
 
 *  **`parameters`** nullable map from <keyword> to <anything>
 
@@ -274,7 +273,6 @@ Execute the Action.
 Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values.
 
 ### PARAMS:
 

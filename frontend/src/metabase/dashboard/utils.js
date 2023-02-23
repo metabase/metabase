@@ -62,6 +62,10 @@ export function getVirtualCardType(dashcard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
+export function isLinkDashCard(dashcard) {
+  return getVirtualCardType(dashcard) === "link";
+}
+
 export function isNativeDashCard(dashcard) {
   return isNative(dashcard.card?.dataset_query);
 }

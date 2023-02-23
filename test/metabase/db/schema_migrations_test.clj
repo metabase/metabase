@@ -20,7 +20,8 @@
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             Collection
             Dashboard
             Database
@@ -864,3 +865,44 @@
           ;; Only the sandbox with a corresponding `Permissions` row is present, and the table is renamed to `sandboxes`
           (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                  (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+(deftest able-to-delete-db-with-actions-test
+  (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
+           fix the bug of unable to delete database with actions"
+    (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
+      (let [user-id  (db/simple-insert! User {:first_name  "Howard"
+                                              :last_name   "Hughes"
+                                              :email       "howard@aircraft.com"
+                                              :password    "superstrong"
+                                              :date_joined :%now})
+            db-id    (db/simple-insert! Database {:name       "db"
+                                                  :engine     "postgres"
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :settings    "{\"database-enable-actions\":true}"
+                                                  :details    "{}"})
+            table-id (db/simple-insert! Table {:db_id      db-id
+                                               :name       "Table"
+                                               :created_at :%now
+                                               :updated_at :%now
+                                               :active     true})
+            model-id (db/simple-insert! Card {:name                   "My Saved Question"
+                                              :created_at             :%now
+                                              :updated_at             :%now
+                                              :creator_id             user-id
+                                              :table_id               table-id
+                                              :display                "table"
+                                              :dataset_query          "{}"
+                                              :visualization_settings "{}"
+                                              :database_id            db-id
+                                              :collection_id          nil})
+            _        (db/simple-insert! Action {:name       "Update user name"
+                                                :type       "implicit"
+                                                :model_id   model-id
+                                                :archived   false
+                                                :created_at :%now
+                                                :updated_at :%now})]
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (db/delete! Database :id db-id)))
+        (migrate!)
+        (is (db/delete! Database :id db-id))))))

@@ -292,7 +292,7 @@
       remove-unneeded-database-ids
       extract-resolved-card-id))
 
-(s/defn ^:private resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
+(s/defn resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
                                                      :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]

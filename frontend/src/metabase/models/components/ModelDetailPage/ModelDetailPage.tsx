@@ -27,7 +27,9 @@ interface Props {
   model: Question;
   mainTable?: Table | null;
   tab: string;
+  hasDataPermissions: boolean;
   hasActionsTab: boolean;
+  canRunActions: boolean;
   onChangeName: (name?: string) => void;
   onChangeDescription: (description?: string | null) => void;
   onChangeCollection: (collection: Collection) => void;
@@ -37,7 +39,9 @@ function ModelDetailPage({
   model,
   tab,
   mainTable,
+  hasDataPermissions,
   hasActionsTab,
+  canRunActions,
   onChangeName,
   onChangeDescription,
   onChangeCollection,
@@ -49,6 +53,7 @@ function ModelDetailPage({
       <ModelMain>
         <ModelDetailHeader
           model={model}
+          hasEditDefinitionLink={hasDataPermissions}
           onChangeName={onChangeName}
           onChangeCollection={onChangeCollection}
         />
@@ -76,13 +81,19 @@ function ModelDetailPage({
           </TabPanel>
           <TabPanel value="schema">
             <TabPanelContent>
-              <ModelSchemaDetails model={model} />
+              <ModelSchemaDetails
+                model={model}
+                hasEditMetadataLink={hasDataPermissions}
+              />
             </TabPanelContent>
           </TabPanel>
           {hasActionsTab && (
             <TabPanel value="actions">
               <TabPanelContent>
-                <ModelActionDetails model={model} />
+                <ModelActionDetails
+                  model={model}
+                  canRunActions={canRunActions}
+                />
               </TabPanelContent>
             </TabPanel>
           )}

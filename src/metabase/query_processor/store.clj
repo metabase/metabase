@@ -111,6 +111,7 @@
   (s/both
    (mi/InstanceOf Field)
    {:name                               su/NonBlankString
+    :table_id                           su/IntGreaterThanZero
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)
     :database_type                      su/NonBlankString

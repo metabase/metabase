@@ -26,6 +26,7 @@ export default function AggregateStep({
 }) {
   return (
     <ClauseStep
+      data-testid="aggregate-step"
       color={color}
       initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}

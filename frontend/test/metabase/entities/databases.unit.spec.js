@@ -1,4 +1,4 @@
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 
@@ -10,17 +10,11 @@ describe("database entity", () => {
     store = getStore();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should save database metadata in redux", async () => {
-    nock(location.origin)
-      .get("/api/database/123/metadata")
-      .reply(200, {
-        id: 123,
-        tables: [{ schema: "public", id: 234, db_id: 123, fields: [] }],
-      });
+    fetchMock.get("path:/api/database/123/metadata", {
+      id: 123,
+      tables: [{ schema: "public", id: 234, db_id: 123, fields: [] }],
+    });
 
     await store.dispatch(
       Databases.objectActions.fetchDatabaseMetadata({ id: 123 }),

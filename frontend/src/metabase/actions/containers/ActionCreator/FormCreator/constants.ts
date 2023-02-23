@@ -9,19 +9,19 @@ interface FieldOptionType {
 export const getFieldTypes = (): FieldOptionType[] => [
   {
     value: "string",
-    name: t`text`,
+    name: t`Text`,
   },
   {
     value: "number",
-    name: t`number`,
+    name: t`Number`,
   },
   {
     value: "date",
-    name: t`date`,
+    name: t`Date`,
   },
   {
     value: "category",
-    name: t`category`,
+    name: t`Category`,
   },
 ];
 
@@ -40,22 +40,22 @@ interface InputOptionsMap {
 const getTextInputs = (): InputOptionType[] => [
   {
     value: "string",
-    name: t`text`,
+    name: t`Text`,
   },
   {
     value: "text",
-    name: t`long text`,
+    name: t`Long text`,
   },
 ];
 
 const getSelectInputs = (): InputOptionType[] => [
   {
     value: "select",
-    name: t`dropdown`,
+    name: t`Dropdown`,
   },
   {
     value: "radio",
-    name: t`inline select`,
+    name: t`Inline select`,
   },
 ];
 
@@ -64,18 +64,18 @@ export const getInputTypes = (): InputOptionsMap => ({
   number: [
     {
       value: "number",
-      name: t`number`,
+      name: t`Number`,
     },
     ...getSelectInputs(),
   ],
   date: [
     {
       value: "date",
-      name: t`date`,
+      name: t`Date`,
     },
     {
       value: "datetime",
-      name: t`date + time`,
+      name: t`Date + time`,
     },
     // {
     //   value: "monthyear",

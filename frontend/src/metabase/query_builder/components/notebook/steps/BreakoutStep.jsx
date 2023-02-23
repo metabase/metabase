@@ -26,6 +26,7 @@ export default function BreakoutStep({
 }) {
   return (
     <ClauseStep
+      data-testid="breakout-step"
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
