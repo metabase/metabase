@@ -229,7 +229,7 @@ export function saveQuestion(
   cy.findByText("Save").click();
 
   modal().within(() => {
-    cy.findByLabelText("Name").type(name);
+    cy.findByLabelText("Name").clear().type(name);
     cy.button("Save").click();
   });
 

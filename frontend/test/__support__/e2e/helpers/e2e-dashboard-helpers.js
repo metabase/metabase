@@ -16,6 +16,7 @@ export function showDashboardCardActions(index = 0) {
 
 export function editDashboard() {
   cy.icon("pencil").click();
+  cy.findByText("You're editing this dashboard.");
 }
 
 export function saveDashboard() {
