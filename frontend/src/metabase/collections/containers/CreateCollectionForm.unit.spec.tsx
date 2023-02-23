@@ -1,6 +1,6 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
@@ -26,13 +26,9 @@ function setup({
   user = createMockUser({ is_superuser: true }),
   onCancel = jest.fn(),
 }: SetupOpts = {}) {
-  nock(location.origin)
-    .post("/api/collection")
-    .reply(200, (url, body) => {
-      if (typeof body === "object") {
-        return createMockCollection(body);
-      }
-    });
+  fetchMock.post("path:/api/collection", async url => {
+    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     storeInitialState: {
@@ -50,11 +46,11 @@ function setup({
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
+    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("displays correct blank state", () => {
