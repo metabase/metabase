@@ -10,7 +10,7 @@ redirect_from:
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. If the user doesn't exist, Metabase will create an account on the fly.
 
-Metabase accounts created with an IdP login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
 
 ## Authentication flows
 
