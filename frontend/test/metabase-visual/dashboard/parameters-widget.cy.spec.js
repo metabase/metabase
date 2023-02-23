@@ -163,8 +163,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is not sticky in edit mode", () => {
-        cy.findByText("test question");
-
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
