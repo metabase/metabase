@@ -77,6 +77,8 @@ function setVisualizationTo(vizName) {
 
   sidebar().within(() => {
     cy.icon(vizName).click();
+    cy.icon(vizName).realHover();
+    cy.icon("gear").click();
     cy.findByText("X-axis").parent().findByText("Select a field").click();
   });
   selectFromDropdown("Created At");

@@ -1,10 +1,9 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import {
-  setupActionEndpoints,
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
@@ -18,6 +17,7 @@ import {
   createMockCard,
   createMockParameter,
   createMockActionParameter,
+  createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
@@ -87,15 +87,10 @@ const setup = (
 ) => {
   const closeSpy = jest.fn();
 
-  const scope = nock(location.origin);
-  setupSearchEndpoints(scope, models);
-  setupCardsEndpoints(scope, models);
-  setupActionsEndpoints(scope, models[0].id, actions1);
-  setupActionsEndpoints(scope, models[1].id, actions2);
-
-  [...actions1, ...actions2].forEach(action => {
-    setupActionEndpoints(scope, action);
-  });
+  setupSearchEndpoints(models.map(model => createMockCollectionItem(model)));
+  setupCardsEndpoints(models);
+  setupActionsEndpoints(models[0].id, actions1);
+  setupActionsEndpoints(models[1].id, actions2);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
@@ -111,7 +106,7 @@ const setup = (
 
 describe("ActionViz > ActionDashcardSettings", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("shows the action dashcard settings component", () => {

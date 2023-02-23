@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, ParameterValues } from "metabase-types/api";
@@ -24,7 +24,7 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   describe("fields source", () => {
@@ -243,8 +243,7 @@ describe("ValuesSourceModal", () => {
 
       await waitFor(() => {
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-      }),
-        { timeout: 3000 };
+      });
     });
 
     it("should display a message when the user has no access to the card", async () => {
@@ -386,21 +385,20 @@ const setup = ({
   hasDataAccess = true,
   hasParameterValuesError = false,
 }: SetupOpts = {}) => {
-  const scope = nock(location.origin);
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
   if (hasDataAccess) {
-    setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
-    setupCardsEndpoints(scope, cards);
+    setupCollectionsEndpoints([createMockCollection(ROOT_COLLECTION)]);
+    setupCardsEndpoints(cards);
 
     if (!hasParameterValuesError) {
-      setupParameterValuesEndpoints(scope, parameterValues);
+      setupParameterValuesEndpoints(parameterValues);
     } else {
-      setupErrorParameterValuesEndpoints(scope);
+      setupErrorParameterValuesEndpoints();
     }
   } else {
-    setupUnauthorizedCardsEndpoints(scope, cards);
+    setupUnauthorizedCardsEndpoints(cards);
   }
 
   renderWithProviders(

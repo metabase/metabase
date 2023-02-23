@@ -1,4 +1,4 @@
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import { screen, getIcon, queryIcon } from "__support__/ui";
 
@@ -11,7 +11,7 @@ import { setup } from "./common";
 
 describe("ActionCreator > Query Actions", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   describe("new action", () => {

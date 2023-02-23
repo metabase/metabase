@@ -29,7 +29,6 @@ import CopyWidget from "metabase/components/CopyWidget";
 
 import { isSavedAction } from "../../utils";
 import {
-  ActionSettingsContainer,
   ActionSettingsContent,
   CopyWidgetContainer,
 } from "./InlineActionSettings.styled";
@@ -124,54 +123,52 @@ const InlineActionSettings = ({
   };
 
   return (
-    <ActionSettingsContainer>
-      <SidebarContent title={t`Action settings`} onClose={onClose}>
-        <ActionSettingsContent>
-          {action && hasSharingPermission && (
-            <FormField
-              title={t`Make public`}
-              description={t`Creates a publicly shareable link to this action form.`}
-              orientation="horizontal"
-              htmlFor={`${id}-public`}
-            >
-              <Toggle
-                id={`${id}-public`}
-                value={action.public_uuid != null}
-                onChange={handleTogglePublic}
-              />
-            </FormField>
-          )}
-          {action?.public_uuid && hasSharingPermission && (
-            <CopyWidgetContainer>
-              <CopyWidget
-                value={Urls.publicAction(siteUrl, action.public_uuid)}
-                aria-label={t`Public action form URL`}
-              />
-            </CopyWidgetContainer>
-          )}
-          {isModalOpen && (
-            <Modal>
-              <ConfirmContent
-                title={t`Disable this public link?`}
-                content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-                onAction={handleDisablePublicLink}
-                onClose={closeModal}
-              />
-            </Modal>
-          )}
-          <FormField title={t`Success message`} htmlFor={`${id}-message`}>
-            <TextArea
-              id={`${id}-message`}
-              value={formSettings.successMessage ?? ""}
-              placeholder={t`Action ran successfully`}
-              fullWidth
-              disabled={!isEditable}
-              onChange={handleSuccessMessageChange}
+    <SidebarContent title={t`Action settings`} onClose={onClose}>
+      <ActionSettingsContent>
+        {action && hasSharingPermission && (
+          <FormField
+            title={t`Make public`}
+            description={t`Creates a publicly shareable link to this action form.`}
+            orientation="horizontal"
+            htmlFor={`${id}-public`}
+          >
+            <Toggle
+              id={`${id}-public`}
+              value={action.public_uuid != null}
+              onChange={handleTogglePublic}
             />
           </FormField>
-        </ActionSettingsContent>
-      </SidebarContent>
-    </ActionSettingsContainer>
+        )}
+        {action?.public_uuid && hasSharingPermission && (
+          <CopyWidgetContainer>
+            <CopyWidget
+              value={Urls.publicAction(siteUrl, action.public_uuid)}
+              aria-label={t`Public action form URL`}
+            />
+          </CopyWidgetContainer>
+        )}
+        {isModalOpen && (
+          <Modal>
+            <ConfirmContent
+              title={t`Disable this public link?`}
+              content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+              onAction={handleDisablePublicLink}
+              onClose={closeModal}
+            />
+          </Modal>
+        )}
+        <FormField title={t`Success message`} htmlFor={`${id}-message`}>
+          <TextArea
+            id={`${id}-message`}
+            value={formSettings.successMessage ?? ""}
+            placeholder={t`Action ran successfully`}
+            fullWidth
+            disabled={!isEditable}
+            onChange={handleSuccessMessageChange}
+          />
+        </FormField>
+      </ActionSettingsContent>
+    </SidebarContent>
   );
 };
 

@@ -12,22 +12,27 @@ import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
+import { isEmpty } from "metabase/lib/validate";
+
 import { getFieldTypes, getInputTypes } from "./constants";
 import {
   SettingsTriggerIcon,
   ToggleContainer,
   SettingsPopoverBody,
   SectionLabel,
+  RequiredToggleLabel,
   Divider,
 } from "./FieldSettingsPopover.styled";
+
+export interface FieldSettingsPopoverProps {
+  fieldSettings: FieldSettings;
+  onChange: (fieldSettings: FieldSettings) => void;
+}
 
 export function FieldSettingsPopover({
   fieldSettings,
   onChange,
-}: {
-  fieldSettings: FieldSettings;
-  onChange: (fieldSettings: FieldSettings) => void;
-}) {
+}: FieldSettingsPopoverProps) {
   return (
     <TippyPopoverWithTrigger
       placement="bottom-end"
@@ -48,6 +53,19 @@ export function FieldSettingsPopover({
       )}
     />
   );
+}
+
+function cleanDefaultValue(fieldType: FieldType, value?: string | number) {
+  if (isEmpty(value)) {
+    return;
+  }
+
+  if (fieldType === "number") {
+    const clean = Number(value);
+    return !Number.isNaN(clean) ? clean : 0;
+  }
+
+  return value;
 }
 
 export function FormCreatorPopoverBody({
@@ -88,10 +106,7 @@ export function FormCreatorPopoverBody({
     onChange({
       ...fieldSettings,
       required,
-      defaultValue:
-        fieldSettings.fieldType === "number"
-          ? Number(defaultValue)
-          : defaultValue,
+      defaultValue: cleanDefaultValue(fieldSettings.fieldType, defaultValue),
     });
 
   const hasPlaceholder =
@@ -208,16 +223,18 @@ function RequiredInput({
   return (
     <div>
       <ToggleContainer>
-        <strong>{t`Required`}</strong>
+        <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
         <Toggle
+          id="is-required"
           value={!!value}
           onChange={required => onChange({ required, defaultValue })}
         />
       </ToggleContainer>
       {!value && (
         <>
-          <SectionLabel>{t`Default Value`}</SectionLabel>
+          <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
           <Input
+            id="default-value"
             fullWidth
             value={defaultValue ?? ""}
             onChange={e =>

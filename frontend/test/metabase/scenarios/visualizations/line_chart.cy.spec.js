@@ -35,7 +35,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
@@ -155,7 +155,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // Make sure we can update input with some existing value
     openSeriesSettings("cat1", true);
