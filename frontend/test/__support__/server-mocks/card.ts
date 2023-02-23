@@ -6,12 +6,12 @@ import {
   convertSavedQuestionToVirtualTable,
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
-import { getRequestBody } from "./utils";
 
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
-  fetchMock.put(`path:/api/card/${card.id}`, async (url, request) => {
-    return createMockCard(await getRequestBody(request));
+  fetchMock.put(`path:/api/card/${card.id}`, async url => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
   });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);

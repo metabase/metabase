@@ -1,5 +1,4 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -129,10 +128,6 @@ const setup = (options?: Partial<LinkVizProps>) => {
 };
 
 describe("LinkViz", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("url links", () => {
     it("should render link input settings view", () => {
       setup({ isEditing: true });

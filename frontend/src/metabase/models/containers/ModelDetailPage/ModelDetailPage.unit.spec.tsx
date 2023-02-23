@@ -269,10 +269,6 @@ function openActionMenu(action: WritebackAction) {
 }
 
 describe("ModelDetailPage", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   [
     { type: "structured", getModel: getStructuredModel },
     { type: "native", getModel: getNativeModel },

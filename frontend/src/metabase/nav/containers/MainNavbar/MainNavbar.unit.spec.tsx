@@ -164,10 +164,6 @@ async function setupCollectionPage({
 }
 
 describe("nav > containers > MainNavbar", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();

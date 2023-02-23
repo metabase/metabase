@@ -198,10 +198,6 @@ describe.skip("Notebook Editor > Join Step", () => {
     );
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("displays a source table and suggests to pick a join table", async () => {
     await setup();
     expect(screen.getByText("Orders")).toBeInTheDocument();

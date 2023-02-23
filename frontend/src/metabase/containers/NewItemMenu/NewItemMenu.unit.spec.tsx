@@ -74,10 +74,6 @@ function setup({
 }
 
 describe("NewItemMenu", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();

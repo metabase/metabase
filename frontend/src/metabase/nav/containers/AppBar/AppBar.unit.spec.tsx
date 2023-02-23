@@ -1,6 +1,5 @@
 import React from "react";
 import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
@@ -24,7 +23,6 @@ describe("AppBar", () => {
 
     afterEach(() => {
       jest.clearAllMocks();
-      fetchMock.reset();
       restoreMockEmbedding();
     });
 

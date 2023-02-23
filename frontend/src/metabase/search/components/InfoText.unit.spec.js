@@ -16,10 +16,6 @@ async function setup(result) {
 }
 
 describe("InfoText", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("shows collection info for a question", async () => {
     await setup({
       model: "card",
