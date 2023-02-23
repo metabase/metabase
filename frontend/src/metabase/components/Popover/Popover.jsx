@@ -240,14 +240,11 @@ export default class Popover extends Component {
       >
         {typeof this.props.children === "function"
           ? this.props.children(childProps)
-          : React.Children.count(this.props.children) === 1 &&
-            // NOTE: workaround for https://github.com/facebook/react/issues/12136
-            !Array.isArray(this.props.children)
-          ? React.cloneElement(
-              React.Children.only(this.props.children),
-              childProps,
-            )
-          : this.props.children}
+          : React.Children.map(this.props.children, child =>
+              React.isValidElement(child)
+                ? React.cloneElement(child, childProps)
+                : child,
+            )}
       </div>
     );
     if (this.props.noOnClickOutsideWrapper) {
