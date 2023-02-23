@@ -20,7 +20,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u])
   (:import
-   (org.apache.batik.anim.dom SVGOMDocument)
+   (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
+   (org.apache.batik.dom GenericText)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -401,7 +402,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- node-attrs->map
-  [^org.w3c.dom.NamedNodeMap attrs]
+  [^AbstractElement$ExtendedNamedNodeHashMap attrs]
   (when attrs
     (into {} (map (fn [i]
                     (let [item (bean (.item attrs i))]
@@ -423,7 +424,7 @@
   [^SVGOMDocument document]
   (letfn [(tree [^Node node]
             (if (instance? org.apache.batik.dom.GenericText node)
-              (.getWholeText ^org.apache.batik.dom.GenericText node)
+              (.getWholeText ^GenericText node)
               (into [(keyword (.getNodeName node)) (node-attrs->map (.getAttributes node))]
                     (map tree
                          (when (instance? Element node)
