@@ -113,7 +113,8 @@ export function drillFilter(query, value, column) {
   } else {
     const range = rangeForValue(value, column);
     if (range) {
-      filter = ["between", fieldRefForColumn(column), range[0], range[1]];
+      const fieldRef = fieldRefForColumn(column);
+      filter = ["and", [">=", fieldRef, range[0]], ["<", fieldRef, range[1]]];
     } else if (value != null) {
       filter = ["=", fieldRefForColumn(column), value];
     } else {

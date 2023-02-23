@@ -104,19 +104,6 @@ describe("scenarios > admin > databases > add", () => {
         );
       });
     });
-
-    it("should display driver deprecation messages", () => {
-      cy.visit("/admin/databases/create");
-
-      chooseDatabase("Presto");
-
-      cy.findByText("Presto");
-      cy.findByText("Need help connecting?");
-
-      cy.findByText("find it here").click();
-      cy.findByText("Presto (Deprecated Driver)");
-      cy.findByText("Need help connecting?");
-    });
   });
 
   describe("Google Analytics ", () => {

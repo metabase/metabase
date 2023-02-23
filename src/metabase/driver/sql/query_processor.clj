@@ -362,7 +362,12 @@
   statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
   [[metabase.util.honeysql-extensions]]; like `:ansi`, but uppercases the result).
 
-    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)"
+    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
+
+  IMPORTANT NOTE! For drivers using Honey SQL 2, this actually corresponds to the Honey SQL `:dialect` option, so this
+  method name is a bit of a misnomer!
+
+  TODO -- we should update this method name to better reflect its usage in Honey SQL 2."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -575,12 +580,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
@@ -747,7 +752,9 @@
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (case (long hx/*honey-sql-version*)
+                                               1 0.0
+                                               2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1237,8 +1244,8 @@
 (defmethod apply-top-level-clause [:sql :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
-      (sql.helpers/limit items)
-      (sql.helpers/offset (* items (dec page)))))
+      (sql.helpers/limit (inline-num items))
+      (sql.helpers/offset (inline-num (* items (dec page))))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
@@ -1293,7 +1300,7 @@
     (binding [sql/*dialect*      (sql/get-dialect dialect)
               sql/*quoted*       true
               sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form))))
+      (sql/format-expr honeysql-form {:nested true}))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
@@ -1399,7 +1406,8 @@
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
-  (binding [hx/*honey-sql-version* (honey-sql-version driver)]
+  (binding [driver/*driver*        driver
+            hx/*honey-sql-version* (honey-sql-version driver)]
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)

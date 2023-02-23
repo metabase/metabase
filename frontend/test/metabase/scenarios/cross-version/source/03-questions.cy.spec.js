@@ -28,7 +28,7 @@ it("should create questions", () => {
 
   cy.get(".bar").should("have.length", 4);
 
-  cy.findByText("Settings").click();
+  cy.findByTestId("viz-settings-button").click();
   cy.contains("Show values on data points").next().click();
   cy.contains("3.71");
 
@@ -61,7 +61,7 @@ it("should create questions", () => {
   visualize();
   cy.get("circle");
 
-  cy.findByText("Settings").click();
+  cy.findByTestId("viz-settings-button").click();
   cy.icon("area").click();
   cy.findByText("Goal line").next().click();
   cy.findByDisplayValue("0").type("100000").blur();

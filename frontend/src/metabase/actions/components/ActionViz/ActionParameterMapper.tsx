@@ -23,7 +23,6 @@ import EmptyState from "metabase/components/EmptyState";
 import type Question from "metabase-lib/Question";
 
 import {
-  ParameterMapperContainer,
   ParameterFormSection,
   ParameterFormLabel,
 } from "./ActionParameterMapper.styled";
@@ -83,7 +82,7 @@ export const ActionParameterMappingForm = ({
   );
 
   return (
-    <ParameterMapperContainer>
+    <div>
       {actionParameters.map((actionParam: WritebackParameter) => (
         <ParameterFormSection key={actionParam.id}>
           <ParameterFormLabel>
@@ -108,7 +107,7 @@ export const ActionParameterMappingForm = ({
       {actionParameters.length === 0 && (
         <EmptyState message={t`This action has no parameters to map`} />
       )}
-    </ParameterMapperContainer>
+    </div>
   );
 };
 

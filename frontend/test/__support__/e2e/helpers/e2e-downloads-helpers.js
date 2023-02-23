@@ -44,7 +44,7 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  cy.icon("download").click();
+  cy.findByTestId("download-button").click();
   // Initiate the file download
   cy.get(downloadClassName).click();
 

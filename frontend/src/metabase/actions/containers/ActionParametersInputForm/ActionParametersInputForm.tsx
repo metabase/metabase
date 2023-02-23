@@ -10,12 +10,12 @@ import EmptyState from "metabase/components/EmptyState";
 
 import type {
   WritebackParameter,
-  WritebackQueryAction,
   OnSubmitActionForm,
   Dashboard,
   ActionDashboardCard,
   ParametersForActionExecution,
   ActionFormSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import { ActionsApi, PublicApi } from "metabase/services";
@@ -30,10 +30,9 @@ import type Field from "metabase-lib/metadata/Field";
 import { getChangedValues, getInitialValues } from "./utils";
 
 export interface ActionParamatersInputFormProps {
-  missingParameters: WritebackParameter[];
-  dashcardParamValues: ParametersForActionExecution;
-
-  action: WritebackQueryAction;
+  action: WritebackAction;
+  missingParameters?: WritebackParameter[];
+  dashcardParamValues?: ParametersForActionExecution;
   dashboard?: Dashboard;
   dashcard?: ActionDashboardCard;
   onCancel?: () => void;
@@ -43,9 +42,9 @@ export interface ActionParamatersInputFormProps {
 }
 
 function ActionParametersInputForm({
-  missingParameters,
-  dashcardParamValues,
   action,
+  missingParameters = action.parameters,
+  dashcardParamValues = {},
   dashboard,
   dashcard,
   onCancel,
@@ -55,7 +54,10 @@ function ActionParametersInputForm({
   const [prefetchValues, setPrefetchValues] =
     useState<ParametersForActionExecution>({});
 
-  const shouldPrefetch = useMemo(() => shouldPrefetchValues(action), [action]);
+  const shouldPrefetch = useMemo(
+    () => shouldPrefetchValues(action) && dashboard && dashcard,
+    [action, dashboard, dashcard],
+  );
 
   const prefetchEndpoint =
     getDashboardType(dashboard?.id) === "public"

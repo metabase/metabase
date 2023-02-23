@@ -4,6 +4,8 @@ import {
   describeEE,
   modifyPermission,
   getFullName,
+  visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -45,10 +47,10 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
-        cy.visit("/dashboard/1");
+        visitDashboard(1);
         cy.icon("subscription").should("not.exist");
 
-        cy.visit("/question/1");
+        visitQuestion(1);
         cy.icon("bell").should("not.exist");
 
         cy.visit("/account/notifications");
@@ -64,13 +66,13 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("gives ability to create dashboard subscriptions", () => {
-        cy.visit("/dashboard/1");
+        visitDashboard(1);
         cy.icon("subscription").click();
         cy.findByText("Create a dashboard subscription");
       });
 
       it("gives ability to create question alerts", () => {
-        cy.visit("/question/1");
+        visitQuestion(1);
         cy.icon("bell").click();
         cy.findByText(
           "To send alerts, an admin needs to set up email integration.",

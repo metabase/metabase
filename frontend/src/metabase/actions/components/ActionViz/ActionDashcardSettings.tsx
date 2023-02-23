@@ -22,6 +22,8 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
+  ExplainerText,
+  BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
 
 const mapDispatchToProps = {
@@ -50,6 +52,8 @@ export function ActionDashcardSettings({
     setActionForDashcard(dashcard, newAction);
   };
 
+  const hasParameters = !!action?.parameters?.length;
+
   return (
     <ActionSettingsWrapper>
       <ActionSettingsLeft>
@@ -59,7 +63,19 @@ export function ActionDashcardSettings({
       <ActionSettingsRight>
         {action ? (
           <>
-            <ActionSettingsHeader>{action.name}</ActionSettingsHeader>
+            {hasParameters && (
+              <>
+                <ActionSettingsHeader>
+                  {t`Where should the values for '${action.name}' come from?`}
+                </ActionSettingsHeader>
+                <ExplainerText>
+                  {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
+                  <BrandLinkWithLeftMargin to="https://www.metabase.com/docs/actions/custom">
+                    {t`Learn more.`}
+                  </BrandLinkWithLeftMargin>
+                </ExplainerText>
+              </>
+            )}
             <ParameterMapperContainer>
               <ConnectedActionParameterMappingForm
                 dashcard={dashcard}

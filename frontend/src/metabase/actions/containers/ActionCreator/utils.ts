@@ -4,6 +4,7 @@ import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
+  DatabaseId,
   FieldType,
   InputSettingType,
   NativeDatasetQuery,
@@ -70,7 +71,7 @@ export const setTemplateTagTypesFromFieldSettings = (
   question: Question,
   settings: ActionFormSettings,
 ): Question => {
-  const fields = settings.fields;
+  const fields = settings.fields || {};
   const query = question.query() as NativeQuery;
   let tempQuestion = question.clone();
 
@@ -104,7 +105,7 @@ export const setParameterTypesFromFieldSettings = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): Parameter[] => {
-  const fields = settings.fields;
+  const fields = settings.fields || {};
   return parameters.map(parameter => {
     const field = fields[parameter.id];
     return {
@@ -123,7 +124,7 @@ export const removeOrphanSettings = (
   const parameterIds = parameters.map(parameter => parameter.id);
   return {
     ...formSettings,
-    fields: _.pick(formSettings.fields, parameterIds),
+    fields: _.pick(formSettings.fields || {}, parameterIds),
   };
 };
 
@@ -132,7 +133,7 @@ export const addMissingSettings = (
   parameters: Parameter[],
 ): ActionFormSettings => {
   const parameterIds = parameters.map(parameter => parameter.id);
-  const fieldIds = Object.keys(settings.fields);
+  const fieldIds = Object.keys(settings.fields || {});
   const missingIds = _.difference(parameterIds, fieldIds);
 
   if (!missingIds.length) {
@@ -171,7 +172,7 @@ export const convertQuestionToAction = (
     name: question.displayName() as string,
     description: question.description(),
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
-    database_id: question.databaseId(),
+    database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     visualization_settings,
   };

@@ -264,8 +264,7 @@
 (api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
+   `parameters` should be the mapped dashboard parameters with values."
   [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}
@@ -564,8 +563,7 @@
 (api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.
 
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
+   `parameters` should be the mapped dashboard parameters with values."
   [uuid :as {{:keys [parameters], :as _body} :body}]
   {uuid       ms/UUIDString
    parameters [:maybe [:map-of :keyword any?]]}
