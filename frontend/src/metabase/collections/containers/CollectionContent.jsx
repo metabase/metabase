@@ -316,7 +316,11 @@ function CollectionContent({
 export default _.compose(
   Bookmark.loadList(),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: {
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    },
     loadingAndErrorWrapper: false,
   }),
   Collection.load({
