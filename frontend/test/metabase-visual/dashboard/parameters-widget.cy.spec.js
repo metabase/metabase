@@ -48,7 +48,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`desktop`, () => {
+    describe("desktop", () => {
       it("is sticky in view mode", () => {
         cy.get("main")
           .scrollTo(0, 264)
@@ -63,7 +63,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         );
       });
 
-      it("is sticky in edit mode", () => {
+      it("is not sticky in edit mode", () => {
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
@@ -101,7 +101,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           );
         });
 
-        it("is sticky in edit mode", () => {
+        it("is not sticky in edit mode", () => {
           cy.icon("pencil").click();
 
           cy.findByTestId("dashboard-parameters-and-cards")
@@ -147,7 +147,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`desktop`, () => {
+    describe("desktop", () => {
       it("is sticky in view mode", () => {
         cy.get("main")
           .scrollTo(0, 264)
@@ -162,7 +162,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         );
       });
 
-      it("is sticky in edit mode", () => {
+      it("is not sticky in edit mode", () => {
         cy.findByText("test question");
 
         cy.icon("pencil").click();
