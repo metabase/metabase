@@ -128,9 +128,10 @@
       ;; its stored info might be out-of-date
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
-            instance (t2/query-one
-                       (dashboard-card/link-card-info-query-for-model model id))]
-        (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
+            instance           (t2/select-one
+                                 (serdes.util/link-card-model->toucan-model model)
+                                 (dashboard-card/link-card-info-query-for-model model id))]
+        (when (mi/can-read? instance)
           (link-card->text (assoc link-card :entity instance)))))))
 
 (defn- dashcard->content
