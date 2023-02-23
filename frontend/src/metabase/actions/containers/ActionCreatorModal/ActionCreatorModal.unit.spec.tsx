@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -45,14 +45,12 @@ async function setup({
   model = MODEL,
   action = ACTION,
 }: SetupOpts) {
-  const scope = nock(location.origin);
-
-  setupCardsEndpoints(scope, [model]);
+  setupCardsEndpoints([model]);
 
   if (action) {
-    setupActionsEndpoints(scope, model.id, [action]);
+    setupActionsEndpoints(model.id, [action]);
   } else {
-    scope.get(`/api/action/${ACTION_NOT_FOUND_ID}`).reply(404);
+    fetchMock.get(`path:/api/action/${ACTION_NOT_FOUND_ID}`, 404);
   }
 
   const { history } = renderWithProviders(
@@ -78,6 +76,10 @@ async function setup({
 }
 
 describe("actions > containers > ActionCreatorModal", () => {
+  afterEach(() => {
+    fetchMock.reset();
+  });
+
   it("renders correctly", async () => {
     await setup({ initialRoute: Urls.action(MODEL, ACTION.id) });
     expect(
