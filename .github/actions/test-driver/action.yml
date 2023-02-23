@@ -28,5 +28,5 @@ runs:
         path: 'target/junit/**/*_test.xml'
         name: JUnit Test Report ${{ inputs.junit-name }}
         reporter: java-junit
-        limit-suites: failed
-        limit-tests: failed
+        list-suites: failed
+        list-tests: failed

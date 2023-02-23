@@ -144,8 +144,8 @@ jobs:
         path: 'target/junit/**/*_test.xml'
         name: JUnit Test Report be-tests-java-11-ee-pre-check
         reporter: java-junit
-        limit-suites: failed
-        limit-tests: failed
+        list-suites: failed
+        list-tests: failed
 
   be-tests:
     needs: files-changed
@@ -181,8 +181,8 @@ jobs:
         path: 'target/junit/**/*_test.xml'
         name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
         reporter: java-junit
-        limit-suites: failed
-        limit-tests: failed
+        list-suites: failed
+        list-tests: failed
 
   be-tests-stub:
     needs: files-changed
