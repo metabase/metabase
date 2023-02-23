@@ -71,7 +71,7 @@
 
 (s/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver num))
+  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
 
 (s/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -311,7 +311,7 @@
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_ {:keys [query params]}]
   {:prepared-statement-args (not-empty params)
-   :replacement-snippet     (str "(" query ")")})
+   :replacement-snippet     (sql.qp/make-nestable-sql query)})
 
 
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------

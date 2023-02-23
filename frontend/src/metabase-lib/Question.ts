@@ -742,13 +742,14 @@ class QuestionInner {
 
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+        findColumnSettingIndexForColumn(vizSettings, col, false) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      const hasColumn =
+        findColumnIndexForColumnSetting(cols, colSetting, false) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+        findColumnIndexForColumnSetting(addedColumns, colSetting, false) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
@@ -916,6 +917,10 @@ class QuestionInner {
   tableId(): TableId | null | undefined {
     const table = this.table();
     return table ? table.id : null;
+  }
+
+  isArchived(): boolean {
+    return this._card && this._card.archived;
   }
 
   getUrl({

@@ -115,7 +115,7 @@
     "@babel/preset-env": "^7.14.7",
     "@babel/preset-react": "^7.14.5",
     "@babel/preset-typescript": "^7.17.12",
-    "@bahmutov/cypress-esbuild-preprocessor": "^2.1.5",
+    "@bahmutov/cypress-esbuild-preprocessor": "^2.2.0",
     "@cypress/grep": "^3.1.0",
     "@cypress/skip-test": "^2.6.1",
     "@deploysentinel/cypress-debugger": "^0.7.8",
@@ -160,7 +160,7 @@
     "@types/inflection": "^1.13.0",
     "@types/jest": "^29.2.3",
     "@types/js-cookie": "^2.2.7",
-    "@types/jsonwebtoken": "^7.2.8",
+    "@types/jsonwebtoken": "^9.0.1",
     "@types/jsrsasign": "^8.0.13",
     "@types/leaflet": "^1.7.5",
     "@types/leaflet-draw": "^0.4.14",
@@ -206,10 +206,11 @@
     "babel-plugin-ttag": "^1.7.26",
     "chromatic": "^6.3.3",
     "concurrently": "^7.6.0",
+    "cross-fetch": "^3.1.5",
     "css-loader": "1.0.1",
     "cypress": "^10.9.0",
     "cypress-real-events": "^1.7.1",
-    "esbuild": "^0.14.49",
+    "esbuild": "^0.17.9",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",
@@ -221,6 +222,7 @@
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
     "eslint-plugin-testing-library": "^5.9.1",
+    "fetch-mock": "^9.11.0",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^2.0.0",
     "html-webpack-plugin": "5.5.0",
@@ -230,9 +232,9 @@
     "jest-environment-jsdom": "^29.3.1",
     "jest-localstorage-mock": "^2.4.22",
     "jest-watch-typeahead": "^2.2.1",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "knex": "^2.4.2",
-    "lint-staged": "^12.3.2",
+    "lint-staged": "^13.1.2",
     "markdown-link-check": "^3.10.2",
     "mini-css-extract-plugin": "2.7.2",
     "mochawesome": "^7.1.3",
@@ -240,7 +242,6 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "nock": "^13.2.9",
     "node-polyfill-webpack-plugin": "2.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
@@ -266,7 +267,8 @@
   "resolutions": {
     "ansi-regex": "5.0.1",
     "set-value": "4.0.1",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
+    "unset-value": "2.0.1"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
@@ -289,8 +291,8 @@
     "build-hot:js": "yarn && NODE_OPTIONS=--max-old-space-size=8096 WEBPACK_BUNDLE=hot webpack serve",
     "build:cljs": "yarn && rm -rf frontend/src/cljs/* && shadow-cljs release app",
     "build-quick:cljs": "yarn build:cljs",
-    "build-watch:cljs": "yarn cljs-server-restart && shadow-cljs watch app",
-    "build-hot:cljs": "yarn cljs-server-restart && shadow-cljs watch app",
+    "build-watch:cljs": "yarn && shadow-cljs watch app",
+    "build-hot:cljs": "yarn && shadow-cljs watch app",
     "cljs-server-start": "yarn && shadow-cljs start",
     "cljs-server-stop": "yarn && shadow-cljs stop",
     "cljs-server-restart": "yarn && shadow-cljs restart",
@@ -335,7 +337,8 @@
     ],
     "+(enterprise|frontend)/**/*.{js,jsx,ts,tsx}": [
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
-      "prettier --write"
+      "prettier --write",
+      "node ./bin/verify-doc-links"
     ],
     "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
       "node frontend/test/validate-e2e-test-files.js"

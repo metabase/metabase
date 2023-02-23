@@ -15,6 +15,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   Card,
+  CardId,
+  DatabaseId,
   WritebackActionId,
   WritebackAction,
   WritebackQueryAction,
@@ -27,14 +29,16 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
 import ActionCreatorView from "./ActionCreatorView";
+import { ACE_ELEMENT_ID } from "./QueryActionEditor";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
 
 interface OwnProps {
   actionId?: WritebackActionId;
-  modelId: number;
-  databaseId?: number;
+  modelId?: CardId;
+  databaseId?: DatabaseId;
+  onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
@@ -78,6 +82,7 @@ function ActionCreator({
   model,
   onCreateAction,
   onUpdateAction,
+  onSubmit,
   onClose,
 }: Props) {
   const {
@@ -88,45 +93,53 @@ function ActionCreator({
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
-    handleSetupExample,
     renderEditorBody,
   } = useActionContext();
 
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = model.canWriteActions();
+  const isEditable = isNew || model.canWriteActions();
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
       return; // only query action creation is supported now
     }
 
-    await onCreateAction({
+    const reduxAction = await onCreateAction({
       ...action,
       ...values,
       visualization_settings: formSettings,
     } as WritebackQueryAction);
+    const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
     handleActionChange(values);
 
     setShowSaveModal(false);
+    onSubmit?.(createdAction);
     onClose?.();
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (isSavedAction(action)) {
-      onUpdateAction({
+      const reduxAction = await onUpdateAction({
         ...action,
         model_id: model.id(),
         visualization_settings: formSettings,
       });
+      const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      onSubmit?.(updatedAction);
     }
+  };
+
+  const showSaveModal = () => {
+    ensureAceEditorClosed();
+    setShowSaveModal(true);
   };
 
   const handleClickSave = () => {
     if (isNew) {
-      setShowSaveModal(true);
+      showSaveModal();
     } else {
       handleUpdate();
       onClose?.();
@@ -147,12 +160,11 @@ function ActionCreator({
         onChangeAction={handleActionChange}
         onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
-        onClickExample={handleSetupExample}
         onCloseModal={onClose}
       >
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
-      {showSaveModal && (
+      {isSaveModalShown && (
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
             initialValues={{
@@ -167,6 +179,14 @@ function ActionCreator({
       )}
     </>
   );
+}
+
+function ensureAceEditorClosed() {
+  // @ts-expect-error — `ace` isn't typed yet
+  const editor = window.ace?.edit(ACE_ELEMENT_ID);
+  if (editor) {
+    editor.completer.popup.hide();
+  }
 }
 
 function ActionCreatorWithContext({
@@ -198,7 +218,7 @@ export default _.compose(
     entityAlias: "initialAction",
   }),
   Questions.load({
-    id: (state: State, props: OwnProps) => props.modelId,
+    id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "modelCard",
   }),
   Database.loadList(),

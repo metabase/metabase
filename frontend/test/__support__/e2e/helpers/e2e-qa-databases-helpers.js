@@ -13,7 +13,7 @@ import {
  ******************************************/
 
 export function addMongoDatabase(name = "QA Mongo4") {
-  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.0/images/sha256-3f568127248b6c6dba0b114b65dc3b3bf69bf4c804310eb57b4e3de6eda989cf
+  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
 
@@ -181,6 +181,29 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body.tables.find(table => table.name === name).id;
+      return body?.tables?.find(table => table.name === name)?.id;
     });
+}
+
+export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
+  // 100 x 100ms should be plenty of time for the sync to finish.
+  if (iteration === 100) {
+    return;
+  }
+
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    if (!body.tables.length) {
+      cy.wait(100);
+      waitForSyncToFinish(++iteration, databaseId);
+    }
+
+    return;
+  });
+}
+
+export function resyncDatabase(DB_ID = 2) {
+  // must be signed in as admin to sync
+  cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
+  cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
+  waitForSyncToFinish(0, DB_ID);
 }

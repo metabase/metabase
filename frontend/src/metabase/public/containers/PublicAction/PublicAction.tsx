@@ -1,6 +1,5 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
-import { useMount } from "react-use";
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
@@ -31,37 +30,34 @@ interface Props {
 
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
-  const hasParameters = action.parameters.length > 0;
   const successMessage = getSuccessMessage(action);
+
+  const formSettings = useMemo(() => {
+    const actionSettings = action.visualization_settings || {};
+    const fieldSettings =
+      actionSettings.fields ||
+      generateFieldSettingsFromParameters(action.parameters);
+    return {
+      ...actionSettings,
+      fields: fieldSettings,
+    };
+  }, [action]);
 
   const handleSubmit = useCallback(
     async (values: ParametersForActionExecution) => {
       try {
-        const fieldSettings =
-          action.visualization_settings?.fields ||
-          generateFieldSettingsFromParameters(action.parameters);
-        const parameters = setNumericValues(values, fieldSettings);
+        const parameters = setNumericValues(values, formSettings.fields);
         await PublicApi.executeAction({ uuid: publicId, parameters });
         setSubmitted(true);
       } catch (error) {
         onError(error as AppErrorDescriptor);
       }
     },
-    [action, publicId, onError],
+    [publicId, formSettings, onError],
   );
-
-  useMount(() => {
-    if (!hasParameters) {
-      handleSubmit({});
-    }
-  });
 
   if (isSubmitted) {
     return <FormResultMessage>{successMessage}</FormResultMessage>;
-  }
-
-  if (!hasParameters) {
-    return null;
   }
 
   return (
@@ -69,7 +65,7 @@ function PublicAction({ action, publicId, onError }: Props) {
       <FormTitle>{action.name}</FormTitle>
       <ActionForm
         parameters={action.parameters}
-        formSettings={action.visualization_settings}
+        formSettings={formSettings}
         onSubmit={handleSubmit}
       />
     </FormContainer>

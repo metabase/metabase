@@ -10,6 +10,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.interface :as tx]
@@ -17,13 +18,32 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
+                        (thunk))))
+
+(deftest sanity-check-test
+  (mt/test-driver :snowflake
+    (is (= [100]
+           (mt/first-row
+            (mt/run-mbql-query venues
+              {:aggregation [[:count]]}))))))
+
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix* "v3_"]
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
       (testing "Create DB DDL statements"
         (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
@@ -193,7 +213,7 @@
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
                                                     (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
-                                                            test.data.snowflake/*database-prefix*)
+                                                            (test.data.snowflake/*database-prefix-fn*))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"

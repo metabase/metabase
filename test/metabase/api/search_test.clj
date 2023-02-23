@@ -54,6 +54,7 @@
    :description                nil
    :id                         true
    :initial_sync_status        nil
+   :model_id                   false
    :model_name                 nil
    :moderated_status           nil
    :table_description          nil
@@ -94,7 +95,7 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params))
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))

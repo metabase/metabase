@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { ActionForm } from "metabase/actions/components/ActionForm";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
@@ -10,20 +15,18 @@ import { addMissingSettings } from "../utils";
 import { hasNewParams } from "./utils";
 
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import { FormCreatorWrapper } from "./FormCreator.styled";
+import { FormContainer, InfoText } from "./FormCreator.styled";
 
 function FormCreator({
   params,
   isEditable,
   formSettings: passedFormSettings,
   onChange,
-  onExampleClick,
 }: {
   params: Parameter[];
   isEditable: boolean;
   formSettings?: ActionFormSettings;
   onChange: (formSettings: ActionFormSettings) => void;
-  onExampleClick: () => void;
 }) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
@@ -47,23 +50,37 @@ function FormCreator({
 
   if (!sortedParams.length) {
     return (
-      <FormCreatorWrapper>
-        <EmptyFormPlaceholder onExampleClick={onExampleClick} />
-      </FormCreatorWrapper>
+      <SidebarContent>
+        <FormContainer>
+          <EmptyFormPlaceholder />
+        </FormContainer>
+      </SidebarContent>
     );
   }
 
+  const docsLink = (
+    <ExternalLink
+      key="learn-more"
+      href={MetabaseSettings.docsUrl("actions/custom")}
+    >{t`Learn more`}</ExternalLink>
+  );
+
   return (
-    <FormCreatorWrapper>
-      <ActionForm
-        parameters={sortedParams}
-        isEditable={isEditable}
-        onClose={_.noop}
-        onSubmit={_.noop}
-        formSettings={formSettings}
-        setFormSettings={setFormSettings}
-      />
-    </FormCreatorWrapper>
+    <SidebarContent title={t`Action parameters`}>
+      <FormContainer>
+        <InfoText>
+          {jt`Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter. ${docsLink}`}
+        </InfoText>
+        <ActionForm
+          parameters={sortedParams}
+          isEditable={isEditable}
+          onClose={_.noop}
+          onSubmit={_.noop}
+          formSettings={formSettings}
+          setFormSettings={setFormSettings}
+        />
+      </FormContainer>
+    </SidebarContent>
   );
 }
 

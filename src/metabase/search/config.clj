@@ -133,7 +133,8 @@
   [_]
   (conj default-columns :model_id
         [:model.collection_id :collection_id]
-        [:model.name :model_name]))
+        [:model.id            :model_id]
+        [:model.name          :model_name]))
 
 (defmethod columns-for-model "card"
   [_]

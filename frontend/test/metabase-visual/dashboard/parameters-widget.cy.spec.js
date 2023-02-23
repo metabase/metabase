@@ -1,10 +1,14 @@
-import { restore, visitDashboard } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitDashboard,
+  editDashboard,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  query: { "source-table": PRODUCTS_ID },
+  query: { "source-table": PRODUCTS_ID, limit: 2 },
 };
 
 const parameter = {
@@ -48,7 +52,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`desktop`, () => {
+    describe("desktop", () => {
       it("is sticky in view mode", () => {
         cy.get("main")
           .scrollTo(0, 264)
@@ -63,8 +67,8 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         );
       });
 
-      it("is sticky in edit mode", () => {
-        cy.icon("pencil").click();
+      it("is not sticky in edit mode", () => {
+        editDashboard();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
@@ -80,41 +84,44 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`mobile`, () => {
-      it("is sticky in view mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+    describe(
+      "mobile",
+      {
+        viewportHeight: 667,
+        viewportWidth: MOBILE_WIDTH,
+      },
+      () => {
+        it("is sticky in view mode", () => {
+          cy.get("main")
+            .scrollTo(0, 264)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.get("main")
-          .scrollTo(0, 264)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
+          cy.findByTestId("dashboard-parameters-widget-container").should(
+            "have.css",
+            "position",
+            "fixed",
+          );
+        });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
-          "position",
-          "fixed",
-        );
-      });
+        it("is not sticky in edit mode", () => {
+          editDashboard();
 
-      it("is sticky in edit mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+          cy.findByTestId("dashboard-parameters-and-cards")
+            .scrollTo(0, 464)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards")
-          .scrollTo(0, 464)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
-    });
+          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
+      },
+    );
   });
 
   describe(`${parametersLong.length} filters (non sticky on mobile)`, () => {
@@ -144,7 +151,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`desktop`, () => {
+    describe("desktop", () => {
       it("is sticky in view mode", () => {
         cy.get("main")
           .scrollTo(0, 264)
@@ -159,10 +166,8 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         );
       });
 
-      it("is sticky in edit mode", () => {
-        cy.findByText("test question");
-
-        cy.icon("pencil").click();
+      it("is not sticky in edit mode", () => {
+        editDashboard();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
@@ -178,40 +183,43 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`mobile`, () => {
-      it("is not sticky in view mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+    describe(
+      "mobile",
+      {
+        viewportHeight: 667,
+        viewportWidth: MOBILE_WIDTH,
+      },
+      () => {
+        it("is not sticky in view mode", () => {
+          cy.get("main")
+            .scrollTo(0, 264)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.get("main")
-          .scrollTo(0, 264)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
+          cy.findByTestId("dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
+        it("is not sticky in edit mode", () => {
+          editDashboard();
 
-      it("is not sticky in edit mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+          cy.findByTestId("dashboard-parameters-and-cards")
+            .scrollTo(0, 464)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards")
-          .scrollTo(0, 464)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
-    });
+          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
+      },
+    );
   });
 });

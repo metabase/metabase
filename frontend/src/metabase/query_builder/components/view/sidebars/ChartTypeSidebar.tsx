@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import visualizations from "metabase/visualizations";
+import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import { Visualization } from "metabase/visualizations/shared/types/visualization";
 
 import Question from "metabase-lib/Question";
@@ -16,6 +17,7 @@ import {
   OptionRoot,
   OptionText,
   OptionLabel,
+  SettingsButton,
 } from "./ChartTypeSidebar.styled";
 
 const DEFAULT_ORDER = [
@@ -41,7 +43,10 @@ const DEFAULT_ORDER = [
 interface ChartTypeSidebarProps {
   question: Question;
   result: any;
-  onOpenChartSettings: (props: { section: string }) => void;
+  onOpenChartSettings: (props: {
+    initialChartSettings: { section: string };
+    showSidebarTitle: boolean;
+  }) => void;
   onCloseChartType: () => void;
   updateQuestion: (
     question: Question,
@@ -64,17 +69,15 @@ const ChartTypeSidebar = ({
     return _.partition(
       _.union(
         DEFAULT_ORDER,
-        Array.from(visualizations)
-          .filter(([_type, visualization]) => !visualization.hidden)
-          .map(([vizType]) => vizType),
-      ),
+        Array.from(visualizations).map(([vizType]) => vizType),
+      ).filter(vizType => !visualizations.get(vizType).hidden),
       vizType => {
         const visualization = visualizations.get(vizType);
         return (
           result &&
           result.data &&
           visualization.isSensible &&
-          visualization.isSensible(result.data, query)
+          visualization.isSensible(sanatizeResultData(result.data), query)
         );
       },
     );
@@ -88,14 +91,28 @@ const ChartTypeSidebar = ({
         reload: false,
         shouldUpdateUrl: question.query().isEditable(),
       });
-      onOpenChartSettings({ section: t`Data` });
       setUIControls({ isShowingRawTable: false });
     },
-    [question, updateQuestion, onOpenChartSettings, setUIControls],
+    [question, updateQuestion, setUIControls],
+  );
+
+  const handleSettingsClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      });
+    },
+    [onOpenChartSettings],
   );
 
   return (
-    <SidebarContent className="full-height px1" onDone={onCloseChartType}>
+    <SidebarContent
+      className="full-height px1"
+      onDone={() => onCloseChartType()}
+    >
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);
@@ -107,6 +124,7 @@ const ChartTypeSidebar = ({
                 isSelected={type === question.display()}
                 isSensible
                 onClick={() => handleClick(type)}
+                onSettingsClick={handleSettingsClick}
               />
             )
           );
@@ -124,6 +142,7 @@ const ChartTypeSidebar = ({
                 isSelected={type === question.display()}
                 isSensible={false}
                 onClick={() => handleClick(type)}
+                onSettingsClick={handleSettingsClick}
               />
             )
           );
@@ -137,6 +156,7 @@ interface ChartTypeOptionProps {
   isSelected: boolean;
   isSensible: boolean;
   onClick: () => void;
+  onSettingsClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   visualization: Visualization;
 }
 
@@ -145,6 +165,7 @@ const ChartTypeOption = ({
   isSelected,
   isSensible,
   onClick,
+  onSettingsClick,
 }: ChartTypeOptionProps) => (
   <OptionRoot
     isSelected={isSelected}
@@ -158,6 +179,14 @@ const ChartTypeOption = ({
       data-testid={`${visualization.uiName}-button`}
     >
       <Icon name={visualization.iconName} size={20} />
+      {isSelected && (
+        <SettingsButton
+          onlyIcon
+          icon="gear"
+          iconSize={12}
+          onClick={onSettingsClick}
+        />
+      )}
     </OptionIconContainer>
     <OptionText>{visualization.uiName}</OptionText>
   </OptionRoot>
