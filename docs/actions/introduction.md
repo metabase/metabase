@@ -12,7 +12,7 @@ Actions are entities in Metabase that let you build custom forms and business lo
 
 ## What are actions?
 
-Actions let you write parameterized SQL that writes back to your database. Actions can be attached to buttons on dashboards to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.
+Actions let you write parameterized SQL that writes back to your database. Actions can be attached to [buttons on dashboards](../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.
 
 Here are a few ideas for what you can do with actions:
 
@@ -38,7 +38,11 @@ There are two types of actions:
 - [Basic](./basic.md)
 - [Custom](./custom.md)
 
-## Actions on dashboards
+## Running actions
 
-See [Actions on dashboards](../dashboards/actions.md).
+There are multiple ways to run actions:
+
+- [From the model details page](../data-modeling/models.md#model-detail-page) by clicking the **run** button.
+- From a public form created by an action.
+- From a [button on dashboard](../dashboards/actions.md).
 

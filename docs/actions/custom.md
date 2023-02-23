@@ -73,11 +73,13 @@ For both **Dropdown** and **Inline select**, you can specify a list of options t
 
 ## Action settings
 
-When in the action editor, click on the gear icon to bring up the action settings.
+From the model detail page, click on the **...** next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
 
 ### Make public
 
 Creates a publicly shareable link to the action form.
+
+![Public action form](./images/public-form.png)
 
 ### Set a success message
 
