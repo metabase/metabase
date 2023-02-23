@@ -175,7 +175,7 @@
                     CommandInterface/UPDATE
                     CommandInterface/DELETE
                     ;; Read-only commands might not make sense for actions, but they are allowed
-                    CommandInterface/SELECT
+                    CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
                     CommandInterface/EXPLAIN
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
