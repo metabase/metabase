@@ -142,6 +142,78 @@ class ChartClickActions extends Component {
       return null;
     }
 
+    const clickedKey = "" + this.props.clicked.element.__data__.data.key;
+    const clickedValue = "" + this.props.clicked.element.__data__.data.value;
+    const tablexAxis =
+      "" + this.props.clicked.settings?.["graph.x_axis.title_text"];
+    const tableyAxis =
+      "" + this.props.clicked.settings?.["graph.y_axis.title_text"];
+    getPointInfo(clickedKey, clickedValue, tablexAxis, tableyAxis);
+
+    const handlePointSave = () => {
+      const pointInput = document.getElementById("pointInfo");
+      const pointButton = document.getElementById("pointInfoOk");
+      const clickedKey = "" + pointInput.dataset.clickedkey;
+      const clickedValue = "" + pointInput.dataset.clickedvalue;
+      const tablexAxis = "" + pointInput.dataset.tablexaxis;
+      const tableyAxis = "" + pointInput.dataset.tableyaxis;
+      const pointInfo = pointInput.value ? pointInput.value : "erase";
+
+      const xhr = new XMLHttpRequest();
+      const url =
+        "api/dbinfo/set/" +
+        clickedKey +
+        "/" +
+        clickedValue +
+        "/" +
+        tablexAxis +
+        "/" +
+        tableyAxis +
+        "/" +
+        pointInfo +
+        "/";
+
+      xhr.open("GET", url);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          pointButton.value = "Saving...";
+          setTimeout(() => {
+            pointButton.value = "Saved";
+            setTimeout(() => {
+              pointButton.value = "Save";
+            }, 400);
+          }, 700);
+        }
+      };
+
+      xhr.send();
+    };
+
+    function getPointInfo(clickedKey, clickedValue, tablexAxis, tableyAxis) {
+      const xhr = new XMLHttpRequest();
+      const url =
+        "api/dbinfo/get/" +
+        clickedKey +
+        "/" +
+        clickedValue +
+        "/" +
+        tablexAxis +
+        "/" +
+        tableyAxis +
+        "/";
+      const input = document.getElementById("pointInfo");
+
+      xhr.open("GET", url);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.responseText) {
+            input.value = xhr.responseText;
+          }
+        }
+      };
+      xhr.send();
+    }
+
     const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
@@ -238,6 +310,24 @@ class ChartClickActions extends Component {
             popover
           ) : (
             <div className="text-bold px2 pt2 pb1">
+              <div className="p1">
+                <input
+                  id="pointInfo"
+                  className="p1 bg-white bg-brand token-blue"
+                  placeholder="Comment"
+                  data-clickedkey={clickedKey}
+                  data-clickedvalue={clickedValue}
+                  data-tablexaxis={tablexAxis}
+                  data-tableyaxis={tableyAxis}
+                />
+                <input
+                  className="ml1 p1 bg-white bg-brand token-blue"
+                  id="pointInfoOk"
+                  onClick={handlePointSave}
+                  type="button"
+                  value="Save"
+                />
+              </div>
               {sections.map(([key, actions]) => (
                 <div
                   key={key}

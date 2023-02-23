@@ -49,6 +49,7 @@
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.api.dbinfo :as dbinfo]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.api.routes))
@@ -110,4 +111,5 @@
   (context "/transform"            [] (+auth api.transform/routes))
   (context "/user"                 [] (+auth api.user/routes))
   (context "/util"                 [] api.util/routes)
+  (context "/dbinfo"        							[] (+auth dbinfo/routes))
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))

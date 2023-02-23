@@ -2,7 +2,7 @@
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [clojure.tools.logging :as log]
-                        [clojure.java.jdbc :as jdbc]
+            [clojure.java.jdbc :as jdbc]
             ))
 
 (def db-spec {:classname "org.sqlite.JDBC"
