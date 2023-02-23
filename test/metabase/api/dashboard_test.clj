@@ -1964,7 +1964,7 @@
                 {:values ["Japanese" "Steakhouse"], :has_more_values false}
                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
 
-(deftest dashboard-chain-filter-test
+(deftest bcm-dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "Show me names of categories"
@@ -2018,7 +2018,25 @@
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))
+
+    (testing "data perms should not affect perms for the Fields in question when users have collection access (bcm)"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
+          ;; but 200 on calls that we could just use the cache.
+          ;; It's not ideal and we definitely need to have a consistent behavior
+          (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
+            (is (= {:values          ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request
+                                                       :rasta
+                                                       :get
+                                                       200
+                                                       (chain-filter-values-url
+                                                        (:id dashboard)
+                                                        (:category-name param-keys))))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
