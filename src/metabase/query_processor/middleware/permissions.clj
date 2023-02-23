@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -89,16 +90,25 @@
   (doseq [{query :dataset_query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
-(s/defn ^:private check-query-permissions*
+(def ^:dynamic *user-can-read-dashboard*
+  "Used to allow users looking at a dashboard to view chained filters."false)
+
+(mu/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/Map]
+  [outer-query :- :map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if *card-id*
+    (cond
+      *card-id*
       (do
         (check-card-read-perms *card-id*)
         (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
+
+      *user-can-read-dashboard*
+      true
+
+      :else
       (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
