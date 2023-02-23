@@ -4,7 +4,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  query: { "source-table": PRODUCTS_ID },
+  query: { "source-table": PRODUCTS_ID, limit: 2 },
 };
 
 const parameter = {
