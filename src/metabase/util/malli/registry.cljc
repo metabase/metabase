@@ -7,8 +7,9 @@
 (defonce ^:private registry*
   (atom (mc/default-schemas)))
 
-(mr/set-default-registry!
- (mr/mutable-registry registry*))
+(defonce registry (mr/mutable-registry registry*))
+
+(mr/set-default-registry! registry)
 
 (defn register!
   [type schema]

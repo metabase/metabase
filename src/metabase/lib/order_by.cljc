@@ -7,7 +7,8 @@
    [metabase.lib.resolve :as lib.resolve]
    [metabase.lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.field :as lib.field]))
 
 (comment metabase.lib.schema/keep-me)
 
@@ -35,6 +36,10 @@
 (defmethod ->order-by :default
   [x]
   (lib.options/ensure-uuid [:asc x]))
+
+(defmethod ->order-by :metadata/field
+  [x]
+  (->order-by (lib.field/field x)))
 
 (mu/defn with-direction :- :mbql/order-by
   [clause    :- :mbql/order-by

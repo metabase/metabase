@@ -1,19 +1,35 @@
 (ns metabase.lib.field
   (:require
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.resolve :as lib.resolve]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
 
-(mu/defn field :- :lib/field-placeholder
-  ([field-name :- ms/NonBlankString]
-   [:lib/field-placeholder {:field-name field-name}])
+(defmulti ->field
+  {:arglists '([table-name-or-id-or-join-alias-or-nil x])}
+  (fn [_table-name-or-id-or-join-alias-or-nil x]
+    (lib.dispatch/dispatch-value x)))
 
-  ([table-name :- ms/NonBlankString
-    field-name :- ms/NonBlankString]
-   [:lib/field-placeholder {:field-name field-name, :table-name table-name}]))
+(defmethod ->field :type/string
+  [table-name-or-join-alias field-name]
+  [:lib/field-placeholder
+   (cond-> {:field-name field-name}
+     (string? table-name-or-join-alias) (assoc :table-name table-name-or-join-alias))])
+
+(defmethod ->field :metadata/field
+  [_ field-metadata]
+  (lib.options/ensure-uuid
+   (or (:field_ref field-metadata)
+       (when-let [id (:id field-metadata)]
+         [:field id nil])
+       [:field (:name field-metadata) {:base-type (:base_type field-metadata)}])))
+
+(defn field
+  ([x]
+   (->field nil x))
+  ([table-name-or-id-or-join-alias-or-nil x]
+   (->field table-name-or-id-or-join-alias-or-nil x)))
 
 (defmethod lib.resolve/resolve :lib/field-placeholder
   [metadata [_clause {:keys [field-name table-name], :as options}]]
@@ -24,6 +40,10 @@
           (let [options (assoc options :base-type (:base_type field-metadata))]
             [:field (:name field-metadata) options]))
         lib.options/ensure-uuid)))
+
+(defmethod lib.resolve/resolve :metadata/field
+  [_metadata field-metadata]
+  (->field nil field-metadata))
 
 (defmethod lib.options/options :field
   [clause]

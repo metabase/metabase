@@ -14,10 +14,20 @@
 
 (defmethod ->join :lib/outer-query
   [query]
-  (-> {:source-query (if (= (:type query) :native)
-                       (set/rename-keys (:native query) {:query :native})
-                       (:query query))
-       :lib/type     :lib/join}
+  (if (= (:type query) :native)
+    (-> {:source-query (set/rename-keys (:native query) {:query :native})
+         :lib/type     :lib/join}
+        lib.options/ensure-uuid)
+    (->join (:query query))))
+
+(defmethod ->join :lib/inner-query
+  [query]
+  ;; only nest the thing we're joining in a `:source-query` if it has extra nonsense that can't go directly in the
+  ;; join itself
+  (-> (if (seq (set/difference (set (keys query)) #{:lib/type :lib/options :source-table :source-query}))
+        {:source-query query}
+        query)
+      (assoc :lib/type :lib/join)
       lib.options/ensure-uuid))
 
 (defn with-condition [join condition]
@@ -38,10 +48,10 @@
    :query-stage     (s/? (s/cat :query query?
                                 :stage (s/? integer?)))
    :x         any?
-   :condition (s/? vector?)))
+   :condition any?))
 
 (defn join
-  {:arglists '([query? stage? x condition?])}
+  {:arglists '([query? stage? x condition])}
   [& args]
   (s/assert* ::join-args args)
   (let [{:keys [x condition], {:keys [query stage]} :query-stage} (s/conform ::join-args args)

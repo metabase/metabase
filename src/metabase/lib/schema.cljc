@@ -1,9 +1,11 @@
 (ns metabase.lib.schema
   (:require
+   [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.shared.util.i18n :as i18n]))
+   [malli.core :as mc]
+   [malli.util :as mut]))
 
 (comment metabase.types/keep-me)
 
@@ -24,9 +26,10 @@
    :mbql/time-bucketing-unit])
 
 (mr/def :mbql/field-options
-  [:map
-   [:lib/uuid ms/NonBlankString]
-   [:temporal-unit {:optional true} :mbql/datetime-bucketing-unit]])
+  [:and
+   :lib/options
+   [:map
+    [:temporal-unit {:optional true} :mbql/datetime-bucketing-unit]]])
 
 (mr/def :mbql/field-ref
   [:and
@@ -59,25 +62,44 @@
    [:info [:fn map?]]])
 
 (mr/def :mbql/ref
-  [:or
-   :lib/field-placeholder
-   :mbql/field-ref
-   :mbql/aggregation-ref
-   :mbql/expression-ref])
+  [:and
+   [:catn
+    [:clause [:keyword]]
+    [:args   [:* any?]]]
+   [:multi {:dispatch #(keyword (first %))}
+    [:lib/field-placeholder :lib/field-placeholder]
+    [:field :mbql/field-ref]
+    [:aggregation :mbql/aggregation-ref]
+    [:expression :mbql/expression-ref]]])
 
 (mr/def :mbql/clause
   [:catn
-   [:clause-name keyword?]
+   [:clause keyword?]
    [:options :lib/options]
    [:args [:* [:fn any?]]]])
 
-;; TODO
-(mr/def :mbql/expression
-  :mbql/clause)
+(mr/def :mbql/=
+  [:catn
+   [:clause [:= :=]]
+   [:options :lib/options]
+   [:args [:+ {:min 2} :mbql/ref #_[:ref :mbql/expression]]]])
+
+(mr/def :mbql/boolean-literal
+  [:boolean])
+
+(mr/def :mbql/boolean-expression
+  [:or
+   :mbql/boolean-literal
+   :mbql/=])
 
 ;; TODO
-(mr/def :mbql/filter
-  :mbql/expression)
+(mr/def :mbql/expression
+  [:or
+   [:ref :mbql/ref]
+   #_string-literal
+   #_number-literal
+   #_temporal-literal
+   #_boolean-literal])
 
 (mr/def :mbql/order-by-direction
   [:enum :asc :desc])
@@ -95,7 +117,11 @@
    [:ref :mbql/ref]])
 
 (mr/def :mbql/order-by
-  [:or :mbql/asc :mbql/desc])
+  [:or
+   {:error/fn (fn [& _]
+                (i18n/tru "Invalid order by clause"))}
+   :mbql/asc
+   :mbql/desc])
 
 (mr/def ::source-table-or-source-query
   [:fn
@@ -114,7 +140,7 @@
     [:lib/options :lib/options]
     [:source-table {:optional true} ms/IntGreaterThanZero]
     [:source-query {:optional true} [:ref :mbql/inner-query]]
-    [:condition :mbql/filter]]
+    [:condition :mbql/boolean-expression]]
    ::source-table-or-source-query])
 
 (mr/def :mbql/inner-query
@@ -125,7 +151,8 @@
     [:source-table {:optional true} ms/IntGreaterThanZero]
     [:source-query {:optional true} [:ref :mbql/inner-query]]
     [:order-by {:optional true} [:sequential :mbql/order-by]]
-    [:joins {:optional true} [:sequential :mbql/join]]]
+    [:joins {:optional true} [:sequential :mbql/join]]
+    [:filter {:optional true} :mbql/boolean-expression]]
    ::source-table-or-source-query])
 
 (mr/def :mbql/query-type

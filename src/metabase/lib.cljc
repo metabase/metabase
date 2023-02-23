@@ -32,6 +32,7 @@
   order-by
   order-bys]
  [lib.query
+  metadata
   native-query
   query
   saved-question-query]
