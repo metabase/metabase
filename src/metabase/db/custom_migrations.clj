@@ -3,12 +3,10 @@
    [clojure.set :as set]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.database.jvm JdbcConnection)
    (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
@@ -17,26 +15,18 @@
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
   similar to the bodies of multi-arity Clojure functions.
 
-  The first thing in each migration body must be a one-element vector containing a binding to use for the database
-  object provided by Liquibase, so that migrations have access to it if needed. This should typically not be used
-  directly, however, because is also set automatically as the current connection for Toucan 2.
-
   Example:
 
   ```clj
   (define-reversible-migration ExampleMigrationName
-   ([_database]
-    (migration-body))
-
-   ([_database]
-    (migration-body)))"
-  [name [[db-binding-1] & migration-body] [[db-binding-2] reverse-migration-body]]
+   (migration-body)
+   (reverse-migration-body)))
+  ```"
+  [name migration-body reverse-migration-body]
   `(defrecord ~name []
      CustomTaskChange
      (execute [_# database#]
-       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection ^JdbcConnection (.getConnection database#))]
-         (let [~db-binding-1 database#]
-           ~@migration-body)))
+       ~migration-body)
      (getConfirmationMessage [_#]
        (str "Custom migration: " ~name))
      (setUp [_#])
@@ -46,9 +36,7 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       (binding [toucan2.connection/*current-connectable* (.getWrappedConnection ^JdbcConnection (.getConnection database#))]
-         (let [~db-binding-2 database#]
-           ~@reverse-migration-body)))))
+       ~reverse-migration-body)))
 
 (defn no-op
   "No-op logging rollback function"
@@ -58,7 +46,7 @@
 (defmacro defmigration
   "Define a custom migration."
   [name migration-body]
-  `(define-reversible-migration ~name ~migration-body ([~'_] (no-op ~(str name)))))
+  `(define-reversible-migration ~name ~migration-body (no-op ~(str name))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -83,25 +71,23 @@
       [(str "/data/db/" db-id "/") (str "/query/db/" db-id "/schema/")])))
 
 (define-reversible-migration SplitDataPermissions
-  ([_database]
-   (let [current-perms-set (t2/select-fn-set
-                            (juxt :object :group_id)
-                            :metabase.models.permissions/Permissions
-                            {:where [:or
-                                     [:like :object (h2x/literal "/db/%")]
-                                     [:like :object (h2x/literal "/data/db/%")]
-                                     [:like :object (h2x/literal "/query/db/%")]]})
-         v2-perms-set      (into #{} (mapcat
-                                      (fn [[v1-path group-id]]
-                                        (for [v2-path (->v2-paths v1-path)]
-                                          [v2-path group-id]))
-                                      current-perms-set))
-         new-v2-perms      (into [] (set/difference v2-perms-set current-perms-set))]
-     (when (seq new-v2-perms)
-       (t2.execute/query-one {:insert-into :permissions
-                              :columns     [:object :group_id]
-                              :values      new-v2-perms}))))
-  ([_database]
-   (t2.execute/query-one {:delete-from :permissions
-                          :where [:or [:like :object (h2x/literal "/data/db/%")]
-                                      [:like :object (h2x/literal "/query/db/%")]]})))
+  (let [current-perms-set (t2/select-fn-set
+                           (juxt :object :group_id)
+                           :metabase.models.permissions/Permissions
+                           {:where [:or
+                                    [:like :object (h2x/literal "/db/%")]
+                                    [:like :object (h2x/literal "/data/db/%")]
+                                    [:like :object (h2x/literal "/query/db/%")]]})
+        v2-perms-set      (into #{} (mapcat
+                                     (fn [[v1-path group-id]]
+                                       (for [v2-path (->v2-paths v1-path)]
+                                         [v2-path group-id]))
+                                     current-perms-set))
+        new-v2-perms      (into [] (set/difference v2-perms-set current-perms-set))]
+    (when (seq new-v2-perms)
+      (t2.execute/query-one {:insert-into :permissions
+                             :columns     [:object :group_id]
+                             :values      new-v2-perms})))
+  (t2.execute/query-one {:delete-from :permissions
+                         :where [:or [:like :object (h2x/literal "/data/db/%")]
+                                 [:like :object (h2x/literal "/query/db/%")]]}))
