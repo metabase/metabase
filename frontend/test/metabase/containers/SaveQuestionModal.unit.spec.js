@@ -1,6 +1,6 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -141,14 +141,12 @@ describe("SaveQuestionModal", () => {
   ];
 
   beforeEach(() => {
-    nock(location.origin).get("/api/collection").reply(200, TEST_COLLECTIONS);
-    nock(location.origin)
-      .get("/api/collection/root")
-      .reply(200, TEST_COLLECTIONS);
+    fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
+    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
   });
 
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   describe("new question", () => {
