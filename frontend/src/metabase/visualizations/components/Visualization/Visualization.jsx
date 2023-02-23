@@ -381,7 +381,9 @@ class Visualization extends React.PureComponent {
               <ChartSettingsErrorButton
                 message={error}
                 buttonLabel={e.buttonText}
-                onClick={() => onOpenChartSettings(e.initial)}
+                onClick={() =>
+                  onOpenChartSettings({ initialChartSettings: e.initial })
+                }
               />
             );
           } else if (e instanceof MinRowsError) {

@@ -1,5 +1,4 @@
 import React from "react";
-import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -16,7 +15,8 @@ import type {
 } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,
-  createMockCard,
+  createMockCollectionItem,
+  createMockCollection,
 } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
@@ -103,15 +103,13 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
   },
 });
 
-const searchCardItem = {
+const searchCardItem = createMockCollectionItem({
+  id: 1,
   model: "card",
-  collection: {},
-  ...createMockCard({
-    name: "Question Uno",
-    id: 1,
-    display: "pie",
-  }),
-};
+  name: "Question Uno",
+  display: "pie",
+  collection: createMockCollection(),
+});
 
 const setup = (options?: Partial<LinkVizProps>) => {
   const changeSpy = jest.fn();
@@ -201,28 +199,8 @@ describe("LinkViz", () => {
       expect(screen.getByText("Table Uno")).toBeInTheDocument();
     });
 
-    it("should be able to search for questions", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
-
-      setup({
-        isEditing: true,
-        dashcard: searchingDashcard,
-        settings:
-          searchingDashcard.visualization_settings as LinkCardVizSettings,
-      });
-
-      const searchInput = screen.getByPlaceholderText("https://example.com");
-
-      userEvent.click(searchInput);
-
-      expect(await screen.findByLabelText("pie icon")).toBeInTheDocument();
-      expect(await screen.findByText("Question Uno")).toBeInTheDocument();
-    });
-
     it("clicking a search item should update the entity", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
+      setupSearchEndpoints([searchCardItem]);
 
       const { changeSpy } = setup({
         isEditing: true,

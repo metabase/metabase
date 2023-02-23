@@ -81,7 +81,7 @@ describe("scenarios > visualizations > scalar", () => {
     });
 
     cy.findByText("April 30, 2018");
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     cy.findByText("Show the time").should("be.hidden");
     cy.findByText("Time style").should("be.hidden");

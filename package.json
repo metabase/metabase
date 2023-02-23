@@ -208,6 +208,7 @@
     "babel-plugin-ttag": "^1.7.26",
     "chromatic": "^6.3.3",
     "concurrently": "^7.6.0",
+    "cross-fetch": "^3.1.5",
     "css-loader": "1.0.1",
     "cy-verify-downloads": "^0.1.12",
     "cypress": "^10.9.0",
@@ -224,6 +225,7 @@
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
     "eslint-plugin-testing-library": "^5.9.1",
+    "fetch-mock": "^9.11.0",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^2.0.0",
     "html-webpack-plugin": "5.5.0",
@@ -243,7 +245,6 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "nock": "^13.2.9",
     "node-polyfill-webpack-plugin": "2.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
@@ -269,7 +270,8 @@
   "resolutions": {
     "ansi-regex": "5.0.1",
     "set-value": "4.0.1",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
+    "unset-value": "2.0.1"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",

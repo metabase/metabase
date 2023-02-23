@@ -48,6 +48,17 @@ Create a new GTAP.
 
 *  **`attribute_remappings`**
 
+## `POST /api/mt/gtap/validate`
+
+Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
+  sandbox is saved, but doesn't actually save the sandbox.
+
+### PARAMS:
+
+*  **`table_id`** integer greater than 0
+
+*  **`card_id`** nullable integer greater than 0
+
 ## `PUT /api/mt/gtap/:id`
 
 Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the

@@ -1,6 +1,6 @@
 import { render, waitForElementToBeRemoved } from "@testing-library/react";
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
@@ -24,9 +24,7 @@ const setup = async ({
   onDelete?: DeleteDatabaseModalProps["onDelete"];
   hasContent?: boolean;
 } = {}) => {
-  nock(location.origin)
-    .get("/api/database/1/usage_info")
-    .reply(200, getUsageInfo(hasContent));
+  fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
   render(
     <DeleteDatabaseModal
       onClose={jest.fn()}
@@ -45,7 +43,6 @@ const setup = async ({
 describe("DeleteDatabaseModal", () => {
   afterEach(() => {
     jest.clearAllMocks();
-    nock.cleanAll();
   });
 
   it("should allow deleting database without content after confirming its name", async () => {

@@ -1,4 +1,9 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  sidebar,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -67,7 +72,11 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       // Set goal on timeseries question
       visitQuestion(timeSeriesQuestionId);
 
-      cy.findByText("Settings").click();
+      cy.findByText("Visualization").click();
+      sidebar().within(() => {
+        cy.icon("line").realHover();
+        cy.icon("gear").click();
+      });
       cy.findByText("Line options");
       cy.findByText("Display").click();
 
