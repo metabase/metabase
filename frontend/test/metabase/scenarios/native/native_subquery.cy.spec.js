@@ -280,13 +280,16 @@ describe("scenarios > question > native subquery", () => {
     cy.createQuestion(questionDetails).then(
       ({ body: { id: nestedQuestionId } }) => {
         const tagID = `#${nestedQuestionId}`;
+        cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
         SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        cy.wait("@loadQuestion");
 
-        cy.findByTestId("sidebar-header-title")
-          .invoke("text")
-          .should("eq", questionDetails.name);
+        cy.findByTestId("sidebar-header-title").should(
+          "have.text",
+          questionDetails.name,
+        );
 
         runNativeQuery();
 
