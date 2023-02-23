@@ -80,41 +80,44 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`mobile`, () => {
-      it("is sticky in view mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+    describe(
+      "mobile",
+      {
+        viewportHeight: 667,
+        viewportWidth: MOBILE_WIDTH,
+      },
+      () => {
+        it("is sticky in view mode", () => {
+          cy.get("main")
+            .scrollTo(0, 264)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.get("main")
-          .scrollTo(0, 264)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
+          cy.findByTestId("dashboard-parameters-widget-container").should(
+            "have.css",
+            "position",
+            "fixed",
+          );
+        });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
-          "position",
-          "fixed",
-        );
-      });
+        it("is sticky in edit mode", () => {
+          cy.icon("pencil").click();
 
-      it("is sticky in edit mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+          cy.findByTestId("dashboard-parameters-and-cards")
+            .scrollTo(0, 464)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards")
-          .scrollTo(0, 464)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
-    });
+          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
+      },
+    );
   });
 
   describe(`${parametersLong.length} filters (non sticky on mobile)`, () => {
@@ -178,40 +181,43 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`mobile`, () => {
-      it("is not sticky in view mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+    describe(
+      "mobile",
+      {
+        viewportHeight: 667,
+        viewportWidth: MOBILE_WIDTH,
+      },
+      () => {
+        it("is not sticky in view mode", () => {
+          cy.get("main")
+            .scrollTo(0, 264)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.get("main")
-          .scrollTo(0, 264)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
+          cy.findByTestId("dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
+        it("is not sticky in edit mode", () => {
+          cy.icon("pencil").click();
 
-      it("is not sticky in edit mode", () => {
-        cy.viewport(MOBILE_WIDTH, 667);
+          cy.findByTestId("dashboard-parameters-and-cards")
+            .scrollTo(0, 464)
+            .then(() => {
+              cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
+            });
 
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards")
-          .scrollTo(0, 464)
-          .then(() => {
-            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
-          });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
-      });
-    });
+          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+            "not.have.css",
+            "position",
+            "fixed",
+          );
+        });
+      },
+    );
   });
 });
