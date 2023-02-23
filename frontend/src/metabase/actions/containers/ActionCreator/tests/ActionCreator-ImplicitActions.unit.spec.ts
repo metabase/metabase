@@ -1,4 +1,4 @@
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import { screen, queryIcon } from "__support__/ui";
 
@@ -19,7 +19,7 @@ async function setup({
 
 describe("ActionCreator > Implicit Actions", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("renders correctly", async () => {

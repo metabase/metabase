@@ -1,5 +1,5 @@
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -29,7 +29,7 @@ describe("DataPicker — picking questions", () => {
   });
 
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   it("opens the picker", async () => {

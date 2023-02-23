@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -42,7 +42,6 @@ export async function setup({
   isAdmin = false,
   isPublicSharingEnabled = false,
 }: SetupOpts = {}) {
-  const scope = nock(location.origin);
   const model = createMockCard({
     dataset: true,
     can_write: canWrite,
@@ -51,15 +50,15 @@ export async function setup({
     settings: { "database-enable-actions": hasActionsEnabled },
   });
 
-  setupDatabasesEndpoints(scope, [database]);
-  setupCardsEndpoints(scope, [model]);
+  setupDatabasesEndpoints([database]);
+  setupCardsEndpoints([model]);
 
   if (action) {
-    scope.get(`/api/action/${action.id}`).reply(200, action);
-    scope.delete(`/api/action/${action.id}/public_link`).reply(204);
-    scope
-      .post(`/api/action/${action.id}/public_link`)
-      .reply(200, { uuid: "mock-uuid" });
+    fetchMock.get(`path:/api/action/${action.id}`, action);
+    fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204);
+    fetchMock.post(`path:/api/action/${action.id}/public_link`, {
+      uuid: "mock-uuid",
+    });
   }
 
   renderWithProviders(
