@@ -180,6 +180,7 @@
       "update venues set name = 'stomp';"
       "select * from venues; update venues set name = 'stomp';"
       "update venues set name = 'stomp'; select * from venues;"
+      "truncate table venues"
       "insert into venues values (1, 'Chicken Chow')"
       "merge into venues key(1) values (1, 'Chicken Chow')"
       "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';")
