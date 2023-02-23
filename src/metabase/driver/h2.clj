@@ -202,21 +202,6 @@
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification classified-query}))))))
 
-(defn- read-only-statements? [{:keys [command-types remaining-sql]}]
-  (let [cmd-type-nums command-types]
-    (boolean
-     (and (every? #{CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
-                    CommandInterface/EXPLAIN
-                    CommandInterface/CALL} cmd-type-nums)
-          (nil? remaining-sql)))))
-
-(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
-  (when query
-    (let [query-classification (classify-query database query)]
-      (when-not (read-only-statements? query-classification)
-        (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:classification query-classification}))))))
-
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
