@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitDashboard,
+  editDashboard,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -64,7 +68,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is not sticky in edit mode", () => {
-        cy.icon("pencil").click();
+        editDashboard();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
@@ -102,7 +106,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         });
 
         it("is not sticky in edit mode", () => {
-          cy.icon("pencil").click();
+          editDashboard();
 
           cy.findByTestId("dashboard-parameters-and-cards")
             .scrollTo(0, 464)
@@ -163,7 +167,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is not sticky in edit mode", () => {
-        cy.icon("pencil").click();
+        editDashboard();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
@@ -201,7 +205,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         });
 
         it("is not sticky in edit mode", () => {
-          cy.icon("pencil").click();
+          editDashboard();
 
           cy.findByTestId("dashboard-parameters-and-cards")
             .scrollTo(0, 464)
