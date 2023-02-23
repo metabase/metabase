@@ -837,7 +837,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     );
   });
 
-  it.skip("should sort by metric (metabase#22872)", () => {
+  it("should sort by metric (metabase#22872)", () => {
     const questionDetails = {
       dataset_query: {
         database: SAMPLE_DB_ID,
