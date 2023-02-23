@@ -1,4 +1,10 @@
 (ns metabase.api.logs
+  "/api/logs endpoints.
+
+  These endpoints are meant to be used by admins to download logs before entries are auto-removed after the day limit.
+
+  For example, the `query_execution` table will have entries removed after 30 days by default, and admins may wish to
+  keep logs externally for longer than this retention period."
   (:require
    [compojure.core :refer [GET]]
    [malli.core :as mc]
@@ -11,6 +17,7 @@
    [toucan.db :as db]))
 
 (mu/defn query-execution-logs
+  "Query to fetch the rows within the last number of `days` from the `query_execution` table."
   [days :- ms/IntGreaterThanZero]
   (let [interval (if (= (mdb.connection/db-type) :postgres)
                    [:cast (str days " days") :interval]
