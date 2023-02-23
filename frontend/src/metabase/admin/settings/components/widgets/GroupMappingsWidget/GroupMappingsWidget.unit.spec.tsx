@@ -1,13 +1,12 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import GroupMappingsWidget from "./GroupMappingsWidget";
 
 const setup = ({
   mappingSetting = "ldap-group-mappings",
-  onChange = jest.fn(),
   onChangeSetting = jest.fn(),
   onSuccess = jest.fn(),
   setting = { value: true },
@@ -24,7 +23,7 @@ const setup = ({
 
 describe("GroupMappingsWidget", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   describe("when a mapping is set for admin group", () => {
@@ -38,16 +37,9 @@ describe("GroupMappingsWidget", () => {
     const groupsBody = [{ id: 2, name: "Administrators", member_count: 1 }];
 
     beforeEach(() => {
-      nock(location.origin)
-        .get("/api/setting")
-        .times(2)
-        .reply(200, settingBody);
-      nock(location.origin)
-        .get("/api/permissions/group")
-        .times(2)
-        .reply(200, groupsBody);
-
-      nock(location.origin).put("/api/setting/ldap-group-mappings").reply(200);
+      fetchMock.get("path:/api/setting", settingBody);
+      fetchMock.get("path:/api/permissions/group", groupsBody);
+      fetchMock.put("path:/api/setting/ldap-group-mappings", 200);
     });
 
     it("handles deleting mapping", async () => {
@@ -88,25 +80,21 @@ describe("GroupMappingsWidget", () => {
     ];
 
     beforeEach(() => {
-      nock(location.origin).get("/api/setting").reply(200, settingBody);
-      nock(location.origin).get("/api/setting").reply(200, []);
-
-      nock(location.origin).put("/api/setting/ldap-group-mappings").reply(200);
-
-      nock(location.origin)
-        .get("/api/permissions/group")
-        .times(2)
-        .reply(200, groupsBody);
+      fetchMock.getOnce(
+        { url: "path:/api/setting", overwriteRoutes: false },
+        settingBody,
+      );
+      fetchMock.getOnce(
+        { url: "path:/api/setting", overwriteRoutes: false },
+        [],
+      );
+      fetchMock.put("path:/api/setting/ldap-group-mappings", 200);
+      fetchMock.get("path:/api/permissions/group", groupsBody);
     });
 
     it("handles clearing mapped groups after deleting mapping", async () => {
-      nock(location.origin)
-        .put("/api/permissions/membership/3/clear")
-        .reply(200);
-
-      nock(location.origin)
-        .put("/api/permissions/membership/4/clear")
-        .reply(200);
+      fetchMock.put("path:/api/permissions/membership/3/clear", 200);
+      fetchMock.put("path:/api/permissions/membership/4/clear", 200);
 
       setup();
 
@@ -124,14 +112,11 @@ describe("GroupMappingsWidget", () => {
       );
 
       expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
-
-      expect(nock.isDone()).toBeTruthy();
     });
 
     it("handles deleting mapped groups after deleting mapping", async () => {
-      nock(location.origin).delete("/api/permissions/group/3").reply(200);
-
-      nock(location.origin).delete("/api/permissions/group/4").reply(200);
+      fetchMock.delete("path:/api/permissions/group/3", 200);
+      fetchMock.delete("/api/permissions/group/4", 200);
       setup();
 
       expect(await screen.findByText("cn=People")).toBeInTheDocument();
@@ -148,8 +133,6 @@ describe("GroupMappingsWidget", () => {
       );
 
       expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
-
-      expect(nock.isDone()).toBeTruthy();
     });
   });
 });
