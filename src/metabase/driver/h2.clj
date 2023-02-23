@@ -140,32 +140,27 @@
   "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-
   If the h2 parser cannot be built, returns `nil`.
-
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command-list      (.prepareCommand h2-parser query)
-            command-list-type (.getCommandType ^org.h2.command.CommandList command-list)
-            command-types     (cond-> [command-list-type]
-                                (not (instance? org.h2.command.CommandContainer command-list))
-                                (into
-                                 (map #(.getType ^org.h2.command.Prepared %))
-                                 ;; when there are no fields: return no commands
-                                 (get-field command-list "commands" [])))]
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
         {:command-types command-types
          ;; when there is no remaining sql: return nil for remaining-sql
-         :remaining-sql (get-field command-list "remaining" nil)})
+         :remaining-sql (get-field command "remaining" nil)})
       ;; only valid queries can be classified.
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
-
-;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
-;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- cmd-type-ddl? [cmd-type]
   ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
@@ -177,6 +172,9 @@
     (boolean
      (or (some cmd-type-ddl? cmd-type-nums)
          (some? remaining-sql)))))
+
+;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
+;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
   (when query
