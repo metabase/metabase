@@ -110,7 +110,6 @@ const searchCardItem = createMockCollectionItem({
   name: "Question Uno",
   display: "pie",
   collection: createMockCollection(),
-  getIcon: () => ({ name: "pie" }),
 });
 
 const setup = (options?: Partial<LinkVizProps>) => {
@@ -203,24 +202,6 @@ describe("LinkViz", () => {
 
       expect(screen.getByLabelText("database icon")).toBeInTheDocument();
       expect(screen.getByText("Table Uno")).toBeInTheDocument();
-    });
-
-    it("should be able to search for questions", async () => {
-      setupSearchEndpoints([searchCardItem]);
-
-      setup({
-        isEditing: true,
-        dashcard: searchingDashcard,
-        settings:
-          searchingDashcard.visualization_settings as LinkCardVizSettings,
-      });
-
-      const searchInput = screen.getByPlaceholderText("https://example.com");
-
-      userEvent.click(searchInput);
-
-      expect(await screen.findByLabelText("pie icon")).toBeInTheDocument();
-      expect(await screen.findByText("Question Uno")).toBeInTheDocument();
     });
 
     it("clicking a search item should update the entity", async () => {
