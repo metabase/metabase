@@ -122,7 +122,7 @@
     (seq ids)))
 
 (defn adhoc-query
-  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query]
   (->> query
        mbql.normalize/normalize

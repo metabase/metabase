@@ -132,7 +132,7 @@
    su/Map])
 
 (def ^{:arglists '([form])} dimension-form?
-  "Does form denote a dimension referece?"
+  "Does form denote a dimension reference?"
   (complement (s/checker DimensionForm)))
 
 (defn collect-dimensions
