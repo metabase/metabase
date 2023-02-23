@@ -217,6 +217,168 @@ const MODEL_NAME = "Test Action Model";
       });
     },
   );
+
+  describe(
+    `Actions Data Types (${dialect})`,
+    { tags: ["@external", "@actions"] },
+    () => {
+      beforeEach(() => {
+        cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
+        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
+          "getCardAssociations",
+        );
+        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
+
+        cy.intercept(
+          "GET",
+          "/api/dashboard/*/dashcard/*/execute?parameters=*",
+        ).as("executePrefetch");
+
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+          "executeAPI",
+        );
+
+        resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
+        restore(`${dialect}-writable`);
+        cy.signInAsAdmin();
+        resyncDatabase(WRITABLE_DB_ID);
+        cy.wait(300);
+      });
+
+      it("all data types can be updated", () => {
+        createModelFromTable(TEST_COLUMNS_TABLE);
+      it("adds an implicit create action to a dashboard and runs it", () => {
+        createModelFromTable(TEST_TABLE);
+        cy.get("@modelId").then(id => {
+          cy.request({
+            url: "/api/action",
+            method: "POST",
+            body: {
+              kind: "row/update",
+              name: "Update",
+              kind: "row/create",
+              name: "Create",
+              type: "implicit",
+              model_id: id,
+            },
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName: "Create",
+        });
+
+        cy.button("Create").click();
+
+        modal().within(() => {
+          cy.findByPlaceholderText("team_name").type("Zany Zebras");
+          cy.findByPlaceholderText("score").type("44");
+
+          cy.button("Save").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+
+          expect(result.rows[0].score).to.equal(44);
+        });
+      });
+
+      it("adds an implicit update action to a dashboard and runs it", () => {
+        const actionName = "Update";
+
+        createModelFromTable(TEST_TABLE);
+
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "update",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName,
+          idFilter: true,
+        });
+
+        filterWidget().click();
+        addWidgetStringFilter("5");
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+        // let's check that the existing values are pre-filled correctly
+        modal().within(() => {
+          cy.findByPlaceholderText("team_name")
+            .should("have.value", "Energetic Elephants")
+            .clear()
+            .type("Emotional Elephants");
+
+          cy.findByPlaceholderText("score")
+            .should("have.value", "30")
+            .clear()
+            .type("88");
+
+          cy.button("Update").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+
+          expect(result.rows[0].score).to.equal(88);
+        });
+      });
+
+      it("adds an implicit delete action to a dashboard and runs it", () => {
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+          expect(result.rows[0].id).to.equal(3);
+        });
+
+
+        createModelFromTable(TEST_TABLE);
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "delete",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName: "Delete",
+        });
+
+        cy.button("Delete").click();
+
+        modal().within(() => {
+          cy.findByPlaceholderText("id").type("3");
+          cy.button("Delete").click();
+        });
+
+        cy.wait("@executeAPI");
+
+        queryWritableDB(
+          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(0);
+        });
+      });
+    },
+  );
 });
 
 const createModelFromTable = tableName => {
