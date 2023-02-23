@@ -217,7 +217,12 @@ describe("LinkViz", () => {
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
       userEvent.click(searchInput);
-      userEvent.click(await screen.findByText("Question Uno"));
+      // There's a race here: as soon the search input is clicked into the text "Loading..."
+      // appears and is then replaced by "Question Uno". On CI, `findByText` was sometimes
+      // running while "Loading..." was still visible, so we added a timeout.
+      userEvent.click(
+        await screen.findByText("Question Uno", { timeout: 2000 }),
+      );
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
