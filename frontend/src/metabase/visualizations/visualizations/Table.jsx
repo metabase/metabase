@@ -7,10 +7,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import {
-  getColumnCardinality,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
@@ -36,6 +33,7 @@ import {
   findColumnIndexForColumnSetting,
   findColumnForColumnSetting,
   findColumnSettingIndexForColumn,
+  fieldRefForColumn,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
@@ -175,6 +173,7 @@ export default class Table extends Component {
     "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
+      readDependencies: ["column_settings"],
       widget: ChartSettingOrderedSimple,
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
       getValue: ([{ card, data }], vizSettings, extra = {}) => {
@@ -221,11 +220,14 @@ export default class Table extends Component {
 
         return [...enabledColumns, ...disabledColumns];
       },
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        vizSettings,
+      ) => ({
         columns: cols,
         hasOnEnable: false,
         paddingLeft: "0",
@@ -242,12 +244,20 @@ export default class Table extends Component {
           text: t`Add or remove columns`,
           key: "table.columns_visibility",
         },
-        getItemTitle: columnSetting =>
-          getFriendlyName(
-            findColumnForColumnSetting(cols, columnSetting) || {
-              display_name: "[Unknown]",
-            },
-          ),
+        getItemTitle: columnSetting => {
+          const column = findColumnForColumnSetting(cols, columnSetting);
+          if (!column) {
+            return "[Unknown]";
+          }
+
+          const customName = getIn(vizSettings, [
+            "column_settings",
+            JSON.stringify(["ref", fieldRefForColumn(column)]),
+            "column_title",
+          ]);
+
+          return customName || formatColumn(column);
+        },
       }),
     },
     "table.columns_visibility": {
@@ -262,7 +272,7 @@ export default class Table extends Component {
             data: { cols },
           },
         ],
-        _settings,
+        vizSettings,
         _onChange,
         extra,
       ) => ({
@@ -270,6 +280,15 @@ export default class Table extends Component {
         isDashboard: extra.isDashboard,
         metadata: extra.metadata,
         isQueryRunning: extra.isQueryRunning,
+        getItemTitle: column => {
+          const customName = getIn(vizSettings, [
+            "column_settings",
+            JSON.stringify(["ref", fieldRefForColumn(column)]),
+            "column_title",
+          ]);
+
+          return customName;
+        },
       }),
     },
     "table.column_widths": {},
