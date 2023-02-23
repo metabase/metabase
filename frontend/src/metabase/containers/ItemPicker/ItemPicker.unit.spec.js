@@ -164,10 +164,6 @@ async function openCollection(itemName) {
 }
 
 describe("ItemPicker", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("displays items from the root collection by default", async () => {
     await setup();
 

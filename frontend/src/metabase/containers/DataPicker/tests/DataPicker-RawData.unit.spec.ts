@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
@@ -19,10 +18,6 @@ import {
 describe("DataPicker — picking raw data", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    fetchMock.reset();
   });
 
   it("opens the picker", async () => {

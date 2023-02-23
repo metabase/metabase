@@ -39,10 +39,6 @@ const productVendorField = new Field({
 });
 
 describe("CategoryFieldPicker", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("given a few distinct values", () => {
     beforeEach(() => {
       fetchMock.get(

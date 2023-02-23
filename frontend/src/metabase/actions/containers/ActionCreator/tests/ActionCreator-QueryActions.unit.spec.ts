@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import { screen, getIcon, queryIcon } from "__support__/ui";
 
 import {
@@ -10,10 +8,6 @@ import {
 import { setup } from "./common";
 
 describe("ActionCreator > Query Actions", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("new action", () => {
     it("renders correctly", async () => {
       await setup();

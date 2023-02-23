@@ -6,10 +6,6 @@ import Logs from "metabase/admin/tasks/containers/Logs";
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("log fetching", () => {
     it("should call UtilApi.logs after 1 second", () => {
       jest.useFakeTimers();

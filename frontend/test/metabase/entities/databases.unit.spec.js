@@ -10,10 +10,6 @@ describe("database entity", () => {
     store = getStore();
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should save database metadata in redux", async () => {
     fetchMock.get("path:/api/database/123/metadata", {
       id: 123,

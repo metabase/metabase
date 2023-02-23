@@ -61,10 +61,6 @@ function setupPrefetch() {
 }
 
 describe("Actions > ActionParametersInputForm", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should render an action form", async () => {
     await setup();
     expect(screen.getByTestId("action-form")).toBeInTheDocument();

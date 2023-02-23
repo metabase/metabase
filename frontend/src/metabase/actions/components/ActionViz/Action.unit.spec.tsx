@@ -96,10 +96,6 @@ function setupExecutionEndpoint() {
 }
 
 describe("Actions > ActionViz > ActionComponent", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   // button actions are just a modal trigger around forms
   describe("Button actions", () => {
     it("should render an empty state for a button with no action", async () => {

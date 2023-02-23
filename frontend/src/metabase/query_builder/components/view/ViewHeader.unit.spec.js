@@ -201,10 +201,6 @@ describe("ViewHeader", () => {
     TEST_CASE.SAVED_NATIVE_QUESTION,
   ];
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("Common", () => {
     ALL_TEST_CASES.forEach(testCase => {
       const { question, questionType } = testCase;
@@ -387,10 +383,6 @@ describe("ViewHeader", () => {
 });
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("does not open details sidebar on table name click", () => {
     const { question, onOpenModal } = setupAdHoc();
     const tableName = question.table().displayName();
@@ -447,10 +439,6 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 });
 
 describe("View Header | Saved GUI question", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("filters", () => {
     const question = getSavedGUIQuestion(FILTERED_GUI_QUESTION);
 
@@ -505,7 +493,6 @@ describe("View Header | native question without write permissions on database (e
   });
 
   afterEach(() => {
-    fetchMock.reset();
     SAMPLE_DATABASE.native_permissions = originalNativePermissions;
   });
 
@@ -521,10 +508,6 @@ describe("View Header | native question without write permissions on database (e
 });
 
 describe("View Header | Not saved native question", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("does not display question database", () => {
     const { question } = setupNative();
     const databaseName = question.database().displayName();
@@ -538,10 +521,6 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
@@ -571,10 +550,6 @@ describe("View Header | Saved native question", () => {
 });
 
 describe("View Header | Read only permissions", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should disable the input field for the question title", () => {
     setup({ question: getSavedGUIQuestion({ can_write: false }) });
     expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();

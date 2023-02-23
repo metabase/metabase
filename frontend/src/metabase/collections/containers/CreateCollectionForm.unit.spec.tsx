@@ -49,10 +49,6 @@ describe("CreateCollectionForm", () => {
     fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("displays correct blank state", () => {
     setup();
 

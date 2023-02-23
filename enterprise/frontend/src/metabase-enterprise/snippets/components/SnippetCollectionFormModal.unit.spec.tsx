@@ -87,10 +87,6 @@ const LABEL = {
 };
 
 describe("SnippetCollectionFormModal", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("new folder", () => {
     it("displays correct blank state", async () => {
       await setup();

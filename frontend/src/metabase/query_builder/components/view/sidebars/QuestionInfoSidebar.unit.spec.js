@@ -104,10 +104,6 @@ async function setup({ question, cachingEnabled = true } = {}) {
 }
 
 describe("QuestionInfoSidebar", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },

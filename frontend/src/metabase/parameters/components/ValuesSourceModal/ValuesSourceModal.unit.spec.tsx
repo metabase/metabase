@@ -1,5 +1,4 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, ParameterValues } from "metabase-types/api";
@@ -23,10 +22,6 @@ import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("fields source", () => {
     it("should show a message about not connected fields", () => {
       setup();

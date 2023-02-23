@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
@@ -28,10 +27,6 @@ const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
 describe("DataPicker — picking models", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    fetchMock.reset();
   });
 
   it("opens the picker", async () => {

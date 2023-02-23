@@ -55,7 +55,6 @@ const mockUpdateToken = (valid: boolean) => {
 
 describe("LicenseAndBilling", () => {
   afterEach(() => {
-    fetchMock.reset();
     jest.restoreAllMocks();
   });
 

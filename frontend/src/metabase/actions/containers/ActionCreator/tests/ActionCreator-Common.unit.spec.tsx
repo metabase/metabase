@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
@@ -19,10 +18,6 @@ async function setup({
 }
 
 describe("ActionCreator > Common", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe.each([
     ["query", createMockQueryAction],
     ["implicit", createMockImplicitQueryAction],

@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import { screen } from "__support__/ui";
 
 import { setup, SAMPLE_DATABASE, SAMPLE_TABLE } from "./common";
@@ -7,10 +5,6 @@ import { setup, SAMPLE_DATABASE, SAMPLE_TABLE } from "./common";
 describe("DataPicker", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    fetchMock.reset();
   });
 
   it("shows data type picker by default", async () => {

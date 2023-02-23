@@ -145,10 +145,6 @@ describe("SaveQuestionModal", () => {
     fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("new question", () => {
     it("should suggest a name for structured queries", async () => {
       await setup(getQuestion());

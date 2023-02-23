@@ -22,10 +22,6 @@ const setup = ({
 };
 
 describe("GroupMappingsWidget", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("when a mapping is set for admin group", () => {
     const settingBody = [
       {

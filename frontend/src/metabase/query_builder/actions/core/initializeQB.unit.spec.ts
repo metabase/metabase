@@ -147,7 +147,6 @@ describe("QB Actions > initializeQB", () => {
   });
 
   afterEach(() => {
-    fetchMock.reset();
     jest.restoreAllMocks();
   });
 

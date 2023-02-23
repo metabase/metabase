@@ -35,10 +35,6 @@ describe("DataSelector", () => {
     );
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   const emptyMetadata = {
     databases: {},
     schemas: {},

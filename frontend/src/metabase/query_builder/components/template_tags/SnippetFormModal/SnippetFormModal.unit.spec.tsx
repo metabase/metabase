@@ -84,10 +84,6 @@ const LABEL = {
 };
 
 describe("SnippetFormModal", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   describe("new snippet", () => {
     it("displays correct blank state", async () => {
       await setup();

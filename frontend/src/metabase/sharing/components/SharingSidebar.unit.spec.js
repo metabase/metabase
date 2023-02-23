@@ -75,10 +75,6 @@ function setup() {
 }
 
 describe("SharingSidebar", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("should filter out actions and links when sending a test subscription", async () => {
     setup();
 

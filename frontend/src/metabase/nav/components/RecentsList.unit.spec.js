@@ -54,10 +54,6 @@ async function setup(recents = recentsData) {
 }
 
 describe("RecentsList", () => {
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("shows list of recents", async () => {
     await setup();
     await screen.findByText("Question I visited");

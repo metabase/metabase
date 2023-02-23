@@ -60,7 +60,6 @@ async function setup({
 
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
-    fetchMock.reset();
     jest.restoreAllMocks();
   });
 

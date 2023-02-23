@@ -50,10 +50,6 @@ describe("CreateDashboardModal", () => {
     fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
-  afterEach(() => {
-    fetchMock.reset();
-  });
-
   it("displays empty form fields", () => {
     setup();
 

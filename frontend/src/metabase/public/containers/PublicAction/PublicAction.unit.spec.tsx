@@ -95,10 +95,6 @@ async function setup({
 }
 
 describe("PublicAction", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
   it("shows acton form", async () => {
     await setup();
 
