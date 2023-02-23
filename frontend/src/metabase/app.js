@@ -74,7 +74,7 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
-
+  const googleAuthClientId = MetabaseSettings.get("google-auth-client-id");
   let root;
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
