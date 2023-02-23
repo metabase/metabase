@@ -405,15 +405,9 @@
                         (fn [{:keys [semantic_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec)
-                            (isa? semantic_type fieldspec)
-
-                            target
-                            (recur target)
-
-                            :else
-                            (and (not (key-col? field))
-                                 (field-isa? field fieldspec))))))
+                            (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
+                            target (recur target)
+                            :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
                                  u/lower-case-en
@@ -466,7 +460,9 @@
                        set)
                   u/the-id)
             (field-candidates context (dissoc constraints :links_to)))
+    ;; e.g. [:entity/GenericTable :type/Country]
     (let [[tablespec fieldspec] field_type]
+      ;;fieldspec is a :type/Foo
       (if fieldspec
         (mapcat (fn [table]
                   (some->> table
@@ -844,29 +840,50 @@
 ;  rule
 ;  )
 ;
-;;; Here we're gonna drill into bind dimensions
-;(let [{:keys [result_metadata] :as entity} (db/select-one 'Card :id 181)
-;      valid-fields (map :field_ref result_metadata)
-;      root (->root entity)
-;      [_ rule _] (find-first-match-rule root)
-;      context (make-base-context root rule)
-;      dimensions (:dimensions rule)]
-;  ;(bind-dimensions context dimensions)
-;  (->> dimensions
-;       (map first)
-;       (map (partial make-binding context))
-;       ;(apply concat)
-;       ;(group-by (comp id-or-name first :matches val first))
-;       ;(mapv (comp most-specific-definition val))
-;       ;(apply merge-with (fn [a b]
-;       ;                    (case (compare (:score a) (:score b))
-;       ;                      1 a
-;       ;                      0 (update a :matches concat (:matches b))
-;       ;                      -1 b))
-;       ;       {})
-;       )
-;  (field-candidates context {:field_type [:entity/GenericTable :type/Country], :score 100})
-;  (field-candidates context {:field_type [:type/DateTime], :score 60}))
+;; Here we're gonna drill into bind dimensions
+#_
+(let [{:keys [result_metadata] :as entity} (db/select-one 'Card :id 181)
+      valid-fields (map :field_ref result_metadata)
+      root         (->root entity)
+      [_ rule _] (find-first-match-rule root)
+      context      (make-base-context root rule)
+      dimensions   (:dimensions rule)]
+  ;(bind-dimensions context dimensions)
+  (->> dimensions
+       (map first)
+       (map (partial make-binding context))
+       ;(apply concat)
+       ;(group-by (comp id-or-name first :matches val first))
+       ;(mapv (comp most-specific-definition val))
+       ;(apply merge-with (fn [a b]
+       ;                    (case (compare (:score a) (:score b))
+       ;                      1 a
+       ;                      0 (update a :matches concat (:matches b))
+       ;                      -1 b))
+       ;       {})
+       )
+  (field-candidates context {:field_type [:entity/GenericTable :type/Country], :score 100})
+  (field-candidates context {:field_type [:type/DateTime], :score 60})
+  (filter-fields {:fieldspec       :type/DateTime
+                  :named           nil
+                  :max-cardinality nil}
+                 (-> context :source :fields))
+  (filter (->> {:fieldspec       :type/DateTime
+                :named           nil
+                :max-cardinality nil}
+               (keep (fn [[k v]]
+                       (when-let [pred (field-filters k)]
+                         (some-> v pred))))
+               (apply every-pred))
+          (-> context :source :fields))
+
+  (let [fieldspec       :type/DateTime
+        field (db/select-one Field :id 79)]
+    (and (not (key-col? field)) (field-isa? field fieldspec))
+    ((juxt :base_type :semantic-type) field))
+
+  ;(:tables context)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; End MSB make-context exploration ;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1366,8 +1383,8 @@
                                                      opts))
                          (decompose-question root query opts))
            cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
-                               {:transient_name  title
-                                :name            title}))))))))
+                               {:transient_name title
+                                :name           title}))))))))
 
 (defmethod automagic-analysis Field
   [field opts]
