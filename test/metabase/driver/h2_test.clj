@@ -192,9 +192,9 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-action-commands {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
 
-    (is (= nil (#'h2/check-action-commands
+    (is (= nil (#'h2/check-action-commands-allowed
                 {:database (u/the-id (mt/db))
                  :engine :h2
                  :native {:query (str/join "; "
@@ -206,7 +206,7 @@
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
-                   (#'h2/check-action-commands
+                   (#'h2/check-action-commands-allowed
                     {:database (u/the-id (mt/db))
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))

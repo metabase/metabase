@@ -180,7 +180,7 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-action-commands [{:keys [database] {:keys [query]} :native}]
+(defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
     (when-let [classified-query (classify-query database query)]
       (when-not (every-command-allowed-for-actions? classified-query)
@@ -226,7 +226,7 @@
 (defmethod driver/execute-write-query! :h2
   [driver query]
   (check-native-query-not-using-default-user query)
-  (check-action-commands query)
+  (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
