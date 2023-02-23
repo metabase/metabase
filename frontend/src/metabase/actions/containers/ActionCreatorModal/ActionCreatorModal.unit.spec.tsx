@@ -12,8 +12,6 @@ import {
   setupCardsEndpoints,
 } from "__support__/server-mocks";
 
-import * as Urls from "metabase/lib/urls";
-
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -31,6 +29,7 @@ jest.mock(
 );
 
 const MODEL = createMockCard({ id: 1, dataset: true });
+const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
 const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;
 
@@ -81,32 +80,33 @@ describe("actions > containers > ActionCreatorModal", () => {
   });
 
   it("renders correctly", async () => {
-    await setup({ initialRoute: Urls.action(MODEL, ACTION.id) });
+    const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
+    await setup({ initialRoute });
     expect(
       await screen.findByTestId("mock-action-creator"),
     ).toBeInTheDocument();
   });
 
   it("redirects back to the model detail page if the action is not found", async () => {
-    const initialRoute = Urls.action(MODEL, ACTION_NOT_FOUND_ID);
+    const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION_NOT_FOUND_ID}`;
     const { history } = await setup({ initialRoute, action: null });
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.modelDetail(MODEL, "actions"),
+      `/model/${MODEL_SLUG}/detail/actions`,
     );
   });
 
   it("redirects back to the model detail page if the action is archived", async () => {
     const action = { ...ACTION, archived: true };
-    const initialRoute = Urls.action(MODEL, action.id);
+    const initialRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
     const { history } = await setup({ initialRoute, action });
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.modelDetail(MODEL, "actions"),
+      `/model/${MODEL_SLUG}/detail/actions`,
     );
   });
 });
