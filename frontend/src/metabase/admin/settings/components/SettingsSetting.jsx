@@ -39,6 +39,7 @@ export default class SettingsSetting extends Component {
     onChangeSetting: PropTypes.func,
     autoFocus: PropTypes.bool,
     disabled: PropTypes.bool,
+    groups: PropTypes.array.isRequired,
   };
 
   render() {
