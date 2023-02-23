@@ -5,8 +5,8 @@ import { getRequestBody } from "./utils";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
   fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
-  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (uri, request) => {
-    return createMockDashboard(await getRequestBody(request));
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (url, request) => {
+    return createMockDashboard(await getRequestBody(url, request));
   });
 }
 

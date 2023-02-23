@@ -11,7 +11,7 @@ import { getRequestBody } from "./utils";
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
   fetchMock.put(`path:/api/card/${card.id}`, async (url, request) => {
-    return createMockCard(await getRequestBody(request));
+    return createMockCard(await getRequestBody(url, request));
   });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);

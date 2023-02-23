@@ -27,8 +27,8 @@ export function setupActionsEndpoints(
 
   fetchMock.post(
     { url: "path:/api/action", overwriteRoutes: true },
-    async (uri, request) => {
-      const data = await getRequestBody<WritebackAction>(request);
+    async (url, request) => {
+      const data = await getRequestBody<WritebackAction>(url, request);
       if (data.type === "implicit") {
         return createMockImplicitQueryAction(data);
       }
