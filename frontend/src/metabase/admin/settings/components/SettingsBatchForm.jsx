@@ -223,6 +223,7 @@ class SettingsBatchForm extends Component {
 
   render() {
     const {
+      groups,
       elements,
       settingValues,
       breadcrumbs,
@@ -263,6 +264,7 @@ class SettingsBatchForm extends Component {
       return (
         <SettingsSetting
           key={element.key}
+          groups={groups}
           setting={{ ...element, value }}
           onChange={value => this.handleChangeEvent(element.key, value)}
           settingValues={settingValues}

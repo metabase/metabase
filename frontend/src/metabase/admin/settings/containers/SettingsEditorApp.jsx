@@ -4,9 +4,10 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
+
+import Group from "metabase/entities/groups";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -149,6 +150,7 @@ class SettingsEditorApp extends Component {
     if (activeSection.component) {
       return (
         <activeSection.component
+          groups={this.props.groups}
           elements={activeSection.settings}
           settingValues={settingValues}
           updateSetting={this.updateSetting}
@@ -254,4 +256,5 @@ class SettingsEditorApp extends Component {
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ activeSection }) => activeSection && activeSection.name),
+  Group.loadList(),
 )(SettingsEditorApp);
