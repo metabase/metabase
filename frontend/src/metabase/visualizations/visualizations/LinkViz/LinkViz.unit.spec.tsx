@@ -110,6 +110,7 @@ const searchCardItem = createMockCollectionItem({
   name: "Question Uno",
   display: "pie",
   collection: createMockCollection(),
+  getIcon: () => ({ name: "pie" }),
 });
 
 const setup = (options?: Partial<LinkVizProps>) => {
