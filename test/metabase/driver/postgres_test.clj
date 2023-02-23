@@ -860,9 +860,9 @@
        (fn [enums-db]
          (mt/with-db enums-db
            (mt/with-actions-enabled
-             (mt/with-actions [{model-id :id :as model} {:dataset true
-                                                         :dataset_query
-                                                         (mt/mbql-query birds)}
+             (mt/with-actions [model {:dataset true
+                                      :dataset_query
+                                      (mt/mbql-query birds)}
                                {action-id :action-id} {:type :implicit
                                                        :kind "row/create"}]
                (testing "Enum fields are a valid implicit parameter target"
@@ -878,9 +878,9 @@
                         (mt/user-http-request :crowberto
                                               :post 200
                                               (format "action/%s/execute" action-id)
-                                              {:parameters {"name" "new bird"
+                                              {:parameters {"name"   "new bird"
                                                             "status" "good bird"
-                                                            "type" "turkey"}}))))))))))))
+                                                            "type"   "turkey"}}))))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
