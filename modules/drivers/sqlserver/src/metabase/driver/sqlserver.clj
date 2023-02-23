@@ -701,10 +701,10 @@
              (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)
              (map (partial sql.qp/->honeysql driver) (::partition-by sql.qp/*inner-query*))))
 
-(defn percentile-aggregation? [aggregation]
+(defn- percentile-aggregation? [aggregation]
   (mbql.u/match aggregation #{:percentile :median}))
 
-(defn percentile-query? [inner-query]
+(defn- percentile-query? [inner-query]
   (some #(when (percentile-aggregation? %) %) (:aggregation inner-query)))
 
 (defn- update-aggregations [inner]
@@ -741,7 +741,7 @@
 
   [:field (annotate/aggregation-name aggregation) {:base-type :type/Float}])
 
-(defn update-order-by-references [order-by-clause original-query]
+(defn- update-order-by-references [order-by-clause original-query]
 
   ;; 1. Rewrite percentile aggregation references in `order-by-clause` to fields produced by `percentile-sub-query.
   ;; 2. Update non percentile aggregations indices, so they point to correct aggregations after percentile 
@@ -766,7 +766,7 @@
               order-by-elm))
           order-by-clause)))
 
-(defn rewrite-percentile-aggregations--current-query [original-inner]
+(defn- rewrite-percentile-aggregations--current-query [original-inner]
 
   ;; WHAT THIS DOES
   ;; Rewrite query to simulate aggregate percentile with use of percentile window function
@@ -803,7 +803,7 @@
                   ;; 3.
                   (assoc :source-query (percentile-source-query original-inner)))})
 
-(defn rewrite-percentile-aggregations--recursive [original-query]
+(defn- rewrite-percentile-aggregations--recursive [original-query]
 
   ;; Recursively apply [[rewrite-percentile-aggregations-impl]] in chain of source queries from bottom up
   ;; and also in original-query.

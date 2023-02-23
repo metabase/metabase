@@ -643,29 +643,3 @@
                     :order-by [[:desc [:aggregation 2]]]
                     :limit 5})
                   (mt/formatted-rows [int int 2.0 2.0]))))))))
-
-(comment
-  (def all-p-test-vars [#'metabase.driver.sqlserver-test/percentile-aggregations-with-joins-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-as-source-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-duplicate-name-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-various-values-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-with-expressions-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-column-ordering-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-median-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-breakout-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-card-test
-                           #'metabase.driver.sqlserver-test/percentile-aggregations-order-by-reference-test])
-
-  (mt/set-test-drivers! #{:sqlserver})
-  
-  (metabase.test-runner/find-and-run-tests-repl {:only ['metabase.driver.sqlserver-test]})
-
-  (hawk.core/run-tests all-p-test-vars {:mode :repl})
-
-  (-> (ns-publics 'metabase.driver.sqlserver-test) vals
-      #_(->> (map #(-> % meta :name)))
-      (->> (filter #(re-find #"perc" (-> % meta :name name))))
-      #_count
-      #_(->> (def all-p-test-vars)))
-  (count all-perc-test-vars)
-  )
