@@ -1,3 +1,4 @@
+import { many_data_types_data } from "__support__/e2e/test_tables_data";
 import {
   restore,
   queryWritableDB,
@@ -17,6 +18,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
+
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
@@ -245,7 +247,7 @@ const MODEL_NAME = "Test Action Model";
         cy.wait(300);
       });
 
-      it("all data types can be updated", () => {
+      it("can update various data types via implicit actions", () => {
         createModelFromTable(TEST_COLUMNS_TABLE);
       it("adds an implicit create action to a dashboard and runs it", () => {
         createModelFromTable(TEST_TABLE);
@@ -448,3 +450,11 @@ function createDashboardWithActionButton({
 
   saveDashboard();
 }
+
+const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
+  cy.findByPlaceholderText(fieldName)
+    .should("have.attr", "type", fieldType)
+    .should("have.value", oldValue)
+    .clear()
+    .type(newValue);
+};
