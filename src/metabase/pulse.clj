@@ -84,35 +84,57 @@
     (compare (:col dashcard-1) (:col dashcard-2))))
 
 (defn- link-card->url
-  [{:keys [entity] :as link-card}]
-  (let [{:keys [db_id id model]} entity]
-   (case model
-     "card"       (urls/card-url id)
-     "dataset"    (urls/card-url id)
-     "collection" (urls/collection-url id)
-     "dashboard"  (urls/dashboard-url id)
-     "database"   (urls/database-url id)
-     "table"      (urls/table-url db_id id)
-     ;; link
-     nil          (:url link-card))))
+  [{:keys [entity url] :as link-card}]
+  (if url
+    (:url link-card)
+    (let [{:keys [db_id id model]} entity]
+      (case model
+        "card"       (urls/card-url id)
+        "dataset"    (urls/card-url id)
+        "collection" (urls/collection-url id)
+        "dashboard"  (urls/dashboard-url id)
+        "database"   (urls/database-url id)
+        "table"      (urls/table-url db_id id)))))
 
 (defn- link-card->content
-  [{:keys [entity] :as link-card}]
-  (let [{:keys [model name]} entity]
-    (case model
-      nil (:url link-card)
-      name)))
+  [{:keys [entity url] :as _link-card}]
+  (if url
+    url
+    (:name entity)))
+
+(defn- link-card->description
+  [{:keys [entity url] :as _link-card}]
+  (if url
+    nil
+    (:description entity)))
 
 (defn- link-card->text
   [link-card]
   (when-let [link-card (:link link-card)]
-    {:text (let [url (link-card->url link-card)]
-             (str (format
-                    "[%s](%s)"
+    {:text (str (format
+                    "### [%s](%s)"
                     (link-card->content link-card)
-                    url)
-                  (when-let [description (:description link-card)]
-                    (format "\n%s" description))))}))
+                    (link-card->url link-card))
+                (when-let [description (link-card->description link-card)]
+                  (format "\n%s" description)))}))
+
+(defn- dashcard-link-card->content
+  "Convert a dashcard that is a linkcard to pulse content."
+  [{viz-settings :visualization_settings :as _dashcard}]
+  (let [{:keys [url model]} viz-settings
+        link-card           (condp
+                              (some? url)
+                              viz-settings
+                              ;; if link card link to an entity, update the settins because
+                              ;; its stored info might be out-of-date
+                              (some? model)
+                              (let [{:keys [model id]} (get-in viz-settings [:link :entity])
+                                    instance (t2/query-one
+                                               (dashboard-card/link-card-info-query-for-model [model [id]]))]
+                                (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
+                                  (assoc-in viz-settings [:link :entity] instance))))]
+    (when link-card
+      (link-card->text link-card))))
 
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."
@@ -129,16 +151,8 @@
 
     ;; link cards
     (pu/virtual-card-of-type? viz-settings "link")
-    (let [viz-settings       (:visualization_settings dashcard)
-          {:keys [model id]} (get-in viz-settings [:link :entity])]
-      (link-card->text
-        (if model
-          (let [instance (t2/query-one
-                           (dashboard-card/link-card-info-query-for-model [model [id]]))]
-               (when (mi/can-read? (serdes.util/link-card-model->toucan-model model) instance)
-                 (assoc-in viz-settings [:link :entity] instance)))
-          ;; url
-          viz-settings)))
+    (dashcard-link-card->content dashcard)
+
     ;; text cards has existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
@@ -570,4 +584,5 @@
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
 
-#_(send-pulse! (db/select-one Pulse :id 1))
+#_(send-pulse! (db/select-one Pulse :id 15))
+#_(send-pulse! (db/select-one Pulse :id 16))
