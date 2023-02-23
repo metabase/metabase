@@ -283,7 +283,7 @@
   (set (keys serdes.util/link-card-model->toucan-model)))
 
 (defn link-card-info-query-for-model
-  "A DOC"
+  "Return a honeysql query that is used to fetch info for a linkcard."
   [[model ids]]
   {:select (select-clause-for-link-card-model model)
    :from   (t2/table-name (serdes.util/link-card-model->toucan-model model))

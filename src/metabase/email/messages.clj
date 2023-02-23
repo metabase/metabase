@@ -407,38 +407,6 @@
          (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
-(defn- link-card->url
-  [{:keys [entity] :as link-card}]
-  (let [{:keys [db_id id model]} entity]
-   (case model
-     "card"       (urls/card-url id)
-     "dataset"    (urls/card-url id)
-     "collection" (urls/collection-url id)
-     "dashboard"  (urls/dashboard-url id)
-     "database"   (urls/database-url id)
-     "table"      (urls/table-url db_id id)
-     ;; link
-     nil          (:url link-card))))
-
-(defn- link-card->icon-name
-  [{:keys [entity] :as _link-card}]
-  (let [{:keys [model display]} entity]
-   (case model
-     "card"    (case display
-                 "table"  :table
-                 "number" :number
-                 :table)
-     "dataset"   :model
-     nil       :link
-     (keyword model))))
-
-(defn- link-card->content
-  [{:keys [entity] :as link-card}]
-  (let [{:keys [model name]} entity]
-    (case model
-      nil (:url link-card)
-      name)))
-
 (defn- result-attachments [results]
   (filter some? (mapcat result-attachment results)))
 
