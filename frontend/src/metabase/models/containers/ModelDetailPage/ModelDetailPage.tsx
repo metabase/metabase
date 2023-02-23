@@ -37,7 +37,7 @@ type OwnProps = {
   children: React.ReactNode;
 };
 
-type ModelEntityLoaderProps = {
+type EntityLoadersProps = {
   actions: WritebackAction[];
   modelCard: Card;
 };
@@ -65,12 +65,9 @@ type DispatchProps = {
   onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps & EntityLoadersProps & StateProps & DispatchProps;
 
-function mapStateToProps(
-  state: State,
-  props: OwnProps & ModelEntityLoaderProps,
-) {
+function mapStateToProps(state: State, props: OwnProps & EntityLoadersProps) {
   const metadata = getMetadata(state);
   const model = new Question(props.modelCard, metadata);
   return { model };
@@ -100,9 +97,11 @@ function ModelDetailPage({
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   const database = model.database();
+  const hasDataPermissions = model.query().isEditable();
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
+  const canRunActions = hasActionsEnabled && hasDataPermissions;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -186,6 +185,8 @@ function ModelDetailPage({
         model={model}
         mainTable={mainTable}
         tab={tab}
+        hasDataPermissions={hasDataPermissions}
+        canRunActions={canRunActions}
         hasActionsTab={hasActionsTab}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}
@@ -203,7 +204,7 @@ function getModelId(state: State, props: OwnProps) {
 
 function getModelDatabaseId(
   state: State,
-  props: OwnProps & ModelEntityLoaderProps,
+  props: OwnProps & EntityLoadersProps,
 ) {
   return props.modelCard.dataset_query.database;
 }
@@ -214,13 +215,13 @@ function getPageTitle({ modelCard }: Props) {
 
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId }),
+  Databases.load({ id: getModelDatabaseId, loadingAndErrorWrapper: false }),
   Actions.loadList({
     query: (state: State, props: OwnProps) => ({
       "model-id": getModelId(state, props),
     }),
   }),
-  connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
+  connect<StateProps, DispatchProps, OwnProps & EntityLoadersProps, State>(
     mapStateToProps,
     mapDispatchToProps,
   ),

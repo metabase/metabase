@@ -15,19 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest tags-referenced-cards-lookup-test
-  (testing "returns Card instances from raw query"
-    (mt/with-temp* [Card [c1 {}]
-                    Card [c2 {}]]
-      (is (= [c1 c2]
-             (#'qp.resolve-referenced/tags-referenced-cards
-              {:native
-               {:template-tags
-                {"tag-name-not-important1" {:type    :card
-                                            :card-id (:id c1)}
-                 "tag-name-not-important2" {:type    :card
-                                            :card-id (:id c2)}}}}))))))
-
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
     (mt/with-temp Card [mbql-card {:dataset_query (mt/mbql-query venues

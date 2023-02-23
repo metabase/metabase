@@ -173,10 +173,10 @@
    (macros/case
      :cljs (glogi-spy (str *ns*) level expr
                       #(str/trim-newline
-                         (with-out-str
+                        (with-out-str
+                          #_{:clj-kondo/ignore [:discouraged-var]}
                            (pprint/with-pprint-dispatch pprint/code-dispatch
                              (pprint/pprint '~expr)
-                             #_{:clj-kondo/ignore [:discouraged-var]}
                              (print "=> ")
                              (pprint/pprint %)))))
      :clj  `(clojure.tools.logging/spy ~level ~expr))))

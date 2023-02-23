@@ -2573,9 +2573,11 @@
                                                    :cardId                 nil
                                                    :action_id              action-id
                                                    :visualization_settings {:label "Update"}})))
-              (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
-                                                       :type (name action-type)
-                                                       :parameters [{:id "id"}]}}]}
+              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+                                                               :type (name action-type)
+                                                               :parameters [{:id "id"}]}
+                                                              (#{:query :implicit} action-type)
+                                                              (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
@@ -2826,13 +2828,14 @@
                        (:cause
                         (mt/user-http-request :crowberto :post 400 execute-path
                                               {:parameters {"name" "Birds"}})))))
-              (testing "Without execute rights on the DB"
+              (testing "Without read rights on the DB"
+                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
                 (mt/with-actions-enabled
                   (is (partial= {:message "You do not have permissions to run this query."}
                                 (mt/user-http-request :rasta :post 403 execute-path
                                                       {:parameters {"name" "Birds"}})))))
               (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+                (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
                     (is (contains? #{{:ID 76, :NAME "Birds"}
@@ -2841,7 +2844,7 @@
                                                              {:parameters {"name" "Birds"}})
                                        :created-row))))
                   (finally
-                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
+                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
 
 (deftest dashcard-custom-action-execution-auth-test
   (mt/with-temp-copy-of-db
@@ -2860,20 +2863,21 @@
                        (:cause
                         (mt/user-http-request :crowberto :post 400 execute-path
                                               {:parameters {"id" 1}})))))
-              (testing "Without execute rights on the DB"
+              (testing "Without read rights on the DB"
+                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
                 (mt/with-actions-enabled
                   (is (partial= {:message "You don't have permissions to do that."}
                                 (mt/user-http-request :rasta :post 403 execute-path
                                                       {:parameters {"id" 1}})))))
-              (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+              (testing "With read rights on the DB"
+                (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}}))))
                   (finally
-                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
+                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
 
 (deftest dashcard-execution-fetch-prefill-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2918,51 +2922,53 @@
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
 
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+;; Not relevant for 46; uncomment and make work for 47
+(comment
+  (defn- ee-features-enabled? []
+    (u/ignore-exceptions
+      (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+      (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
 
-(deftest dashcard-action-execution-granular-auth-test
-  (when (ee-features-enabled?)
-    (mt/with-temp-copy-of-db
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{:keys [action-id model-id]} {}]
-          (testing "Executing dashcard with action"
-            (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                            DashboardCard [{dashcard-id :id}
-                                           {:dashboard_id dashboard-id
-                                            :action_id action-id
-                                            :card_id model-id}]]
-              (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                         dashboard-id
-                                         dashcard-id)]
-                (testing "with :advanced-permissions feature flag"
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
-                    (testing "for non-magic group"
-                      (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                                      PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
-                                                                     :group_id group-id}]]
-                        (is (partial= {:message "You don't have permissions to do that."}
-                                      (mt/user-http-request :rasta :post 403 execute-path
-                                                            {:parameters {"id" 1}}))
-                            "Execution permission should be required")
-                        (mt/user-http-request
-                         :crowberto :put 200 "permissions/execution/graph"
-                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                        (is (= :all
-                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                            "Should be able to set execution permission")
-                        (is (= {:rows-affected 1}
-                               (mt/user-http-request :rasta :post 200 execute-path
-                                                     {:parameters {"id" 1}}))
-                            "Execution and data permissions should be enough")
+  (deftest dashcard-action-execution-granular-auth-test
+    (when (ee-features-enabled?)
+        (mt/with-temp-copy-of-db
+          (mt/with-actions-test-data-and-actions-enabled
+            (mt/with-actions [{:keys [action-id model-id]} {}]
+              (testing "Executing dashcard with action"
+                (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                                DashboardCard [{dashcard-id :id}
+                                               {:dashboard_id dashboard-id
+                                                :action_id action-id
+                                                :card_id model-id}]]
+                  (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                             dashboard-id
+                                             dashcard-id)]
+                    (testing "with :advanced-permissions feature flag"
+                      (premium-features-test/with-premium-features #{:advanced-permissions}
+                        (testing "for non-magic group"
+                          (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                                          PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
+                                                                         :group_id group-id}]]
+                            (is (partial= {:message "You don't have permissions to do that."}
+                                          (mt/user-http-request :rasta :post 403 execute-path
+                                                                {:parameters {"id" 1}}))
+                                "Execution permission should be required")
+                            (mt/user-http-request
+                             :crowberto :put 200 "permissions/execution/graph"
+                             (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
+                            (is (= :all
+                                   (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+                                "Should be able to set execution permission")
+                            (is (= {:rows-affected 1}
+                                   (mt/user-http-request :rasta :post 200 execute-path
+                                                         {:parameters {"id" 1}}))
+                                "Execution and data permissions should be enough")
 
-                        (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                                        {:schemas :block})
-                        (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                                        {:schemas :block})
-                        (is (partial= {:message "You don't have permissions to do that."}
-                                      (mt/user-http-request :rasta :post 403 execute-path
-                                                            {:parameters {"id" 1}}))
-                            "Data permissions should be required")))))))))))))
+                            (perms/update-data-perms-graph! [group-id (mt/id) :data]
+                                                            {:schemas :block})
+                            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                                            {:schemas :block})
+                            (is (partial= {:message "You don't have permissions to do that."}
+                                          (mt/user-http-request :rasta :post 403 execute-path
+                                                                {:parameters {"id" 1}}))
+                                "Data permissions should be required"))))))))))))))

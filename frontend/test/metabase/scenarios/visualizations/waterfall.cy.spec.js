@@ -61,7 +61,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Visualization").click();
-    cy.icon("waterfall").click();
+    switchToWaterfallDisplay();
 
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("X").click();
@@ -83,7 +83,7 @@ describe("scenarios > visualizations > waterfall", () => {
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Visualization").click();
-    cy.icon("waterfall").click();
+    switchToWaterfallDisplay();
 
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("X").click();
@@ -109,7 +109,7 @@ describe("scenarios > visualizations > waterfall", () => {
     visualize();
 
     cy.contains("Visualization").click();
-    cy.icon("waterfall").click();
+    switchToWaterfallDisplay();
 
     verifyWaterfallRendering("Created At", "Count");
   });
@@ -124,7 +124,7 @@ describe("scenarios > visualizations > waterfall", () => {
     visualize();
 
     cy.contains("Visualization").click();
-    cy.icon("waterfall").click();
+    switchToWaterfallDisplay();
 
     cy.get(".Visualization .axis.x").within(() => {
       cy.findByText("Total").should("not.exist");
@@ -146,7 +146,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     cy.findByText("Visualization").click();
-    cy.findByTestId("Waterfall-button").click();
+    switchToWaterfallDisplay();
     cy.findByText("Waterfall chart does not support multiple series");
 
     cy.findByTestId("remove-count").click();
@@ -173,7 +173,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     cy.findByText("Visualization").click();
-    cy.findByTestId("Waterfall-button").click();
+    switchToWaterfallDisplay();
 
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Created At").click();
@@ -253,7 +253,7 @@ describe("scenarios > visualizations > waterfall", () => {
       openNativeEditor().type("select 'A' as X, -4.56 as Y");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.contains("Visualization").click();
-      cy.icon("waterfall").click();
+      switchToWaterfallDisplay();
     });
 
     it("should have increase, decrease, and total color options", () => {
@@ -290,3 +290,10 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 });
+
+const switchToWaterfallDisplay = () => {
+  cy.icon("waterfall").click();
+  cy.findByTestId("Waterfall-button").within(() => {
+    cy.icon("gear").click();
+  });
+};

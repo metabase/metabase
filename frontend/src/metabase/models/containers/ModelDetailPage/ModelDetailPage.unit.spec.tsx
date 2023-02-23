@@ -180,6 +180,7 @@ type SetupOpts = {
   tab?: string;
   actions?: WritebackAction[];
   hasActionsEnabled?: boolean;
+  hasDataPermissions?: boolean;
   collections?: Collection[];
   usedBy?: Question[];
 };
@@ -191,6 +192,7 @@ async function setup({
   collections = [],
   usedBy = [],
   hasActionsEnabled = false,
+  hasDataPermissions = true,
 }: SetupOpts) {
   const scope = nock(location.origin).persist();
 
@@ -198,9 +200,15 @@ async function setup({
 
   const card = model.card() as Card;
 
-  setupDatabasesEndpoints(scope, [
-    hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
-  ]);
+  if (hasDataPermissions) {
+    setupDatabasesEndpoints(scope, [
+      hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
+    ]);
+  } else {
+    setupDatabasesEndpoints(scope, []);
+    scope.get(`/api/database/${TEST_DATABASE.id}`).reply(403);
+    scope.get(`/api/database/${TEST_DATABASE_WITH_ACTIONS.id}`).reply(403);
+  }
 
   scope
     .get("/api/card")
@@ -503,7 +511,7 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
-        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+        it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
 
@@ -522,6 +530,7 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
@@ -540,6 +549,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
+          expect(await screen.findByLabelText("Run")).toBeInTheDocument();
         });
 
         it("lists existing public query actions with public label", async () => {
@@ -568,6 +578,7 @@ describe("ModelDetailPage", () => {
           expect(screen.getByText("Create")).toBeInTheDocument();
           expect(screen.getByText("Update")).toBeInTheDocument();
           expect(screen.getByText("Delete")).toBeInTheDocument();
+          expect(await screen.findAllByLabelText("Run")).toHaveLength(3);
         });
 
         it("allows to create a new query action", async () => {
@@ -800,6 +811,29 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Archive")).not.toBeInTheDocument();
         });
       });
+
+      describe("no data permissions", () => {
+        it("doesn't show model editor links", async () => {
+          await setup({
+            model: getModel(),
+            hasDataPermissions: false,
+            tab: "schema",
+          });
+          expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
+          expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow running actions", async () => {
+          const model = getModel();
+          const actions = [
+            ...createMockImplicitCUDActions(model.id()),
+            createMockQueryAction({ model_id: model.id() }),
+          ];
+          await setupActions({ model, actions, hasDataPermissions: false });
+
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
+        });
+      });
     });
   });
 
@@ -823,6 +857,18 @@ describe("ModelDetailPage", () => {
         list.getByRole("link", { name: TABLE_1.displayName() }),
       ).toHaveAttribute("href", TABLE_1.newQuestion().getUrl());
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
+    });
+
+    describe("no data permissions", () => {
+      it("shows limited model info", async () => {
+        await setup({ model, hasDataPermissions: false });
+
+        expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
+        expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(TEST_TABLE.display_name),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 

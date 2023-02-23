@@ -434,6 +434,19 @@ describe("scenarios > question > notebook", () => {
     popover().contains("A_COLUMN");
     popover().contains("No description");
   });
+
+  it("should allow to pick a saved question when there are models", () => {
+    cy.createNativeQuestion({
+      name: "Orders, Model",
+      dataset: true,
+      native: { query: "SELECT * FROM ORDERS" },
+    });
+
+    startNewQuestion();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("Orders, Count").click();
+    visualize();
+  });
 });
 
 function addSimpleCustomColumn(name) {
