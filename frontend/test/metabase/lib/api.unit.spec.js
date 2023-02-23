@@ -1,16 +1,18 @@
 import nock from "nock";
+import fetchMock from "fetch-mock";
 import api, { GET, POST, PUT } from "metabase/lib/api";
 api.basename = "";
 
 describe("api", () => {
   afterEach(() => {
     nock.cleanAll();
+    fetchMock.reset();
   });
 
   const successResponse = { status: "ok" };
 
   it("should GET", async () => {
-    nock(location.origin).get("/hello").reply(200, successResponse);
+    fetchMock.get("path:/hello", { status: 200, body: successResponse });
     const hello = GET("/hello");
     const response = await hello();
     expect(response).toEqual({ status: "ok" });

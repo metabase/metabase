@@ -23,7 +23,7 @@ describe.skip("issue 22527", () => {
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
     assertion();
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });

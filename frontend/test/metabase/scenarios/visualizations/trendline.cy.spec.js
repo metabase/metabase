@@ -30,6 +30,9 @@ describe("scenarios > question > trendline", () => {
     sidebar().within(() => {
       cy.icon("line").click();
     });
+    cy.findByTestId("Line-button").within(() => {
+      cy.icon("gear").click();
+    });
     cy.findByText("Display").click();
     cy.findByText("Trend line").parent().children().last().click();
 
