@@ -22,8 +22,13 @@ const COLLECTIONS = {
     id: CURRENT_USER.personal_collection_id,
     name: "My personal collection",
     personal_owner_id: CURRENT_USER.id,
+    here: ["card"],
   }),
-  REGULAR: createMockCollection({ id: 1, name: "Regular collection" }),
+  REGULAR: createMockCollection({
+    id: 1,
+    name: "Regular collection",
+    here: ["card"],
+  }),
 };
 
 function mockCollectionTreeEndpoint() {
