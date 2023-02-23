@@ -4,7 +4,6 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
-import { getRequestBody } from "__support__/server-mocks/utils";
 
 export function setupActionEndpoints(action: WritebackAction) {
   fetchMock.get(`path:/api/action/${action.id}`, action);
@@ -27,8 +26,9 @@ export function setupActionsEndpoints(
 
   fetchMock.post(
     { url: "path:/api/action", overwriteRoutes: true },
-    async (url, request) => {
-      const data = await getRequestBody<WritebackAction>(url, request);
+    async url => {
+      const call = fetchMock.lastCall(url);
+      const data = await call?.request?.json();
       if (data.type === "implicit") {
         return createMockImplicitQueryAction(data);
       }
