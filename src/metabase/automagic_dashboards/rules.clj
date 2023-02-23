@@ -1,5 +1,5 @@
 (ns metabase.automagic-dashboards.rules
-  "Validation, transformation to cannonical form, and loading of heuristics."
+  "Validation, transformation to canonical form, and loading of heuristics."
   (:require
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
