@@ -164,26 +164,28 @@
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
 
-(defn- cmd-type-ddl? [cmd-type]
-  ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
-  ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
-  (< cmd-type CommandInterface/ALTER_SEQUENCE))
-
-(defn- contains-ddl? [{:keys [command-types remaining-sql]}]
+(defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
-     (or (some cmd-type-ddl? cmd-type-nums)
-         (some? remaining-sql)))))
+     ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+     ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+     (and (every? #{CommandInterface/INSERT
+                    CommandInterface/MERGE
+                    CommandInterface/TRUNCATE_TABLE
+                    CommandInterface/UPDATE
+                    CommandInterface/DELETE
+                    ;; Read-only commands might not make sense for actions, but they are allowed
+                    CommandInterface/SELECT
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
 
-;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
-;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
-
-(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
+(defn- check-action-commands [{:keys [database] {:keys [query]} :native}]
   (when query
-    (when-let [query-classification (classify-query database query)]
-      (when (contains-ddl? query-classification)
-        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
-                        {:classification query-classification}))))))
+    (when-let [classified-query (classify-query database query)]
+      (when-not (every-command-allowed-for-actions? classified-query)
+        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with H2."
+                        {:classification classified-query}))))))
 
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
@@ -195,10 +197,10 @@
 
 (defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query database query)]
-      (when-not (read-only-statements? query-classification)
+    (let [classified-query (classify-query database query)]
+      (when-not (read-only-statements? classified-query)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:classification query-classification}))))))
+                        {:classification classified-query}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
@@ -209,7 +211,7 @@
 (defmethod driver/execute-write-query! :h2
   [driver query]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-action-commands query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
