@@ -1,4 +1,7 @@
 import {
+  addCustomColumn,
+  addSummaryField,
+  addSummaryGroupingField,
   enterCustomColumnDetails,
   filter,
   filterField,
@@ -448,13 +451,13 @@ describe("scenarios > question > notebook", () => {
     visualize();
   });
 
-  it(
-    'should show Median aggregation function for databases that support "percentile-aggregations" driver feature',
-    { tags: "@external" },
-    () => {
+  describe('"median" aggregation function', { tags: "@external" }, () => {
+    beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
+    });
 
+    it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature', () => {
       // add a question with "Products" and "Median of Price" aggregation by "Category"
       startNewQuestion();
       popover().within(() => {
@@ -462,26 +465,62 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Products").click();
       });
 
-      cy.findByText("Pick the metric you want to see").click();
-      popover().within(() => {
-        cy.findByText("Median of ...").click();
-        cy.findByText("Price").click();
-      });
+      addSummaryField({ metric: "Median of ...", field: "Price" });
 
       getNotebookStep("summarize")
         .findByText("Median of Price")
         .should("be.visible");
 
-      cy.findByText("Pick a column to group by").click();
-      popover().within(() => {
-        cy.findByText("Category").click();
-      });
+      addSummaryGroupingField({ field: "Category" });
 
       visualize();
 
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
-    },
-  );
+    });
+
+    it("should support custom columns", () => {
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("QA Postgres12").click();
+        cy.findByText("Products").click();
+      });
+
+      addCustomColumn();
+      enterCustomColumnDetails({
+        formula: "Price * 10",
+        name: "Mega price",
+      });
+      cy.button("Done").click();
+
+      addSummaryField({ metric: "Median of ...", field: "Mega price" });
+      addSummaryField({ metric: "Count of rows" });
+      addSummaryGroupingField({ field: "Category" });
+      addSummaryGroupingField({ field: "Vendor" });
+
+      summarize({ mode: "notebook" });
+
+      addSummaryField({
+        metric: "Median of ...",
+        field: "Median of Mega price",
+        stage: 1,
+      });
+      addSummaryField({ metric: "Median of ...", field: "Count", stage: 1 });
+      addSummaryGroupingField({ field: "Category", stage: 1 });
+
+      visualize();
+
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Median of Median of Mega price")
+        .should("contain", "Median of Count");
+
+      cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+      cy.findByTestId("add-aggregation-button").click();
+
+      popover().within(() => {
+        cy.findByText("Median of ...").should("be.visible");
+      });
+    });
+  });
 });
 
 function addSimpleCustomColumn(name) {
