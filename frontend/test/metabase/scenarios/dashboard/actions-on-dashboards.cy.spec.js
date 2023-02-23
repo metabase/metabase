@@ -13,12 +13,14 @@ import {
   sidebar,
   popover,
   filterWidget,
+  createImplicitAction,
 } from "__support__/e2e/helpers";
 
 import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
+const MODEL_NAME = "Test Action Model";
 
 ["mysql", "postgres"].forEach(dialect => {
   describe(
@@ -75,27 +77,11 @@ const TEST_TABLE = "scoreboard_actions";
         cy.findByPlaceholderText("My new fantastic action").type("Add Zebras");
         cy.findByText("Create").click();
 
-        cy.createDashboard({ name: `action packed dash` }).then(
-          ({ body: { id: dashboardId } }) => {
-            visitDashboard(dashboardId);
-          },
-        );
-
-        editDashboard();
-        cy.icon("click").click();
-        cy.get("aside").within(() => {
-          cy.button("Pick an action").click();
+        createDashboardWithActionButton({
+          actionName: "Add Zebras",
         });
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Test Model").click();
-          cy.findByText("Add Zebras").click();
-          cy.button("Done").click();
-        });
-
-        saveDashboard();
-
-        cy.button("Click Me").click();
+        cy.button("Add Zebras").click();
 
         cy.wait("@executeAPI");
 
@@ -110,39 +96,17 @@ const TEST_TABLE = "scoreboard_actions";
       it("adds an implicit create action to a dashboard and runs it", () => {
         createModelFromTable(TEST_TABLE);
         cy.get("@modelId").then(id => {
-          cy.request({
-            url: "/api/action",
-            method: "POST",
-            body: {
-              kind: "row/create",
-              name: "Create",
-              type: "implicit",
-              model_id: id,
-            },
+          createImplicitAction({
+            kind: "create",
+            model_id: id,
           });
         });
 
-        cy.createDashboard({ name: `action packed dash` }).then(
-          ({ body: { id: dashboardId } }) => {
-            visitDashboard(dashboardId);
-          },
-        );
-
-        editDashboard();
-        cy.icon("click").click();
-        cy.get("aside").within(() => {
-          cy.findByPlaceholderText("Button text").clear().type("Create Team");
-          cy.button("Pick an action").click();
+        createDashboardWithActionButton({
+          actionName: "Create",
         });
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Test Model").click();
-          cy.findByText("Create").click();
-          cy.button("Done").click();
-        });
-
-        saveDashboard();
-        cy.button("Create Team").click();
+        cy.button("Create").click();
 
         modal().within(() => {
           cy.findByPlaceholderText("team_name").type("Zany Zebras");
@@ -164,60 +128,26 @@ const TEST_TABLE = "scoreboard_actions";
       });
 
       it("adds an implicit update action to a dashboard and runs it", () => {
+        const actionName = "Update";
+
         createModelFromTable(TEST_TABLE);
+
         cy.get("@modelId").then(id => {
-          cy.request({
-            url: "/api/action",
-            method: "POST",
-            body: {
-              kind: "row/update",
-              name: "Update",
-              type: "implicit",
-              model_id: id,
-            },
+          createImplicitAction({
+            kind: "update",
+            model_id: id,
           });
         });
 
-        cy.createDashboard({ name: `action packed dash` }).then(
-          ({ body: { id: dashboardId } }) => {
-            visitDashboard(dashboardId);
-          },
-        );
-
-        editDashboard();
-        setFilter("ID");
-        sidebar().within(() => {
-          cy.button("Done").click();
+        createDashboardWithActionButton({
+          actionName,
+          idFilter: true,
         });
-
-        cy.icon("click").click();
-        cy.get("aside").within(() => {
-          cy.findByPlaceholderText("Button text").clear().type("Update Team");
-          cy.button("Pick an action").click();
-        });
-
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Test Model").click();
-          cy.findByText("Update").click();
-          cy.findAllByText(/ask the user/i)
-            .first()
-            .click();
-        });
-
-        popover().within(() => {
-          cy.findByText("ID").click();
-        });
-
-        cy.findByRole("dialog").within(() => {
-          cy.button("Done").click();
-        });
-
-        saveDashboard();
 
         filterWidget().click();
         addWidgetStringFilter("5");
 
-        cy.button("Update Team").click();
+        cy.button(actionName).click();
 
         cy.wait("@executePrefetch");
         // let's check that the existing values are pre-filled correctly
@@ -257,40 +187,19 @@ const TEST_TABLE = "scoreboard_actions";
         });
 
         createModelFromTable(TEST_TABLE);
+
         cy.get("@modelId").then(id => {
-          cy.request({
-            url: "/api/action",
-            method: "POST",
-            body: {
-              kind: "row/delete",
-              name: "Delete",
-              type: "implicit",
-              model_id: id,
-            },
+          createImplicitAction({
+            kind: "delete",
+            model_id: id,
           });
         });
 
-        cy.createDashboard({ name: `action packed dash` }).then(
-          ({ body: { id: dashboardId } }) => {
-            visitDashboard(dashboardId);
-          },
-        );
-
-        editDashboard();
-        cy.icon("click").click();
-        cy.get("aside").within(() => {
-          cy.findByPlaceholderText("Button text").clear().type("Delete Team");
-          cy.button("Pick an action").click();
+        createDashboardWithActionButton({
+          actionName: "Delete",
         });
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Test Model").click();
-          cy.findByText("Delete").click();
-          cy.button("Done").click();
-        });
-
-        saveDashboard();
-        cy.button("Delete Team").click();
+        cy.button("Delete").click();
 
         modal().within(() => {
           cy.findByPlaceholderText("id").type("3");
@@ -315,7 +224,7 @@ const createModelFromTable = tableName => {
     cy.createQuestion(
       {
         database: WRITABLE_DB_ID,
-        name: "Test Model",
+        name: MODEL_NAME,
         query: {
           "source-table": tableId,
         },
@@ -328,3 +237,52 @@ const createModelFromTable = tableName => {
     );
   });
 };
+
+function createDashboardWithActionButton({
+  actionName,
+  modelName = MODEL_NAME,
+  idFilter = false,
+}) {
+  cy.createDashboard({ name: "action packed dashboard" }).then(
+    ({ body: { id: dashboardId } }) => {
+      visitDashboard(dashboardId);
+    },
+  );
+
+  editDashboard();
+
+  if (idFilter) {
+    setFilter("ID");
+    sidebar().within(() => {
+      cy.button("Done").click();
+    });
+  }
+
+  cy.button("Add action").click();
+  cy.get("aside").within(() => {
+    cy.findByPlaceholderText("Button text").clear().type(actionName);
+    cy.button("Pick an action").click();
+  });
+
+  cy.findByRole("dialog").within(() => {
+    cy.findByText(modelName).click();
+    cy.findByText(actionName).click();
+  });
+
+  if (idFilter) {
+    cy.findByRole("dialog").within(() => {
+      cy.findAllByText(/ask the user/i)
+        .first()
+        .click();
+    });
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+  }
+
+  cy.findByRole("dialog").within(() => {
+    cy.button("Done").click();
+  });
+
+  saveDashboard();
+}
