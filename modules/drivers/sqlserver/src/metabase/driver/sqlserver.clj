@@ -4,8 +4,10 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [honeysql.format :as hformat]
    [honeysql.helpers :as hh]
    [java-time :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -19,7 +21,10 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -692,7 +697,7 @@
   ;; over clause is :breakout of original query
   ;; within group is field or expression to be aggregated
 
-  (hsql/call :window-percentile-cont
+  (hx/call :window-percentile-cont
              (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)
              (map (partial sql.qp/->honeysql driver) (::partition-by sql.qp/*inner-query*))))
 

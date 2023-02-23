@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sqlserver :as sqlserver]
-   [metabase.models :refer [Database]]
+   [metabase.models :refer [Card Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -349,7 +349,7 @@
 
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
 
-(deftest precentile-aggregations-median-test
+(deftest percentile-aggregations-median-test
   (mt/test-driver
    :sqlserver
    (testing "Use of mbql :median aggregation yields correct result rows"
@@ -363,7 +363,7 @@
        (is (= [[2 2.5] [3 2.0] [4 2.0]]
               (mt/rows result)))))))
 
-(deftest precentile-aggregations-various-values-test
+(deftest percentile-aggregations-various-values-test
   (mt/test-driver
    :sqlserver
    (testing "Aggregation is computed correctly for various percentile values"
@@ -643,3 +643,29 @@
                     :order-by [[:desc [:aggregation 2]]]
                     :limit 5})
                   (mt/formatted-rows [int int 2.0 2.0]))))))))
+
+(comment
+  (def all-p-test-vars [#'metabase.driver.sqlserver-test/percentile-aggregations-with-joins-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-as-source-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-duplicate-name-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-various-values-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-with-expressions-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-column-ordering-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-median-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-breakout-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-card-test
+                           #'metabase.driver.sqlserver-test/percentile-aggregations-order-by-reference-test])
+
+  (mt/set-test-drivers! #{:sqlserver})
+  
+  (metabase.test-runner/find-and-run-tests-repl {:only ['metabase.driver.sqlserver-test]})
+
+  (hawk.core/run-tests all-p-test-vars {:mode :repl})
+
+  (-> (ns-publics 'metabase.driver.sqlserver-test) vals
+      #_(->> (map #(-> % meta :name)))
+      (->> (filter #(re-find #"perc" (-> % meta :name name))))
+      #_count
+      #_(->> (def all-p-test-vars)))
+  (count all-perc-test-vars)
+  )
