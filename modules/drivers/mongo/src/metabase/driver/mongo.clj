@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [java-time :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -23,11 +24,10 @@
    [monger.core :as mg]
    [monger.db :as mdb]
    [monger.json]
-   [monger.query :as mq]
    [taoensso.nippy :as nippy]
    [toucan.db :as db])
   (:import
-   (com.mongodb DB)
+   (com.mongodb DB DBObject)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (org.bson.types ObjectId)))
 
@@ -193,12 +193,30 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defn- from-db-object
+  "This is mostly a copy of the monger library's own function of the same name with the
+  only difference that it uses an ordered map to represent the document. This ensures that
+  the order of the top level fields of the table is preserved. For anything that's not a
+  DBObject, it falls back to the original function."
+  [input]
+  (if (instance? DBObject input)
+    (let [^DBObject dbobj input]
+      (reduce (fn [m ^String k]
+                (assoc m (keyword k) (m.conversion/from-db-object (.get dbobj k) true)))
+              (ordered-map/ordered-map)
+              (.keySet dbobj)))
+    (m.conversion/from-db-object input true)))
+
 (defn- sample-documents [^com.mongodb.DB conn table sort-direction]
-  (-> (.getCollection conn (:name table))
-      mq/empty-query
-      (assoc :sort {:_id sort-direction}
-             :limit metadata-queries/nested-field-sample-limit)
-      mq/exec))
+  (let [collection (.getCollection conn (:name table))]
+    (with-open [cursor (doto (.find collection
+                                    (m.conversion/to-db-object {})
+                                    (m.conversion/as-field-selector []))
+                         (.limit metadata-queries/nested-field-sample-limit)
+                         (.skip 0)
+                         (.sort (m.conversion/to-db-object {:_id sort-direction}))
+                         (.batchSize 256))]
+      (map from-db-object cursor))))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -214,7 +232,7 @@
          (if-not k
            fields
            (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-     {}
+     (ordered-map/ordered-map)
      (concat (sample-documents conn table 1) (sample-documents conn table -1)))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
@@ -234,6 +252,8 @@
 
 (doseq [feature [:basic-aggregations
                  :expression-aggregations
+                 :inner-join
+                 :left-join
                  :nested-fields
                  :nested-queries
                  :native-parameters

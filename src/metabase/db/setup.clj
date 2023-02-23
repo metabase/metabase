@@ -9,6 +9,7 @@
   (:require
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   metabase.db.custom-migrations ;; load our custom migrations
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

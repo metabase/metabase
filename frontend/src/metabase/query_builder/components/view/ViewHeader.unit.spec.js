@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
@@ -157,7 +157,7 @@ function setupSavedNative(props = {}) {
     name: "Our analytics",
   };
 
-  nock(location.origin).get("/api/collection/root").reply(200, collection);
+  fetchMock.get("path:/api/collection/root", collection);
 
   const utils = setup({ question: getSavedNativeQuestion(), ...props });
 
@@ -355,14 +355,10 @@ describe("ViewHeader", () => {
 
       describe(questionType, () => {
         beforeEach(() => {
-          nock(location.origin).get("/api/collection/root").reply(200, {
+          fetchMock.get("path:/api/collection/root", {
             id: "root",
             name: "Our analytics",
           });
-        });
-
-        afterEach(() => {
-          nock.cleanAll();
         });
 
         it("calls save function on title update", () => {
@@ -525,10 +521,6 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();

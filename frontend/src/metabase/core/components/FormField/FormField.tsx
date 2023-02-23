@@ -45,7 +45,12 @@ const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <FieldRoot {...props} ref={ref} orientation={orientation}>
+    <FieldRoot
+      {...props}
+      ref={ref}
+      alignment={alignment}
+      orientation={orientation}
+    >
       {alignment === "start" && children}
       {(title || description) && (
         <FieldCaption alignment={alignment} orientation={orientation}>

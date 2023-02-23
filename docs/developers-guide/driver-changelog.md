@@ -6,16 +6,24 @@ title: Driver interface changelog
 
 ## Metabase 0.46.0
 
-- `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase needs
-  a limited sample from a table, like when fingerprinting. The default implementation defined in the
-  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the
-  sample rows. This is good enough in most cases, so this multimethod should not be implemented unless really
-  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
-  respect limit clauses.
+- The multimethod `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase
+  needs a limited sample from a table, like when fingerprinting. The default implementation defined in the
+  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the sample
+  rows. This is good enough in most cases, so this multimethod should not be implemented unless really
+  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not respect
+  limit clauses.
 
-- `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by implementations of
-  `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
-   implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
+- The multimethod `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by
+  implementations of `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to
+  use the default SQL implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument
+  types across all units.
+
+- The multimethod `metabase.query-processor.util.add-alias-info/field-reference` has been added. This method is used
+  to produce a reference to a field by the `add-alias-info` middleware. (Note that this middleware is optional,
+  currently it is only used by the SQL and MongoDB drivers.) The default implementation returns the name of the field
+  instance. It should be overridden if just the name is not a valid a valid reference. For example, MongoDB supports
+  nested documents and references to nested fields should contain the whole path. See the namespace
+  `metabase.driver.mongo.query-processor` for an alternative implementation.
 
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/syncable-schemas` (aliased as
   `metabase.driver.sql-jdbc.sync/syncable-schemas`), which was deprecated in 0.43.0, has been removed. Implement

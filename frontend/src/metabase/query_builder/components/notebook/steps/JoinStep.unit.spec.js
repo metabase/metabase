@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
@@ -174,32 +174,28 @@ describe.skip("Notebook Editor > Join Step", () => {
   }
 
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/database")
-      .reply(200, {
-        total: 1,
-        data: [SAMPLE_DATABASE.getPlainObject()],
-      });
-    nock(location.origin).get("/api/database/1/schemas").reply(200, ["PUBLIC"]);
-    nock(location.origin)
-      .get("/api/database/1/schema/PUBLIC")
-      .reply(
-        200,
-        SAMPLE_DATABASE.tables.filter(table => table.schema === "PUBLIC"),
-      );
-    nock(location.origin)
-      .get("/api/search?models=dataset&limit=1")
-      .reply(200, {
+    fetchMock.get("path:/api/database", {
+      total: 1,
+      data: [SAMPLE_DATABASE.getPlainObject()],
+    });
+    fetchMock.get("path:/api/database/1/schemas", ["PUBLIC"]);
+    fetchMock.get(
+      "path:/api/database/1/schema/PUBLIC",
+      SAMPLE_DATABASE.tables.filter(table => table.schema === "PUBLIC"),
+    );
+    fetchMock.get(
+      {
+        url: "path:/api/search",
+        query: { models: "dataset", limit: 1 },
+      },
+      {
         data: [],
         limit: 1,
         models: ["dataset"],
         offset: 0,
         total: 0,
-      });
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+      },
+    );
   });
 
   it("displays a source table and suggests to pick a join table", async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -6,48 +6,44 @@ import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 
 import Actions, {
-  CreateQueryActionParams,
-  UpdateQueryActionParams,
+  CreateActionParams,
+  UpdateActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
-  ActionFormSettings,
   Card,
+  CardId,
   DatabaseId,
   WritebackActionId,
+  WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-
-import { getDefaultFormSettings } from "../../utils";
-import {
-  newQuestion,
-  convertActionToQuestion,
-  convertQuestionToAction,
-} from "./utils";
+import { isSavedAction } from "../../utils";
+import ActionContext, { useActionContext } from "./ActionContext";
 import ActionCreatorView from "./ActionCreatorView";
+import { ACE_ELEMENT_ID } from "./QueryActionEditor";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
 
 interface OwnProps {
   actionId?: WritebackActionId;
-  modelId: number;
-  databaseId?: number;
+  modelId?: CardId;
+  databaseId?: DatabaseId;
+  onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
 interface ActionLoaderProps {
-  action?: WritebackQueryAction;
+  initialAction?: WritebackAction;
 }
 
 interface ModelLoaderProps {
@@ -60,8 +56,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onCreateAction: (params: CreateQueryActionParams) => void;
-  onUpdateAction: (params: UpdateQueryActionParams) => void;
+  onCreateAction: (params: CreateActionParams) => void;
+  onUpdateAction: (params: UpdateActionParams) => void;
 }
 
 export type ActionCreatorProps = OwnProps;
@@ -82,119 +78,98 @@ const mapDispatchToProps = {
   onUpdateAction: Actions.actions.update,
 };
 
-const EXAMPLE_QUERY =
-  "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
-
-function resolveQuestion(
-  action: WritebackQueryAction | undefined,
-  { metadata, databaseId }: { metadata: Metadata; databaseId?: DatabaseId },
-) {
-  return action
-    ? convertActionToQuestion(action, metadata)
-    : newQuestion(metadata, databaseId);
-}
-
 function ActionCreator({
-  action,
   model,
-  databaseId,
-  metadata,
   onCreateAction,
   onUpdateAction,
+  onSubmit,
   onClose,
 }: Props) {
-  const [question, setQuestion] = useState(
-    resolveQuestion(action, { metadata, databaseId }),
-  );
+  const {
+    action,
+    formSettings,
+    isNew,
+    canSave,
+    ui: UIProps,
+    handleActionChange,
+    handleFormSettingsChange,
+    renderEditorBody,
+  } = useActionContext();
 
-  const [formSettings, setFormSettings] = useState<ActionFormSettings>(
-    getDefaultFormSettings(action?.visualization_settings),
-  );
+  const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const isEditable = isNew || model.canWriteActions();
 
-  const query = question.query() as NativeQuery;
-  const isNew = !action && !question.isSaved();
-  const isEditable = model.canWriteActions();
+  const handleCreate = async (values: CreateActionFormValues) => {
+    if (action.type !== "query") {
+      return; // only query action creation is supported now
+    }
 
-  useEffect(() => {
-    setQuestion(resolveQuestion(action, { metadata, databaseId }));
+    const reduxAction = await onCreateAction({
+      ...action,
+      ...values,
+      visualization_settings: formSettings,
+    } as WritebackQueryAction);
+    const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
-    // we do not want to update this any time the props or metadata change, only if action id changes
-  }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Sync the editor state with data from save modal form
+    handleActionChange(values);
 
-  const handleChangeQuestionQuery = useCallback(
-    (newQuery: NativeQuery) => {
-      const newQuestion = newQuery.question();
-      const newParams = getTemplateTagParametersFromCard(newQuestion.card());
-      setQuestion(newQuestion.setQuery(newQuery).setParameters(newParams));
-    },
-    [setQuestion],
-  );
+    setShowSaveModal(false);
+    onSubmit?.(createdAction);
+    onClose?.();
+  };
+
+  const handleUpdate = async () => {
+    if (isSavedAction(action)) {
+      const reduxAction = await onUpdateAction({
+        ...action,
+        model_id: model.id(),
+        visualization_settings: formSettings,
+      });
+      const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      onSubmit?.(updatedAction);
+    }
+  };
+
+  const showSaveModal = () => {
+    ensureAceEditorClosed();
+    setShowSaveModal(true);
+  };
 
   const handleClickSave = () => {
     if (isNew) {
-      setShowSaveModal(true);
+      showSaveModal();
     } else {
-      const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: model.id() });
+      handleUpdate();
       onClose?.();
     }
   };
 
-  const handleCreate = async (values: CreateActionFormValues) => {
-    const action = convertQuestionToAction(question, formSettings);
-    await onCreateAction({
-      ...action,
-      ...values,
-      type: "query",
-    });
-
-    const nextQuestion = question
-      .setDisplayName(values.name)
-      .setDescription(values.description);
-    setQuestion(nextQuestion);
-
-    setShowSaveModal(false);
-    onClose?.();
-  };
-
   const handleCloseNewActionModal = () => setShowSaveModal(false);
-
-  const handleClickExample = () => {
-    setQuestion(
-      question.setQuery(query.setQueryText(query.queryText() + EXAMPLE_QUERY)),
-    );
-  };
-
-  if (!question || !metadata) {
-    return null;
-  }
 
   return (
     <>
       <ActionCreatorView
+        {...UIProps}
+        action={action}
+        formSettings={formSettings}
+        canSave={canSave}
         isNew={isNew}
         isEditable={isEditable}
-        canSave={query.isEmpty()}
-        action={action}
-        question={question}
-        formSettings={formSettings}
-        onChangeQuestionQuery={handleChangeQuestionQuery}
-        onChangeName={newName =>
-          setQuestion(question => question.setDisplayName(newName))
-        }
-        onCloseModal={onClose}
-        onChangeFormSettings={setFormSettings}
+        onChangeAction={handleActionChange}
+        onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
-        onClickExample={handleClickExample}
-      />
-      {showSaveModal && (
+        onCloseModal={onClose}
+      >
+        {renderEditorBody({ isEditable })}
+      </ActionCreatorView>
+      {isSaveModalShown && (
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
             initialValues={{
-              name: question.displayName() ?? "",
-              description: question.description(),
+              name: action.name,
+              description: action.description,
               model_id: model.id(),
             }}
             onCreate={handleCreate}
@@ -206,14 +181,46 @@ function ActionCreator({
   );
 }
 
+function ensureAceEditorClosed() {
+  // @ts-expect-error — `ace` isn't typed yet
+  const editor = window.ace?.edit(ACE_ELEMENT_ID);
+  if (editor) {
+    editor.completer.popup.hide();
+  }
+}
+
+function ActionCreatorWithContext({
+  initialAction,
+  metadata,
+  databaseId,
+  ...props
+}: Props) {
+  return (
+    <ActionContext
+      initialAction={initialAction}
+      databaseId={databaseId}
+      metadata={metadata}
+    >
+      <ActionCreator
+        {...props}
+        initialAction={initialAction}
+        databaseId={databaseId}
+        metadata={metadata}
+      />
+    </ActionContext>
+  );
+}
+
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
+    loadingAndErrorWrapper: false,
+    entityAlias: "initialAction",
   }),
   Questions.load({
-    id: (state: State, props: OwnProps) => props.modelId,
+    id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "modelCard",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(ActionCreator);
+)(ActionCreatorWithContext);

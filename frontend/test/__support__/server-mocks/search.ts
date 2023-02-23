@@ -1,16 +1,11 @@
-import { Scope } from "nock";
-import type {
-  Card,
-  Dashboard,
-  Collection,
-  Table,
-  Database,
-} from "metabase-types/api";
+import fetchMock from "fetch-mock";
+import type { SearchModelType, CollectionItem } from "metabase-types/api";
 
-type SearchItem = Card | Dashboard | Collection | Table | Database;
-
-export function setupSearchEndpoints(scope: Scope, items: SearchItem[]) {
-  scope.get(`/api/search?models=dataset`).reply(200, {
+export function setupSearchEndpoints(
+  items: CollectionItem[],
+  models: SearchModelType[] = [],
+) {
+  fetchMock.get("path:/api/search", {
     available_models: [
       "dashboard",
       "card",
@@ -21,7 +16,7 @@ export function setupSearchEndpoints(scope: Scope, items: SearchItem[]) {
     ],
     data: items,
     total: items.length,
-    models: [], // this should reflect what is in the query param
+    models, // this should reflect what is in the query param
     limit: null,
     offset: null,
     table_db_id: null,

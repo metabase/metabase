@@ -16,7 +16,7 @@ WHERE true
 `;
 
 export const questionDetails = {
-  name: "Native Quesiton With Multiple Filters - Embedding Test",
+  name: "Native Question With Multiple Filters - Embedding Test",
   description: "FooBar",
   native: {
     "template-tags": {

@@ -25,6 +25,7 @@ export interface WritebackActionBase {
   description: string | null;
   parameters: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
+  archived: boolean;
   creator_id: UserId;
   creator: UserInfo;
   updated_at: string;
@@ -150,9 +151,9 @@ export interface FieldSettings {
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
 export interface ActionFormSettings {
   name?: string;
-  type: ActionDisplayType;
+  type?: ActionDisplayType;
   description?: string;
-  fields: FieldSettingsMap;
+  fields?: FieldSettingsMap;
   submitButtonLabel?: string;
   submitButtonColor?: string;
   confirmMessage?: string;

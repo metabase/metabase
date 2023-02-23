@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
+import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
 
 export const DisplayLinkCardWrapper = styled.div`
   padding: 0.5rem;
@@ -22,6 +23,7 @@ export const EditLinkCardWrapper = styled.div`
 `;
 
 export const CardLink = styled(Link)`
+  width: 100%;
   padding: 0.5rem;
   display: flex;
   width: 100%;
@@ -33,4 +35,26 @@ export const CardLink = styled(Link)`
     color: ${color("brand")};
     text-decoration: underline;
   }
+`;
+
+export const SearchResultsContainer = styled.div`
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  min-width: 20rem;
+  overflow-y: auto;
+
+  background-color: ${color("bg-white")};
+  line-height: 24px;
+
+  max-height: 400px;
+
+  border: 1px solid ${color("border")};
+  border-radius: 6px;
+  box-shadow: 0 7px 20px ${color("shadow")};
+  pointer-events: all;
+`;
+
+export const BrandIconWithHorizontalMargin = styled(Icon)`
+  color: ${color("brand")};
+  margin: 0 0.5rem;
 `;

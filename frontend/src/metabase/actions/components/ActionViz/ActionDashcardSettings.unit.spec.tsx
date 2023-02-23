@@ -1,10 +1,8 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import {
-  setupActionEndpoints,
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
@@ -18,6 +16,7 @@ import {
   createMockCard,
   createMockParameter,
   createMockActionParameter,
+  createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
@@ -87,15 +86,10 @@ const setup = (
 ) => {
   const closeSpy = jest.fn();
 
-  const scope = nock(location.origin);
-  setupSearchEndpoints(scope, models);
-  setupCardsEndpoints(scope, models);
-  setupActionsEndpoints(scope, models[0].id, actions1);
-  setupActionsEndpoints(scope, models[1].id, actions2);
-
-  [...actions1, ...actions2].forEach(action => {
-    setupActionEndpoints(scope, action);
-  });
+  setupSearchEndpoints(models.map(model => createMockCollectionItem(model)));
+  setupCardsEndpoints(models);
+  setupActionsEndpoints(models[0].id, actions1);
+  setupActionsEndpoints(models[1].id, actions2);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
@@ -145,9 +139,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
 
     // action name should be visible in library and parameter mapper
-    await waitFor(() =>
-      expect(screen.getAllByText("Action Trois")).toHaveLength(2),
-    );
+    expect(await screen.findByText("Action Trois")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/the values for 'Action Trois'/i),
+    ).toBeInTheDocument();
   });
 
   it("shows parameters for an action", async () => {

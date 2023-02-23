@@ -11,6 +11,8 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
+  downloadAndAssert,
+  assertSheetRowsCount,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -57,8 +59,10 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update the name and description", () => {
+    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
+    cy.wait("@getDashboard");
 
     cy.findByTestId("dashboard-name-heading")
       .click()
@@ -66,6 +70,7 @@ describe("scenarios > dashboard", () => {
       .blur();
 
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
 
     cy.get("main header").within(() => {
       cy.icon("info").click();
@@ -78,8 +83,12 @@ describe("scenarios > dashboard", () => {
         .blur();
     });
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
+
     // refresh page and check that title/desc were updated
     visitDashboard(1);
+    cy.wait("@getDashboard");
+
     cy.findByDisplayValue("Orders per year");
 
     cy.get("main header").within(() => {
@@ -533,6 +542,21 @@ describe("scenarios > dashboard", () => {
     appbar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow downloading card data", () => {
+    visitDashboard(1);
+    cy.findByTestId("dashcard").within(() => {
+      cy.findByTestId("legend-caption").realHover();
+    });
+
+    downloadAndAssert({ fileType: "xlsx", questionId: 1 }, sheet => {
+      expect(sheet["A1"].v).to.eq("ID");
+      expect(sheet["A2"].v).to.eq(1);
+      expect(sheet["A3"].v).to.eq(2);
+
+      assertSheetRowsCount(18760)(sheet);
+    });
   });
 });
 

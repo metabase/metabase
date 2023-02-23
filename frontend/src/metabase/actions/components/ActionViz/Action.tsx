@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -10,18 +11,25 @@ import type {
   WritebackQueryAction,
   Dashboard,
 } from "metabase-types/api";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
+import {
+  generateFieldSettingsFromParameters,
+  setNumericValues,
+} from "metabase/actions/utils";
 
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import Databases from "metabase/entities/databases";
+
+import type Database from "metabase-lib/metadata/Database";
+
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
-  setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
@@ -32,6 +40,7 @@ export interface ActionProps extends VisualizationProps {
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
   isEditingDashcard: boolean;
+  database: Database;
 }
 
 export function ActionComponent({
@@ -118,12 +127,23 @@ function mapStateToProps(state: State, props: ActionProps) {
 }
 
 export function ActionFn(props: ActionProps) {
-  if (!props.dashcard?.action) {
+  const {
+    database,
+    dashcard: { action },
+  } = props;
+
+  const hasActionsEnabled = database?.hasActionsEnabled?.();
+
+  if (!action || !hasActionsEnabled) {
+    const tooltip = !action
+      ? t`No action assigned`
+      : t`Actions are not enabled for this database`;
+
     return (
       <ActionButtonView
         disabled
         icon="bolt"
-        tooltip={t`No action assigned`}
+        tooltip={tooltip}
         settings={props.settings}
         focus={props.isEditingDashcard}
       />
@@ -133,4 +153,10 @@ export function ActionFn(props: ActionProps) {
   return <ConnectedActionComponent {...props} />;
 }
 
-export default connect(mapStateToProps)(ActionFn);
+export default _.compose(
+  Databases.load({
+    id: (state: State, props: ActionProps) =>
+      props.dashcard?.action?.database_id,
+  }),
+  connect(mapStateToProps),
+)(ActionFn);

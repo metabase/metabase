@@ -26,7 +26,7 @@
   "Returns the model from an action type.
    `action-type` can be a string or a keyword."
   [action-type]
-  (case (keyword action-type)
+  (case action-type
     :http     HTTPAction
     :implicit ImplicitAction
     :query    QueryAction))
@@ -48,18 +48,23 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(defn- check-model-is-not-a-saved-question
+  [model-id]
+  (when-not (db/select-one-field :dataset Card :id model-id)
+    (throw (ex-info (tru "Actions must be made with models, not cards.")
+                    {:status-code 400}))))
+
 (t2/define-before-insert Action
   [{model-id :model_id, :as action}]
   (u/prog1 action
-    (when-not (db/select-one-field :dataset Card :id model-id)
-      (throw (ex-info (tru "Actions must be made with models, not cards.")
-                      {:status-code 400})))))
+    (check-model-is-not-a-saved-question model-id)))
 
 (t2/define-before-update Action
-  [{archived? :archived, id :id, :as changes}]
+  [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 changes
-    (when archived?
-      (t2/delete! DashboardCard :action_id id))))
+    (if archived?
+      (t2/delete! DashboardCard :action_id id)
+      (check-model-is-not-a-saved-question model-id))))
 
 (mi/define-methods
  Action
@@ -102,9 +107,14 @@
           model  (type->model (:type action))]
       (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
-                                 (u/update-if-exists :template json/encode)
-                                 (u/update-if-exists :dataset_query json/encode)
-                                 (assoc :action_id (:id action)))]})
+                                 (assoc :action_id (:id action))
+                                 (cond->
+                                   (= (:type action) :implicit)
+                                   (dissoc :database_id)
+                                   (= (:type action) :http)
+                                   (update :template json/encode)
+                                   (= (:type action) :query)
+                                   (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!
@@ -113,7 +123,10 @@
   [{:keys [id] :as action} existing-action]
   (when-let [action-row (not-empty (select-keys action action-columns))]
     (db/update! Action id action-row))
-  (when-let [type-row (not-empty (apply dissoc action :id action-columns))]
+  (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
+                                         (= (or (:type action) (:type existing-action))
+                                            :implicit)
+                                         (dissoc :database_id)))]
     (let [type-row (assoc type-row :action_id id)
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
@@ -175,7 +188,7 @@
   (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
 
 (defn- implicit-action-parameters
-  "Return a set of parameters for the given models"
+  "Returns a map of card-id -> implicit-parameters for the given models"
   [cards]
   (let [card-by-table-id (into {}
                                (for [card cards
@@ -203,41 +216,43 @@
             [(:id card) parameters]))))
 
 (defn select-actions
-  "Find actions with given options and generate implicit parameters for execution.
+  "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
+   model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [actions                         (apply select-actions-without-implicit-params options)
-        implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
-        models-with-implicit-actions    (if known-models
-                                          (->> known-models
-                                               (filter #(contains? implicit-action-model-ids (:id %)))
-                                               distinct)
-                                          (when (seq implicit-action-model-ids)
-                                            (db/select 'Card :id [:in implicit-action-model-ids])))
-        implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
-                                          (implicit-action-parameters models-with-implicit-actions))]
-    (for [{:keys [parameters] :as action} actions
-          :let [model-id        (:model_id action)
-                implicit-params (when (= (:type action) :implicit)
-                                  (let [implicit-params (get implicit-parameters-by-model-id model-id)
-                                        saved-params    (m/index-by :id parameters)]
-                                    (for [param implicit-params
-                                          :let [saved-param (get saved-params (:id param))]]
-                                      (merge param saved-param))))]]
-      (cond-> action
-        implicit-params
-        (m/assoc-some :parameters (cond->> implicit-params
-                                    (= "row/delete" (:kind action))
-                                    (filter ::pk?)
+  (let [actions                       (apply select-actions-without-implicit-params options)
+        implicit-action-model-ids     (set (map :model_id (filter #(= :implicit (:type %)) actions)))
+        implicit-action-models        (if known-models
+                                        (->> known-models
+                                             (filter #(contains? implicit-action-model-ids (:id %)))
+                                             distinct)
+                                        (when (seq implicit-action-model-ids)
+                                          (db/select 'Card :id [:in implicit-action-model-ids])))
+        model-id->db-id               (into {} (for [card implicit-action-models]
+                                                 [(:id card) (:database_id card)]))
+        model-id->implicit-parameters (when (seq implicit-action-models)
+                                        (implicit-action-parameters implicit-action-models))]
+    (for [{:keys [parameters] :as action} actions]
+      (if (= (:type action) :implicit)
+        (let [model-id        (:model_id action)
+              saved-params    (m/index-by :id parameters)
+              implicit-params (cond->> (get model-id->implicit-parameters model-id)
+                                :always
+                                (map (fn [param] (merge param (get saved-params (:id param)))))
 
-                                    (contains? #{"row/update" "row/delete"} (:kind action))
-                                    (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
+                                (= "row/delete" (:kind action))
+                                (filter ::pk?)
 
-                                    :always
-                                    (map #(dissoc % ::pk? ::field-id))
+                                (contains? #{"row/update" "row/delete"} (:kind action))
+                                (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
-                                    :always seq))))))
+                                :always
+                                (map #(dissoc % ::pk? ::field-id)))]
+          (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
+            (seq implicit-params)
+            (assoc :parameters implicit-params)))
+        action))))
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
@@ -247,10 +262,10 @@
 
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
-  "Hydrates action from DashboardCard."
+  "Hydrates action from DashboardCards."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (m/index-by :id (select-actions (map :card dashcards) :id [:in action-ids])))]
+                        (m/index-by :id (select-actions nil :id [:in action-ids])))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
@@ -267,6 +282,7 @@
   (-> (serdes.base/extract-one-basics "Action" action)
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)
+      (update :type name)
       (cond-> (= (:type action) :query)
         (update :database_id serdes.util/export-fk-keyed 'Database :name))))
 
@@ -275,6 +291,7 @@
       serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)
       (update :model_id serdes.util/import-fk 'Card)
+      (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes.util/import-fk-keyed 'Database :name))))
 
@@ -289,7 +306,7 @@
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
-    (when (= (:type action) :query)
+    (when (= (:type action) "query")
       [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
