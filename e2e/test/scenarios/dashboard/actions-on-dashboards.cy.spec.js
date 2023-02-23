@@ -1,3 +1,4 @@
+import { many_data_types_data } from "__support__/e2e/test_tables_data";
 import {
   restore,
   queryWritableDB,
@@ -245,7 +246,7 @@ const MODEL_NAME = "Test Action Model";
         cy.wait(300);
       });
 
-      it("all data types can be updated", () => {
+      it("can update various data types via implicit actions", () => {
         createModelFromTable(TEST_COLUMNS_TABLE);
       it("adds an implicit create action to a dashboard and runs it", () => {
         createModelFromTable(TEST_TABLE);
@@ -448,3 +449,11 @@ function createDashboardWithActionButton({
 
   saveDashboard();
 }
+
+const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
+  cy.findByPlaceholderText(fieldName)
+    .should("have.attr", "type", fieldType)
+    .should("have.value", oldValue)
+    .clear()
+    .type(newValue);
+};
