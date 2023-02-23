@@ -16,9 +16,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
@@ -32,6 +33,10 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
+
+(defmethod sql.qp/honey-sql-version :h2
+  [_driver]
+  2)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -51,7 +56,7 @@
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ arg pattern]]
-  (hx/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -107,10 +112,15 @@
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
-  [obj field]
-  (.get (doto (.getDeclaredField (class obj) field)
-          (.setAccessible true))
-        obj))
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
+          or-else))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
@@ -123,22 +133,57 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- contains-ddl?
+(mu/defn ^:private classify-query :- [:maybe
+                                      [:map
+                                       [:command-types [:vector pos-int?]]
+                                       [:remaining-sql [:maybe :string]]]]
+  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+   More info on command types here:
+   https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+
+  If the h2 parser cannot be built, returns `nil`.
+
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
+  - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
+    Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command      (.prepareCommand h2-parser query)
-            command-type (.getCommandType command)]
-        ;; TODO: do we need to handle CommandList?
-        ;; Command types are organized with all DDL commands listed first
-        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< command-type CommandInterface/ALTER_SEQUENCE))
-      ;; if the query is invalid, then it isn't DDL
-      (catch Throwable _ false))))
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
+        {:command-types command-types
+         ;; when there is no remaining sql: return nil for remaining-sql
+         :remaining-sql (get-field command "remaining" nil)})
+      ;; only valid queries can be classified.
+      (catch org.h2.message.DbException _
+        {:command-types [] :remaining-sql nil}))))
+
+(defn- cmd-type-ddl? [cmd-type]
+  ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+  ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+  (< cmd-type CommandInterface/ALTER_SEQUENCE))
+
+(defn- contains-ddl? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (or (some cmd-type-ddl? cmd-type-nums)
+         (some? remaining-sql)))))
+
+;; TODO: black-list RUNSCRIPT, and a bunch more -- but they're not technically ddl. Should be simple to build off of [[classify-query]].
+;; e.g.: similar to contains-ddl? but instead of cmd-type-ddl? use: #(#{CommandInterface/RUNSCRIPT} %)
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when (and query (contains-ddl? database query))
-    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
+  (when query
+    (when-let [query-classification (classify-query database query)]
+      (when (contains-ddl? query-classification)
+        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
@@ -150,7 +195,7 @@
   [driver hsql-form amount unit]
   (cond
     (= unit :quarter)
-    (recur driver hsql-form (hx/* amount 3) :month)
+    (recur driver hsql-form (h2x/* amount 3) :month)
 
     ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
     ;; for application DB purposes) convert to `:millisecond`
@@ -159,7 +204,12 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (hx/call :dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form))))
+    [:dateadd
+     (h2x/literal unit)
+     (h2x/cast :long (if (number? amount)
+                       (sql.qp/inline-num amount)
+                       amount))
+     (h2x/cast :datetime hsql-form)]))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -196,13 +246,13 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
   [_]
-  (hx/with-database-type-info :%now :TIMESTAMP))
+  (h2x/with-database-type-info :%now :TIMESTAMP))
 
 (defn- add-to-1970 [expr unit-str]
-  (hx/call :timestampadd
-    (hx/literal unit-str)
-    expr
-    (hx/raw "timestamp '1970-01-01T00:00:00Z'")))
+  [:timestampadd
+   (h2x/literal unit-str)
+   expr
+   [:raw "timestamp '1970-01-01T00:00:00Z'"]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
@@ -215,18 +265,18 @@
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hx/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+  [:parsedatetime expr (h2x/literal "yyyyMMddHHmmss")])
 
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hx/call :utf8tostring expr)))
+                               [:utf8tostring expr]))
 
 ;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
-(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) expr))
-(defn- extract    [unit expr] (hx/call :extract    unit              expr))
+(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
+(defn- extract [unit expr] [::h2x/extract unit expr])
 
-(def ^:private extract-integer (comp hx/->integer extract))
+(def ^:private extract-integer (comp h2x/->integer extract))
 
 (defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
 (defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
@@ -234,7 +284,7 @@
 (defmethod sql.qp/date [:h2 :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:h2 :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:h2 :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:h2 :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:h2 :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:h2 :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:h2 :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:h2 :month]            [_ _ expr] (date-trunc :month expr))
@@ -251,45 +301,47 @@
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
   (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
-                                     (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                     (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
-  (hx/call :log10 (sql.qp/->honeysql driver field)))
+  [:log10 (sql.qp/->honeysql driver field)])
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
   [unit x y]
-  (hx/call :datediff (hx/raw (name unit)) (hx/->timestamp x) (hx/->timestamp y)))
+  [:datediff [:raw (name unit)] (h2x/->timestamp x) (h2x/->timestamp y)])
 
 (defn- time-zoned-extract
   "Like H2's extract but accounts for timestamps with time zones."
   [unit x]
-  (extract unit (hx/->timestamp x)))
+  (extract unit (h2x/->timestamp x)))
 
-(defmethod sql.qp/datetime-diff [:h2 :year]    [driver _unit x y] (hx// (sql.qp/datetime-diff driver :month x y) 12))
-(defmethod sql.qp/datetime-diff [:h2 :quarter] [driver _unit x y] (hx// (sql.qp/datetime-diff driver :month x y) 3))
+(defmethod sql.qp/datetime-diff [:h2 :year]    [driver _unit x y] (h2x// (sql.qp/datetime-diff driver :month x y) 12))
+(defmethod sql.qp/datetime-diff [:h2 :quarter] [driver _unit x y] (h2x// (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:h2 :month]
   [_driver _unit x y]
-  (hx/+ (datediff :month x y)
-        ;; datediff counts month boundaries not whole months, so we need to adjust
-        ;; if x<y but x>y in the month calendar then subtract one month
-        ;; if x>y but x<y in the month calendar then add one month
-        (hx/call
-         :case
-         (hx/call :and (hx/call :< x y) (hx/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
-         -1
-         (hx/call :and (hx/call :> x y) (hx/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
-         1
-         :else 0)))
+  (h2x/+ (datediff :month x y)
+         ;; datediff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
+         [:case
+          [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          -1
 
-(defmethod sql.qp/datetime-diff [:h2 :week] [_driver _unit x y] (hx// (datediff :day x y) 7))
+          [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          1
+
+          :else
+          0]))
+
+(defmethod sql.qp/datetime-diff [:h2 :week] [_driver _unit x y] (h2x// (datediff :day x y) 7))
 (defmethod sql.qp/datetime-diff [:h2 :day]  [_driver _unit x y] (datediff :day x y))
-(defmethod sql.qp/datetime-diff [:h2 :hour] [_driver _unit x y] (hx// (datediff :millisecond x y) 3600000))
+(defmethod sql.qp/datetime-diff [:h2 :hour] [_driver _unit x y] (h2x// (datediff :millisecond x y) 3600000))
 (defmethod sql.qp/datetime-diff [:h2 :minute] [_driver _unit x y] (datediff :minute x y))
 (defmethod sql.qp/datetime-diff [:h2 :second] [_driver _unit x y] (datediff :second x y))
 
@@ -396,6 +448,8 @@
   ;; steps that are in the default impl
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
+      ;; in H2, setting readOnly to true doesn't prevent writes
+      ;; see https://github.com/h2database/h2database/issues/1163
       (doto conn
         (.setReadOnly true))
       (catch Throwable e

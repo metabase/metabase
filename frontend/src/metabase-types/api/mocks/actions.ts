@@ -38,6 +38,7 @@ export const createMockQueryAction = ({
     parameters: [],
     creator_id: creator.id,
     creator,
+    archived: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     public_uuid: null,
@@ -49,16 +50,17 @@ export const createMockQueryAction = ({
 export const createMockImplicitQueryAction = ({
   creator = createMockUserInfo(),
   ...opts
-}: Partial<WritebackImplicitQueryAction>): WritebackImplicitQueryAction => ({
+}: Partial<WritebackImplicitQueryAction> = {}): WritebackImplicitQueryAction => ({
   id: 1,
   kind: "row/create",
-  name: "",
+  name: "Create",
   description: "",
   model_id: 1,
   parameters: [],
   visualization_settings: undefined,
   creator_id: creator.id,
   creator,
+  archived: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   public_uuid: null,

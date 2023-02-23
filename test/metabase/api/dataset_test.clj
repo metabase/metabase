@@ -284,8 +284,8 @@
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
-                             " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
+                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z')"
+                             " AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
                              "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
@@ -335,7 +335,7 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:mongo :presto :h2 :sqlite} driver/*driver*)
+        (when (#{:mongo :h2 :sqlite} driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
             ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].

@@ -44,3 +44,9 @@ export const ModalLeft = styled.div`
   flex-direction: column;
   border-right: 1px solid ${color("border")};
 `;
+
+export const ModalRight = styled.div`
+  position: relative;
+  display: flex;
+  overflow-y: auto;
+`;

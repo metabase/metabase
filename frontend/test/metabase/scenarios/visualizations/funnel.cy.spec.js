@@ -29,7 +29,7 @@ describe("scenarios > visualizations > funnel chart", () => {
       },
       display: "funnel",
     });
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     sidebar().findByText("Data").click();
   });
 

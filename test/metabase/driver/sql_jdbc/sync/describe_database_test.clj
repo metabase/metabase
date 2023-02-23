@@ -15,6 +15,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db])
   (:import
    (java.sql ResultSet)))
@@ -24,18 +25,24 @@
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest simple-select-probe-query-test
-  (testing "simple-select-probe-query shouldn't actually return any rows"
+  (testing "honey-sql-version produces the same query"
+    (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                      (binding [hx/*honey-sql-version* version]
+                        (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
+      1
+      2))
+  (testing "real drivers produce correct query"
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
-      ;; at the time of this writing, :h2 uses Honey SQL 1 while Postgres uses Honey SQL 2; test both
       :h2
-      :postgres)
+      :postgres))
+  (testing "simple-select-probe-query shouldn't actually return any rows"
     (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query
-                (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                  (mt/native-query {:query sql})))))))))
+                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                   (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is

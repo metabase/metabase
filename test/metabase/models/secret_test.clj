@@ -182,6 +182,6 @@
                 mime-type mime-types]
           (testing (format "property %s with mime-type %s" property mime-type)
             (let [decoded (decode-ssl-db-property content mime-type property)]
-              (is (instance? (Class/forName "[B") decoded))
+              (is (bytes? decoded))
               (is (= content
-                     (String. decoded "UTF-8"))))))))))
+                     (String. ^bytes decoded "UTF-8"))))))))))

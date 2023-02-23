@@ -1,25 +1,36 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-
-import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
-
-import { isNotNull } from "metabase/core/utils/types";
-import StackedInsightIcon from "./StackedInsightIcon";
+import Link from "metabase/core/components/Link";
+import EntityMenu from "metabase/components/EntityMenu";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
+import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
+import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
+import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
-  ActionTitle,
+  ActionCard,
+  ActionHeader,
+  ActionRunButtonContainer,
+  ActionRunButton,
   ActionSubtitle,
-  Card,
+  ActionSubtitlePart,
+  ActionTitle,
   CodeBlock,
-  EditorLink,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
-  ActionSubtitlePart,
+  MenuIcon,
 } from "./ModelActionListItem.styled";
 
 interface Props {
   action: WritebackAction;
-  editorUrl: string;
+  actionUrl: string;
   canWrite: boolean;
+  canRun: boolean;
+  onArchive: (action: WritebackAction) => void;
+}
+
+interface ModalProps {
+  onClose?: () => void;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -29,44 +40,95 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 function ImplicitActionCardContent() {
   return (
     <ImplicitActionCardContentRoot>
-      <StackedInsightIcon />
+      <ImplicitActionIcon size={32} />
       <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
     </ImplicitActionCardContentRoot>
   );
 }
 
-function ModelActionListItem({ action, editorUrl, canWrite }: Props) {
-  const hasEditorLink = action.type !== "implicit";
+function ModelActionListItem({
+  action,
+  actionUrl,
+  canWrite,
+  canRun,
+  onArchive,
+}: Props) {
+  const canArchive = canWrite && action.type !== "implicit";
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
 
-  const renderCardContent = () =>
-    action.type === "query" ? (
-      <QueryActionCardContent action={action} />
-    ) : action.type === "implicit" ? (
-      <ImplicitActionCardContent />
-    ) : null;
+  const handleArchive = useCallback(() => {
+    askConfirmation({
+      title: t`Archive ${action.name}?`,
+      confirmButtonText: t`Archive`,
+      onConfirm: () => onArchive(action),
+    });
+  }, [action, askConfirmation, onArchive]);
 
-  const subtitleParts = [
-    action.public_uuid && t`Public Action`,
-    // Remove this optional chaining after removed all the existing actions without creators
-    action.creator?.common_name && t`Created by ${action.creator.common_name}`,
-  ].filter(isNotNull);
+  const menuItems = useMemo(
+    () => [
+      {
+        title: canWrite ? t`Edit` : t`View`,
+        icon: canWrite ? "pencil" : "eye",
+        link: actionUrl,
+      },
+      canArchive && {
+        title: t`Archive`,
+        icon: "archive",
+        action: handleArchive,
+      },
+    ],
+    [actionUrl, canWrite, canArchive, handleArchive],
+  );
 
   return (
     <>
-      <ActionTitle>{action.name}</ActionTitle>
-      {subtitleParts.length > 0 && (
-        <ActionSubtitle>
-          {subtitleParts.map((subtitlePart, index) => (
-            <ActionSubtitlePart key={index}>{subtitlePart}</ActionSubtitlePart>
-          ))}
-        </ActionSubtitle>
-      )}
-      <Card>
-        {renderCardContent()}
-        {hasEditorLink && (
-          <EditorLink icon={canWrite ? "pencil" : "eye"} to={editorUrl} />
+      <ActionHeader>
+        <div>
+          <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
+          <ActionSubtitle>
+            {action.public_uuid && (
+              <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
+            )}
+            {action.creator && (
+              <ActionSubtitlePart>
+                {t`Created by ${action.creator.common_name}`}
+              </ActionSubtitlePart>
+            )}
+          </ActionSubtitle>
+        </div>
+        <EntityMenu
+          items={menuItems}
+          trigger={<MenuIcon name="ellipsis" size={14} />}
+        />
+      </ActionHeader>
+      <ActionCard>
+        {action.type === "query" ? (
+          <QueryActionCardContent action={action} />
+        ) : action.type === "implicit" ? (
+          <ImplicitActionCardContent />
+        ) : null}
+        {canRun && (
+          <ModalWithTrigger
+            triggerElement={
+              <ActionRunButtonContainer>
+                <ActionRunButton
+                  as={Link}
+                  icon="play"
+                  onlyIcon
+                  tooltip={t`Run`}
+                  aria-label={t`Run`}
+                />
+              </ActionRunButtonContainer>
+            }
+          >
+            {({ onClose }: ModalProps) => (
+              <ActionExecuteModal actionId={action.id} onClose={onClose} />
+            )}
+          </ModalWithTrigger>
         )}
-      </Card>
+      </ActionCard>
+      {confirmationModal}
     </>
   );
 }

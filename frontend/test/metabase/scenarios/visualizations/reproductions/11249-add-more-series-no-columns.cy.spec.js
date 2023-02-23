@@ -30,7 +30,7 @@ describe("issue 11249", () => {
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
     visitQuestionAdhoc(questionDetails);
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Data").click();

@@ -561,6 +561,7 @@
   (^String [x]
    (when x
      (with-out-str
+       #_{:clj-kondo/ignore [:discouraged-var]}
        (pprint/pprint x))))
 
   (^String [color-symb x]

@@ -89,11 +89,16 @@
    :table_name          :text
    :table_description   :text
    ;; returned for Database and Table
-   :initial_sync_status :text))
+   :initial_sync_status :text
+   ;; returned for Action
+   :model_name          :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private true-clause [:inline [:= 1 1]])
+(def ^:private false-clause [:inline [:= 0 1]])
 
 (s/defn ^:private model->alias :- s/Keyword
   [model :- SearchableModel]
@@ -164,13 +169,15 @@
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
   [_model archived?]
-  [:inline [:= 1 (if archived? 2 1)]])
+  (if-not archived?
+    true-clause
+    false-clause))
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause "table"
   [model archived?]
   (if archived?
-    [:inline [:= 1 0]]  ; No tables should appear in archive searches
+    false-clause  ; No tables should appear in archive searches
     [:and
      [:= (keyword (name (model->alias model)) "active") true]
      [:= (keyword (name (model->alias model)) "visibility_type") nil]]))
@@ -268,6 +275,13 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
+
+(s/defmethod search-query-for-model "action"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/left-join [:report_card :model]
+                             [:= :model.id :action.model_id])
+      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "card"
   [_model search-ctx :- SearchContext]
@@ -377,7 +391,7 @@
 (defn- query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx]
-  (map #((first %) :model)
+  (map #(get (first %) :model)
        (filter not-empty
                (for [model search-config/all-models]
                  (let [search-query     (search-query-for-model model search-ctx)
@@ -442,12 +456,12 @@
 (def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :-   (s/maybe su/NonBlankString),
+  [search-string   :- (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
-   table-db-id :-     (s/maybe su/IntGreaterThanZero)
-   models :-          (s/maybe models-schema)
-   limit :-           (s/maybe su/IntGreaterThanZero)
-   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
+   table-db-id     :- (s/maybe su/IntGreaterThanZero)
+   models          :- (s/maybe models-schema)
+   limit           :- (s/maybe su/IntGreaterThanZero)
+   offset          :- (s/maybe su/IntGreaterThanOrEqualToZero)]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -457,10 +471,10 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/models"
+(api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
+  [q archived-string table-db-id]
+  (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"

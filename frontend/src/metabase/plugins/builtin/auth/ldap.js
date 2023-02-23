@@ -101,7 +101,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         },
         {
           key: "ldap-group-sync",
-          display_name: t`Synchronize group memberships`,
           description: null,
           widget: GroupMappingsWidget,
           props: {

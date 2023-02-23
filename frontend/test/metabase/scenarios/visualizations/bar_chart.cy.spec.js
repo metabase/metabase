@@ -133,7 +133,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.findByText("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
       sidebar().findByText("Data").click();
     });
 
