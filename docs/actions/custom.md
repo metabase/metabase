@@ -14,7 +14,7 @@ Write SQL to update records in your databases.
 
 There are two ways to create a custom action:
 
-- Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model.
+- Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model. (NOTE: Action will only show up as an option in the + New menu if you've first created, or have access to, a model in Metabase.)
 - Via the model detail page. From a model, click on the info button in the upper right. In the upper right of the sidebar, click **Model detail** > **Actions** > **New action**.
 
 ## Custom action editor
