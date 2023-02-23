@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -40,14 +40,15 @@ const productVendorField = new Field({
 
 describe("CategoryFieldPicker", () => {
   afterEach(() => {
-    nock.cleanAll();
+    fetchMock.reset();
   });
 
   describe("given a few distinct values", () => {
     beforeEach(() => {
-      nock(location.origin)
-        .get(`/api/field/${productCategoryField.id}/values`)
-        .reply(200, productCategoryField.fieldValues());
+      fetchMock.get(
+        `/api/field/${productCategoryField.id}/values`,
+        productCategoryField.fieldValues(),
+      );
     });
 
     it("should render a radio picker", () => {
