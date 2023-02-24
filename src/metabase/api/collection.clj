@@ -51,6 +51,8 @@
    collections appear before children, but will catch any mis-ordered entries and
    do a final pass on those if needed."
   ([user-id collections]
+   ([collections]
+    (remove-other-users-personal-collections (:id @api/*current-user*) collections))
    (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
           keep-roots     #{user-id}
           skip-roots     #{}
@@ -85,9 +87,7 @@
                (let [[root] (collection/location-path->ids location)]
                  (keep-roots root))))
             ;; Finally return our result
-            (into res)))))
-  ([collections]
-   (remove-other-users-personal-collections (:id @api/*current-user*) collections)))
+            (into res))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -101,7 +101,7 @@
   `?exclude-other-user-collections=true`.
   "
   [archived exclude-other-user-collections namespace]
-  {archived  (s/maybe su/BooleanString)
+  {archived                       (s/maybe su/BooleanString)
    exclude-other-user-collections (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
