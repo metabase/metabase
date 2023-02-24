@@ -1,8 +1,6 @@
 (ns metabase.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
