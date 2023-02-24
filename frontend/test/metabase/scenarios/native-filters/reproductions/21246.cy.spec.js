@@ -9,6 +9,8 @@ const questionDetails = {
 
 describe("issue 21246", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
 
@@ -53,6 +55,8 @@ describe("issue 21246", () => {
 
       cy.get("@questionId").then(id => {
         cy.visit(`/question/${id}`);
+        cy.wait("@dataset");
+
         cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
       });
     });
@@ -66,10 +70,12 @@ describe("issue 21246", () => {
       // Let's set filter values directly through URL, rather than through the UI
       // for the sake of speed and reliability
       cy.visit(`/question/${id}?${fieldFilterValue}`);
+      cy.wait("@dataset");
 
       resultAssertion("404");
 
       cy.visit(`/question/${id}?${fieldFilterValue}&${dateFilterValue}`);
+      cy.wait("@dataset");
 
       resultAssertion("12");
     });

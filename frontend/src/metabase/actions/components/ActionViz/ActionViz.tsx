@@ -15,6 +15,7 @@ export default Object.assign(Action, {
   hidden: true,
   supportPreviewing: false,
   disableSettingsConfig: true,
+  canSavePng: false,
 
   minSize: { width: 1, height: 1 },
 

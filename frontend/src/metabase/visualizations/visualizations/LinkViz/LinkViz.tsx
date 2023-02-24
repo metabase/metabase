@@ -33,6 +33,15 @@ import {
 
 import { isUrlString } from "./utils";
 
+const MODELS_TO_SEARCH = [
+  "card",
+  "dataset",
+  "dashboard",
+  "collection",
+  "database",
+  "table",
+];
+
 export interface LinkVizProps {
   dashcard: DashboardOrderedCard;
   isEditing: boolean;
@@ -129,6 +138,7 @@ function LinkViz({
               <SearchResults
                 searchText={url?.trim()}
                 onEntitySelect={handleEntitySelect}
+                models={MODELS_TO_SEARCH}
               />
             </SearchResultsContainer>
           }
