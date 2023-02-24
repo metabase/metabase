@@ -1,28 +1,11 @@
-import { Scope } from "nock";
-import type {
-  Card,
-  Dashboard,
-  Collection,
-  Table,
-  Database,
-  SearchModelType,
-} from "metabase-types/api";
-
-type SearchItem =
-  | Card
-  | Dashboard
-  | Collection
-  | Table
-  | (Database & {
-      collection: Record<string, any>;
-    });
+import fetchMock from "fetch-mock";
+import type { SearchModelType, CollectionItem } from "metabase-types/api";
 
 export function setupSearchEndpoints(
-  scope: Scope,
-  items: SearchItem[],
+  items: CollectionItem[],
   models: SearchModelType[] = [],
 ) {
-  scope.get(/\/api\/search+/).reply(200, {
+  fetchMock.get("path:/api/search", {
     available_models: [
       "dashboard",
       "card",

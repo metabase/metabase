@@ -61,7 +61,7 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}

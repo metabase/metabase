@@ -8,6 +8,7 @@ import {
   navigationSidebar,
   openQuestionActions,
   questionInfoButton,
+  getPersonalCollectionName,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -247,12 +248,6 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-}
-
-function getPersonalCollectionName(user) {
-  const name = [user.first_name, user.last_name].join(" ");
-
-  return `${name}'s Personal Collection`;
 }
 
 function turnIntoModel() {

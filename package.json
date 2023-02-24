@@ -44,6 +44,7 @@
     "diff": "^3.2.0",
     "formik": "^2.2.9",
     "history": "3",
+    "html2canvas": "^1.4.1",
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
     "iframe-resizer": "^4.3.2",
@@ -120,6 +121,7 @@
     "@cypress/skip-test": "^2.6.1",
     "@deploysentinel/cypress-debugger": "^0.7.8",
     "@emotion/babel-plugin": "^11.7.2",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@percy/cli": "^1.16.0",
     "@percy/cypress": "^3.1.2",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
@@ -208,6 +210,7 @@
     "concurrently": "^7.6.0",
     "cross-fetch": "^3.1.5",
     "css-loader": "1.0.1",
+    "cy-verify-downloads": "^0.1.12",
     "cypress": "^10.9.0",
     "cypress-real-events": "^1.7.1",
     "esbuild": "^0.17.9",
@@ -242,7 +245,6 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "nock": "^13.2.9",
     "node-polyfill-webpack-plugin": "2.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
@@ -268,7 +270,8 @@
   "resolutions": {
     "ansi-regex": "5.0.1",
     "set-value": "4.0.1",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
+    "unset-value": "2.0.1"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",

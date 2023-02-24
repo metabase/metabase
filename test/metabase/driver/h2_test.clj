@@ -33,15 +33,15 @@
 
 (deftest set-safe-options-test
   (testing "Check that we add safe connection options to connection strings"
-    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
 
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
-    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
-           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws"))))
+    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
+           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;"))))
 
   (testing "Check that we override the INIT connection string option"
-    (is (= "file:my-file;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+    (is (= "file:my-file;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
 
 (deftest db-details->user-test
@@ -207,3 +207,61 @@
                     {:database (u/the-id (mt/db))
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
+
+(deftest check-read-only-test
+  (testing "read only statements should pass"
+    (are [query] (nil?
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "select * from orders"
+      "select 1; select 2;"
+      "explain select * from orders"
+      "values (1, 'Hello'), (2, 'World');"
+      "show tables"
+      "table orders"
+      "call 1 + 1"
+      ;; Note this passes the check, but will fail on execution
+      "update venues set name = 'bill'; some query that can't be parsed;"))
+  (testing "not read only statements should fail"
+    (are [query] (thrown?
+                  clojure.lang.ExceptionInfo
+                  #"Only SELECT statements are allowed in a native query."
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "delete venues"
+      "select 1; update venues set name = 'bill'; delete venues;"
+      (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                        "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                        "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest disallowed-commands-in-action-test
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
+      (testing "Should not be able to execute query actions with disallowed commands"
+        (let [sql "select * from categories; update categories set name = 'stomp';
+                 CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
+                 EXEC ('open -a Calculator.app')"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:message "Error executing Action: IllegalArgument: DDL commands are not allowed to be used with h2."}
+                    (mt/user-http-request :crowberto
+                                          :post 500
+                                          (format "action/%s/execute" action-id)))))))
+      (testing "Should be able to execute query actions with allowed commands"
+        (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:rows-affected 1}
+                    (mt/user-http-request :crowberto
+                                          :post 200
+                                          (format "action/%s/execute" action-id))))))))))
