@@ -5,18 +5,15 @@ import { SmallGenericError } from "metabase/containers/ErrorPages";
 export default class ErrorBoundary extends React.Component<
   {
     onError?: (errorInfo: ErrorInfo) => void;
-    errorComponent?: Element;
   },
   {
     hasError: boolean;
-    errorDetails: string;
   }
 > {
   constructor(props: any) {
     super(props);
     this.state = {
       hasError: false,
-      errorDetails: "",
     };
   }
 
@@ -29,24 +26,17 @@ export default class ErrorBoundary extends React.Component<
     // if we don't provide a specific onError action, the component will display a generic error message
     if (this.props.onError) {
       this.props.onError(errorInfo);
-    } else {
       this.setState({
-        hasError: true,
-        errorDetails: errorInfo.componentStack,
+        hasError: false,
       });
     }
   }
 
   render() {
-    if (this.state.hasError && !this.props.onError) {
-      const ErrorComponent = this.props.errorComponent;
-
-      if (!ErrorComponent) {
-        return <SmallGenericError />;
-      }
-
-      return ErrorComponent;
+    if (this.state.hasError) {
+      return <SmallGenericError />;
     }
+
     return this.props.children;
   }
 }
