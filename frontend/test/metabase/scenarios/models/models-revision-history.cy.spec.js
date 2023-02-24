@@ -35,8 +35,8 @@ describe("scenarios > models > revision history", () => {
     visitModel(3);
 
     openRevisionHistory();
-    cy.findAllByTestId("question-revert-button").click();
-    cy.wait("@revertToRevision");
+    revertTo("You created this");
+    cy.wait("@dataset");
 
     openQuestionActions();
     assertIsQuestion();
@@ -115,4 +115,9 @@ function openRevisionHistory() {
   questionInfoButton().click();
   cy.wait("@user");
   cy.findByText("History");
+}
+
+function revertTo(history) {
+  const r = new RegExp(history);
+  cy.findByText(r).closest("li").findByTestId("question-revert-button").click();
 }
