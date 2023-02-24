@@ -25,14 +25,12 @@ const defaultProps = {
       database_id: 2,
       parameters: [
         createMockActionParameter({
-          id: "1",
-          name: "Parameter 1",
+          id: "parameter_1",
           type: "type/Text",
           target: ["variable", ["template-tag", "1"]],
         }),
         createMockActionParameter({
-          id: "2",
-          name: "Parameter 2",
+          id: "parameter_2",
           type: "type/Text",
           target: ["variable", ["template-tag", "2"]],
         }),
@@ -219,8 +217,8 @@ describe("Actions > ActionViz > ActionComponent", () => {
       const expectedBody = {
         modelId: 777,
         parameters: {
-          "1": "foo",
-          "2": "bar",
+          parameter_1: "foo",
+          parameter_2: "bar",
         },
       };
 
@@ -252,8 +250,8 @@ describe("Actions > ActionViz > ActionComponent", () => {
       const expectedBody = {
         modelId: 777,
         parameters: {
-          "1": "foo",
-          "2": "baz",
+          parameter_1: "foo",
+          parameter_2: "baz",
         },
       };
 

@@ -19,13 +19,11 @@ import ActionParametersInputModal from "./ActionParametersInputModal";
 const defaultProps = {
   missingParameters: [
     createMockActionParameter({
-      id: "1",
-      name: "Parameter 1",
+      id: "parameter_1",
       type: "type/Text",
     }),
     createMockActionParameter({
-      id: "2",
-      name: "Parameter 2",
+      id: "parameter_2",
       type: "type/Text",
     }),
   ],
@@ -55,8 +53,8 @@ async function setupModal(options?: any) {
 
 function setupPrefetch() {
   fetchMock.get("path:/api/dashboard/123/dashcard/456/execute", {
-    "1": "uno",
-    "2": "dos",
+    parameter_1: "uno",
+    parameter_2: "dos",
   });
 }
 
@@ -95,8 +93,8 @@ describe("Actions > ActionParametersInputForm", () => {
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({
-        "1": "uno",
-        "2": "dos",
+        parameter_1: "uno",
+        parameter_2: "dos",
       });
     });
   });
@@ -104,13 +102,11 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should generate field types from parameter types", async () => {
     const missingParameters = [
       createMockActionParameter({
-        id: "1",
-        name: "Parameter 1",
+        id: "parameter_1",
         type: "type/Text",
       }),
       createMockActionParameter({
-        id: "2",
-        name: "Parameter 2",
+        id: "parameter_2",
         type: "type/Integer",
       }),
     ];
