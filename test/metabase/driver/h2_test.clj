@@ -258,7 +258,7 @@
                                                  :dataset_query {:database (mt/id)
                                                                  :type     "native"
                                                                  :native   {:query sql}}}]
-            (is (=? {:message "Error executing Action: IllegalArgument: DDL commands are not allowed to be used with h2."}
+            (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with h2."}
                     (mt/user-http-request :crowberto
                                           :post 500
                                           (format "action/%s/execute" action-id)))))))
