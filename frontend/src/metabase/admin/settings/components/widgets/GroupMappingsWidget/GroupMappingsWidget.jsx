@@ -1,8 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  initializeSettings,
+  updateSetting,
+  reloadSettings,
+} from "metabase/admin/settings/settings";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { SettingsApi } from "metabase/services";
 import { isDefaultGroup } from "metabase/lib/groups";
@@ -22,6 +28,12 @@ import {
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
 
+const mapDispatchToProps = {
+  initializeSettings,
+  updateSetting,
+  reloadSettings,
+};
+
 const groupIsMappable = group => !isDefaultGroup(group);
 
 function GroupMappingsWidget({
@@ -30,10 +42,10 @@ function GroupMappingsWidget({
   groups: groupsAll,
   mappingSetting,
   settingValues,
+  updateSetting,
   onChangeSetting,
   ...props
 }) {
-  console.log("🚀", "In GroupMappingsWidget", props);
   const [showAddRow, setShowAddRow] = useState(false);
   const [saveError, setSaveError] = useState({});
 
@@ -49,9 +61,9 @@ function GroupMappingsWidget({
   };
 
   const handleAddMapping = name => {
-    console.log("🚀", "In handleAddMapping", onChangeSetting);
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
-    onChangeSetting(mappingSetting, mappingsPlusNewMapping);
+    updateSetting({ key: mappingSetting, value: mappingsPlusNewMapping });
+    setShowAddRow(false);
 
     // SettingsApi.put({
     //   key: mappingSetting,
@@ -61,7 +73,6 @@ function GroupMappingsWidget({
     //     onChangeSetting(mappingSetting, mappingsPlusNewMapping);
 
     //     // setMappings(mappingsPlusNewMapping);
-    //     setShowAddRow(false);
     //     setSaveError(null);
     //   },
     //   e => setSaveError(e),
@@ -76,6 +87,10 @@ function GroupMappingsWidget({
           [name]: mappings[name].filter(id => id !== group.id),
         };
 
+    updateSetting({ key: mappingSetting, value: updatedMappings });
+    // TODO: Try removing line below and checking with LDAP, SAML and JWT
+    onChangeSetting(mappingSetting, updatedMappings);
+    /*
     SettingsApi.put({
       key: mappingSetting,
       value: updatedMappings,
@@ -88,6 +103,7 @@ function GroupMappingsWidget({
       },
       e => setSaveError(e),
     );
+    */
   };
 
   const handleDeleteMapping = ({ name, onSuccess, groupIdsToDelete = [] }) => {
@@ -181,4 +197,8 @@ function GroupMappingsWidget({
   );
 }
 
-export default GroupMappingsWidget;
+// export default GroupMappingsWidget;
+
+export default _.compose(connect(null, mapDispatchToProps))(
+  GroupMappingsWidget,
+);
