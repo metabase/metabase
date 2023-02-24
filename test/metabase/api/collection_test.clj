@@ -303,11 +303,15 @@
                     {:name "C", :children []}
                     {:name "Crowberto Corv's Personal Collection", :children [{:name "Admin Child", :children []}]}]
                    (collection-tree-view ids admin-response-ex)))
-              ;; A non admin only sees their own collections and shared collections no matter what
+              ;; A non admin only sees their own collections without the flag...
               (is (= [{:name "A", :children [{:name "B", :children []}]}
                       {:name "C", :children []}
                       {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
-                     (collection-tree-view ids non-admin-response)
+                     (collection-tree-view ids non-admin-response)))
+              ;; ...as well as with the flag
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
                      (collection-tree-view ids non-admin-response-ex))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
