@@ -82,13 +82,10 @@
        ;; private shared collection was made public (the parent is private, so no root node, but the child is visible).
        ;; At this stage, we just do a final sweep to remove anything for which we know the root collection belongs to
        ;; another user.
-       (->> indeterminates
-            (remove
-             (fn [{:keys [location]}]
-               (let [[root] (collection/location-path->ids location)]
-                 (skip-roots root))))
-            ;; Put anything that remains in the result and return
-            (into res))))))
+       ;; Put anything that remains in the result and return
+       (into res
+             (remove (comp skip-roots first collection/location-path->ids :location))
+             indeterminates)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
