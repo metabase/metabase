@@ -83,7 +83,7 @@
 (defn cast-json-columns
   "For each `:type/JSON` column, parse them with cheshire so they enter as json and not text."
   [tabledef]
-  (if (some #{:type/JSON} (into [] (map :base-type) (:field-definitions tabledef)))
+  (if (some (comp #{:type/JSON} :base-type) (:field-definitions tabledef))
     (let [parse-fns (map #(if (= % :type/JSON)
                             (fn [json]
                               [::sql.qp/compiled (h2x/cast "json" json)])
