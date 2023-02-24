@@ -50,42 +50,40 @@
    Will work in a single pass if collections are already ordered such that root (location = /)
    collections appear before children, but will catch any mis-ordered entries and
    do a final pass on those if needed."
-  ([collections]
-   (remove-other-users-personal-collections api/*current-user-id* collections))
-  ([user-id collections]
-   (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
-          keep-roots     #{user-id}
-          skip-roots     #{}
-          res            []
-          indeterminates []]
-     ;; Keep going if there are more collections to process
-     (if c
-       ;; If the collection has a first element in its location we need to
-       ;; decide what to do based on who owns it
-       (if-some [root (first (collection/location-path->ids location))]
-         (cond
-           ;; The root element belongs to me or is public, keep
-           (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
-           ;; The root element belongs to another user, skip
-           (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
-           ;; The root element is unknown, add to the indeterminates list
-           :else (recur r keep-roots skip-roots res (conj indeterminates c)))
-         ;; There is no first element in the path, so this is a root
-         (if (or (nil? personal_owner_id) (= user-id personal_owner_id))
-           ;; There is no owner of this root collection or it is me,
-           ;; so I will keep the id as a root id and the collection itself
-           (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
-           ;; This is someone else's collection, so add its id to ones we skip
-           (recur r keep-roots (conj skip-roots id) res indeterminates)))
-       ;; There are no more collections to process, but there might be some we didn't know what to do with.
-       ;; This could happen if the collection were unordered (the root user came before children) or if a child of a
-       ;; private shared collection was made public (the parent is private, so no root node, but the child is visible).
-       ;; At this stage, we just do a final sweep to remove anything for which we know the root collection belongs to
-       ;; another user.
-       ;; Put anything that remains in the result and return
-       (into res
-             (remove (comp skip-roots first collection/location-path->ids :location))
-             indeterminates)))))
+  [user-id collections]
+  (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
+         keep-roots     #{user-id}
+         skip-roots     #{}
+         res            []
+         indeterminates []]
+    ;; Keep going if there are more collections to process
+    (if c
+      ;; If the collection has a first element in its location we need to
+      ;; decide what to do based on who owns it
+      (if-some [root (first (collection/location-path->ids location))]
+        (cond
+          ;; The root element belongs to me or is public, keep
+          (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
+          ;; The root element belongs to another user, skip
+          (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
+          ;; The root element is unknown, add to the indeterminates list
+          :else (recur r keep-roots skip-roots res (conj indeterminates c)))
+        ;; There is no first element in the path, so this is a root
+        (if (or (nil? personal_owner_id) (= user-id personal_owner_id))
+          ;; There is no owner of this root collection or it is me,
+          ;; so I will keep the id as a root id and the collection itself
+          (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
+          ;; This is someone else's collection, so add its id to ones we skip
+          (recur r keep-roots (conj skip-roots id) res indeterminates)))
+      ;; There are no more collections to process, but there might be some we didn't know what to do with.
+      ;; This could happen if the collection were unordered (the root user came before children) or if a child of a
+      ;; private shared collection was made public (the parent is private, so no root node, but the child is visible).
+      ;; At this stage, we just do a final sweep to remove anything for which we know the root collection belongs to
+      ;; another user.
+      ;; Put anything that remains in the result and return
+      (into res
+            (remove (comp skip-roots first collection/location-path->ids :location))
+            indeterminates))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -113,7 +111,7 @@
              :order-by [[:%lower.name :asc]]}) collections
           ;; Remove other users' personal collections
           (if exclude-other-user-collections?
-            (remove-other-users-personal-collections collections)
+            (remove-other-users-personal-collections api/*current-user-id* collections)
             collections)
           ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
@@ -165,17 +163,17 @@
                               (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
-        colls (cond->
-               (db/select Collection
-                 {:where [:and
-                          (when exclude-archived?
-                            [:= :archived false])
-                          [:= :namespace namespace]
-                          (collection/visible-collection-ids->honeysql-filter-clause
-                           :id
-                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-               exclude-other-user-collections?
-               remove-other-users-personal-collections)
+        colls (cond->>
+                (db/select Collection
+                  {:where [:and
+                           (when exclude-archived?
+                             [:= :archived false])
+                           [:= :namespace namespace]
+                           (collection/visible-collection-ids->honeysql-filter-clause
+                            :id
+                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                exclude-other-user-collections?
+                (remove-other-users-personal-collections api/*current-user-id*))
         colls-with-details (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls-with-details)))
 
