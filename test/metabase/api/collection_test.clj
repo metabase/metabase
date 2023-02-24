@@ -1754,8 +1754,8 @@
           (testing "Should ignore updates to Collections outside of the namespace"
             (let [response (mt/user-http-request :crowberto :put 200 "collection/graph"
                                                  (assoc (graph/graph)
-                                                   :groups {group-id {default-a :write, currency-a :write}}
-                                                   :namespace :currency))]
+                                                        :groups {group-id {default-a :write, currency-a :write}}
+                                                        :namespace :currency))]
               (is (= {"Currency A" "write", "Currency A -> B" "read"}
                      (nice-graph response))))))
 
@@ -1763,5 +1763,5 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "collection/graph"
                                        (assoc (graph/graph)
-                                         :groups {group-id {default-a :write, currency-a :write}}
-                                         :namespace :currency)))))))))
+                                              :groups {group-id {default-a :write, currency-a :write}}
+                                              :namespace :currency)))))))))
