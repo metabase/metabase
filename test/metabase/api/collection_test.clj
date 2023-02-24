@@ -272,7 +272,43 @@
                 response (mt/user-http-request :rasta :get 200
                                                "collection/tree?exclude-archived=true")]
             (is (= [{:name "A" :children []}]
-                   (collection-tree-view ids response)))))))
+                   (collection-tree-view ids response))))))
+      (testing "Excludes other user collections"
+        (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
+              lucky-collection (collection/user->personal-collection (mt/user->id :lucky))]
+          (mt/with-temp* [Collection [ac {:name "Admin Child" :location (collection/location-path admin-collection)}]
+                          Collection [lc {:name "Lucky Child" :location (collection/location-path lucky-collection)}]
+                          Collection [a {:name "A"}]
+                          Collection [b {:name     "B"
+                                         :location (collection/location-path a)}]
+                          Collection [c {:name "C"}]]
+            (let [ids                   (set (map :id [admin-collection lucky-collection ac lc a b c]))
+                  admin-response        (mt/user-http-request :crowberto :get 200
+                                                              "collection/tree")
+                  admin-response-ex     (mt/user-http-request :crowberto :get 200
+                                                              "collection/tree?exclude-other-user-collections=true")
+                  non-admin-response    (mt/user-http-request :lucky :get 200
+                                                              "collection/tree")
+                  non-admin-response-ex (mt/user-http-request :lucky :get 200
+                                                              "collection/tree?exclude-other-user-collections=true")]
+              ;; By default, our admin can see everything
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Crowberto Corv's Personal Collection", :children [{:name "Admin Child", :children []}]}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
+                     (collection-tree-view ids admin-response)))
+              ;; When excluding other user collections, the admin only sees their own collections and shared collections
+              (is (=
+                   [{:name "A", :children [{:name "B", :children []}]}
+                    {:name "C", :children []}
+                    {:name "Crowberto Corv's Personal Collection", :children [{:name "Admin Child", :children []}]}]
+                   (collection-tree-view ids admin-response-ex)))
+              ;; A non admin only sees their own collections and shared collections no matter what
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
+                     (collection-tree-view ids non-admin-response)
+                     (collection-tree-view ids non-admin-response-ex))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
       (with-french-user-and-personal-collection user collection
@@ -1710,8 +1746,8 @@
           (testing "Should ignore updates to Collections outside of the namespace"
             (let [response (mt/user-http-request :crowberto :put 200 "collection/graph"
                                                  (assoc (graph/graph)
-                                                        :groups {group-id {default-a :write, currency-a :write}}
-                                                        :namespace :currency))]
+                                                   :groups {group-id {default-a :write, currency-a :write}}
+                                                   :namespace :currency))]
               (is (= {"Currency A" "write", "Currency A -> B" "read"}
                      (nice-graph response))))))
 
@@ -1719,5 +1755,5 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "collection/graph"
                                        (assoc (graph/graph)
-                                              :groups {group-id {default-a :write, currency-a :write}}
-                                              :namespace :currency)))))))))
+                                         :groups {group-id {default-a :write, currency-a :write}}
+                                         :namespace :currency)))))))))
