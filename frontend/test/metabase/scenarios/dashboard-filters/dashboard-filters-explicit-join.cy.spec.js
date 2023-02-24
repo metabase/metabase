@@ -42,6 +42,10 @@ const dashboardDetails = {
 
 describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
+    cy.intercept("GET", `/api/dashboard/*/params/${filter.id}/values`).as(
+      "filterValues",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -79,6 +83,7 @@ describe("scenarios > dashboard > filters", () => {
 
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
+    cy.wait("@filterValues");
 
     cy.findByPlaceholderText("Search the list").type("Awe");
 
