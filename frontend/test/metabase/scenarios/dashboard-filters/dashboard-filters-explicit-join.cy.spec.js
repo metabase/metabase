@@ -1,9 +1,4 @@
-import {
-  restore,
-  filterWidget,
-  popover,
-  visitDashboard,
-} from "__support__/e2e/helpers";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -106,9 +101,7 @@ describe("scenarios > dashboard > filters", () => {
 });
 
 function selectFromDropdown(values) {
-  popover().within(() => {
-    values.forEach(value => {
-      cy.findByText(value).click();
-    });
+  values.forEach(value => {
+    cy.findByTestId(`${value}-filter-value`).should("be.visible").click();
   });
 }
