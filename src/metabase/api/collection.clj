@@ -95,9 +95,8 @@
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
-  By default, admin users will see all collections. To hide other user's collections pass in\n
-  `?exclude-other-user-collections=true`.
-  "
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`."
   [archived exclude-other-user-collections namespace]
   {archived                       (s/maybe su/BooleanString)
    exclude-other-user-collections (s/maybe su/BooleanString)
