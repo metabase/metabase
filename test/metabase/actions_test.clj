@@ -142,6 +142,23 @@
   [_driver _feature _database]
   false)
 
+(deftest actions-feature-test
+  (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
+    (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
+                                           :engine   ::feature-flag-test-driver
+                                           :settings {:database-enable-actions true}}]
+                    Table    [{table-id :id} {:db_id db-id}]]
+      (is (thrown-with-msg? Exception (re-pattern
+                                       (format "%s Database %d \"Birds\" does not support actions."
+                                               (u/qualified-name ::feature-flag-test-driver)
+                                               db-id))
+                            ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
+                            ;; update this test when the PR to support row insertion is in.
+                            (actions/perform-action! :table/insert
+                                                     {:database db-id
+                                                      :table-id table-id
+                                                      :values   {:name "Toucannery"}}))))))
+
 (defn- row-action? [action]
   (= (namespace action) "row"))
 

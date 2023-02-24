@@ -116,12 +116,19 @@
         value)))
 
 (defn check-actions-enabled-for-database!
-  "Throws an appropriate error if actions are disabled for a database, otherwise returns nil."
+  "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  (when-not (driver/database-supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
   (binding [setting/*database-local-values* db-settings]
     (when-not (database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
+
   nil)
 
 (defn- database-for-action [action-or-id]
