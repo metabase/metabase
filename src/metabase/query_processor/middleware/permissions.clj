@@ -9,6 +9,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
@@ -106,7 +107,8 @@
           (check-block-permissions outer-query)))
 
       *user-can-read-dashboard*
-      (check-block-permissions outer-query)
+      (when (contains? (premium-features/token-features) "advanced-permissions")
+        (check-block-permissions outer-query))
 
       :else
       (check-ad-hoc-query-perms outer-query))))

@@ -1099,67 +1099,66 @@
                  (#'api.dashboard/cards-to-copy ordered-cards))))))))
 
 (deftest update-cards-for-copy-test
-  (premium-features-test/with-premium-features #{}
-    (testing "When copy style is shallow returns original ordered-cards"
+  (testing "When copy style is shallow returns original ordered-cards"
 
-      (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
-                           {:card_id 3 :card {:id 3}}]]
-        (is (= ordered-cards
+    (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
+                         {:card_id 3 :card {:id 3}}]]
+      (is (= ordered-cards
+             (api.dashboard/update-cards-for-copy 1
+                                                  ordered-cards
+                                                  false
+                                                  nil)))))
+  (testing "When copy style is deep"
+    (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
+      (testing "Can omit series cards"
+        (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
                (api.dashboard/update-cards-for-copy 1
                                                     ordered-cards
-                                                    false
-                                                    nil)))))
-    (testing "When copy style is deep"
-      (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
-        (testing "Can omit series cards"
-          (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
-                 (api.dashboard/update-cards-for-copy 1
-                                                      ordered-cards
-                                                      true
-                                                      {1 {:id 5}
-                                                       2 {:id 6}})))))
-      (testing "Can omit whole card with series if not copied"
-        (let [ordered-cards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
-                             {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
-          (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
-                 (api.dashboard/update-cards-for-copy 1
-                                                      ordered-cards
-                                                      true
-                                                      {1 {:id 7}
-                                                       2 {:id 8}
-                                                       3 {:id 9}
-                                                       ;; not copying id 4 which is the base of the following two
-                                                       5 {:id 10}
-                                                       6 {:id 11}})))))
-      (testing "Updates parameter mappings to new card ids"
-        (let [ordered-cards [{:card_id            1
-                              :card               {:id 1}
-                              :parameter_mappings [{:parameter_id "72d27de6"
-                                                    :card_id      1
-                                                    :target       [:dimension
-                                                                   [:field 63 nil]]}]}]]
-          (is (= [{:card_id            2
-                   :card               {:id 2}
-                   :parameter_mappings [{:parameter_id "72d27de6"
-                                         :card_id      2
-                                         :target       [:dimension
-                                                        [:field 63 nil]]}]}]
-                 (api.dashboard/update-cards-for-copy 1
-                                                      ordered-cards
-                                                      true
-                                                      {1 {:id 2}})))))
-      (testing "Throws error if no new card-id information for deep copy"
-        (let [user-id      44
-              dashboard-id 55
-              error-data   (try
-                             (binding [api/*current-user-id* user-id]
-                               (api.dashboard/update-cards-for-copy dashboard-id
-                                                                    [{:card_id 1 :card {:id 1}}]
-                                                                    true
-                                                                    nil))
-                             (is false "Should have thrown with deep-copy true and no new card id info")
-                             (catch Exception e (ex-data e)))]
-          (is (= {:user-id user-id, :dashboard-id dashboard-id} error-data)))))))
+                                                    true
+                                                    {1 {:id 5}
+                                                     2 {:id 6}})))))
+    (testing "Can omit whole card with series if not copied"
+      (let [ordered-cards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
+                           {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
+        (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
+               (api.dashboard/update-cards-for-copy 1
+                                                    ordered-cards
+                                                    true
+                                                    {1 {:id 7}
+                                                     2 {:id 8}
+                                                     3 {:id 9}
+                                                     ;; not copying id 4 which is the base of the following two
+                                                     5 {:id 10}
+                                                     6 {:id 11}})))))
+    (testing "Updates parameter mappings to new card ids"
+      (let [ordered-cards [{:card_id            1
+                            :card               {:id 1}
+                            :parameter_mappings [{:parameter_id "72d27de6"
+                                                  :card_id      1
+                                                  :target       [:dimension
+                                                                 [:field 63 nil]]}]}]]
+        (is (= [{:card_id            2
+                 :card               {:id 2}
+                 :parameter_mappings [{:parameter_id "72d27de6"
+                                       :card_id      2
+                                       :target       [:dimension
+                                                      [:field 63 nil]]}]}]
+               (api.dashboard/update-cards-for-copy 1
+                                                    ordered-cards
+                                                    true
+                                                    {1 {:id 2}})))))
+    (testing "Throws error if no new card-id information for deep copy"
+      (let [user-id      44
+            dashboard-id 55
+            error-data   (try
+                           (binding [api/*current-user-id* user-id]
+                             (api.dashboard/update-cards-for-copy dashboard-id
+                                                                  [{:card_id 1 :card {:id 1}}]
+                                                                  true
+                                                                  nil))
+                           (is false "Should have thrown with deep-copy true and no new card id info")
+                           (catch Exception e (ex-data e)))]
+        (is (= {:user-id user-id, :dashboard-id dashboard-id} error-data))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
