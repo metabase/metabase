@@ -32,9 +32,20 @@
     (seq joined-fields) (update :fields (fn [fields]
                                           (m/distinct-by add/normalize-clause (concat fields joined-fields))))))
 
+(defn- keep-source+alias-props [field]
+  (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
+
+(defn- remove-unused-fields [inner-query source]
+  (let [used-fields (-> #{}
+                        (into (map keep-source+alias-props) (mbql.u/match inner-query :field))
+                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))]
+    (update source :fields #(filterv (comp used-fields keep-source+alias-props) %))))
+
 (defn- nest-source [inner-query]
   (classloader/require 'metabase.query-processor)
-  (let [source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
+  (let [filter-clause (:filter inner-query)
+        keep-filter? (nil? (mbql.u/match-one filter-clause :expression))
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this without a current user context so it's not subject to permissions checks. To get
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
@@ -45,10 +56,14 @@
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
-                 (add-joined-fields-to-fields (joined-fields inner-query) source))]
+                 (add-joined-fields-to-fields (joined-fields inner-query) source)
+                 (remove-unused-fields inner-query source)
+                 (cond-> source
+                   keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query
         (dissoc :source-table :source-metadata :joins)
-        (assoc :source-query source))))
+        (assoc :source-query source)
+        (cond-> keep-filter? (dissoc :filter)))))
 
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
