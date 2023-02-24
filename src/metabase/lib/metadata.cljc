@@ -1,37 +1,49 @@
 (ns metabase.lib.metadata
+  "TODO -- should this just be part of [[metabase.lib.interface]]?"
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
-(def FieldMetadata
+(def ^:private FieldMetadata
   [:map
    [:lib/type [:= :metadata/field]]
-   [:id {:optional true} ms/IntGreaterThanZero]
-   [:name ms/NonBlankString]])
+   [:id {:optional true} ::lib.schema.id/field]
+   [:name ::lib.schema.common/non-blank-string]])
 
-(def TableMetadata
+(def ^:private TableMetadata
   [:map
    [:lib/type [:= :metadata/table]]
-   [:id ms/IntGreaterThanZero]
-   [:name ms/NonBlankString]
-   [:schema ms/NonBlankString]
+   [:id ::lib.schema.id/table]
+   [:name ::lib.schema.common/non-blank-string]
+   [:schema ::lib.schema.common/non-blank-string]
    [:fields [:sequential FieldMetadata]]])
 
 (def DatabaseMetadata
+  "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
+  the frontend Query Builder."
   [:map
    [:lib/type [:= :metadata/database]]
-   [:id ms/IntGreaterThanZero]
+   [:id ::lib.schema.id/database]
    [:tables [:sequential TableMetadata]]])
 
 ;;; or should this be called ResultsMetadata?
 (def SourceQueryMetadata
+  "Malli schema for the results metadata (`[:data :results_metadata]`) that is included in query results, and saved as
+  `result_metadata` for a Saved Question.
+
+  Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like the
+  Frontend actually *merges* these together -- see `applyMetadataDiff` in
+  `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
+  `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
    [:lib/type [:= :metadata/results]]
    [:columns [:sequential FieldMetadata]]])
 
-(defmulti table-metadata*
+(defmulti ^:private table-metadata*
+  "Implementation for [[table-metadata]]."
   {:arglists '([metadata table-name-or-id])}
   (fn [metadata _table-name-or-id]
     (lib.dispatch/dispatch-value metadata)))
@@ -47,19 +59,21 @@
               table)))
         (:tables database-metadata)))
 
-(defmethod table-metadata* :lib/outer-query
+(defmethod table-metadata* :mbql/query
   [query table-name-or-id]
   (table-metadata* (:lib/metadata query) table-name-or-id))
 
 (mu/defn table-metadata :- TableMetadata
+  "Get metadata for a specific Table from some `metadata` source (probably Database metadata)."
   [metadata         :- [:map
                         [:lib/type [:keyword]]]
    table-name-or-id :- [:or
-                        ms/IntGreaterThanZero
-                        ms/NonBlankString]]
+                        ::lib.schema.id/table
+                        ::lib.schema.common/non-blank-string]]
   (table-metadata* metadata table-name-or-id))
 
-(defmulti field-metadata*
+(defmulti ^:private field-metadata*
+  "Implementation for [[field-metadata]]."
   {:arglists '([metadata table-name-or-id-or-nil field-name-or-id])}
   (fn [metadata _table-name-or-id-or-nil _field-name-or-id]
     (lib.dispatch/dispatch-value metadata)))
@@ -101,19 +115,23 @@
                       {:metadata results-metadata
                        :field    field-name-or-id}))))
 
-(defmethod field-metadata* :lib/outer-query
+(defmethod field-metadata* :mbql/query
   [query table-name-or-id-or-nil field-name-or-id]
   (field-metadata* (:lib/metadata query) table-name-or-id-or-nil field-name-or-id))
 
 ;; TODO -- what about nested Fields??
 (mu/defn field-metadata :- FieldMetadata
+  "Get metadata for a specific Field from some `metadata` source, which might be Database metadata, Table metadata, or
+  source query/results metadata. `table-name-or-id-or-nil` is optional; if you specify it and pass Database metadata,
+  this will first find the appropriate [[table-metadata]] for that Table, then find the Field metadata in that Table
+  metadata."
   ([metadata         :- [:map
                          [:lib/type [:keyword]]]
-    field-name-or-id :- [:or ms/NonBlankString ms/IntGreaterThanZero]]
+    field-name-or-id :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
    (field-metadata metadata nil field-name-or-id))
 
   ([metadata                :- [:map
                                 [:lib/type [:keyword]]]
-    table-name-or-id-or-nil :- [:maybe [:or ms/NonBlankString ms/IntGreaterThanZero]]
-    field-name-or-id        :- [:or ms/NonBlankString ms/IntGreaterThanZero]]
+    table-name-or-id-or-nil :- [:maybe [:or ::lib.schema.common/non-blank-string ::lib.schema.id/table]]
+    field-name-or-id        :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
    (field-metadata* metadata table-name-or-id-or-nil field-name-or-id)))

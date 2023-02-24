@@ -1,41 +1,35 @@
 (ns metabase.lib.query-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib :as lib]
-      [metabase.lib.test-metadata :as meta])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib :as lib]
-      [metabase.lib.test-metadata :as meta])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta])
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (t/deftest ^:parallel mbql-query-test
-  (t/is (=? {:lib/type :lib/outer-query
+  (t/is (=? {:lib/type :mbql/query
              :database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :lib/options  {:lib/uuid string?}
                          :source-table (meta/id :venues)}]}
             (-> (lib/query meta/metadata "VENUES")
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel native-query-test
-  (t/is (=? {:lib/type :lib/outer-query
-             :database 1
+  (t/is (=? {:lib/type :mbql/query
+             :database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type    :stage/native
+             :stages   [{:lib/type    :mbql.stage/native
                          :lib/options {:lib/uuid string?}
                          :native      "SELECT * FROM VENUES;"}]}
             (-> (lib/native-query meta/metadata meta/results-metadata "SELECT * FROM VENUES;")
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel card-source-query-test
-  (t/is (=? {:lib/type :lib/outer-query
+  (t/is (=? {:lib/type :mbql/query
              :database 1
              :type     :pipeline
-             :stages   [{:lib/type    :stage/native
+             :stages   [{:lib/type    :mbql.stage/native
                          :lib/options {:lib/uuid string?}
                          :native      "SELECT * FROM VENUES;"}]}
             (-> (lib/saved-question-query {:dataset_query   {:database 1
@@ -45,15 +39,15 @@
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel notebook-query-test
-  (t/is (=? {:lib/type :lib/outer-query
+  (t/is (=? {:lib/type :mbql/query
              :database 1
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :lib/options  {:lib/uuid string?}
                          :source-table (meta/id :venues)}
-                        {:lib/type    :stage/mbql
+                        {:lib/type    :mbql.stage/mbql
                          :lib/options {:lib/uuid string?}}
-                        {:lib/type    :stage/mbql
+                        {:lib/type    :mbql.stage/mbql
                          :lib/options {:lib/uuid string?}}]}
             (-> (lib/query meta/metadata {:database 1
                                           :type     :query

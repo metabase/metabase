@@ -1,28 +1,21 @@
 (ns metabase.lib.join-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta])
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (t/deftest ^:parallel join-test
-  (t/is (=? {:lib/type :lib/outer-query
+  (t/is (=? {:lib/type :mbql/query
              :database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :lib/options  {:lib/uuid string?}
                          :source-table (meta/id :venues)
-                         :joins        [{:lib/type    :lib/join
+                         :joins        [{:lib/type    :mbql/join
                                          :lib/options {:lib/uuid string?}
-                                         :stages      [{:lib/type     :stage/mbql
+                                         :stages      [{:lib/type     :mbql.stage/mbql
                                                         :lib/options  {:lib/uuid string?}
                                                         :source-table (meta/id :categories)}]
                                          :condition   [:=
@@ -36,15 +29,15 @@
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel join-saved-question-test
-  (t/is (=? {:lib/type :lib/outer-query
+  (t/is (=? {:lib/type :mbql/query
              :database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :lib/options  {:lib/uuid string?}
                          :source-table (meta/id :categories)
-                         :joins        [{:lib/type    :lib/join
+                         :joins        [{:lib/type    :mbql/join
                                          :lib/options {:lib/uuid string?}
-                                         :stages      [{:lib/type     :stage/mbql
+                                         :stages      [{:lib/type     :mbql.stage/mbql
                                                         :lib/options  {:lib/uuid string?}
                                                         :source-table (meta/id :venues)}]
                                          :condition   [:=
@@ -63,9 +56,9 @@
           q2                 (lib/saved-question-query meta/saved-question)
           venues-category-id (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
           categories-id      (lib.metadata/field-metadata q2 "ID")]
-      (t/is (=? {:lib/type    :lib/join
+      (t/is (=? {:lib/type    :mbql/join
                  :lib/options {:lib/uuid string?}
-                 :stages      [{:lib/type     :stage/mbql
+                 :stages      [{:lib/type     :mbql.stage/mbql
                                 :lib/options  {:lib/uuid string?}
                                 :source-table (meta/id :venues)}]
                  :condition   [:=
@@ -75,7 +68,7 @@
                 (lib/join q2 (lib/= venues-category-id categories-id))))
       (t/is (=? {:database (meta/id)
                  :stages   [{:source-table (meta/id :categories)
-                             :joins        [{:lib/type    :lib/join
+                             :joins        [{:lib/type    :mbql/join
                                              :lib/options {:lib/uuid string?}
                                              :stages      [{:source-table (meta/id :venues)}]
                                              :condition   [:=

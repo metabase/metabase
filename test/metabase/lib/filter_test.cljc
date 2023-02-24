@@ -1,19 +1,11 @@
 (ns metabase.lib.filter-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib :as lib]
-      [metabase.lib.interface :as lib.interface]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib :as lib]
-      [metabase.lib.interface :as lib.interface]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.interface :as lib.interface]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta])
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (t/deftest ^:parallel equals-test
   (let [q1                 (lib/query meta/metadata "CATEGORIES")

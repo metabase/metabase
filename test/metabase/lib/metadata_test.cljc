@@ -1,17 +1,10 @@
 (ns metabase.lib.metadata-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta])
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (t/deftest ^:parallel field-metadata-test
   (t/is (=? (merge

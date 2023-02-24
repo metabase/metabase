@@ -1,22 +1,15 @@
 (ns metabase.lib.order-by-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib :as lib]
-      [metabase.lib.metadata :as lib.metadata]
-      [metabase.lib.test-metadata :as meta])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta])
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (t/deftest ^:parallel order-by-test
   (t/is (=? {:database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :source-table (meta/id :venues)
                          :order-by     [[:asc
                                          {:lib/uuid string?}
@@ -28,7 +21,7 @@
 (t/deftest ^:parallel threading-test
   (t/is (=? {:database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :source-table (meta/id :venues)
                          :order-by     [[:asc
                                          {:lib/uuid string?}
@@ -40,7 +33,7 @@
 (t/deftest ^:parallel threading-with-direction-test
   (t/is (=? {:database (meta/id)
              :type     :pipeline
-             :stages   [{:lib/type     :stage/mbql
+             :stages   [{:lib/type     :mbql.stage/mbql
                          :source-table (meta/id :venues)
                          :order-by     [[:desc
                                          {:lib/uuid string?}
@@ -50,20 +43,20 @@
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel specific-stage-test
-  (t/are [x] (=? {:lib/type :lib/outer-query
+  (t/are [x] (=? {:lib/type :mbql/query
                   :database 1
                   :type     :pipeline
-                  :stages   [{:lib/type     :stage/mbql
+                  :stages   [{:lib/type     :mbql.stage/mbql
                               :lib/options  {:lib/uuid string?}
                               :source-table (meta/id :venues)}
-                             {:lib/type    :stage/mbql
+                             {:lib/type    :mbql.stage/mbql
                               :lib/options {:lib/uuid string?}
                               :order-by    [[:asc
                                              {:lib/uuid string?}
                                              [:field
                                               (meta/id :venues :id)
                                               {:lib/uuid string?}]]]}
-                             {:lib/type    :stage/mbql
+                             {:lib/type    :mbql.stage/mbql
                               :lib/options {:lib/uuid string?}}]}
                  (-> (lib/query meta/metadata {:database 1
                                                :type     :query
@@ -85,7 +78,7 @@
     (let [query     (lib/query meta/metadata "CATEGORIES")
           venues-id (lib.metadata/field-metadata query "VENUES" "ID")]
       (t/is (=? {:database (meta/id)
-                 :stages   [{:lib/type     :stage/mbql
+                 :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table (meta/id :categories)
                              :order-by     [[:asc
                                              {:lib/uuid string?}
@@ -97,7 +90,7 @@
 (t/deftest ^:parallel order-bys-test
   (t/is (=? [[:asc
               {:lib/uuid string?}
-              [:field 400 {:lib/uuid string?}]]]
+              [:field (meta/id :venues :id) {:lib/uuid string?}]]]
             (-> (lib/query meta/metadata "VENUES")
                 (lib/append (lib/order-by (lib/field "VENUES" "ID")))
                 lib/order-bys))))

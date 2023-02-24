@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [def])
   (:require
    [malli.core :as mc]
-   [malli.registry :as mr]))
+   [malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private registry*
   (atom (mc/default-schemas)))
@@ -16,5 +17,8 @@
   (swap! registry* assoc type schema)
   nil)
 
-(defmacro def [type schema]
-  `(register! ~type ~schema))
+#?(:clj
+   (defmacro def
+     "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
+     [type schema]
+     `(register! ~type ~schema)))

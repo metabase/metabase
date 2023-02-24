@@ -1,45 +1,89 @@
-(ns metabase.lib.test-metadata)
+(ns metabase.lib.test-metadata
+  "Test metadata that we can test the new Metadata lib with. This was captured from the same API endpoints that the frontend
+  Query Builder hits to power its UI.
+
+  This is captured and hardcoded to make it easy to test the new Metabase lib in ClojureScript land without relying on
+  an application database and REST API to provide the metadata. One downside is that changes to the REST API response
+  will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
+  these things if that happens and Metabase lib is meant to consume it.")
+
+(defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
+  test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
+  random-id-offset
+  (* (rand-int 100) 1000))
 
 (defn id
+  "Get the ID associated with the test metadata Database, one of its Tables, or one of its Fields.
+
+    ;; Database ID
+    (id) => 1
+
+    ;; Table ID
+    (id :venues) => 40
+
+    ;; Field ID
+    (id :venues :id) => 401
+
+  This is here so we don't have to hardcode opaque integer IDs in tests that use this test metadata, and get something
+  that actually meaningfully represents the Field we're talking about instead.
+
+  These numbers are randomly generated on every run just to make sure no one is trying to hardcode IDs in tests."
+  ;; Not that this should matter to anyone, but:
+  ;;
+  ;; * Database ID is ends in xx001
+  ;;
+  ;; * Table ID ends in a multiple of 10, e.g. xx010
+  ;;
+  ;; * Field ID is starts with the same number the corresponding Table ID starts with. E.g.
+  ;; * `venues` is table xx040, and `venues.name` is Field xx401.
   ([]
-   1)
+   (+ random-id-offset 1))
 
   ([table-name]
-   (case table-name
-     :categories 10
-     :checkins   20
-     :users      30
-     :venues     40))
+   (+ random-id-offset
+      (case table-name
+        :categories 10
+        :checkins   20
+        :users      30
+        :venues     40)))
 
   ([table-name field-name]
-   (case table-name
-     :categories (case field-name
-                   :id   100
-                   :name 101)
-     :checkins   (case field-name
-                   :id       200
-                   :date     201
-                   :user-id  202
-                   :venue-id 203)
-     :users      (case field-name
-                   :id         300
-                   :name       301
-                   :last-login 302
-                   :password   303)
-     :venues     (case field-name
-                   :id          400
-                   :name        401
-                   :category-id 402
-                   :latitude    403
-                   :longitude   404
-                   :price       405))))
+   (+ random-id-offset
+      (case table-name
+        :categories (case field-name
+                      :id   100
+                      :name 101)
+        :checkins   (case field-name
+                      :id       200
+                      :date     201
+                      :user-id  202
+                      :venue-id 203)
+        :users      (case field-name
+                      :id         300
+                      :name       301
+                      :last-login 302
+                      :password   303)
+        :venues     (case field-name
+                      :id          400
+                      :name        401
+                      :category-id 402
+                      :latitude    403
+                      :longitude   404
+                      :price       405)))))
 
 (defmulti table-metadata
+  "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can
+  test things that should consume Table metadata.
+
+  Metadata returned by this method matches the [[metabase.lib.metadata/TableMetadata]] schema."
   {:arglists '([table-name])}
-  (fn [table-name]
-    (keyword table-name)))
+  keyword)
 
 (defmulti field-metadata
+  "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
+  you can test things that should consume Field metadata.
+
+  Metadata returned by this method matches the [[metabase.lib.metadata/FieldMetadata]] schema."
   {:arglists '([table-name field-name])}
   (fn [table-name field-name]
     [(keyword table-name) (keyword field-name)]))
@@ -57,14 +101,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:40.798565Z"
    :custom_position     0
    :effective_type      :type/BigInteger
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :categories :id)
-   :last_analyzed       nil
    :position            0
    :visibility_type     :normal
    :target              nil
@@ -73,7 +115,6 @@
    :database_position   0
    :database_required   false
    :fingerprint         nil
-   :created_at          #t "2023-02-22T00:30:40.798565Z"
    :base_type           :type/BigInteger
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -91,14 +132,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:41.784724Z"
    :custom_position     0
    :effective_type      :type/Text
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :categories :name)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            1
    :visibility_type     :normal
    :target              nil
@@ -108,14 +147,11 @@
    :database_required   true
    :fingerprint
    {:global {:distinct-count 75, :nil% 0.0}
-    :type
-    #:type{:Text
-           {:percent-json   0.0
-            :percent-url    0.0
-            :percent-email  0.0
-            :percent-state  0.0
-            :average-length 8.333333333333334}}}
-   :created_at          #t "2023-02-22T00:30:40.798565Z"
+    :type   {:type/Text {:percent-json   0.0
+                         :percent-url    0.0
+                         :percent-email  0.0
+                         :percent-state  0.0
+                         :average-length 8.333333333333334}}}
    :base_type           :type/Text
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -131,7 +167,6 @@
                              (field-metadata :categories :name)]
    :caveats                 nil
    :segments                []
-   :updated_at              #t "2023-02-22T00:30:41.825045Z"
    :active                  true
    :id                      (id :categories)
    :db_id                   (id)
@@ -140,7 +175,6 @@
    :initial_sync_status     "complete"
    :display_name            "Categories"
    :metrics                 []
-   :created_at              #t "2023-02-22T00:30:40.747734Z"
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
@@ -157,14 +191,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:40.821286Z"
    :custom_position     0
    :effective_type      :type/BigInteger
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :checkins :id)
-   :last_analyzed       nil
    :position            0
    :visibility_type     :normal
    :target              nil
@@ -173,7 +205,6 @@
    :database_position   0
    :database_required   false
    :fingerprint         nil
-   :created_at          #t "2023-02-22T00:30:40.821286Z"
    :base_type           :type/BigInteger
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -191,14 +222,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:41.662673Z"
    :custom_position     0
    :effective_type      :type/Date
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :checkins :date)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            1
    :visibility_type     :normal
    :target              nil
@@ -208,7 +237,6 @@
    :database_required   false
    :fingerprint         {:global {:distinct-count 618, :nil% 0.0}
                          :type   #:type{:DateTime {:earliest "2013-01-03", :latest "2015-12-29"}}}
-   :created_at          #t "2023-02-22T00:30:40.821286Z"
    :base_type           :type/Date
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -226,14 +254,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  (id :users :id)
-   :updated_at          #t "2023-02-22T00:30:41.667867Z"
    :custom_position     0
    :effective_type      :type/Integer
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :checkins :user-id)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            2
    :visibility_type     :normal
    :target              nil
@@ -242,7 +268,6 @@
    :database_position   2
    :database_required   false
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}}
-   :created_at          #t "2023-02-22T00:30:40.821286Z"
    :base_type           :type/Integer
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -260,14 +285,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  (id :venues :id)
-   :updated_at          #t "2023-02-22T00:30:41.665413Z"
    :custom_position     0
    :effective_type      :type/Integer
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :checkins :venue-id)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            3
    :visibility_type     :normal
    :target              nil
@@ -276,7 +299,6 @@
    :database_position   3
    :database_required   false
    :fingerprint         {:global {:distinct-count 100, :nil% 0.0}}
-   :created_at          #t "2023-02-22T00:30:40.821286Z"
    :base_type           :type/Integer
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -294,7 +316,6 @@
                              (field-metadata :checkins :venue-id)]
    :caveats                 nil
    :segments                []
-   :updated_at              #t "2023-02-22T00:30:41.829964Z"
    :active                  true
    :id                      (id :checkins)
    :db_id                   (id)
@@ -303,7 +324,6 @@
    :initial_sync_status     "complete"
    :display_name            "Checkins"
    :metrics                 []
-   :created_at              #t "2023-02-22T00:30:40.741351Z"
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
@@ -320,14 +340,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:40.831985Z"
    :custom_position     0
    :effective_type      :type/BigInteger
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :users :id)
-   :last_analyzed       nil
    :position            0
    :visibility_type     :normal
    :target              nil
@@ -336,7 +354,6 @@
    :database_position   0
    :database_required   false
    :fingerprint         nil
-   :created_at          #t "2023-02-22T00:30:40.831985Z"
    :base_type           :type/BigInteger
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -354,14 +371,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:41.794462Z"
    :custom_position     0
    :effective_type      :type/Text
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :users :name)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            1
    :visibility_type     :normal
    :target              nil
@@ -376,7 +391,6 @@
                                          :percent-email  0.0
                                          :percent-state  0.0
                                          :average-length 13.266666666666667}}}
-   :created_at          #t "2023-02-22T00:30:40.831985Z"
    :base_type           :type/Text
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -394,14 +408,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:41.711716Z"
    :custom_position     0
    :effective_type      :type/DateTime
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :users :last-login)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            2
    :visibility_type     :normal
    :target              nil
@@ -411,7 +423,6 @@
    :database_required   false
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}
                          :type   #:type{:DateTime {:earliest "2014-01-01T08:30:00Z", :latest "2014-12-05T15:15:00Z"}}}
-   :created_at          #t "2023-02-22T00:30:40.831985Z"
    :base_type           :type/DateTime
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -429,14 +440,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:42.072887Z"
    :custom_position     0
    :effective_type      :type/Text
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :users :password)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            3
    :visibility_type     :sensitive
    :target              nil
@@ -451,7 +460,6 @@
                                          :percent-email  0.0
                                          :percent-state  0.0
                                          :average-length 36.0}}}
-   :created_at          #t "2023-02-22T00:30:40.831985Z"
    :base_type           :type/Text
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -469,7 +477,6 @@
                              (field-metadata :users :password)]
    :caveats                 nil
    :segments                []
-   :updated_at              #t "2023-02-22T00:30:41.833214Z"
    :active                  true
    :id                      (id :users)
    :db_id                   (id)
@@ -478,7 +485,6 @@
    :initial_sync_status     "complete"
    :display_name            "Users"
    :metrics                 []
-   :created_at              #t "2023-02-22T00:30:40.734907Z"
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
@@ -495,14 +501,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:40.845644Z"
    :custom_position     0
    :effective_type      :type/BigInteger
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :id)
-   :last_analyzed       nil
    :position            0
    :visibility_type     :normal
    :target              nil
@@ -511,7 +515,6 @@
    :database_position   0
    :database_required   false
    :fingerprint         nil
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/BigInteger
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -529,14 +532,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:41.818202Z"
    :custom_position     0
    :effective_type      :type/Text
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :name)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            1
    :visibility_type     :normal
    :target              nil
@@ -551,7 +552,6 @@
                                          :percent-email  0.0
                                          :percent-state  0.0
                                          :average-length 15.63}}}
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/Text
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -569,14 +569,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  (id :categories :id)
-   :updated_at          #t "2023-02-22T00:30:41.757152Z"
    :custom_position     0
    :effective_type      :type/Integer
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :category-id)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            2
    :visibility_type     :normal
    :target              nil
@@ -585,7 +583,6 @@
    :database_position   2
    :database_required   false
    :fingerprint         {:global {:distinct-count 28, :nil% 0.0}}
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/Integer
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -603,14 +600,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:42.079049Z"
    :custom_position     0
    :effective_type      :type/Float
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :latitude)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            3
    :visibility_type     :normal
    :target              nil
@@ -626,7 +621,6 @@
                                          :max 40.7794
                                          :sd  3.4346725397190827
                                          :avg 35.505891999999996}}}
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/Float
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -644,14 +638,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:42.082865Z"
    :custom_position     0
    :effective_type      :type/Float
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :longitude)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            4
    :visibility_type     :normal
    :target              nil
@@ -669,7 +661,6 @@
             :max -73.9533
             :sd  14.162810671348238
             :avg -115.99848699999998}}}
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/Float
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -687,14 +678,12 @@
    :settings            nil
    :caveats             nil
    :fk_target_field_id  nil
-   :updated_at          #t "2023-02-22T00:30:42.086325Z"
    :custom_position     0
    :effective_type      :type/Integer
    :active              true
    :nfc_path            nil
    :parent_id           nil
    :id                  (id :venues :price)
-   :last_analyzed       #t "2023-02-22T00:30:41.861759Z"
    :position            5
    :visibility_type     :normal
    :target              nil
@@ -710,7 +699,6 @@
                                          :max 4.0
                                          :sd  0.7713951678941896
                                          :avg 2.03}}}
-   :created_at          #t "2023-02-22T00:30:40.845644Z"
    :base_type           :type/Integer
    :points_of_interest  nil
    :lib/type            :metadata/field})
@@ -730,7 +718,6 @@
                              (field-metadata :venues :price)]
    :caveats                 nil
    :segments                []
-   :updated_at              #t "2023-02-22T00:30:41.837179Z"
    :active                  true
    :id                      (id :venues)
    :db_id                   (id)
@@ -739,11 +726,16 @@
    :initial_sync_status     "complete"
    :display_name            "Venues"
    :metrics                 []
-   :created_at              #t "2023-02-22T00:30:40.718208Z"
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
 (def metadata
+  "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
+  of `test-data`. This is a representative example of the metadata the FE Query Builder would have available to it.
+  Here so we can test things that should consume Database metadata without relying on having a REST API
+  available (i.e., in Cljs tests).
+
+  This metadata matches the [[metabase.lib.metadata/DatabaseMetadata]] schema."
   {:description                 nil
    :features                    #{:actions
                                   :actions/custom
@@ -778,7 +770,6 @@
                                  (table-metadata :venues)]
    :creator_id                  nil
    :is_full_sync                true
-   :updated_at                  #t "2023-02-22T00:30:40.508908Z"
    :cache_ttl                   nil
    :is_sample                   false
    :id                          (id)
@@ -788,12 +779,19 @@
    :initial_sync_status         "complete"
    :dbms_version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
-   :created_at                  #t "2023-02-22T00:30:40.508908Z"
    :points_of_interest          nil
    :lib/type                    :metadata/database})
 
 (def results-metadata
-  "The results of running `SELECT * FROM VENUES;`"
+  "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
+  Processor, or saved as `Card.result_metadata` for a Saved Question.
+
+  IRL queries actually come back with both `data.cols` and `data.results_metadata.columns`, which are slightly
+  different from one another; the frontend merges these together into one unified metadata map. This is both icky and
+  silly. I'm hoping we can get away with just using one or the other in the future. So let's try to use just the stuff
+  here and see how far we get. If it turns out we need something in `data.cols` that's missing from here, let's just
+  add it to `data.results_metadata.columns` in QP results, and add it here as well, so we can start moving toward a
+  world where we don't have two versions of the metadata in query responses."
   {:lib/type :metadata/results
    :columns  [{:lib/type       :metadata/field
                :display_name   "ID"
@@ -873,7 +871,8 @@
                                           :avg 2.03}}}}]})
 
 (def saved-question
-  "An example saved question."
+  "An representative Saved Question, with [[results-metadata]]. For testing queries that use a Saved Question as their
+  source."
   {:dataset_query   {:database (id)
                      :type     :query
                      :query    {:source-table (id :venues)}}

@@ -81,13 +81,10 @@
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (clojure-docstring-fill-column . 118)
-  (cider-preferred-build-tool . clojure-cli))
-
- ("shared"
-  (clojure-mode
-   (cider-default-cljs-repl . shadow-select)
-   (cider-shadow-default-options . "node-repl")
-   (cider-preferred-build-tool . shadow-cljs)))
+  (cider-preferred-build-tool . clojure-cli)
+  (cider-default-cljs-repl . shadow-select)
+  (cider-shadow-default-options . "node-repl")
+  (cider-preferred-build-tool . shadow-cljs))
 
  ("bin"
   (clojure-mode

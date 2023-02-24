@@ -1,4 +1,4 @@
-(ns metabase.lib
+(ns metabase.lib.core
   (:refer-clojure :exclude [remove replace =])
   (:require
    [metabase.lib.append :as lib.append]

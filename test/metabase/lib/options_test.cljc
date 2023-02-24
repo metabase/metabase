@@ -1,13 +1,7 @@
 (ns metabase.lib.options-test
-  #?@
-   (:clj
-    [(:require
-      [clojure.test :as t]
-      [metabase.lib.options :as lib.options])]
-    :cljs
-    [(:require
-      [cljs.test :as t :include-macros true]
-      [metabase.lib.options :as lib.options])]))
+  (:require
+   [clojure.test :as t]
+   [metabase.lib.options :as lib.options]))
 
 (t/deftest ^:parallel default-mbql-options-test
   (t/testing `lib.options/options

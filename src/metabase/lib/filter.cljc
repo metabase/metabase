@@ -1,15 +1,13 @@
 (ns metabase.lib.filter
   (:refer-clojure :exclude [=])
   (:require
-   [metabase.lib.field :as lib.field]
    [metabase.lib.interface :as lib.interface]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.util.malli :as mu]))
 
-(comment metabase.lib.schema/keep-me)
-
-(mu/defn = :- :mbql/=
+(mu/defn = :- ::lib.schema.filter/=
+  "Create an `=` filter clause."
   [& args]
   (lib.options/ensure-uuid (into [:=]
                                  (map lib.interface/->mbql)
