@@ -13,7 +13,7 @@ describe("scenarios > models > revision history", () => {
     });
   });
 
-  it("should allow reverting to a saved question state", () => {
+  it("should allow reverting to a saved question state and back into a model again", () => {
     visitModel(3);
 
     openRevisionHistory();
