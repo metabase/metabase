@@ -286,10 +286,10 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       options: [
-        { name: "Normal", value: "decimal" },
-        { name: "Percent", value: "percent" },
-        { name: "Scientific", value: "scientific" },
-        { name: "Currency", value: "currency" },
+        { name: t`Normal`, value: "decimal" },
+        { name: t`Percent`, value: "percent" },
+        { name: t`Scientific`, value: "scientific" },
+        { name: t`Currency`, value: "currency" },
       ],
     },
     getDefault: (column, settings) =>

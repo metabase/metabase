@@ -451,6 +451,24 @@ describe("scenarios > question > notebook", () => {
     visualize();
   });
 
+  it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
+    startNewQuestion();
+    popover().within(() => {
+      cy.contains("Sample Database").click();
+      cy.contains("Orders").click();
+    });
+
+    getNotebookStep("summarize")
+      .findByTestId("aggregate-step")
+      .findAllByTestId("notebook-cell-item")
+      .last()
+      .click();
+
+    popover().within(() => {
+      cy.findByText("Median of ...").should("not.exist");
+    });
+  });
+
   describe('"median" aggregation function', { tags: "@external" }, () => {
     beforeEach(() => {
       restore("postgres-12");
@@ -512,8 +530,19 @@ describe("scenarios > question > notebook", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");
+    });
 
-      cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+    it("should support Summarize side panel", () => {
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("QA Postgres12").click();
+        cy.findByText("Products").click();
+      });
+
+      visualize();
+
+      summarize();
+
       cy.findByTestId("add-aggregation-button").click();
 
       popover().within(() => {

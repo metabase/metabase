@@ -92,7 +92,7 @@ function initiateAction(actionType, mode) {
   }
 }
 
-const ActionTypeToIconMap = {
+const ACTION_TYPE_TO_ICON_MAP = {
   Filter: "filter",
   Summarize: "sum",
   Join: "join_left_outer",
@@ -106,5 +106,5 @@ const ActionTypeToIconMap = {
  * @returns string
  */
 function getIcon(actionType) {
-  return ActionTypeToIconMap[actionType];
+  return ACTION_TYPE_TO_ICON_MAP[actionType];
 }

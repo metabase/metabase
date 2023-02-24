@@ -285,7 +285,7 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
           return [t`Minimum of `, agg["arg"]];
         default: {
           console.warn(
-            "Unknown aggregation type in formatAggregationDescription",
+            "Unexpected aggregation type in formatAggregationDescription: ",
             agg["type"],
           );
           return null;
