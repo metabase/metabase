@@ -2,7 +2,7 @@
   (:require
    [metabase.shared.formatting.internal.numbers :as internal]
    [metabase.shared.formatting.internal.numbers-core :as core]
-   [metabase.util :as u]))
+   [metabase.shared.util.options :as options]))
 
 (declare format-number)
 
@@ -82,6 +82,21 @@
              :else (internal/number-formatter-for-options options))]
     (core/format-number-basic nf number)))
 
+(def ^:private normalize-options
+  (options/options-decoder {:compact                    "compact"
+                            :currency                   "currency"
+                            :currency-style             "currency_style"
+                            :maximum-fraction-digits    "maximumFractionDigits"
+                            :minimum-fraction-digits    "minimumFractionDigits"
+                            :minimum-integer-digits     "minimumIntegerDigits"
+                            :maximum-significant-digits "maximumSignificantDigits"
+                            :minimum-significant-digits "minimumSignificantDigits"
+                            :negative-in-parentheses    "negativeInParentheses"
+                            :number-separators          "number_separators"
+                            :number-style               "number_style"
+                            :scale                      "scale"
+                            :type                       "type"}))
+
 (defn ^:export format-number
   "Formats a number according to a map of options.
   The options:
@@ -103,7 +118,7 @@
       - \"decimal\" (the default) is basic numeric notation.
   - `:scale` number: Gives a factor by which to multiply the value before rendering it."
   [number options]
-  (let [{:keys [compact negative-in-parentheses number-style scale] :as options} (u/normalize-map options)]
+  (let [{:keys [compact negative-in-parentheses number-style scale] :as options} (normalize-options options)]
     (cond
       (and scale (not (NaN? scale))) (format-number (* scale number) (dissoc options :scale))
 

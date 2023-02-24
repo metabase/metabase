@@ -2,7 +2,7 @@
   "Normalization and helper predicates for date formatting options maps."
   (:require
    [metabase.shared.formatting.constants :as constants]
-   [metabase.util :as u]))
+   [metabase.shared.util.options :as options]))
 
 (def ^:private default-options
   {:date-enabled   true
@@ -20,6 +20,33 @@
 (def ^:private time-only?
   #{:hour-of-day})
 
+(def ^:private normalize-options
+  (let [decoder (options/options-decoder {:compact "compact"
+                                          :date-abbreviate "date_abbreviate"
+                                          :date-format "date_format"
+                                          :date-separator "date_separator"
+                                          :date-style "date_style"
+                                          :decimals "decimals"
+                                          :is-exclude "isExclude"
+                                          :local "local"
+                                          :maximum-fraction-digits "maximumFractionDigits"
+                                          :minimum-fraction-digits "minimumFractionDigits"
+                                          :no-range "noRange"
+                                          :number-separators "number_separators"
+                                          :time-enabled "time_enabled"
+                                          :time-style "time_style"
+                                          :time-format "time_format"
+                                          :type "type"
+                                          :unit "unit"
+                                          :view-as "view_as"
+                                          :weekday-enabled "weekday_enabled"})]
+    #?(:clj  decoder
+       :cljs #(-> %
+                  decoder
+                  (m/update-existing :time-format js->clj)
+                  (m/update-existing :date-format js->clj)
+                  (m/update-existing :date-style  js->clj)))))
+
 (defn prepare-options
   "Normalizes the options map. This returns a Clojure map with `:kebab-case-keys`, whatever the input object or
   key spelling.
@@ -31,7 +58,7 @@
   - transforming `:compact true` to `:output-density \"compact\"` (takes precedence over `\"condensed\"`).
   - make `:unit` a keyword"
   [options]
-  (let [options                               (-> (u/normalize-map options)
+  (let [options                               (-> (normalize-options options)
                                                   (update :unit keyword))
         {:keys [compact date-abbreviate
                 type unit]
