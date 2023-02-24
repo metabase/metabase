@@ -182,10 +182,10 @@
 
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
-    (when-let [classified-query (classify-query database query)]
-      (when-not (every-command-allowed-for-actions? classified-query)
+    (when-let [query-classification (classify-query database query)]
+      (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with H2."
-                        {:classification classified-query}))))))
+                        {:classification query-classification}))))))
 
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
@@ -197,10 +197,10 @@
 
 (defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
   (when query
-    (let [classified-query (classify-query database query)]
-      (when-not (read-only-statements? classified-query)
+    (let [query-classification (classify-query database query)]
+      (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:classification classified-query}))))))
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
