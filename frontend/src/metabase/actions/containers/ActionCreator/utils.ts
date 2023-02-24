@@ -128,24 +128,25 @@ export const removeOrphanSettings = (
   };
 };
 
-export const addMissingSettings = (
+export const syncFieldsWithParameters = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): ActionFormSettings => {
   const parameterIds = parameters.map(parameter => parameter.id);
   const fieldIds = Object.keys(settings.fields || {});
-  const missingIds = _.difference(parameterIds, fieldIds);
+  const addedIds = _.difference(parameterIds, fieldIds);
+  const removedIds = _.difference(fieldIds, parameterIds);
 
-  if (!missingIds.length) {
+  if (!addedIds.length && !removedIds.length) {
     return settings;
   }
 
   return {
     ...settings,
     fields: {
-      ...settings.fields,
+      ..._.omit(settings.fields, removedIds),
       ...Object.fromEntries(
-        missingIds.map(id => [id, getDefaultFieldSettings({ id })]),
+        addedIds.map(id => [id, getDefaultFieldSettings({ id })]),
       ),
     },
   };
@@ -164,7 +165,7 @@ export const convertQuestionToAction = (
     cleanQuestion.parameters(),
   );
   const visualization_settings = removeOrphanSettings(
-    addMissingSettings(formSettings, parameters),
+    syncFieldsWithParameters(formSettings, parameters),
     parameters,
   );
   return {
