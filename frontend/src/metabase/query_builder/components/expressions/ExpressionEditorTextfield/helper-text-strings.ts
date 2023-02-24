@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
 
-import { formatTime } from "metabase/lib/formatting";
 import type { Database } from "metabase-types/api/database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
 
@@ -80,6 +79,18 @@ const helperTextStrings: HelpTextConfig[] = [
     structure: "Average(" + t`column` + ")",
     description: () => t`Returns the average of the values in the column.`,
     example: "Average([" + t`Quantity` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The numeric column whose values to average.`,
+      },
+    ],
+  },
+  {
+    name: "median",
+    structure: "Median(" + t`column` + ")",
+    description: () => t`Returns the median of all the values of a column.`,
+    example: "Median([" + t`Quantity` + "])",
     args: [
       {
         name: t`column`,
@@ -227,7 +238,7 @@ const helperTextStrings: HelpTextConfig[] = [
     structure:
       "substring(" + t`text` + ", " + t`position` + ", " + t`length` + ")",
     description: () => t`Returns a portion of the supplied text.`,
-    example: "substring([" + t`Title` + "], 0, 10)",
+    example: "substring([" + t`Title` + "], 1, 10)",
     args: [
       {
         name: t`text`,
@@ -235,7 +246,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`position`,
-        description: t`The position to start copying characters.`,
+        description: t`The position to start copying characters. Index starts at position 1.`,
       },
       { name: t`length`, description: t`The number of characters to return.` },
     ],

@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
+  default_date_style,
+  default_time_style,
+} from "cljs/metabase.shared.formatting.constants";
 import MetabaseSettings from "metabase/lib/settings";
 
 import DateTime from "metabase/components/DateTime";
@@ -39,8 +39,8 @@ describe("DateTime", () => {
   }
 
   function getExpectedFormat({
-    date_style = DEFAULT_DATE_STYLE,
-    time_style = DEFAULT_TIME_STYLE,
+    date_style = default_date_style,
+    time_style = default_time_style,
   } = {}) {
     return moment(TEST_DATE).format(`${date_style}, ${time_style}`);
   }

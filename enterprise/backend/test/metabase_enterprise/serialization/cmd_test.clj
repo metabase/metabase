@@ -1,8 +1,7 @@
-(ns metabase-enterprise.serialization.cmd-test
+(ns ^:mb/once metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.cmd :as cmd]
@@ -10,10 +9,13 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [yaml.core :as yaml])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 

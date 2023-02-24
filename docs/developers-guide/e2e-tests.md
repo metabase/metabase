@@ -116,5 +116,14 @@ If you navigate to the `/admin/settings/license` page, the license input field s
 
 
 - If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
-- If tests start running but the enterprise features are missing: make sure that the token is still valid. 
+- If tests start running but the enterprise features are missing: make sure that the token is still valid.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
+
+## Tags
+
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `yarn test-cypress-open --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+
+These are the tags currently in use:
+
+- `@external` - tests that require an external docker container to run
+- `@actions` - tests that use metabase actions and mutate data in a data source

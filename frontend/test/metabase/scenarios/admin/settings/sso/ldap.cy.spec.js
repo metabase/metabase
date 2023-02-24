@@ -106,6 +106,61 @@ describe(
       cy.findByText("Username or email address").should("be.visible");
       cy.findByText("Password").should("be.visible");
     });
+
+    describe("Group Mappings Widget", () => {
+      it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
+        cy.visit("/admin/settings/authentication/ldap");
+
+        // Create mapping, then delete it along with its groups
+        createMapping("cn=People1");
+        addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
+        deleteMappingWithGroups("cn=People1");
+
+        // Create mapping, then clear its groups of members
+        createMapping("cn=People2");
+        addGroupsToMapping("cn=People2", ["collection", "readonly"]);
+        // Groups deleted along with first mapping should not be offered
+        cy.findByText("data").should("not.exist");
+        cy.findByText("nosql").should("not.exist");
+
+        cy.icon("close").click({ force: true });
+        cy.findByText(/remove all group members/i).click();
+        cy.button("Remove mapping and members").click();
+
+        cy.visit("/admin/people/groups");
+        cy.findByText("data").should("not.exist");
+        cy.findByText("nosql").should("not.exist");
+
+        checkThatGroupHasNoMembers("collection");
+        checkThatGroupHasNoMembers("readonly");
+      });
+
+      it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
+        cy.visit("/admin/settings/authentication/ldap");
+
+        createMapping("cn=People1");
+        addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
+
+        createMapping("cn=People2");
+        addGroupsToMapping("cn=People2", ["data", "collection"]);
+
+        createMapping("cn=People3");
+        addGroupsToMapping("cn=People3", ["collection", "readonly"]);
+
+        deleteMappingWithGroups("cn=People2");
+
+        // cn=People1 will have Admin and nosql as groups
+        cy.findByText("1 other group");
+
+        // cn=People3 will have readonly as group
+        cy.findByText("readonly");
+
+        // Ensure mappings are as expected after a page reload
+        cy.visit("/admin/settings/authentication/ldap");
+        cy.findByText("1 other group");
+        cy.findByText("readonly");
+      });
+    });
   },
 );
 
@@ -123,4 +178,37 @@ const enterLdapSettings = () => {
   typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   typeAndBlurUsingLabel("Password", "admin");
   typeAndBlurUsingLabel("User search base", "dc=example,dc=org");
+};
+
+const createMapping = name => {
+  cy.button("New mapping").click();
+  cy.findByPlaceholderText("cn=People,ou=Groups,dc=metabase,dc=com").type(name);
+  cy.button("Add").click();
+};
+
+const addGroupsToMapping = (mappingName, groups) => {
+  cy.findByText(mappingName)
+    .closest("tr")
+    .within(() => {
+      cy.findByText("Default").click();
+    });
+
+  groups.forEach(group => cy.findByText(group).click());
+};
+
+const deleteMappingWithGroups = mappingName => {
+  cy.findByText(mappingName)
+    .closest("tr")
+    .within(() => {
+      cy.icon("close").click({ force: true });
+    });
+
+  cy.findByText(/delete the groups/i).click();
+  cy.button("Remove mapping and delete groups").click();
+};
+
+const checkThatGroupHasNoMembers = name => {
+  cy.findByText(name)
+    .closest("tr")
+    .within(() => cy.findByText("0"));
 };

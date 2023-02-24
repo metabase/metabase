@@ -33,7 +33,8 @@ export default _.compose(
     reload: true,
   }),
   Pulses.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+    // Load all pulses the current user can read (i.e. is a creator or recipient of)
+    query: state => ({ can_read: true }),
     reload: true,
   }),
   connect(mapStateToProps, mapDispatchToProps),

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.storage.yaml-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.storage.yaml-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
@@ -11,6 +11,8 @@
    [metabase.util.date-2 :as u.date]
    [toucan.db :as db]
    [yaml.core :as yaml]))
+
+(set! *warn-on-reflection* true)
 
 (defn- file-set [dir]
   (let [base (.toPath dir)]

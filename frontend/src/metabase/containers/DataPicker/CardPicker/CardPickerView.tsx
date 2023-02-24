@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import SelectList from "metabase/components/SelectList";
+
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
@@ -11,10 +13,9 @@ import type { DataPickerSelectedItem, VirtualTable } from "../types";
 
 import EmptyState from "../EmptyState";
 import LoadingState from "../LoadingState";
-import VirtualizedSelectList from "../VirtualizedSelectList";
 import PanePicker from "../PanePicker";
 
-import { ListContainer } from "./CardPicker.styled";
+import { StyledSelectList } from "./CardPicker.styled";
 
 type TargetModel = "model" | "question";
 
@@ -54,7 +55,7 @@ function TableSelectListItem({
   onSelect: (id: Table["id"]) => void;
 }) {
   return (
-    <VirtualizedSelectList.Item
+    <SelectList.Item
       id={table.id}
       name={table.display_name}
       isSelected={isSelected}
@@ -62,7 +63,7 @@ function TableSelectListItem({
       onSelect={onSelect}
     >
       {table.display_name}
-    </VirtualizedSelectList.Item>
+    </SelectList.Item>
   );
 }
 
@@ -103,7 +104,7 @@ function CardPickerView({
   );
 
   const renderVirtualTable = useCallback(
-    ({ item: table }: { item: VirtualTable }) => (
+    (table: VirtualTable) => (
       <TableSelectListItem
         key={table.id}
         table={table}
@@ -129,14 +130,9 @@ function CardPickerView({
       ) : isEmpty ? (
         <EmptyState />
       ) : (
-        <ListContainer>
-          {Array.isArray(virtualTables) && (
-            <VirtualizedSelectList<VirtualTable>
-              items={virtualTables}
-              renderItem={renderVirtualTable}
-            />
-          )}
-        </ListContainer>
+        <StyledSelectList>
+          {virtualTables?.map?.(renderVirtualTable)}
+        </StyledSelectList>
       )}
     </PanePicker>
   );

@@ -2,6 +2,8 @@
 // @ts-nocheck
 import {
   Database as IDatabase,
+  DatabaseFeature,
+  DatabaseSettings,
   NativePermissions,
   StructuredQuery,
 } from "metabase-types/api";
@@ -27,9 +29,12 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  is_saved_questions: boolean;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
+  features: DatabaseFeature[];
+  settings?: DatabaseSettings;
   native_permissions: NativePermissions;
 
   // Only appears in  GET /api/database/:id
@@ -123,6 +128,14 @@ class DatabaseInner extends Base {
 
   supportsPersistence() {
     return this.hasFeature("persist-models");
+  }
+
+  supportsActions() {
+    return this.hasFeature("actions");
+  }
+
+  hasActionsEnabled() {
+    return Boolean(this.settings?.["database-enable-actions"]);
   }
 
   // QUESTIONS

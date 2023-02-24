@@ -1,36 +1,41 @@
+import fetchMock from "fetch-mock";
 import _ from "underscore";
-import type { Scope } from "nock";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
+import { Database } from "metabase-types/api";
+import { setupTableEndpoints } from "./table";
 
-import type { Table as TableObject } from "metabase-types/api";
-
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-
-function cleanTable(table: Table): TableObject {
-  const object = {
-    ..._.omit(table.getPlainObject(), "schema", "schema_name"),
-    // After table is built inside the metadata object,
-    // what is normally called "schema" is renamed to "schema_name"
-    schema: table.schema_name,
-  };
-  return object as TableObject;
+export function setupDatabaseEndpoints(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}`, db);
+  setupSchemaEndpoints(db);
+  db.tables?.forEach(table => setupTableEndpoints(table));
 }
 
-function setupForSingleDatabase(scope: Scope, db: Database) {
-  scope.get(`/api/database/${db.id}`).reply(200, db.getPlainObject());
-  scope.get(`/api/database/${db.id}/schemas`).reply(200, db.schemaNames());
-
-  db.schemas.forEach(schema => {
-    scope
-      .get(`/api/database/${db.id}/schema/${schema.name}`)
-      .reply(200, schema.tables.map(cleanTable));
-  });
-}
-
-export function setupDatabasesEndpoints(scope: Scope, dbs: Database[]) {
-  scope.get("/api/database").reply(
-    200,
-    dbs.map(db => db.getPlainObject()),
+export function setupDatabasesEndpoints(
+  dbs: Database[],
+  { hasSavedQuestions = true } = {},
+) {
+  fetchMock.get(
+    {
+      url: "path:/api/database",
+      query: { saved: true },
+      overwriteRoutes: false,
+    },
+    hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,
   );
-  dbs.forEach(db => setupForSingleDatabase(scope, db));
+  fetchMock.get({ url: "path:/api/database", overwriteRoutes: false }, dbs);
+
+  dbs.forEach(db => setupDatabaseEndpoints(db));
 }
+
+export const setupSchemaEndpoints = (db: Database) => {
+  const schemas = _.groupBy(db.tables ?? [], table => table.schema);
+  const schemaNames = Object.keys(schemas);
+  fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
+
+  schemaNames.forEach(schema => {
+    fetchMock.get(
+      `path:/api/database/${db.id}/schema/${schema}`,
+      schemas[schema],
+    );
+  });
+};

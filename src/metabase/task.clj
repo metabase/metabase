@@ -12,19 +12,20 @@
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [schema.core :as s])
   (:import
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -102,7 +103,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (some-> @@#'db/default-db-connection jdbc/get-connection))
+    (.getConnection mdb.connection/*application-db*))
   (shutdown [_]))
 
 (when-not *compile-files*

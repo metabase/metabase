@@ -37,7 +37,7 @@ It's always a good idea to start with a quick sanity check:
 If you're having trouble filtering on a:
 
 - [Custom column](../questions/query-builder/introduction.md#creating-custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
-- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#field-filter-variables).
+- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
 
 **Explanation**
 
@@ -74,11 +74,11 @@ Timestamps, in particular, are the root of all evil, so please be patient with y
 ## Related topics
 
 - [Troubleshooting linked filters](./linked-filters.md)
-- [Troubleshooting SQL variables](./sql.md#field-filter-variables)
+- [Troubleshooting SQL variables and field filters](./sql.md#sql-variables-and-field-filters)
 - [Troubleshooting dates and times](./timezones.md)
 - [Creating dropdown filters](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
-- [Creating SQL filters](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type)
-- [Field filter gotchas](../questions/native-editor/sql-parameters.md#field-filter-gotchas)
+- [Creating SQL filters](../questions/native-editor/sql-parameters.md)
+
 
 ## Are you still stuck?
 

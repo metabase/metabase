@@ -342,4 +342,4 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
 [sql-reference-guide]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
-[sumif]: ../expressions-list.md#sumif
+[sumif]: ./sumif.md

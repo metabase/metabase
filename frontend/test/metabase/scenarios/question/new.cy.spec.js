@@ -6,9 +6,11 @@ import {
   startNewQuestion,
   visitQuestionAdhoc,
   getCollectionIdFromSlug,
+  saveQuestion,
+  getPersonalCollectionName,
 } from "__support__/e2e/helpers";
 
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -88,9 +90,7 @@ describe("scenarios > question > new", () => {
         .should("have.length", 1)
         .as("leftSide")
         // should display the collection tree on the left side
-        .should("contain", "Our analytics")
-        .and("contain", "Your personal collection")
-        .and("contain", "All personal collections");
+        .should("contain", "Our analytics");
 
       cy.findByText("Orders, Count").click();
       cy.findByText("Orders").should("not.exist");
@@ -148,6 +148,29 @@ describe("scenarios > question > new", () => {
         cy.findByText("First collection");
         cy.findByText("Second collection").should("not.exist");
       });
+    });
+
+    it("should be possible to create a question based on a question in another user personal collection", () => {
+      cy.signOut();
+      cy.signIn("nocollection");
+      startNewQuestion();
+      popover().findByText("Orders").click();
+      visualize();
+      saveQuestion("Personal question");
+
+      cy.signOut();
+      cy.signInAsAdmin();
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("All personal collections").click();
+        cy.findByText(getPersonalCollectionName(USERS.normal)).should(
+          "not.exist",
+        );
+        cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
+        cy.findByText("Personal question").click();
+      });
+      visualize();
     });
   });
 

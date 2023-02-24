@@ -31,6 +31,8 @@
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
+  com.github.seancorfield/honeysql          {:mvn/version "2.4.962"}            ; Honey SQL 2. SQL generation from Clojure data maps
+  com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.3"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "31.1-jre"}           ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
                                             {:mvn/version "2.14.1"}             ; JSON processor used by snowplow-java-tracker
@@ -46,6 +48,7 @@
                                             {:mvn/version "0.64.0"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
+  commons-net/commons-net                   {:mvn/version "3.9.0"}              ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
   commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
@@ -60,24 +63,25 @@
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML. Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
                                              :exclusions  [org.clojure/clojure
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.519"}
+  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.519"}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   joda-time/joda-time                       {:mvn/version "2.12.2"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
-  me.raynes/fs                              {:mvn/version "1.4.6"               ; Filesystem tools
-                                             :exclusions  [org.apache.commons/commons-compress]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.1.0"}              ; EE SAML integration
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.9.2"}              ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.10.0"}              ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
@@ -122,7 +126,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.50.v20221201"}   ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.13"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
@@ -142,15 +146,9 @@
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.9.6"}              ; web server (Jetty wrapper)
-  ring/ring-jetty-adapter                   {:mvn/version "1.9.6"}              ; Ring adapter using Jetty webserver
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
-  toucan/toucan                             {:mvn/version "1.18.0"              ; Model layer, hydration, and DB utilities
-                                             :exclusions  [honeysql/honeysql
-                                                           org.clojure/java.jdbc
-                                                           org.clojure/tools.logging
-                                                           org.clojure/tools.namespace]}
   user-agent/user-agent                     {:mvn/version "0.1.0"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
 
@@ -197,15 +195,15 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.3"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2022.08.03"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2023.01.16"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.13"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.35.0"}                    ; ui for inspecting values
-    eftest/eftest                {:mvn/version "0.6.0"}
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
+    io.github.metabase/hawk      {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
     jonase/eastwood              {:mvn/version "1.3.0"}                     ; inspects namespaces and reports possible problems using tools.analyzer
     lambdaisland/deep-diff2      {:mvn/version "2.7.169"}                   ; way better diffs
-    methodical/methodical        {:mvn/version "0.15.0.1"}                  ; drop-in replacements for Clojure multimethods and adds several advanced features
+    methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
@@ -238,7 +236,7 @@
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-paths ["test_config"]
-   :exec-fn     metabase.test-runner/run-tests
+   :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -281,6 +279,14 @@
   :oss-dev
   {}
 
+  :cljs
+  {:extra-paths ["test" "shared/test"]
+   :extra-deps
+   {cljs-bean/cljs-bean     {:mvn/version "1.9.0"}
+    com.lambdaisland/glogi  {:mvn/version "1.2.164"}
+    io.github.metabase/hawk {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
+    thheller/shadow-cljs    {:mvn/version "2.20.20"}}}
+
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
   {:extra-deps
@@ -301,8 +307,6 @@
     "modules/drivers/googleanalytics/test"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
-    "modules/drivers/presto/test"
-    "modules/drivers/presto-common/test"
     "modules/drivers/presto-jdbc/test"
     "modules/drivers/redshift/test"
     "modules/drivers/snowflake/test"
@@ -330,8 +334,6 @@
                 "modules/drivers/googleanalytics/src"
                 "modules/drivers/mongo/src"
                 "modules/drivers/oracle/src"
-                "modules/drivers/presto/src"
-                "modules/drivers/presto-common/src"
                 "modules/drivers/presto-jdbc/src"
                 "modules/drivers/redshift/src"
                 "modules/drivers/snowflake/src"
@@ -355,8 +357,6 @@
                                  "modules/drivers/googleanalytics/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"
-                                 "modules/drivers/presto/src"
-                                 "modules/drivers/presto-common/src"
                                  "modules/drivers/presto-jdbc/src"
                                  "modules/drivers/redshift/src"
                                  "modules/drivers/snowflake/src"
@@ -371,7 +371,9 @@
                                  ;; as `java-time`
                                  :implicit-dependencies
                                  ;; too many false positives for now
-                                 :unused-ret-vals]}}
+                                 :unused-ret-vals
+                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                 :wrong-arity]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter
@@ -401,7 +403,9 @@
                                    "\\.sh$"
                                    "\\.yaml$"
                                    "\\.yml$"]
-                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                :exclude-patterns [".clj-kondo/better-cond/.*"
+                                   ".clj-kondo/com.github.seancorfield/.*"
+                                   "resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"
@@ -421,7 +425,9 @@
                ;; log calls expand to these
                :exclude-call
                [clojure.tools.logging/logf
-                clojure.tools.logging/logp]
+                clojure.tools.logging/logp
+                metabase.util.log/logf
+                metabase.util.log/logp]
 
                :src-ns-path
                ["src" "enterprise/backend/src" "shared/src"]
@@ -460,7 +466,7 @@
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-XX:+PrintGC"]}
 
-  ;; get the H2 shell with clojure -X:h2
+  ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
    :exec-fn     dev.h2-shell/shell
@@ -476,6 +482,9 @@
   :nrepl
   {:extra-deps {nrepl/nrepl {:mvn/version "0.9.0"}}
    :main-opts  ["-m" "nrepl.cmdline"]}
+
+  ;; - start a Socket REPL on port 50505 that you can connect your editor to:
+  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;

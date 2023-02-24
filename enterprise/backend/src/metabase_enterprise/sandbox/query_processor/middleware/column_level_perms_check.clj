@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
   (:require
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.mbql.util :as mbql.u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (defn- field-ids [form]
   (set (mbql.u/match form

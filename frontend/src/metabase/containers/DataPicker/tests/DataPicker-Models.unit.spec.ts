@@ -1,8 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
@@ -13,7 +11,7 @@ import {
 
 import {
   setup,
-  setupVirtualizedLists,
+  SAMPLE_DATABASE,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_MODEL,
@@ -28,11 +26,7 @@ const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
 
 describe("DataPicker — picking models", () => {
   beforeAll(() => {
-    setupVirtualizedLists();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   it("opens the picker", async () => {
@@ -66,9 +60,13 @@ describe("DataPicker — picking models", () => {
       },
     });
 
-    const tableListItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_MODEL.name,
-    });
+    const tableListItem = await screen.findByRole(
+      "menuitem",
+      {
+        name: SAMPLE_MODEL.name,
+      },
+      { timeout: 3000 },
+    );
     const collectionListItem = screen.getByRole("menuitem", {
       name: ROOT_COLLECTION.name,
     });
@@ -81,23 +79,24 @@ describe("DataPicker — picking models", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Models/i));
-    const listItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_MODEL.name,
-    });
-    userEvent.click(listItem);
+    userEvent.click(await screen.findByText(SAMPLE_MODEL.name));
+    userEvent.click(screen.getByText(SAMPLE_MODEL_2.name));
 
-    expect(listItem).toHaveAttribute("aria-selected", "true");
+    const selectedItem = screen.getByRole("menuitem", {
+      name: SAMPLE_MODEL_2.name,
+    });
+    expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "models",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID,
       collectionId: "root",
-      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
+      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL_2.id)],
     });
   });
 
   it("allows to pick multiple models", async () => {
-    const { onChange } = await setup();
+    const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Models/i));
     userEvent.click(await screen.findByText(SAMPLE_MODEL.name));
@@ -185,7 +184,7 @@ describe("DataPicker — picking models", () => {
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
-    expect(screen.getByText(SAMPLE_DATABASE.displayName())).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Back/i }),
     ).not.toBeInTheDocument();

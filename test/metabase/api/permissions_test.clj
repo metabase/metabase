@@ -37,12 +37,12 @@
               (testing "All Users Group should be returned"
                 (is (schema= {:id           (s/eq (:id (perms-group/all-users)))
                               :name         (s/eq "All Users")
-                              :member_count su/IntGreaterThanZeroPlumatic}
+                              :member_count su/IntGreaterThanZero}
                              (get id->group (:id (perms-group/all-users))))))
               (testing "Administrators Group should be returned"
                 (is (schema= {:id           (s/eq (:id (perms-group/admin)))
                               :name         (s/eq "Administrators")
-                              :member_count su/IntGreaterThanZeroPlumatic}
+                              :member_count su/IntGreaterThanZero}
                              (get id->group (:id (perms-group/admin)))))))]
       (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
@@ -52,8 +52,8 @@
           (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
-              (is (schema= {:id           su/IntGreaterThanZeroPlumatic
-                            :name         su/NonBlankStringPlumatic
+              (is (schema= {:id           su/IntGreaterThanZero
+                            :name         su/NonBlankString
                             :member_count (s/eq 0)}
                            (get id->group (:id group)))))))))
     (testing "requires superuser"
@@ -80,19 +80,19 @@
                     :last_name     (s/eq "Corv")
                     :email         (s/eq "crowberto@metabase.com")
                     :user_id       (s/eq (mt/user->id :crowberto))
-                    :membership_id su/IntGreaterThanZeroPlumatic}
+                    :membership_id su/IntGreaterThanZero}
                    (get id->member (mt/user->id :crowberto))))
       (is (schema= {:first_name    (s/eq "Lucky")
                     :last_name     (s/eq "Pigeon")
                     :email         (s/eq "lucky@metabase.com")
                     :user_id       (s/eq (mt/user->id :lucky))
-                    :membership_id su/IntGreaterThanZeroPlumatic}
+                    :membership_id su/IntGreaterThanZero}
                    (get id->member (mt/user->id :lucky))))
       (is (schema= {:first_name    (s/eq "Rasta")
                     :last_name     (s/eq "Toucan")
                     :email         (s/eq "rasta@metabase.com")
                     :user_id       (s/eq (mt/user->id :rasta))
-                    :membership_id su/IntGreaterThanZeroPlumatic}
+                    :membership_id su/IntGreaterThanZero}
                    (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
         (is (= nil
@@ -117,6 +117,18 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
+(deftest fetch-perms-graph-v2-test
+  (testing "GET /api/permissions/graph-v2"
+    (testing "make sure we can fetch the perms graph from the API"
+      (mt/with-temp Database [{db-id :id}]
+        (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph-v2")]
+          (is (partial= {:groups {(u/the-id (perms-group/admin))
+                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                        graph)))))
+
+    (testing "make sure a non-admin cannot fetch the perms graph from the API"
+      (mt/user-http-request :rasta :get 403 "permissions/graph-v2"))))
+
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
@@ -128,7 +140,10 @@
                      [:groups (u/the-id group) (mt/id) :data :schemas]
                      {"PUBLIC" {db-id :all}}))
           (is (= {db-id :all}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
@@ -139,7 +154,10 @@
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]
@@ -150,8 +168,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:data {:native :write}, :query {:schemas :all}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
 
     (testing "permissions for new db with no tables"
       (mt/with-temp* [PermissionsGroup [group]
@@ -161,8 +181,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:query {:schemas :all}, :data {:native :write}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
@@ -251,14 +273,13 @@
 
     (testing "Return a graph of membership"
       (let [result (mt/user-http-request :crowberto :get 200 "permissions/membership")]
-        (is (schema= {su/IntGreaterThanZeroPlumatic
-                      [{:membership_id su/IntGreaterThanZeroPlumatic
-                        :group_id su/IntGreaterThanZeroPlumatic
-                        :user_id su/IntGreaterThanZeroPlumatic
+        (is (schema= {su/IntGreaterThanZero
+                      [{:membership_id su/IntGreaterThanZero
+                        :group_id su/IntGreaterThanZero
+                        :user_id su/IntGreaterThanZero
                         :is_group_manager s/Bool}]}
                      result))
         (is (= (db/select-field :id 'User) (set (keys result))))))))
-
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
@@ -298,7 +319,10 @@
         (is (= 1 (db/count PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
         (is (true? (db/exists? PermissionsGroup :id group-id)))
-        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id)))))))
+        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id))))
+
+      (testing "The admin group cannot be cleared using this endpoint"
+        (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"

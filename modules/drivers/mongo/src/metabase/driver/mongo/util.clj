@@ -1,18 +1,22 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.secret :as secret]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ssh :as ssh]
-            [monger.core :as mg]
-            [monger.credentials :as mcred]
-            [toucan.db :as db])
-  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
+  (:require
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.secret :as secret]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.ssh :as ssh]
+   [monger.core :as mg]
+   [monger.credentials :as mcred]
+   [toucan.db :as db])
+  (:import
+   (com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."

@@ -8,9 +8,13 @@
    [clojure.data]
    [clojure.test :refer :all]
    [environ.core :as env]
+   [hawk.init]
+   [hawk.parallel]
    [humane-are.core :as humane-are]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -18,7 +22,6 @@
    [metabase.http-client :as client]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.context :as qp.context]
@@ -26,8 +29,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-   [metabase.test-runner.init :as test-runner.init]
-   [metabase.test-runner.parallel :as test-runner.parallel]
    [metabase.test.data :as data]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.env :as tx.env]
@@ -42,15 +43,20 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util :as u]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
    [toucan.models :as models]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (humane-are/install!)
-(humane-test-output/activate!)
+
+;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -83,6 +89,15 @@
 
 ;; Add more stuff here as needed
 (p/import-vars
+ [actions.test-util
+  with-actions
+  with-actions-disabled
+  with-actions-enabled
+  with-actions-test-data
+  with-actions-test-data-tables
+  with-actions-test-data-and-actions-enabled
+  with-temp-test-data]
+
  [data
   $ids
   dataset
@@ -243,6 +258,7 @@
   dataset-definition
   db-qualified-table-name
   db-test-env-var
+  db-test-env-var!
   db-test-env-var-or-throw
   dbdef->connection-details
   defdataset
@@ -259,18 +275,10 @@
   set-test-drivers!
   with-test-drivers])
 
-;; ee-only stuff
-(u/ignore-exceptions
-  (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
-                                with-gtaps
-                                with-gtaps-for-user
-                                with-user-attributes])))
-
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-clock")
+  (hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -278,6 +286,7 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 
@@ -367,7 +376,7 @@
                                  (when run (run))
                                  (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
-                                   (println "Error in test-qp-middleware runf:" e)
+                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
                                    (throw e))))}
                    context)]
      (if async?
@@ -402,7 +411,7 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
-     (test-runner.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
+     (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
 

@@ -3,21 +3,16 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+                            Database Field Pulse PulseCard Table]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.table :refer [Table]]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -27,6 +22,8 @@
    [toucan.util.test :as tt])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 ;; ## Dashboard Revisions
 
@@ -209,7 +206,10 @@
              (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (dashboard/add-dashcard! dashboard-id new-card-id)
+        (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
+                                                           :col    0
+                                                           :size_x 4
+                                                           :size_y 4})
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
@@ -346,17 +346,56 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                   :slug   "category_name"
-                                                                   :id     "_CATEGORY_NAME_"
-                                                                   :type   "category"
-                                                                   :target target}]}]
+        (mt/with-temp* [Card      [{card-id :id}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                     :slug   "category_name"
+                                                                     :id     "_CATEGORY_NAME_"
+                                                                     :type   "category"
+                                                                     :values_query_type    "list"
+                                                                     :values_source_type   "card"
+                                                                     :values_source_config {:card_id card-id
+                                                                                            :value_field [:field 2 nil]}
+                                                                     :target target}]}]]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
                    :type   :category
-                   :target expected}]
+                   :target expected
+                   :values_query_type "list",
+                   :values_source_type "card",
+                   :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest should-add-default-values-source-test
+  (testing "shoudld add default if not exists"
+    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"}]}]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+
+  (testing "shoudld not override if existsed "
+    (mt/with-temp* [Card      [{card-id :id}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                  :slug   "category_name"
+                                                                  :id     "_CATEGORY_NAME_"
+                                                                  :type   "category"
+                                                                  :values_query_type    "list"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id card-id
+                                                                                         :value_field [:field 2 nil]}}]}]]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   "card",
+                :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
@@ -366,3 +405,41 @@
         (is (= "8cbf93b7"
                (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
                (serdes.hash/identity-hash dash)))))))
+
+(deftest serdes-descendants-test
+  (testing "dashboard which have parameter's source is another card"
+    (mt/with-temp* [Field     [field     {:name "A field"}]
+                    Card      [card      {:name "A card"}]
+                    Dashboard [dashboard {:name       "A dashboard"
+                                          :parameters [{:id "abc"
+                                                        :type "category"
+                                                        :values_source_type "card"
+                                                        :values_source_config {:card_id     (:id card)
+                                                                               :value_field [:field (:id field) nil]}}]}]]
+      (is (= #{["Card" (:id card)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard which has a dashcard with an action"
+    (mt/with-actions [{:keys [action-id]} {}]
+      (mt/with-temp* [Dashboard [dashboard {:name "A dashboard"}]
+                      DashboardCard [_ {:action_id          action-id
+                                        :dashboard_id       (:id dashboard)
+                                        :parameter_mappings []}]]
+        (is (= #{["Action" action-id]}
+               (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))
+
+  (testing "dashboard in which its dashcards has parameter_mappings to a card"
+    (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
+                    Card          [card2     {:name "Card attached to parameters"}]
+                    Dashboard     [dashboard {:parameters [{:name "Category Name"
+                                                            :slug "category_name"
+                                                            :id   "_CATEGORY_NAME_"
+                                                            :type "category"}]}]
+                    DashboardCard [_         {:card_id            (:id card1)
+                                              :dashboard_id       (:id dashboard)
+                                              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                    :card_id      (:id card2)
+                                                                    :target       [:dimension (mt/$ids $categories.name)]}]}]]
+      (is (= #{["Card" (:id card1)]
+               ["Card" (:id card2)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))

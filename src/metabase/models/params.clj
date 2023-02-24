@@ -1,8 +1,17 @@
 (ns metabase.models.params
-  "Utility functions for dealing with parameters for Dashboards and Cards."
+  "Utility functions for dealing with parameters for Dashboards and Cards.
+
+  Parameter are objects that exists on Dashboard/Card. In FE terms, we call it \"Widget\".
+  The values of a parameter is provided so the Widget can show a list of options to the user.
+
+
+  There are 3 mains ways to provide values to a parameter:
+  - chain-filter: see [metabase.models.params.chain-filter]
+  - field-values: see [metabase.models.params.field-values]
+  - custom-values: see [metabase.models.params.custom-values]
+  "
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -11,10 +20,12 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -23,14 +34,14 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/ParameterPlumatic]) parameters)
+  (when (s/check (s/maybe [su/Parameter]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (s/check (s/maybe [su/ParameterMappingPlumatic]) parameter_mappings)
+  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
@@ -61,20 +72,20 @@
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
+  [[_ tag] card]
+  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (s/defn param-target->field-clause :- (s/maybe mbql.s/field)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target dashcard]
+  [target card]
   (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
           (unwrap-field-clause
            (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension dashcard)
+             (template-tag->field-form dimension card)
              dimension))
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
@@ -125,35 +136,24 @@
 (defn- remove-dimension-nonpublic-columns
   "Strip nonpublic columns from a `dimension` and from its hydrated human-readable Field."
   [dimension]
-  (-> dimension
-      (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
-      ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go ahead
-      ;; and strip them out
-      (dissoc :created_at :updated_at)))
+  (some-> dimension
+          (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
+          ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
+          ;; ahead and strip them out
+          (dissoc :created_at :updated_at)))
 
 (defn- remove-dimensions-nonpublic-columns
   "Strip nonpublic columns from the hydrated human-readable Field in the hydrated Dimensions in `fields`."
   [fields]
   (for [field fields]
-    (update field :dimensions
-            (fn [dimension-or-dimensions]
-              ;; as disucssed in `metabase.models.field` the hydration code for `:dimensions` is
-              ;; WRONG and the value ends up either being a single Dimension or an empty vector.
-              ;; However at some point we will fix this so deal with either a map or a sequence of
-              ;; maps
-              (cond
-                (map? dimension-or-dimensions)
-                (remove-dimension-nonpublic-columns dimension-or-dimensions)
-
-                (sequential? dimension-or-dimensions)
-                (map remove-dimension-nonpublic-columns dimension-or-dimensions))))))
+    (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
 (s/defn ^:private param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})]
+  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
     (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
@@ -162,7 +162,7 @@
 (defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
-  name)
+  t2/model)
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (mi/define-simple-hydration-method ^:private hydrate-param-fields
@@ -182,7 +182,7 @@
   [dashboard]
   (when-let [fields (seq (for [dashcard (:ordered_cards dashboard)
                                param    (:parameter_mappings dashcard)
-                               :let     [field-clause (param-target->field-clause (:target param) dashcard)]
+                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
                                :when    field-clause]
                            field-clause))]
     (set fields)))
@@ -198,7 +198,7 @@
    (for [{card :card} (:ordered_cards dashboard)]
      (card->template-tag-field-ids card))))
 
-(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
   [dashboard]
@@ -209,7 +209,7 @@
             id))
      (dashboard->card-param-field-ids dashboard))))
 
-(defmethod param-fields "Dashboard" [dashboard]
+(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
   (-> dashboard dashboard->param-field-ids param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -225,7 +225,7 @@
              :when                      field]
          field)))
 
-(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]
@@ -233,5 +233,5 @@
          [:field (id :guard integer?) _]
          id)))
 
-(defmethod param-fields "Card" [card]
+(defmethod param-fields :metabase.models.card/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

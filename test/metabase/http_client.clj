@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
-   [clojure.tools.logging :as log]
    [java-time]
    [metabase.config :as config]
    [metabase.server.middleware.session :as mw.session]
@@ -15,9 +14,12 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as schema]))
+
+(set! *warn-on-reflection* true)
 
 ;;; build-url
 
@@ -105,12 +107,12 @@
 (declare client)
 
 (def ^:private Credentials
-  {:username su/NonBlankStringPlumatic, :password su/NonBlankStringPlumatic})
+  {:username su/NonBlankString, :password su/NonBlankString})
 
 (def UUIDString
   "Schema for a canonical string representation of a UUID."
   (schema/constrained
-   su/NonBlankStringPlumatic
+   su/NonBlankString
    (partial re-matches #"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")))
 
 (schema/defn authenticate :- UUIDString
@@ -123,7 +125,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e)
+      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
@@ -179,15 +181,15 @@
 (def ^:private ClientParamsMap
   {(schema/optional-key :credentials)      (schema/maybe (schema/cond-pre UUIDString Credentials))
    :method                                 (apply schema/enum (keys method->request-fn))
-   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZeroPlumatic)
-   :url                                    su/NonBlankStringPlumatic
+   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZero)
+   :url                                    su/NonBlankString
    ;; body can be either a map or a vector -- we encode it as JSON. Of course, other things are valid JSON as well, but
    ;; currently none of our endpoints accept them -- add them if needed.
    (schema/optional-key :http-body)        (schema/cond-pre
-                                            (schema/maybe su/MapPlumatic)
+                                            (schema/maybe su/Map)
                                             (schema/maybe clojure.lang.IPersistentVector))
-   (schema/optional-key :query-parameters) (schema/maybe su/MapPlumatic)
-   (schema/optional-key :request-options)  (schema/maybe su/MapPlumatic)})
+   (schema/optional-key :query-parameters) (schema/maybe su/Map)
+   (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
 (schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -197,7 +199,7 @@
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
-        method-name (str/upper-case (name method))
+        method-name (u/upper-case-en (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try

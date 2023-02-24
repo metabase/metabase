@@ -1,16 +1,16 @@
 (ns metabase-enterprise.serialization.v2.seed-entity-ids
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.models]
-   [metabase.models.dispatch :as models.dispatch]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,13 +33,12 @@
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
-  (into {} (for [^Class klass (extenders toucan.models/IModel)
-                 :let         [model (models.dispatch/model (.newInstance klass))]
-                 :when        (models/model? model)
-                 :let         [table-name (some-> model :table name)]
-                 :when        table-name
+  (into {} (for [model (descendants :toucan1/model)
+                 :when (models/model? model)
+                 :let  [table-name (some-> model t2/table-name name)]
+                 :when table-name
                  ;; ignore any models defined in test namespaces.
-                 :when        (not (str/includes? (namespace model) "test"))]
+                 :when (not (str/includes? (namespace model) "test"))]
              [table-name model])))
 
 (defn- entity-id-models

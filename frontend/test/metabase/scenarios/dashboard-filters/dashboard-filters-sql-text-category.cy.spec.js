@@ -13,7 +13,7 @@ import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-he
 import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,
-} from "./dashboard-filters-sql-text-category";
+} from "./shared/dashboard-filters-sql-text-category";
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
@@ -58,14 +58,14 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   });
 
   it(`should work when set as the default filter and when that filter is removed (metabase#20493)`, () => {
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
 
     cy.findByText("Select…").click();
-    popover().contains("Dropdown").click();
+    popover().contains("Is").click();
 
     cy.findByText("Default value").next().click();
 
-    applyFilterByType("Dropdown", "Gizmo");
+    applyFilterByType("Is", "Gizmo");
 
     saveDashboard();
 
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     filterWidget().click();
 
-    applyFilterByType("Dropdown", "Doohickey");
+    applyFilterByType("Is", "Doohickey");
 
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

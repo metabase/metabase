@@ -2,7 +2,6 @@
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.models.card :refer [Card]]
@@ -11,10 +10,11 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.resolve-referenced
-    :as qp.resolve-referenced]
+   [metabase.query-processor.util.tag-referenced-cards
+    :as qp.u.tag-referenced-cards]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -57,7 +57,7 @@
 
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [card-id :- su/IntGreaterThanZeroPlumatic]
+  [card-id :- su/IntGreaterThanZero]
   (let [card (or (db/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
                                  {:type    qp.error-type/invalid-query
@@ -86,12 +86,12 @@
     (when-not (has-data-perms? required-perms)
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
-  (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
+  (doseq [{query :dataset_query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/MapPlumatic]
+  [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if *card-id*
@@ -124,18 +124,18 @@
 
 (defn- query-action-perms
   [{:keys [database]}]
-  #{(perms/execute-query-perms-path database)})
+  #{(perms/data-perms-path database)})
 
 (s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [outer-query :- su/MapPlumatic]
+  [outer-query :- su/Map]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms *card-id*))
   (when-not (has-data-perms? (required-perms outer-query))
     (check-block-permissions outer-query))
   (when-not (has-data-perms? (query-action-perms outer-query))
-    (throw (perms-exception required-perms))))
+    (throw (perms-exception (required-perms outer-query)))))
 
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action."

@@ -7,6 +7,8 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]))
 
+(set! *warn-on-reflection* true)
+
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
 (defmethod tx/has-questionable-timezone-support? :postgres [_] true) ; TODO - What?

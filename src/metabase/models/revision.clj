@@ -51,7 +51,7 @@
 (defmethod diff-str :default
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (diff-string (:name model) before after)))
+    (diff-string (name model) before after)))
 
 ;;; # Revision Entity
 
@@ -97,7 +97,7 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
   {:pre [(models/model? model) (integer? id)]}
-  (db/select Revision, :model (:name model), :model_id id, {:order-by [[:id :desc]]}))
+  (db/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -114,7 +114,7 @@
   [model id]
   {:pre [(models/model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id]
-                                                               :model    (:name model)
+                                                               :model    (name model)
                                                                :model_id id
                                                                {:order-by [[:timestamp :desc]]}))))]
     (db/delete! Revision :id [:in old-revisions])))
@@ -136,7 +136,7 @@
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (db/insert! Revision
-      :model        (:name entity)
+      :model        (name entity)
       :model_id     id
       :user_id      user-id
       :object       object
@@ -155,14 +155,14 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (db/select-one-field :object Revision, :model (name entity), :model_id id, :id revision-id)]
     (db/transaction
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/select-one Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (db/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
-                            :model        (:name entity)
+                            :model        (name entity)
                             :model_id     id
                             :user_id      user-id
                             :object       serialized-instance

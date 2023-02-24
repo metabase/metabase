@@ -19,6 +19,7 @@ import {
   Card,
   CardId,
   Collection,
+  Parameter,
   ValuesSourceConfig,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -28,6 +29,7 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   DataPickerContainer,
   ModalBodyWithSearch,
@@ -40,7 +42,7 @@ const DATA_PICKER_FILTERS = {
 };
 
 interface ModalOwnProps {
-  name: string;
+  parameter: Parameter;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onSubmit: () => void;
@@ -71,7 +73,7 @@ type ModalProps = ModalOwnProps &
   ModalDispatchProps;
 
 const ValuesSourceCardModal = ({
-  name,
+  parameter,
   question,
   collection,
   onFetchCard,
@@ -99,7 +101,7 @@ const ValuesSourceCardModal = ({
   return (
     <DataPicker.Provider>
       <ModalContent
-        title={t`Selectable values for ${name}`}
+        title={t`Selectable values for ${parameter.name}`}
         footer={[
           <Button key="cancel" onClick={onSubmit}>{t`Back`}</Button>,
           <Button
@@ -195,12 +197,12 @@ export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
-    loadingAndErrorWrapper: false,
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Collections.load({
     id: (state: State, { card }: ModalCardProps) =>
       card?.collection_id ?? "root",
-    loadingAndErrorWrapper: false,
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceCardModal);

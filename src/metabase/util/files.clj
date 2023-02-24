@@ -8,15 +8,17 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.io FileNotFoundException)
    (java.net URL)
    (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
    (java.util Collections)))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 

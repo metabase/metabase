@@ -3,7 +3,6 @@
   (:require
    [clj-time.core :as time]
    [clj-time.predicates :as timepr]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -14,7 +13,10 @@
    [metabase.pulse]
    [metabase.task :as task]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 

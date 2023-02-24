@@ -1,7 +1,6 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.api.query-description :as api.qd]
@@ -14,6 +13,7 @@
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -23,9 +23,9 @@
 (api/defendpoint-schema POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
-  {name       su/NonBlankStringPlumatic
-   table_id   su/IntGreaterThanZeroPlumatic
-   definition su/MapPlumatic
+  {name       su/NonBlankString
+   table_id   su/IntGreaterThanZero
+   definition su/Map
    description (s/maybe s/Str)}
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
@@ -39,7 +39,7 @@
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
-(s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZeroPlumatic]
+(s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
   (-> (api/read-check (db/select-one Segment :id id))
       (hydrate :creator)))
 
@@ -94,9 +94,9 @@
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
                    show_in_getting_started]
             :as   body} :body}]
-  {name                    (s/maybe su/NonBlankStringPlumatic)
-   definition              (s/maybe su/MapPlumatic)
-   revision_message        su/NonBlankStringPlumatic
+  {name                    (s/maybe su/NonBlankString)
+   definition              (s/maybe su/Map)
+   revision_message        su/NonBlankString
    archived                (s/maybe s/Bool)
    caveats                 (s/maybe s/Str)
    description             (s/maybe s/Str)
@@ -108,7 +108,7 @@
 (api/defendpoint-schema DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
-  {revision_message su/NonBlankStringPlumatic}
+  {revision_message su/NonBlankString}
   (log/warn
    (trs "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."))
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
@@ -127,7 +127,7 @@
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id su/IntGreaterThanZeroPlumatic}
+  {revision_id su/IntGreaterThanZero}
   (api/write-check Segment id)
   (revision/revert!
     :entity      Segment

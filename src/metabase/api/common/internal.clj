@@ -3,19 +3,21 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.describe :as umd]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (metabase.async.streaming_response StreamingResponse)))
+
+(set! *warn-on-reflection* true)
 
 (comment streaming-response/keep-me)
 
@@ -281,11 +283,14 @@
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
   (when-not (mc/validate schema value)
-    (let [explained (mc/explain schema value)]
-      (throw (ex-info (tru "Invalid m field: {0}" field-name)
-                      {:status-code 400
-                       :errors      {(keyword field-name)
-                                     (me/humanize (me/with-spell-checking explained))}})))))
+    (throw (ex-info (tru "Invalid m field: {0}" field-name)
+                    {:status-code 400
+                     :errors      {(keyword field-name) (umd/describe schema)}
+                     :specific-errors {(keyword field-name)
+                                       (-> schema
+                                           (mc/explain value)
+                                           me/with-spell-checking
+                                           me/humanize)}}))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

@@ -173,7 +173,6 @@ export interface Settings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
-  "experimental-enable-actions": boolean;
   "ga-enabled": boolean;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;

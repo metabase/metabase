@@ -35,7 +35,7 @@
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" initialisms) ")"))
         matches (re-seq re name)]
     (if matches
-      (reduce (fn [n m] (str/replace n m (str/upper-case m))) name matches)
+      (reduce (fn [n m] (str/replace n m (u/upper-case-en m))) name matches)
       name)))
 
 (defn- endpoint-ns-name
@@ -175,7 +175,7 @@
                  str/trim
                  (str/split #"\s+")
                  (#(str/join "-" %))
-                 str/lower-case)]
+                 u/lower-case-en)]
     (str dir file ext)))
 
 (defn build-endpoint-link

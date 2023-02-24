@@ -4,13 +4,13 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.models.field :as field :refer [Field]]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -111,7 +111,7 @@
 
 (declare update-metadata!)
 
-(s/defn ^:private update-nested-fields-metadata! :- su/IntGreaterThanOrEqualToZeroPlumatic
+(s/defn ^:private update-nested-fields-metadata! :- su/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
   (let [nested-fields-metadata (:nested-fields field-metadata)
@@ -120,7 +120,7 @@
       (update-metadata! table (set nested-fields-metadata) (set metabase-nested-fields))
       0)))
 
-(s/defn update-metadata! :- su/IntGreaterThanOrEqualToZeroPlumatic
+(s/defn update-metadata! :- su/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
   [table        :- i/TableInstance

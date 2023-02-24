@@ -7,11 +7,7 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
-import {
-  checkDatabaseSupportsActions,
-  checkDatabaseActionsEnabled,
-} from "metabase/actions/utils";
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
+import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 
 import type { Database as IDatabase, DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
@@ -55,8 +51,7 @@ const DatabaseEditAppSidebar = ({
 
   const isSynced = isSyncCompleted(database);
   const hasModelActionsSection =
-    isEditingDatabase &&
-    checkDatabaseSupportsActions(database.getPlainObject());
+    isEditingDatabase && database.supportsActions();
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
@@ -106,7 +101,6 @@ const DatabaseEditAppSidebar = ({
     <SidebarRoot>
       <SidebarContent data-testid="database-actions-panel">
         <SidebarGroup>
-          <SidebarGroup.Name>{t`Actions`}</SidebarGroup.Name>
           <SidebarGroup.List>
             {!isSynced && (
               <SidebarGroup.ListItem hasMarginTop={false}>
@@ -190,9 +184,7 @@ const DatabaseEditAppSidebar = ({
       {hasModelActionsSection && (
         <ModelActionsSidebarContent>
           <ModelActionsSection
-            hasModelActionsEnabled={checkDatabaseActionsEnabled(
-              database.getPlainObject(),
-            )}
+            hasModelActionsEnabled={database.hasActionsEnabled()}
             onToggleModelActionsEnabled={handleToggleModelActionsEnabled}
           />
         </ModelActionsSidebarContent>

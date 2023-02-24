@@ -1,5 +1,6 @@
 import React from "react";
-import nock from "nock";
+import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
@@ -118,15 +119,20 @@ function setup({
   };
 
   renderWithProviders(
-    <ViewTitleHeader
-      isRunning={false}
-      {...callbacks}
-      {...props}
-      question={question}
-      isActionListVisible={isActionListVisible}
-      isAdditionalInfoVisible={isAdditionalInfoVisible}
-      isDirty={isDirty}
-      isRunnable={isRunnable}
+    <Route
+      path="/"
+      component={() => (
+        <ViewTitleHeader
+          isRunning={false}
+          {...callbacks}
+          {...props}
+          question={question}
+          isActionListVisible={isActionListVisible}
+          isAdditionalInfoVisible={isAdditionalInfoVisible}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+        />
+      )}
     />,
     {
       withRouter: true,
@@ -151,7 +157,7 @@ function setupSavedNative(props = {}) {
     name: "Our analytics",
   };
 
-  nock(location.origin).get("/api/collection/root").reply(200, collection);
+  fetchMock.get("path:/api/collection/root", collection);
 
   const utils = setup({ question: getSavedNativeQuestion(), ...props });
 
@@ -349,14 +355,10 @@ describe("ViewHeader", () => {
 
       describe(questionType, () => {
         beforeEach(() => {
-          nock(location.origin).get("/api/collection/root").reply(200, {
+          fetchMock.get("path:/api/collection/root", {
             id: "root",
             name: "Our analytics",
           });
-        });
-
-        afterEach(() => {
-          nock.cleanAll();
         });
 
         it("calls save function on title update", () => {
@@ -519,10 +521,6 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
@@ -537,6 +535,17 @@ describe("View Header | Saved native question", () => {
   it("doesn't offer to explore results if nested queries are disabled", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results if the database doesn't support nested queries (metabase#22822)", () => {
+    const originalDatabaseFeatures = SAMPLE_DATABASE.features;
+    const nestedQueriesExcluded = originalDatabaseFeatures.filter(
+      f => f !== "nested-queries",
+    );
+    SAMPLE_DATABASE.features = nestedQueriesExcluded;
+    setupSavedNative();
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+    SAMPLE_DATABASE.features = originalDatabaseFeatures;
   });
 });
 

@@ -1,8 +1,14 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button";
 
-export const ChartSettingOrderedSimpleRoot = styled.div`
-  padding-left: 1rem;
+interface ChartSettingOrderedSimpleRootProps {
+  paddingLeft?: string;
+}
+
+export const ChartSettingOrderedSimpleRoot = styled.div<ChartSettingOrderedSimpleRootProps>`
+  padding-left: ${({ paddingLeft }) => paddingLeft || "1rem"};
+  padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 `;
 
@@ -16,4 +22,10 @@ export const ChartSettingMessage = styled.div`
   color: ${color("text-light")};
   font-weight: 700;
   border-radius: 0.5rem;
+`;
+
+export const ExtraButton = styled(Button)`
+  position: absolute;
+  top: 0;
+  right: 0;
 `;

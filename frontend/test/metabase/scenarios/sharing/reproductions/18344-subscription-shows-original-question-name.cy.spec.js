@@ -4,7 +4,7 @@ import {
   saveDashboard,
   setupSMTP,
   visitDashboard,
-  clickSend,
+  sendEmailAndAssert,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -49,10 +49,8 @@ describe("issue 18344", { tags: "@external" }, () => {
     // Click this just to close the popover that is blocking the "Send email now" button
     cy.findByText(`To:`).click();
 
-    clickSend();
-
-    cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-      expect(body[0].html).to.include("OrdersFoo");
+    sendEmailAndAssert(email => {
+      expect(email.html).to.include("OrdersFoo");
     });
   });
 });

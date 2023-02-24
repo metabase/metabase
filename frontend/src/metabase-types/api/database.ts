@@ -43,6 +43,7 @@ export interface Database extends DatabaseData {
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
+  tables?: Table[];
 }
 
 export interface DatabaseData {
@@ -62,4 +63,11 @@ export interface DatabaseData {
 export interface DatabaseSchedules {
   metadata_sync?: ScheduleSettings;
   cache_field_values?: ScheduleSettings;
+}
+
+export interface DatabaseUsageInfo {
+  question: number;
+  dataset: number;
+  metric: number;
+  segment: number;
 }

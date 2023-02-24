@@ -37,6 +37,36 @@ Get all the Cards. Option filter param `f` can be used to change the set of Card
 
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+## `GET /api/card/:card-id/params/:param-key/search/:query`
+
+Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
+
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
+     GET /api/card/1/params/abc/search/Orange
+
+  Currently limited to first 1000 results.
+
+### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
+*  **`param-key`** value must be a non-blank string.
+
+*  **`query`** value must be a non-blank string.
+
+## `GET /api/card/:card-id/params/:param-key/values`
+
+Fetch possible values of the parameter whose ID is `:param-key`.
+
+    ;; fetch values for Card 1 parameter 'abc' that are possible
+    GET /api/card/1/params/abc/values.
+
+### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
+*  **`param-key`** value must be a non-blank string.
+
 ## `GET /api/card/:id`
 
 Get `Card` with ID.

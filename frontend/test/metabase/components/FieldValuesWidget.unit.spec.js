@@ -314,7 +314,7 @@ describe("FieldValuesWidget", () => {
   describe("getValuesMode", () => {
     describe("when passed no fields", () => {
       it("should return 'none'", () => {
-        expect(getValuesMode([])).toBe("none");
+        expect(getValuesMode({ fields: [] })).toBe("none");
       });
     });
 
@@ -323,21 +323,21 @@ describe("FieldValuesWidget", () => {
         const fields = [
           mock(PRODUCTS.CATEGORY, { has_field_values: "search" }),
         ];
-        expect(getValuesMode(fields)).toBe("search");
+        expect(getValuesMode({ fields })).toBe("search");
       });
     });
 
     describe("when passed fields that are not searchable but listable", () => {
       it("should return 'list'", () => {
         const fields = [mock(PRODUCTS.CATEGORY, { has_field_values: "list" })];
-        expect(getValuesMode(fields)).toBe("list");
+        expect(getValuesMode({ fields })).toBe("list");
       });
     });
 
     describe("when passed fields that are not searchable and not listable", () => {
       it("should return 'none'", () => {
         const fields = [mock(PRODUCTS.CATEGORY, { has_field_values: "none" })];
-        expect(getValuesMode(fields)).toBe("none");
+        expect(getValuesMode({ fields })).toBe("none");
       });
     });
   });

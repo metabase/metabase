@@ -11,6 +11,8 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
+  downloadAndAssert,
+  assertSheetRowsCount,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -57,8 +59,10 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update the name and description", () => {
+    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
+    cy.wait("@getDashboard");
 
     cy.findByTestId("dashboard-name-heading")
       .click()
@@ -66,6 +70,7 @@ describe("scenarios > dashboard", () => {
       .blur();
 
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
 
     cy.get("main header").within(() => {
       cy.icon("info").click();
@@ -78,8 +83,12 @@ describe("scenarios > dashboard", () => {
         .blur();
     });
     cy.wait("@updateDashboard");
+    cy.wait("@getDashboard");
+
     // refresh page and check that title/desc were updated
     visitDashboard(1);
+    cy.wait("@getDashboard");
+
     cy.findByDisplayValue("Orders per year");
 
     cy.get("main header").within(() => {
@@ -145,7 +154,7 @@ describe("scenarios > dashboard", () => {
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
-    cy.findByText("Dropdown").click();
+    cy.findByText("Is").click();
     cy.findByText("Select…").click();
 
     popover().within(() => {
@@ -261,6 +270,10 @@ describe("scenarios > dashboard", () => {
         // add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
           cardId: questionId,
+          row: 0,
+          col: 0,
+          size_x: 10,
+          size_y: 8,
         }).then(({ body: { id: dashCardId } }) => {
           // connect filter to that question
           cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -346,7 +359,9 @@ describe("scenarios > dashboard", () => {
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 
@@ -527,6 +542,21 @@ describe("scenarios > dashboard", () => {
     appbar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow downloading card data", () => {
+    visitDashboard(1);
+    cy.findByTestId("dashcard").within(() => {
+      cy.findByTestId("legend-caption").realHover();
+    });
+
+    downloadAndAssert({ fileType: "xlsx", questionId: 1 }, sheet => {
+      expect(sheet["A1"].v).to.eq("ID");
+      expect(sheet["A2"].v).to.eq(1);
+      expect(sheet["A3"].v).to.eq(2);
+
+      assertSheetRowsCount(18760)(sheet);
+    });
   });
 });
 

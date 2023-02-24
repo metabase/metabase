@@ -1,6 +1,5 @@
 (ns metabase.models.collection.graph-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -20,7 +19,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -339,7 +339,7 @@
                          (nice-graph (graph/graph :currency)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZeroPlumatic
+                  (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
@@ -358,7 +358,7 @@
                          (nice-graph (graph/graph)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZeroPlumatic
+                  (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
@@ -407,26 +407,20 @@
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
-    (jdbc/execute!
-     (db/connection)
-     (db/honeysql->sql
-      {:insert-into User
-       :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))}))
+    (t2/query {:insert-into (t2/table-name User)
+               :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))})
     (let [max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
           ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
           ;; so this is the fastest way to do this
           user-ids (range (inc (- max-id num-users)) (inc max-id))]
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
-      (jdbc/execute!
-       (db/connection)
-       (db/honeysql->sql
-        {:insert-into Collection
-         :values      (for [user-id user-ids
-                            :let    [collection (tt/with-temp-defaults Collection)]]
-                        (assoc collection
-                               :personal_owner_id user-id
-                               :slug "my_collection"))})))
+      (t2/query {:insert-into (t2/table-name Collection)
+                 :values      (for [user-id user-ids
+                                    :let    [collection (tt/with-temp-defaults Collection)]]
+                                (assoc collection
+                                       :personal_owner_id user-id
+                                       :slug "my_collection"))}))
     ;; now run the thunk
     (thunk)))
 

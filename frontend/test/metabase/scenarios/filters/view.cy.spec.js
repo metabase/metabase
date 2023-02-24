@@ -54,6 +54,10 @@ describe("scenarios > question > view", () => {
       cy.request("POST", "/api/dashboard/2/cards", {
         id: 2,
         cardId: 4,
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 8,
       });
     });
 

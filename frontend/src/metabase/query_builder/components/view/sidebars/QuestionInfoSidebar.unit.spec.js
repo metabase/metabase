@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -19,6 +19,11 @@ import { createMockUser } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
+
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
 
 const BASE_QUESTION = {
   id: 1,
@@ -76,15 +81,11 @@ async function setup({ question, cachingEnabled = true } = {}) {
   });
 
   const id = question.id();
-  nock(location.origin)
-    .get(`/api/card/${id}`)
-    .reply(200, question.card())
-    .get(`/api/revision?entity=card&id=${id}`)
-    .reply(200, [])
-    .get("/api/user")
-    .reply(200, [user])
-    .get(`/api/user/${user.id}`)
-    .reply(200, user);
+  fetchMock
+    .get(`path:/api/card/${id}`, question.card())
+    .get({ url: `path:/api/revision`, query: { entity: "card", id } }, [])
+    .get("path:/api/user", [user])
+    .get(`path:/api/user/${user.id}`, user);
 
   const onSave = jest.fn();
 
@@ -103,10 +104,6 @@ async function setup({ question, cachingEnabled = true } = {}) {
 }
 
 describe("QuestionInfoSidebar", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },
@@ -165,6 +162,23 @@ describe("QuestionInfoSidebar", () => {
     it("should show verification badge if verified", async () => {
       await setup({ question: getQuestion() });
       expect(screen.getByText(/verified this/)).toBeInTheDocument();
+    });
+  });
+
+  describe("model detail link", () => {
+    it("is shown for models", async () => {
+      const model = getDataset();
+      await setup({ question: model });
+
+      const link = screen.getByText("Model details");
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", `${model.getUrl()}/detail`);
+    });
+
+    it("isn't shown for questions", async () => {
+      await setup({ question: getQuestion() });
+      expect(screen.queryByText("Model details")).not.toBeInTheDocument();
     });
   });
 

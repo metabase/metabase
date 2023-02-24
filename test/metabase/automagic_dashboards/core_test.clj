@@ -1,4 +1,4 @@
-(ns metabase.automagic-dashboards.core-test
+(ns ^:mb/once metabase.automagic-dashboards.core-test
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
@@ -23,6 +23,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------- `->reference` -------------------
 

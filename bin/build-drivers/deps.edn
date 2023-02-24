@@ -11,7 +11,6 @@
   io.forward/yaml                 {:mvn/version "1.0.9"} ; Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
   io.github.clojure/tools.build   {:git/tag "v0.7.4" :git/sha "ac442da"}
   org.clojure/tools.deps.alpha    {:mvn/version "0.12.985"}
-  org.flatland/ordered            {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
   com.bhauman/spell-spec          {:mvn/version "0.1.1"} ; used to find misspellings in YAML files
   stencil/stencil                 {:mvn/version "0.5.0"}
   ;; local source

@@ -1,6 +1,6 @@
 (ns metabase.api.field
   (:require
-   [clojure.tools.logging :as log]
+   [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -19,6 +19,7 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -26,6 +27,7 @@
   (:import
    (java.text NumberFormat)))
 
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
@@ -67,9 +69,10 @@
     ;; ...but if we do, return the Field <3
     field))
 
-(defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as _field}]
-  (when (and dimension-id (= :external dimension-type))
-    (db/delete! Dimension :id dimension-id))
+(defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
+  (doseq [{dimension-id :id, dimension-type :type} dimensions]
+    (when (and dimension-id (= :external dimension-type))
+      (db/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -88,11 +91,12 @@
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
-  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as _old-field} base-type new-semantic-type]
-  (when (and old-dim-id
-             (= :internal old-dim-type)
-             (not (internal-remapping-allowed? base-type new-semantic-type)))
-    (db/delete! Dimension :id old-dim-id))
+  [{:keys [dimensions], :as _old-field} base-type new-semantic-type]
+  (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
+    (when (and old-dim-id
+               (= :internal old-dim-type)
+               (not (internal-remapping-allowed? base-type new-semantic-type)))
+      (db/delete! Dimension :id old-dim-id)))
   true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -101,17 +105,17 @@
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path]
             :as   body} :body}]
-  {caveats            (s/maybe su/NonBlankStringPlumatic)
-   description        (s/maybe su/NonBlankStringPlumatic)
-   display_name       (s/maybe su/NonBlankStringPlumatic)
-   fk_target_field_id (s/maybe su/IntGreaterThanZeroPlumatic)
-   points_of_interest (s/maybe su/NonBlankStringPlumatic)
-   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrStringPlumatic)
-   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrStringPlumatic)
+  {caveats            (s/maybe su/NonBlankString)
+   description        (s/maybe su/NonBlankString)
+   display_name       (s/maybe su/NonBlankString)
+   fk_target_field_id (s/maybe su/IntGreaterThanZero)
+   points_of_interest (s/maybe su/NonBlankString)
+   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
-   settings           (s/maybe su/MapPlumatic)
-   nfc_path           (s/maybe [su/NonBlankStringPlumatic])}
+   settings           (s/maybe su/Map)
+   nfc_path           (s/maybe [su/NonBlankString])}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -169,8 +173,8 @@
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name          (su/api-param "name" su/NonBlankStringPlumatic)
-   human_readable_field_id (s/maybe su/IntGreaterThanZeroPlumatic)}
+   dimension-name          (su/api-param "name" su/NonBlankString)
+   human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (api/write-check Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
@@ -219,13 +223,28 @@
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(defn- check-perms-and-return-field-values
+(defn check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
   [field-id]
   (let [field (api/check-404 (db/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
+
+;; todo: we need to unify and untangle this stuff
+(defn field-id->values
+  "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
+  `api.field/check-parms-and-return-field-values`."
+  [field-id query]
+  (if (str/blank? query)
+    (check-perms-and-return-field-values field-id)
+    (let [field (api/check-404 (db/select-one Field :id field-id))]
+      ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
+      ;; is what the return-field-values returns above
+      {:values (map (comp vector first) (search-values field field query))
+       ;; assume there are more
+       :has_more_values true
+       :field_id field-id})))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -278,7 +297,7 @@
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankStringPlumatic "human readable value")]]}
+  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -391,7 +410,7 @@
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (let [field        (api/check-404 (db/select-one Field :id id))
         search-field (api/check-404 (db/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)

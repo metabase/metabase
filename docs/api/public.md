@@ -8,6 +8,14 @@ summary: |
 
 Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
 
+## `GET /api/public/action/:uuid`
+
+Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled.
+
+### PARAMS:
+
+*  **`uuid`** value must be a valid UUID.
+
 ## `GET /api/public/card/:uuid`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
@@ -57,6 +65,28 @@ Fetch FieldValues for a Field that is referenced by a public Card.
 *  **`uuid`** 
 
 *  **`field-id`**
+
+## `GET /api/public/card/:uuid/params/:param-key/search/:query`
+
+Fetch values for a parameter on a public card containing `query`.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`param-key`** 
+
+*  **`query`**
+
+## `GET /api/public/card/:uuid/params/:param-key/values`
+
+Fetch values for a parameter on a public card.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`param-key`**
 
 ## `GET /api/public/card/:uuid/query`
 
@@ -224,12 +254,25 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
+## `POST /api/public/action/:uuid/execute`
+
+Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+
+### PARAMS:
+
+*  **`uuid`** value must be a valid UUID.
+
+*  **`parameters`** nullable map from <keyword> to <anything>
+
+*  **`_body`**
+
 ## `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute`
 
 Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values.
 
 ### PARAMS:
 

@@ -7,6 +7,8 @@
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! ::timezone-driver, :abstract? true)
 
 (defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
@@ -17,7 +19,7 @@
   should be able to pass with a few tweaks. Some of them are excluded because they do not have a TIME data type and
   can't load the `test-data-with-time` dataset; but that's not true of ALL of these. Please make sure you add a note
   as to why a certain database is explicitly skipped if you skip it -- Cam"
-  #{:bigquery-cloud-sdk :oracle :mongo :redshift :presto :sparksql :snowflake})
+  #{:bigquery-cloud-sdk :oracle :mongo :redshift :sparksql :snowflake})
 
 (deftest format-rows-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-except dbs-exempt-from-format-rows-tests))

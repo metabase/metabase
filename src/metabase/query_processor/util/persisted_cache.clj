@@ -11,7 +11,9 @@
 (defn- segmented-user?
   []
   (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented?)
+    (try (segmented?)
+      ;; Fail closed (i.e. default to true) if `segmented-user` throws an exception due to no current user being bound
+      (catch Throwable _ true))
     false))
 
 (defn can-substitute?

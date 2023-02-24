@@ -3,20 +3,22 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :refer [*mongo-connection*]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [monger.conversion :as m.conversion]
    [monger.util :as m.util]
    [schema.core :as s])
   (:import
    (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
    (java.util.concurrent TimeUnit)
-   (org.bson BsonInt32 BsonBoolean)))
+   (org.bson BsonBoolean BsonInt32)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 
@@ -74,7 +76,7 @@
   [{:keys [mbql? projections]} query first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
-  (if-not mbql?
+  (if-not (and mbql? projections)
     (let [project-stage (->> query (filter #(contains? % "$project")) last)
           projected (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
                           (get project-stage "$project"))
@@ -168,24 +170,12 @@
     (finally
       (.close cursor))))
 
-(defn- parse-query-string
-  "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
-  [^String s]
-  (try
-    (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
-      (com.mongodb.BasicDBObject. (.asDocument v)))
-    (catch Throwable e
-      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-               {:type  qp.error-type/invalid-query
-                :query s}
-               e)))))
-
 (defn execute-reducible-query
   "Process and run a native MongoDB query."
   [{{:keys [collection query], :as native-query} :native} context respond]
   {:pre [(string? collection) (fn? respond)]}
   (let [query  (cond-> query
-                 (string? query) parse-query-string)
+                 (string? query) mongo.qp/parse-query-string)
         cursor (aggregate *mongo-connection* collection query (qp.context/timeout context))]
     (a/go
       (when (a/<! (qp.context/canceled-chan context))

@@ -23,6 +23,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -824,7 +826,8 @@
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-retry-metrics []
-  (-> @@#'metabase.pulse/retry-state :retry .getMetrics bean))
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'metabase.pulse/retry-state)]
+    (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
   (into {}

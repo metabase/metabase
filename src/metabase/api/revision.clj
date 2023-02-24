@@ -37,7 +37,7 @@
   {entity Entity, id s/Int, revision_id s/Int}
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (db/select-one Revision :model (:name model), :model_id id, :id revision_id))]
+        revision         (api/check-404 (db/select-one Revision :model (name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model Card)
       (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))

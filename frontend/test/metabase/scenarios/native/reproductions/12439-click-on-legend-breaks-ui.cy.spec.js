@@ -48,6 +48,7 @@ describe("issue 12439", () => {
     // Make sure buttons are clickable
     cy.findByTestId("viz-settings-button").click();
 
-    sidebar().contains("Line options");
+    sidebar().contains("X-axis");
+    sidebar().contains("Y-axis");
   });
 });

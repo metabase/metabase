@@ -10,11 +10,14 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [hawk.parallel]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Collection
             Dashboard
+            DashboardCard
             DashboardCardSeries
             Database
             Dimension
@@ -48,16 +51,18 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-   [metabase.test-runner.parallel :as test-runner.parallel]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -65,6 +70,8 @@
    (java.util.concurrent TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
+
+(set! *warn-on-reflection* true)
 
 (comment tu.log/keep-me
          test-runner.assert-exprs/keep-me)
@@ -141,6 +148,12 @@
    (fn [_] {:creator_id (rasta-id)
             :name       (random-name)})
 
+   DashboardCard
+   (fn [_] {:row    0
+            :col    0
+            :size_x 4
+            :size_y 4})
+
    DashboardCardSeries
    (constantly {:position 0})
 
@@ -183,8 +196,8 @@
             :query_hash    (random-hash)
             :definition    {:table-name (random-name)
                             :field-definitions (repeatedly
-                                                 4
-                                                 #(do {:field-name (random-name) :base-type "type/Text"}))}
+                                                4
+                                                #(do {:field-name (random-name) :base-type "type/Text"}))}
             :table_name    (random-name)
             :active        true
             :state         "persisted"
@@ -263,42 +276,14 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; make sure we have the latest version of the class in case it was redefined since we imported it
-    (extend (Class/forName (.getCanonicalName (class model)))
-      tt/WithTempDefaults
-      {:with-temp-defaults defaults-fn})))
+    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
+    ;; `defmethod`. Fix the hook upstream
+    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+    (methodical/defmethod t2.with-temp/with-temp-defaults model
+      [model]
+      (defaults-fn model))))
 
 (set-with-temp-defaults!)
-
-;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
-(doseq [model-var [#'Card
-                   #'Collection
-                   #'Dashboard
-                   #'DashboardCardSeries
-                   #'Database
-                   #'Dimension
-                   #'Field
-                   #'Metric
-                   #'NativeQuerySnippet
-                   #'Permissions
-                   #'PermissionsGroup
-                   #'Pulse
-                   #'PulseCard
-                   #'PulseChannel
-                   #'Revision
-                   #'Segment
-                   #'Table
-                   #'TaskHistory
-                   #'Timeline
-                   #'User]]
-  (remove-watch model-var ::reload)
-  (add-watch
-   model-var
-   ::reload
-   (fn [_key _reference _old-state _new-state]
-     (println (format "%s changed, reloading with-temp-defaults" model-var))
-     (set-with-temp-defaults!))))
-
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
@@ -315,13 +300,13 @@
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
       (str/replace #"_" "-")
-      str/lower-case
+      u/lower-case-en
       keyword))
 
 (defn do-with-temp-env-var-value
   "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -463,7 +448,7 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
+  (hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -476,7 +461,7 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
+  (hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -507,13 +492,13 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
+  (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
-        [original-column->value] (db/query {:select (keys column->temp-value)
-                                            :from   [model]
-                                            :where  [:= :id (u/the-id object-or-id)]})]
+        [original-column->value] (mdb.query/query {:select (keys column->temp-value)
+                                                   :from   [(t2/table-name model)]
+                                                   :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
@@ -522,7 +507,7 @@
       (f)
       (finally
         (db/execute!
-         {:update model
+         {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
@@ -655,7 +640,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? models/model? models)]}
-  (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
+  (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (db/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
@@ -671,7 +656,7 @@
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (db/execute!
-           {:delete-from model
+           {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
                            max-id-condition)}))))))
@@ -767,7 +752,7 @@
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
         groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
         groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
-    (test-runner.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
+    (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
@@ -783,7 +768,7 @@
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
+  (hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
     (do-with-discarded-collections-perms-changes
      collection
@@ -869,7 +854,7 @@
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-locale")
+  (hawk.parallel/assert-test-is-not-parallel "with-locale")
   (let [current-locale (Locale/getDefault)]
     (try
       (Locale/setDefault (Locale/forLanguageTag locale-tag))

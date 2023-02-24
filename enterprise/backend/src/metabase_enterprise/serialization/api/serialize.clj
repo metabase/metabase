@@ -24,9 +24,9 @@
   - The collections that they want to serialize (using selective serialization)"
   [:as {{:keys [collection_ids path]} :body}]
   {collection_ids (su/with-api-error-message
-                    (su/distinct (su/non-empty [su/IntGreaterThanZeroPlumatic]))
+                    (su/distinct (su/non-empty [su/IntGreaterThanZero]))
                     "Non-empty, distinct array of Collection IDs")
-   path           (su/with-api-error-message su/NonBlankStringPlumatic
+   path           (su/with-api-error-message su/NonBlankString
                     "Valid directory to serialize results to")}
   ;; Make sure all the specified collection IDs exist.
   (let [existing-collection-ids (db/select-ids Collection :id [:in (set collection_ids)])]

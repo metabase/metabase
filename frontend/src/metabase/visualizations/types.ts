@@ -1,4 +1,4 @@
-import type { Card } from "metabase-types/api";
+import type { Card } from "metabase-types/types/Card";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -13,7 +12,6 @@ import {
 
 import {
   setup,
-  setupVirtualizedLists,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_QUESTION,
@@ -26,11 +24,7 @@ const ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID =
 
 describe("DataPicker — picking questions", () => {
   beforeAll(() => {
-    setupVirtualizedLists();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   it("opens the picker", async () => {
@@ -51,6 +45,11 @@ describe("DataPicker — picking questions", () => {
     userEvent.click(await screen.findByText(EMPTY_COLLECTION.name));
 
     expect(screen.getByText(/Nothing here/i)).toBeInTheDocument();
+  });
+
+  it("doesn't show section when there are no saved questions", async () => {
+    await setup({ hasSavedQuestions: false });
+    expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
   });
 
   it("respects initial value", async () => {
@@ -79,23 +78,24 @@ describe("DataPicker — picking questions", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    const listItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_QUESTION.name,
-    });
-    userEvent.click(listItem);
+    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+    userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
 
-    expect(listItem).toHaveAttribute("aria-selected", "true");
+    const selectedItem = screen.getByRole("menuitem", {
+      name: SAMPLE_QUESTION_2.name,
+    });
+    expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID,
       collectionId: "root",
-      tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION.id)],
+      tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION_2.id)],
     });
   });
 
   it("allows to pick multiple questions", async () => {
-    const { onChange } = await setup();
+    const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Saved Questions/i));
     userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));

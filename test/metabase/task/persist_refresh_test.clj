@@ -17,6 +17,8 @@
    [toucan.db :as db])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
+(set! *warn-on-reflection* true)
+
 (p/defprotocol+ GetSchedule
   (schedule-string [_]))
 
@@ -26,7 +28,7 @@
   CronTrigger
   (schedule-string [x] (.getCronExpression x)))
 
-(deftest cron-schedule-test
+(deftest ^:parallel cron-schedule-test
   (testing "creates schedule per hour when less than 24 hours"
     (is (= "0 0 0/8 * * ? *"
            (schedule-string (#'task.persist-refresh/cron-schedule "0 0 0/8 * * ? *"))))
@@ -42,35 +44,35 @@
 
 (deftest trigger-job-info-test
   (testing "Database refresh trigger"
-    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0/5 * * ? *"
              (schedule-string tggr)))
       (is (= "metabase.task.PersistenceRefresh.database.trigger.1"
              (.. tggr getKey getName))))
-    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0 * * ? *")]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
              (schedule-string tggr))))
     (testing "in report timezone UTC"
       (mt/with-temporary-setting-values [report-timezone "UTC"]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "UTC"
                  (.. tggr getTimeZone getID))))))
     (testing "in report timezone LA"
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "America/Los_Angeles"
                  (.. tggr getTimeZone getID))))))
     (testing "in system timezone"
       (mt/with-temporary-setting-values [report-timezone nil]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= (qp.timezone/system-timezone-id)
                  (.. tggr getTimeZone getID)))))))
   (testing "Individual refresh trigger"
-    (let [tggr (#'task.persist-refresh/individual-trigger {:card_id 5 :id 1})]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/individual-trigger {:card_id 5 :id 1})]
       (is (= {"persisted-id" 1 "type" "individual"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "metabase.task.PersistenceRefresh.individual.trigger.1"

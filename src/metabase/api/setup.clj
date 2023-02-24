@@ -1,6 +1,5 @@
 (ns metabase.api.setup
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -30,16 +29,18 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.db :as db])
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
-  (su/with-api-error-message (s/constrained su/NonBlankStringPlumatic setup/token-match?)
+  (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
@@ -57,20 +58,18 @@
             {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                     :email        email
-                     :first_name   first-name
-                     :last_name    last-name
-                     :password     (str (UUID/randomUUID))
-                     :is_superuser true)
+                               :email        email
+                               :first_name   first-name
+                               :last_name    last-name
+                               :password     (str (UUID/randomUUID))
+                               :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (or (db/insert! Session
-                        :id      session-id
-                        :user_id user-id)
-                      ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (models/post-insert (db/select-one Session :id (str session-id))))]
+    (let [session (db/insert! Session
+                              :id      session-id
+                              :user_id user-id)]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
@@ -123,16 +122,16 @@
           invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
-   site_name          su/NonBlankStringPlumatic
-   site_locale        (s/maybe su/ValidLocalePlumatic)
-   first_name         (s/maybe su/NonBlankStringPlumatic)
-   last_name          (s/maybe su/NonBlankStringPlumatic)
-   email              su/EmailPlumatic
-   invited_first_name (s/maybe su/NonBlankStringPlumatic)
-   invited_last_name  (s/maybe su/NonBlankStringPlumatic)
-   invited_email      (s/maybe su/EmailPlumatic)
-   password           su/ValidPasswordPlumatic
-   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanStringPlumatic))
+   site_name          su/NonBlankString
+   site_locale        (s/maybe su/ValidLocale)
+   first_name         (s/maybe su/NonBlankString)
+   last_name          (s/maybe su/NonBlankString)
+   email              su/Email
+   invited_first_name (s/maybe su/NonBlankString)
+   invited_last_name  (s/maybe su/NonBlankString)
+   invited_email      (s/maybe su/Email)
+   password           su/ValidPassword
+   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []

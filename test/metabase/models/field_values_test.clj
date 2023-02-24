@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
@@ -125,26 +126,39 @@
   (find-values field-values-id))
 
 (deftest get-or-create-full-field-values!-test
-  (testing "create a full Fieldvalues if it does not exist"
-    (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-    (is (= :full (-> (db/select-one Field :id (mt/id :categories :name))
-                     field-values/get-or-create-full-field-values!
-                     :type))
-     (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+  (mt/dataset test-data
+    (testing "create a full Fieldvalues if it does not exist"
+      (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+      (is (= :full (-> (db/select-one Field :id (mt/id :categories :name))
+                       field-values/get-or-create-full-field-values!
+                       :type))
+          (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
-   (testing "if an Advanced FeildValues Exists, make sure we still returns the full FieldValues"
-     (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
-                                   :type     :sandbox
-                                   :hash_key "random-hash"}])
-     (is (= :full (:type (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name)))))))))
+      (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
+        (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
+                                      :type     :sandbox
+                                      :hash_key "random-hash"}]
+          (is (= :full (:type (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))))
+
+      (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
+        (db/execute! {:update :metabase_fieldvalues
+                      :where [:and
+                              [:= :field_id (mt/id :categories :name)]
+                              [:= :type "full"]]
+                      :set {:last_used_at (t/offset-date-time 2001 12)}})
+        (is (= (t/offset-date-time 2001 12)
+               (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
+        (is (seq (:values (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))
+        (is (not= (t/offset-date-time 2001 12)
+                  (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
                                    :values   (json/generate-string ["1" "2" "3"])}]
-      (db/execute! {:update FieldValues
-                    :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
-                    :where  [:= :id (:id fv)]})
+      (is (db/execute! {:update :metabase_fieldvalues
+                        :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                        :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
              (:human_readable_values (db/select-one FieldValues :id (:id fv))))))))
 
@@ -168,7 +182,7 @@
               field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
               field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
           ;; Add in human readable values for remapping
-          (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]})
+          (is (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
           (let [expected-original-values {:values                [1 2 3]
                                           :human_readable_values ["a" "b" "c"]}
                 expected-updated-values  {:values                [-2 -1 0 1 2 3]

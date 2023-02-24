@@ -165,7 +165,11 @@
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
   (dashboard/add-dashcard! dashboard-or-id card-or-id
-    {:parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
+                           {:row                0
+                            :col                0
+                            :size_x             4
+                            :size_y             4
+                            :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
 
 (defn- do-with-updated-fields-for-dashboard {:style/indent 1} [options & [f]]
   (do-with-updated-fields-for-card (merge {:card {:dataset_query (basic-mbql-query)}}

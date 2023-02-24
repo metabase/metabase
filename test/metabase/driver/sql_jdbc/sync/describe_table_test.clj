@@ -1,7 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync.describe-table
@@ -9,6 +8,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan.db :as db]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
@@ -54,7 +54,7 @@
                (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
-                           {:name      (str/lower-case name)
+                           {:name      (u/lower-case-en name)
                             :base-type (if (or (isa? base-type :type/Integer)
                                                (isa? base-type :type/Decimal)) ; H2 DBs returns the ID as BigInt, Oracle as Decimal;
                                          :type/Integer
@@ -64,13 +64,13 @@
 (deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
-                                                                  (when (= (str/lower-case column-name) "longitude")
+                                                                  (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
-                  (map (juxt (comp str/lower-case :name) :semantic-type))))))))
+                  (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
 (deftest type-by-parsing-string
   (testing "type-by-parsing-string"

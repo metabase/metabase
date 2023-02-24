@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -29,6 +28,7 @@ interface TableListLoaderProps {
 }
 
 interface RawDataPickerOwnProps extends DataPickerProps {
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -36,7 +36,8 @@ type RawDataPickerProps = RawDataPickerOwnProps & DatabaseListLoaderProps;
 
 function RawDataPicker({
   value,
-  databases,
+  databases: allDatabases,
+  isMultiSelect,
   allLoading,
   onChange,
   onBack,
@@ -45,8 +46,13 @@ function RawDataPicker({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
+
+  const databases = useMemo(
+    () => allDatabases.filter(database => !database.is_saved_questions),
+    [allDatabases],
+  );
 
   const selectedDatabase = useMemo(() => {
     if (!selectedDatabaseId) {
@@ -192,6 +198,9 @@ function RawDataPicker({
   return renderPicker({ isLoading: allLoading });
 }
 
-export default Databases.loadList({ loadingAndErrorWrapper: false })(
-  RawDataPicker,
-);
+export default Databases.loadList({
+  loadingAndErrorWrapper: false,
+  // We don't actually need the saved questions database here,
+  // but that'd let us reuse DataPickerContainer's DB list loader result
+  query: { saved: true },
+})(RawDataPicker);

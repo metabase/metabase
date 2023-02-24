@@ -1,5 +1,4 @@
 import React, { useCallback } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";

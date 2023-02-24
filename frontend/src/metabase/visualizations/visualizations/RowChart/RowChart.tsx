@@ -192,6 +192,7 @@ const RowChartVisualization = ({
       bar,
       settings,
       chartColumns,
+      data.cols,
       series,
       seriesColors,
     );

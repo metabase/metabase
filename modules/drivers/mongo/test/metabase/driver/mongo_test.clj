@@ -19,6 +19,7 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mongo :as tdm]
+            [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
@@ -202,29 +203,32 @@
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
-(tx/defdataset beginning-null-columns
-  [["bird_species"
-    [{:field-name "name", :base-type :type/Text}
-     {:field-name "favorite_snack", :base-type :type/Text}]
-    [["House Finch" nil]
-     ["Mourning Dove" nil]
-     ["Common Blackbird" "earthworms"]
-     ["Silvereye" "cherries"]]]])
-
-(deftest new-rows-take-precedence-when-collecting-metadata
+(deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
     (with-redefs [metadata-queries/nested-field-sample-limit 2]
-      (mt/dataset beginning-null-columns
-        ;; do a full sync on the DB to get the correct semantic type info
-        (sync/sync-database! (mt/db))
-        (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
-                {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Category}
-                {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
-               (map
-                (partial into {})
-                (db/select [Field :name :database_type :base_type :semantic_type]
-                  :table_id (mt/id :bird_species)
-                  {:order-by [:name]}))))))))
+      (binding [tdm/*remove-nil?* true]
+        (mt/with-temp-test-data
+          ["bird_species"
+           [{:field-name "name", :base-type :type/Text}
+            {:field-name "favorite_snack", :base-type :type/Text}
+            {:field-name "max_wingspan", :base-type :type/Integer}]
+           [["Sharp-shinned Hawk" nil 68]
+            ["Tropicbird" nil 112]
+            ["House Finch" nil nil]
+            ["Mourning Dove" nil nil]
+            ["Common Blackbird" "earthworms" nil]
+            ["Silvereye" "cherries" nil]]]
+          ;; do a full sync on the DB to get the correct semantic type info
+          (sync/sync-database! (mt/db))
+          (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "name", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Name}
+                   {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
+                 (into #{}
+                       (map (partial into {}))
+                       (db/select [Field :name :database_type :base_type :semantic_type]
+                         :table_id (mt/id :bird_species)
+                         {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
@@ -438,8 +442,8 @@
                   (throw (ex-info (format "Error inserting row: %s" (ex-message e))
                                   {:database database-name, :collection collection-name, :details details, :row row}
                                   e)))))
-            (println (format "Inserted %d rows into %s collection %s."
-                             (count row-maps) (pr-str database-name) (pr-str collection-name))))
+            (log/infof "Inserted %d rows into %s collection %s."
+                       (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
           (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
             (sync/sync-database! db)

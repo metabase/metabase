@@ -146,7 +146,6 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  "experimental-enable-actions": false,
   engines: createMockEngines(),
   "has-user-setup": true,
   "hide-embed-branding?": true,

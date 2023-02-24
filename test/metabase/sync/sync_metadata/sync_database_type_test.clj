@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.sync-database-type-test
+(ns ^:mb/once metabase.sync.sync-metadata.sync-database-type-test
   "Tests to make sure the newly added Field.database_type field gets populated, even for existing Fields."
   (:require
    [clojure.test :refer :all]

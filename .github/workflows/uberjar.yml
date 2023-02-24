@@ -39,6 +39,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: uberjar
     - name: Build
       run: ./bin/build
     - name: Prepare uberjar artifact
@@ -140,6 +142,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-enterprise-head:latest
         format: sarif
@@ -148,6 +152,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-head:latest
         format: sarif
@@ -156,6 +162,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif

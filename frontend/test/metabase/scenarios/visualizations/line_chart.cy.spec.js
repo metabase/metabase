@@ -35,7 +35,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
@@ -155,7 +155,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // Make sure we can update input with some existing value
     openSeriesSettings("cat1", true);
@@ -323,6 +323,10 @@ describe("scenarios > visualizations > line chart", () => {
       // Add the first question to the dashboard
       cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
         cardId: firstCardId,
+        row: 0,
+        col: 0,
+        size_x: 18,
+        size_y: 12,
       }).then(({ body: { id: dashCardId } }) => {
         // Combine the second question with the first one as the second series
         cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {

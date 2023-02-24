@@ -412,8 +412,9 @@ export class FieldHeader extends React.Component {
       await updateFieldDimension(
         { id: field.id },
         {
-          type: field.dimensions.type,
-          human_readable_field_id: field.dimensions.human_readable_field_id,
+          type: field.dimensions?.[0]?.type,
+          human_readable_field_id:
+            field.dimensions?.[0]?.human_readable_field_id,
           name: e.target.value,
         },
       );

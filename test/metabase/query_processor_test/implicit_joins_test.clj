@@ -7,6 +7,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Test that we can breakout on an FK field (Note how the FK Field is returned in the results)"
@@ -23,11 +25,11 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :breakout    [$city_id->cities.name]
-                    :order-by    [[:desc [:aggregation 0]]]
-                    :limit       10}))))))))
+                                  (mt/run-mbql-query sightings
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$city_id->cities.name]
+                                                      :order-by    [[:desc [:aggregation 0]]]
+                                                      :limit       10}))))))))
 
 (deftest filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)

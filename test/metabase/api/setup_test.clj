@@ -1,4 +1,4 @@
-(ns metabase.api.setup-test
+(ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.core.async :as a]
@@ -22,6 +22,8 @@
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
@@ -190,7 +192,7 @@
                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
               (is (schema= {:topic (schema/eq :database-create)
-                            :item  {:id            su/IntGreaterThanZeroPlumatic
+                            :item  {:id            su/IntGreaterThanZero
                                     :name          (schema/eq db-name)
                                     schema/Keyword schema/Any}}
                            (mt/wait-for-result chan 100))))

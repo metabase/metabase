@@ -1,4 +1,4 @@
-(ns metabase.task-test
+(ns ^:mb/once metabase.task-test
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -13,6 +13,8 @@
    [schema.core :as s])
   (:import
    (org.quartz CronTrigger JobDetail)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -89,12 +91,12 @@
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
     (mt/with-temp-scheduler
       (is (schema= {:scheduler (su/non-empty [s/Str])
-                    :jobs      [{:key         su/NonBlankStringPlumatic
-                                 :description su/NonBlankStringPlumatic
-                                 :triggers    [{:key                 su/NonBlankStringPlumatic
-                                                :description         su/NonBlankStringPlumatic
-                                                :misfire-instruction su/NonBlankStringPlumatic
-                                                :state               su/NonBlankStringPlumatic
+                    :jobs      [{:key         su/NonBlankString
+                                 :description su/NonBlankString
+                                 :triggers    [{:key                 su/NonBlankString
+                                                :description         su/NonBlankString
+                                                :misfire-instruction su/NonBlankString
+                                                :state               su/NonBlankString
                                                 s/Keyword            s/Any}]
                                  s/Keyword    s/Any}]}
                    (task/scheduler-info))))))

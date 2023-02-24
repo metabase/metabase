@@ -17,6 +17,8 @@
    [toucan.db :as db]
    [toucan.models :as models]))
 
+(set! *warn-on-reflection* true)
+
 ;; -------------------------------------------- General Foreign Keys -------------------------------------------------
 (defn export-fk
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
@@ -254,7 +256,6 @@
                                  :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
                                  ::mb.viz/param-mapping-source :snippet-id))))))
 
-;(ids->fully-qualified-names {:aggregation [[:sum [:field 277405 nil]]]})
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
@@ -405,6 +406,57 @@
        (map mbql-fully-qualified-names->ids)
        (map #(m/update-existing % :card_id import-fk 'Card))))
 
+(defn export-parameters
+  "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
+  it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references."
+  [parameters]
+  (map ids->fully-qualified-names parameters))
+
+(defn import-parameters
+  "Given the :parameter field as exported by serialization convert its field references
+  (`[db schema table field]`) back into raw IDs."
+  [parameters]
+  (for [param parameters]
+    (-> param
+        mbql-fully-qualified-names->ids
+        (m/update-existing-in [:values_source_config :card_id] import-fk 'Card))))
+
+(defn parameters-deps
+  "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
+  Always returns an empty set even if the input is nil."
+  [parameters]
+  (reduce set/union #{}
+          (for [parameter parameters
+                :when (= "card" (:values_source_type parameter))
+                :let  [config (:values_source_config parameter)]]
+            (set/union #{[{:model "Card" :id (:card_id config)}]}
+                       (mbql-deps-vector (:value_field config))))))
+
+(def link-card-model->toucan-model
+  "A map from model on linkcards to its corresponding toucan model.
+
+  Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
+
+  It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
+  {"card"       :metabase.models.card/Card
+   "dataset"    :metabase.models.card/Card
+   "collection" :metabase.models.collection/Collection
+   "database"   :metabase.models.database/Database
+   "dashboard"  :metabase.models.dashboard/Dashboard
+   "table"      :metabase.models.table/Table})
+
+(defn- export-viz-link-card
+  [settings]
+  (m/update-existing-in
+    settings
+    [:link :entity]
+    (fn [{:keys [id model] :as entity}]
+      (merge entity
+             {:id (case model
+                    "table"    (export-table-fk id)
+                    "database" (export-fk-keyed id 'Database :name)
+                    (export-fk id (link-card-model->toucan-model model)))}))))
+
 (defn- export-visualizations [entity]
   (mbql.u/replace
     entity
@@ -447,7 +499,20 @@
   (when settings
     (-> settings
         export-visualizations
+        export-viz-link-card
         (update :column_settings export-column-settings))))
+
+(defn- import-viz-link-card
+  [settings]
+  (m/update-existing-in
+    settings
+    [:link :entity]
+    (fn [{:keys [id model] :as entity}]
+      (merge entity
+             {:id (case model
+                    "table"    (import-table-fk id)
+                    "database" (import-fk-keyed id 'Database :name)
+                    (import-fk id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
   (mbql.u/replace
@@ -479,7 +544,16 @@
   (when settings
     (-> settings
         import-visualizations
+        import-viz-link-card
         (update :column_settings import-column-settings))))
+
+(defn- viz-link-card-deps
+  [settings]
+  (when-let [{:keys [model id]} (get-in settings [:link :entity])]
+    #{(case model
+        "table" (table->path id)
+        [{:model (name (link-card-model->toucan-model model))
+          :id    id}])}))
 
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
@@ -488,6 +562,8 @@
   (let [vis-column-settings (some->> viz
                                      :column_settings
                                      keys
-                                     (map (comp mbql-deps json/parse-string name)))]
-    (reduce set/union (cons (mbql-deps viz)
-                            vis-column-settings))))
+                                     (map (comp mbql-deps json/parse-string name)))
+        link-card-deps      (viz-link-card-deps viz)]
+    (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
+         (filter some?)
+         (reduce set/union))))

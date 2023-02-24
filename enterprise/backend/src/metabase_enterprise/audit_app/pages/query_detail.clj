@@ -2,7 +2,6 @@
   "Queries to show details about a (presumably ad-hoc) query."
   (:require
    [cheshire.core :as json]
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
@@ -37,7 +36,7 @@
                            [:card.name :card_name]
                            [:latest_qe.error :error_str]
                            :collection_id
-                           [(hsql/call :coalesce :coll.name "Our Analytics") :collection_name]
+                           [[:coalesce :coll.name "Our Analytics"] :collection_name]
                            :card.database_id
                            [:db.name :database_name]
                            [:t.schema :schema_name]
@@ -61,7 +60,7 @@
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
-  [_ query-hash :- su/NonBlankStringPlumatic]
+  [_ query-hash :- su/NonBlankString]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query

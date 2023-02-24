@@ -27,36 +27,26 @@ describe("scenarios > question > settings", () => {
       cy.viewport(1600, 800);
 
       openOrdersTable();
-      cy.contains("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
 
       cy.findByTestId("sidebar-content").as("tableOptions");
 
+      cy.get("@tableOptions").contains("Add or remove columns").click();
+
       // remove Total column
-      cy.get("@tableOptions")
-        .contains("Total")
-        .scrollIntoView()
-        .nextAll(".Icon-eye_outline")
-        .click();
+      cy.get("@tableOptions").contains("Total").scrollIntoView().click();
 
       // Add people.category
-      cy.get("@tableOptions")
-        .contains("Category")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Category").scrollIntoView().click();
 
       // wait a Category value to appear in the table, so we know the query completed
       cy.contains("Widget");
 
       // Add people.ean
-      cy.get("@tableOptions")
-        .contains("Ean")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Ean").scrollIntoView().click();
 
       // wait a Ean value to appear in the table, so we know the query completed
       cy.contains("8833419218504");
@@ -68,7 +58,43 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+    it("should allow you to bulk add and remove columns", () => {
+      // Need to increase the viewport size to count columns later in the test
+      cy.viewport(2000, 1400);
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 5,
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "table",
+      });
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.findByText("People").siblings().contains("Select All").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      getSidebarColumns().filter(":visible").should("have.length", 22);
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.findByText("People").siblings().contains("Deselect All").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.icon("play").last().click();
+      cy.wait(["@dataset", "@dataset"]);
+
+      getSidebarColumns().filter(":visible").should("have.length", 9);
+    });
+
+    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -95,14 +121,14 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByText("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       getSidebarColumns()
         .eq("12")
         .as("prod-category")
         .contains(/Products? → Category/);
 
-      // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
+      // Drag and drop this column between "Tax" and "Discount" (index 6 in @sidebarColumns array)
       cy.get("@prod-category")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
@@ -111,21 +137,17 @@ describe("scenarios > question > settings", () => {
 
       reloadResults();
 
-      findColumnAtIndex("Products → Category", 5);
+      findColumnAtIndex("Products → Category", 6);
 
       // Remove "Total"
-      getSidebarColumns()
-        .contains("Total")
-        .closest("[data-testid^=draggable-item]")
-        .find(".Icon-eye_outline")
-        .click();
+      toggleColumn("Total");
 
       reloadResults();
 
       cy.findByText("117.03").should("not.exist");
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
-      cy.findByText("Visible columns").click();
+      cy.get("body").click("bottomRight");
 
       findColumnAtIndex("Products → Category", 5);
 
@@ -133,7 +155,8 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      cy.findByText("Address").siblings(".Icon-add").click();
+      toggleColumn("Address");
+      //cy.findByText("Address").siblings(".Icon-add").click();
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -161,6 +184,14 @@ describe("scenarios > question > settings", () => {
       function findColumnAtIndex(column_name, index) {
         return getSidebarColumns().eq(index).contains(column_name);
       }
+
+      function toggleColumn(column_name) {
+        sidebar().within(() => {
+          cy.findByText("Add or remove columns").click();
+          cy.findByText(column_name).click();
+          cy.findByText("Add or remove columns").click();
+        });
+      }
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
@@ -172,8 +203,9 @@ describe("scenarios > question > settings", () => {
         },
       });
 
-      cy.findByText("Settings").click(); // open settings sidebar
-      cy.findByText("Table options"); // confirm it's open
+      cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      cy.findByText("Conditional Formatting"); // confirm it's open
+      cy.findByText("Add or remove columns"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
@@ -215,7 +247,7 @@ describe("scenarios > question > settings", () => {
 
     it("should respect symbol settings for all currencies", () => {
       openOrdersTable();
-      cy.contains("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       getSidebarColumns()
         .eq("4")
@@ -231,8 +263,8 @@ describe("scenarios > question > settings", () => {
 
       cy.findByText("In every table cell").click();
 
-      cy.findByText("₿2.07");
-      cy.findByText("₿6.10");
+      cy.findByText("₿2.07000000");
+      cy.findByText("₿6.10000000");
     });
   });
 

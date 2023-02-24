@@ -1,7 +1,5 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals
   (:require
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.config :as config]
@@ -10,7 +8,8 @@
     :as qp.resolve-fields]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defn- has-a-native-source-query-at-some-level? [{:keys [source-query]}]
   (or (:native source-query)
@@ -81,7 +80,7 @@
 (defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
   (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
         field-name->field (merge (m/index-by :name source-metadata)
-                                 (m/index-by (comp str/lower-case :name) source-metadata))]
+                                 (m/index-by (comp u/lower-case-en :name) source-metadata))]
     (mbql.u/replace inner-query
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (_ :guard (constantly (some (set &parents) [:source-query :source-metadata])))

@@ -1,8 +1,8 @@
 (ns metabase.models.pulse-channel
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization.base :as serdes.base]
@@ -12,9 +12,11 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;; ## Static Definitions
 
@@ -127,15 +129,15 @@
   (concat
    (for [email emails]
      {:email email})
-   (for [user (db/query
-               {:select    [:u.id :u.email :u.first_name :u.last_name]
-                :from      [[User :u]]
-                :left-join [[PulseChannelRecipient :pcr] [:= :u.id :pcr.user_id]]
-                :where     [:and
-                            [:= :pcr.pulse_channel_id pulse-channel-id]
-                            [:= :u.is_active true]]
-                :order-by [[:u.id :asc]]})]
-     (user/add-common-name user))))
+   (t2/select
+    [User :id :email :first_name :last_name]
+    {:select    [:u.id :u.email :u.first_name :u.last_name]
+     :from      [[:core_user :u]]
+     :left-join [[:pulse_channel_recipient :pcr] [:= :u.id :pcr.user_id]]
+     :where     [:and
+                 [:= :pcr.pulse_channel_id pulse-channel-id]
+                 [:= :u.is_active true]]
+     :order-by [[:u.id :asc]]})))
 
 (defn- pre-delete [pulse-channel]
   ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
@@ -347,14 +349,10 @@
     ;; return the id of our newly created channel
     id))
 
-
-;; don't include `:emails`, we use that purely internally
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- PulseChannelInstance
- (fn [pulse-channel json-generator]
-   (encode-map (m/dissoc-in pulse-channel [:details :emails])
-               json-generator)))
+(methodical/defmethod mi/to-json PulseChannel
+  "Don't include `:emails`, we use that purely internally"
+  [pulse-channel json-generator]
+  (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
@@ -365,10 +363,10 @@
 
 (defmethod serdes.base/extract-one "PulseChannel"
   [_model-name _opts channel]
-  (let [recipients (mapv :email (db/query {:select [:user.email]
-                                           :from [[:pulse_channel_recipient :pcr]]
-                                           :join [[:core_user :user] [:= :user.id :pcr.user_id]]
-                                           :where [:= :pcr.pulse_channel_id (:id channel)]}))]
+  (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
+                                                  :from   [[:pulse_channel_recipient :pcr]]
+                                                  :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
+                                                  :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
     (-> (serdes.base/extract-one-basics "PulseChannel" channel)
         (update :pulse_id   serdes.util/export-fk 'Pulse)
         (assoc  :recipients recipients))))
