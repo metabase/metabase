@@ -18,8 +18,7 @@
     :else           ::object))
 
 (defmulti =?-diff
-  "Multimethod to use to diff two things with `=?`. Despite not having earmuffs, this is dynamic so it can be rebound at
-  runtime."
+  "Multimethod to use to diff two things with `=?`."
   {:arglists '([expected actual])}
   (fn [expected actual]
     [(type+ expected) (type+ actual)]))
