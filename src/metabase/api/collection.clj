@@ -77,16 +77,17 @@
            (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
            ;; This is someone else's collection, so add its id to ones we skip
            (recur r keep-roots (conj skip-roots id) res indeterminates)))
-       ;; There are no more collections to process, but there might be some we didn't know what to do with
-       ;; This won't happen if the collections are ordered such that parents come before children, but
-       ;; IDK that we guarantee this...
+       ;; There are no more collections to process, but there might be some we didn't know what to do with.
+       ;; This could happen if the collection were unordered (the root user came before children) or if a child of a
+       ;; private shared collection was made public (the parent is private, so no root node, but the child is visible).
+       ;; At this stage, we just do a final sweep to remove anything for which we know the root collection belongs to
+       ;; another user.
        (->> indeterminates
-            ;; At this point, we should know what we want to keep, so we'll just check for those
-            (filter
+            (remove
              (fn [{:keys [location]}]
                (let [[root] (collection/location-path->ids location)]
-                 (keep-roots root))))
-            ;; Finally return our result
+                 (skip-roots root))))
+            ;; Put anything that remains in the result and return
             (into res))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

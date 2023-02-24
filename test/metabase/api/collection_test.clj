@@ -342,7 +342,11 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-view (map :id [parent-collection child-collection])
-                                       (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+                                       (mt/user-http-request :rasta :get 200 "collection/tree"))))
+          (is (= [{:name "Child", :children []}]
+                 (collection-tree-view (map :id [parent-collection child-collection])
+                                       (mt/user-http-request :rasta :get 200 "collection/tree"
+                                                             :exclude-other-user-collections true)))))))
 
     (testing "Namespace parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
