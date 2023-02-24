@@ -279,14 +279,14 @@ export default class Table extends Component {
         isDashboard: extra.isDashboard,
         metadata: extra.metadata,
         isQueryRunning: extra.isQueryRunning,
-        getCustomColumnName: column => {
-          const customName = getIn(vizSettings, [
-            "column_settings",
-            getColumnKey(column),
-            "column_title",
-          ]);
-
-          return customName;
+        getCustomColumnName: (column, onlyCustom) => {
+          return onlyCustom
+            ? getIn(vizSettings, [
+                "column_settings",
+                getColumnKey(column),
+                "column_title",
+              ])
+            : getColumnNameFromSettings(vizSettings, column);
         },
       }),
     },

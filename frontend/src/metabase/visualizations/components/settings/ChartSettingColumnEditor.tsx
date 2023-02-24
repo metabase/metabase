@@ -34,7 +34,7 @@ interface ChartSettingColumnEditorProps {
   isDashboard?: boolean;
   metadata?: Metadata;
   isQueryRunning: boolean;
-  getCustomColumnName: (val: DatasetColumn) => string;
+  getCustomColumnName: (val: DatasetColumn, onlyCustom: boolean) => string;
 }
 
 const structuredQueryFieldOptions = (
@@ -204,12 +204,9 @@ const ChartSettingColumnEditor = ({
     // This ensures that we get the {table}→{column} syntax when appropriate. On anything other than the
     // Source table, there should be a table header above the list so we should only show the field name.
     if (column) {
-      const customName = getCustomColumnName(column);
-      if (customName) {
-        return customName;
-      } else if (sourceTable) {
-        return column.display_name;
-      }
+      return (
+        getCustomColumnName(column, !sourceTable) || dimension.displayName()
+      );
     }
 
     return dimension.displayName();
