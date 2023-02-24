@@ -26,6 +26,7 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
@@ -73,19 +74,21 @@
                    (update :from (fn [[table]]
                                    [[table [(sql.qp/->honeysql
                                              :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
+                                             (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
     (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
-    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
                  (format-honeysql
                   {:select   [:*]
                    :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
-                   :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
+                   :where    [:=
+                              (identifier :venues :category_id)
+                              #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{cat}}")]
                    :order-by [[(identifier :venues :id) :asc]]})
 
                  :template_tags
@@ -95,7 +98,7 @@
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
-    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
                  (format-honeysql
@@ -106,7 +109,9 @@
                    :from      [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins))]
                    :left-join [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))
                                [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                   :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
+                   :where     [:=
+                               (identifier :checkins :user_id)
+                               #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{user}}")]
                    :order-by  [[(identifier :checkins :id) :asc]]})
 
                  :template_tags
@@ -118,7 +123,7 @@
 
 (defn- venue-names-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
                  (format-honeysql
@@ -164,7 +169,7 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
+  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
     (-> (mt/with-everything-store
           (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
         remove-metadata)))
