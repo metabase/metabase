@@ -148,16 +148,16 @@
 
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
-       (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                       Collection [_ {:name "Collection 2"}]]
-         (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
-         (is (= ["Collection 1"
-                 "Rasta Toucan's Personal Collection"]
-                (->> (mt/user-http-request :rasta :get 200 "collection")
-                     (filter (fn [{collection-name :name}]
-                               (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
-                                   (str/includes? collection-name "Personal Collection"))))
-                     (map :name)))))))
+        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                        Collection [_ {:name "Collection 2"}]]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+          (is (= ["Collection 1"
+                  "Rasta Toucan's Personal Collection"]
+                 (->> (mt/user-http-request :rasta :get 200 "collection")
+                      (filter (fn [{collection-name :name}]
+                                (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                    (str/includes? collection-name "Personal Collection"))))
+                      (map :name)))))))
 
     (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
                     Collection [_ {:name "Regular Collection"}]]
