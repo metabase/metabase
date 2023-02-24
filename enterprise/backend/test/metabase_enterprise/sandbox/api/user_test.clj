@@ -5,11 +5,14 @@
    [metabase-enterprise.test :as met]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -42,3 +45,43 @@
                   (-> (mt/user-http-request :rasta :get 200
                                             (str "user?group_id=" (u/the-id group)))
                       :data)))))))))
+
+(deftest get-user-attributes-test
+  (testing "requires sandbox enabled"
+    (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+           (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
+
+  (premium-features-test/with-premium-features #{:sandboxes}
+    (testing "requires admin"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "mt/user/attributes"))))
+
+    (testing "returns set of user attributes"
+      (t2.with-temp/with-temp
+        ['User _ {:login_attributes {:foo "bar"}}
+         'User _ {:login_attributes {:foo "baz"
+                                     :miz "bar"}}]
+        (is (= ["foo" "miz"]
+               (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))
+
+
+(deftest update-user-attributes-test
+  (testing "requires sandbox enabled"
+    (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+           (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
+
+  (premium-features-test/with-premium-features #{:sandboxes}
+    (testing "requires admin"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (format "mt/user/%d/attributes" (mt/user->id :rasta)) {}))))
+
+    (testing "404 if user does not exist"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" (inc (t2/count 'User))) {}))))
+
+    (testing "Admin can update user attributes"
+      (t2.with-temp/with-temp
+        ['User {id :id} {}]
+        (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
+        (is (= {"foo" "bar"}
+               (t2/select-one-fn :login_attributes 'User :id id)))))))
