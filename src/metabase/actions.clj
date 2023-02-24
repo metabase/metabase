@@ -16,8 +16,6 @@
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
-;; This can be set via the API or env vars even if actions are not supported for the database.
-;; So whenever this setting is read, we should also check if the database supports actions.
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
   :default false

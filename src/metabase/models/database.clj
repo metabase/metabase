@@ -156,17 +156,20 @@
   [{new-metadata-schedule    :metadata_sync_schedule,
     new-fieldvalues-schedule :cache_field_values_schedule,
     new-engine               :engine
+    new-settings             :settings
     :as                      database}]
   (let [{is-sample?               :is_sample
          old-metadata-schedule    :metadata_sync_schedule
          old-fieldvalues-schedule :cache_field_values_schedule
+         existing-settings        :settings
          existing-engine          :engine
          existing-name            :name} (db/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
                                                          :name
-                                                         :is_sample] :id (u/the-id database))
+                                                         :is_sample
+                                                         :settings] :id (u/the-id database))
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -194,7 +197,15 @@
               (schedule-tasks!
                (assoc database
                       :metadata_sync_schedule      new-metadata-schedule
-                      :cache_field_values_schedule new-fieldvalues-schedule)))))))))
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))
+         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
+         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
+         (when (and (:database-enable-actions (or new-settings existing-settings))
+                    (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+           (throw (ex-info (trs "The databaase does not support actions.")
+                           {:status-code     400
+                            :existing-engine existing-engine
+                            :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details], :as database}]
   (-> (cond-> database
