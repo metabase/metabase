@@ -25,12 +25,12 @@
 (define-multi-setting-impl audit-max-retention-days :oss
   :getter (fn []
             (if-not (premium-features/is-hosted?)
-              30
+              ##Inf
               (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
                   (cond
                     (nil? env-var-value)  365
                     (zero? env-var-value) ##Inf
-                    (< 30 env-var-value)  30
+                    (< env-var-value 30)  30
                     :else                 env-var-value)))))
 
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditLog [_]
