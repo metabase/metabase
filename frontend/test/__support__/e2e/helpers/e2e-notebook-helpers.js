@@ -1,3 +1,5 @@
+import { popover } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
+
 export function openNotebook() {
   return cy.icon("notebook").click();
 }
@@ -30,5 +32,32 @@ export function visualize(callback) {
     if (callback) {
       callback(response);
     }
+  });
+}
+
+export function addSummaryField({ metric, field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("aggregate-step")
+    .findAllByTestId("notebook-cell-item")
+    .last()
+    .click();
+
+  popover().within(() => {
+    cy.findByText(metric).click();
+    if (field) {
+      cy.findByText(field).click();
+    }
+  });
+}
+
+export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("breakout-step")
+    .findAllByTestId("notebook-cell-item")
+    .last()
+    .click();
+
+  popover().within(() => {
+    cy.findByText(field).click();
   });
 }

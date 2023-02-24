@@ -168,9 +168,9 @@
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
 
-(deftest classify-ddl-test
+(deftest check-action-commands-test
   (mt/test-driver :h2
-    (are [query] (= false (#'h2/contains-ddl? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -179,9 +179,16 @@
        delete venues;"
       "update venues set name = 'stomp';"
       "select * from venues; update venues set name = 'stomp';"
-      "update venues set name = 'stomp'; select * from venues;")
+      "update venues set name = 'stomp'; select * from venues;"
+      "truncate table venues"
+      "insert into venues values (1, 'Chicken Chow')"
+      "merge into venues key(1) values (1, 'Chicken Chow')"
+      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';")
 
-    (are [query] (= true (#'h2/contains-ddl? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+      "create table venues (id int, name varchar(255))"
+      "alter table venues add column address varchar(255)"
+      "drop table venues"
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -189,9 +196,9 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-disallow-ddl-commands {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
 
-    (is (= nil (#'h2/check-disallow-ddl-commands
+    (is (= nil (#'h2/check-action-commands-allowed
                 {:database (u/the-id (mt/db))
                  :engine :h2
                  :native {:query (str/join "; "
@@ -203,7 +210,7 @@
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
-                   (#'h2/check-disallow-ddl-commands
+                   (#'h2/check-action-commands-allowed
                     {:database (u/the-id (mt/db))
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
@@ -251,7 +258,7 @@
                                                  :dataset_query {:database (mt/id)
                                                                  :type     "native"
                                                                  :native   {:query sql}}}]
-            (is (=? {:message "Error executing Action: IllegalArgument: DDL commands are not allowed to be used with h2."}
+            (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with H2."}
                     (mt/user-http-request :crowberto
                                           :post 500
                                           (format "action/%s/execute" action-id)))))))

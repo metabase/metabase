@@ -304,6 +304,7 @@ class DashboardHeader extends Component {
             <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
+                aria-label={t`Add action`}
                 data-metabase-event={`Dashboard;Add Action Button`}
               >
                 <Icon name="click" size={18} />

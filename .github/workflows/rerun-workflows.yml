@@ -14,10 +14,7 @@ jobs:
     steps:
       - name: Generate job summary
         run: |
-          RUN_ID=${{ github.event.workflow_run.id }}
-          WORKFLOW_NAME=${{ github.event.workflow_run.name }}
-
-          echo "# $WORKFLOW_NAME workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
+          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
           echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
