@@ -4,10 +4,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
    [metabase.config :as config]
+   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting define-multi-setting-impl]]
+   [metabase.models.task-history :as task-history]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
    [metabase.util.i18n :refer [deferred-tru trs]]
@@ -33,12 +36,27 @@
                     (< env-var-value 30)  30
                     :else                 env-var-value)))))
 
+(defn- query-execution-cleanup!
+  "Delete QueryExecution rows older than the configured threshold."
+  []
+  (when-not (infinite? (audit-max-retention-days))
+    (task-history/with-task-history {:task "task-history-cleanup"}
+      (try
+        (log/info (trs "Cleaning up query_execution table"))
+        (let [rows-deleted (t2/delete!
+                            QueryExecution
+                            :started_at
+                            [:<= (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))])]
+          (log/info
+           (if (> rows-deleted 0)
+             (trs "query_execution cleanup successful, {0} rows were deleted" rows-deleted)
+             (trs "query_execution cleanup successful, no rows were deleted"))))
+        (catch Throwable e
+          (log/error e (trs "query_execution cleanup failed"))
+          (throw e))))))
+
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditLog [_]
-  (try
-    (when-not (infinite? (audit-max-retention-days))
-      (t2/delete! {:where [:< :started_at [:date_add [:now] [:interval (audit-max-retention-days) :day]]]}))
-    (catch Throwable e
-      (log/error e (trs "TruncateAuditLog task failed")))))
+  (query-execution-cleanup!))
 
 (def ^:private truncate-audit-log-job-key "metabase.task.truncate-audit-log.job")
 (def ^:private truncate-audit-log-trigger-key "metabase.task.truncate-audit-log.trigger")
