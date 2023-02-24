@@ -56,22 +56,35 @@
           skip-roots     #{}
           res            []
           indeterminates []]
+     ;; Keep going if there are more collections to process
      (if c
-       (if (= "/" location)
+       ;; If the collection has a first element in its location we need to
+       ;; decide what to do based on who owns it
+       (if-some [root (first (collection/location-path->ids location))]
+         (cond
+           ;; The root element belongs to me or is public, keep
+           (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
+           ;; The root element belongs to another user, skip
+           (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
+           ;; The root element is unknown, add to the indeterminates list
+           :else (recur r keep-roots skip-roots res (conj indeterminates c)))
+         ;; There is no first element in the path, so this is a root
          (if (or (nil? personal_owner_id) (= user-id personal_owner_id))
+           ;; There is no owner of this root collection or it is me,
+           ;; so I will keep the id as a root id and the collection itself
            (recur r (conj keep-roots id) skip-roots (conj res c) indeterminates)
-           (recur r keep-roots (conj skip-roots id) res indeterminates))
-         (let [[_ root] (str/split location #"/")
-               root (parse-long root)]
-           (cond
-             (keep-roots root) (recur r keep-roots skip-roots (conj res c) indeterminates)
-             (skip-roots root) (recur r keep-roots skip-roots res indeterminates)
-             :else (recur r keep-roots skip-roots res (conj indeterminates c)))))
+           ;; This is someone else's collection, so add its id to ones we skip
+           (recur r keep-roots (conj skip-roots id) res indeterminates)))
+       ;; There are no more collections to process, but there might be some we didn't know what to do with
+       ;; This won't happen if the collections are ordered such that parents come before children, but
+       ;; IDK that we guarantee this...
        (->> indeterminates
+            ;; At this point, we should know what we want to keep, so we'll just check for those
             (filter
              (fn [{:keys [location]}]
-               (let [[_ root] (str/split location #"/")]
-                 (keep-roots (parse-long root)))))
+               (let [[root] (collection/location-path->ids location)]
+                 (keep-roots root))))
+            ;; Finally return our result
             (into res)))))
   ([collections]
    (remove-other-users-personal-collections (:id @api/*current-user*) collections)))

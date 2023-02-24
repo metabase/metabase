@@ -136,8 +136,7 @@
             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
             (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
                    luckys))
-            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))
-            ))))
+            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
