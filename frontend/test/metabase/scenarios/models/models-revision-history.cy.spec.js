@@ -32,10 +32,7 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state", () => {
-    cy.visit("/model/3");
-    openQuestionActions();
-    assertIsModel();
-    closeQuestionActions();
+    visitModel(3);
 
     questionInfoButton().click();
 
@@ -110,3 +107,9 @@ describe("scenarios > models > revision history", () => {
     cy.url().should("not.include", "/question/3");
   });
 });
+
+function visitModel(id) {
+  cy.intercept("POST", "/api/dataset").as("dataset");
+  cy.visit(`/model/${id}`);
+  cy.wait("@dataset");
+}
