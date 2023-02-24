@@ -22,6 +22,7 @@ const ObjectDetailProperties = {
   iconName: "document",
   noun: t`object`,
   hidden: false,
+  canSavePng: false,
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),

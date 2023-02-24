@@ -34,7 +34,7 @@ export const EmptyFormPlaceholderWrapper = styled.div`
   flex-direction: column;
   justify-content: center;
   height: 100%;
-  padding: 5rem;
+  padding: 3rem;
 `;
 
 export const ExplainerTitle = styled.h3`

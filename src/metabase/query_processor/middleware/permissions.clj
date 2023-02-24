@@ -10,8 +10,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.resolve-referenced
-    :as qp.resolve-referenced]
+   [metabase.query-processor.util.tag-referenced-cards
+    :as qp.u.tag-referenced-cards]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -86,7 +86,7 @@
     (when-not (has-data-perms? required-perms)
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
-  (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
+  (doseq [{query :dataset_query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
 (s/defn ^:private check-query-permissions*

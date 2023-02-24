@@ -620,7 +620,7 @@
       (is (= [{:text "Doohickey and Gizmo"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
-(deftest actions-are-skipped-for-subscriptions-test
+(deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
     (t2.with-temp/with-temp
       [Dashboard     {dashboard-id :id

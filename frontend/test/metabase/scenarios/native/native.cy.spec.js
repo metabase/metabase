@@ -162,7 +162,7 @@ describe("scenarios > question > native", () => {
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
     cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left").as("sidebar");
     cy.findByText("Add or remove columns").click();
     sidebar().within(() => {

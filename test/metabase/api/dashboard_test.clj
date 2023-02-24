@@ -2547,9 +2547,11 @@
                                                    :cardId                 nil
                                                    :action_id              action-id
                                                    :visualization_settings {:label "Update"}})))
-              (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
-                                                       :type (name action-type)
-                                                       :parameters [{:id "id"}]}}]}
+              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+                                                               :type (name action-type)
+                                                               :parameters [{:id "id"}]}
+                                                              (#{:query :implicit} action-type)
+                                                              (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
