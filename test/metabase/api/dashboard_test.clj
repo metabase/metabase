@@ -2017,8 +2017,11 @@
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))
+            (is (= {:values ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 200)
+                        (chain-filter-test/take-n-values 3))))))))
 
     (testing "data perms should not affect perms for the Fields in question when users have collection access"
       (mt/with-temp-copy-of-db
