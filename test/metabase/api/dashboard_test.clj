@@ -331,8 +331,8 @@
                                            ;; get for link card
                                            (get-in dashcard [:visualization_settings :link]))))))]
         (t2.with-temp/with-temp
-          [Dashboard     {dashboard-id :id
-                          :as dashboard}   {:name "Test Dashboard"}]
+          [Dashboard {dashboard-id :id
+                      :as dashboard}   {:name "Test Dashboard"}]
           (dashboard-subscription-test/with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
                                                                                                collection-id
                                                                                                database-id

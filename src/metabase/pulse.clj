@@ -51,6 +51,9 @@
      (dissoc parameter :default))))
 
 (defn- execute-dashboard-subscription-card
+  "Returns subscription result for a card.
+
+  This function should be executed under pulse's creator permissions."
   [dashboard dashcard card-or-id parameters]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
@@ -112,8 +115,11 @@
                   (format "\n%s" description)))}))
 
 (defn- dashcard-link-card->content
-  "Convert a dashcard that is a link card to pulse content."
+  "Convert a dashcard that is a link card to pulse content.
+
+  This function should be executed under pulse's creator permissions."
   [dashcard]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (let [link-card (get-in dashcard [:visualization_settings :link])]
     (cond
       (some? (:url link-card))
@@ -130,7 +136,9 @@
           (link-card->text (assoc link-card :entity instance)))))))
 
 (defn- dashcard->content
-  "Given a dashcard returns its content based on its type."
+  "Given a dashcard returns its content based on its type.
+
+  The result will follow the pulse's creator permissions."
   [dashcard pulse dashboard]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
@@ -155,7 +163,9 @@
           :visualization_settings))))
 
 (defn- execute-dashboard
-  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
+  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
+
+  The gerenerated contents will follow the pulse's creator permissions."
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
