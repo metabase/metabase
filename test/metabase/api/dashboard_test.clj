@@ -2006,13 +2006,15 @@
                                                        (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                           (:id dashboard)
-                                                                                           (:category-name param-keys)))))))))
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))
+
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
@@ -2023,14 +2025,23 @@
                         (mt/user-http-request :rasta :get 200)
                         (chain-filter-test/take-n-values 3))))))))
 
-    (testing "data perms should not affect perms for the Fields in question when users have collection access"
+    (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
-                      (chain-filter-test/take-n-values 3)))))))))
+                      (chain-filter-test/take-n-values 3)))))))
+
+    (testing "blocked data perms should affect perms for the Fields in question when users have collection access"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data] {:schemas :block})
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (is (= "You don't have permissions to do that."
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 403))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"

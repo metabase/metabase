@@ -106,7 +106,7 @@
           (check-block-permissions outer-query)))
 
       *user-can-read-dashboard*
-      true
+      (check-block-permissions outer-query)
 
       :else
       (check-ad-hoc-query-perms outer-query))))
