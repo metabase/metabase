@@ -7,7 +7,7 @@ import {
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+import { deleteSession } from "metabase/lib/auth";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -52,7 +52,7 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
       ]);
       dispatch(push(redirectUrl || "/"));
     } catch (error) {
-      await clearGoogleAuthCredentials();
+      await deleteSession();
       // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
       if (error.status === 428) {
         dispatch(push("/auth/google_no_mb_account"));
@@ -71,7 +71,7 @@ export const logout = createThunkAction(LOGOUT, function() {
     await SessionApi.delete();
 
     // clear Google auth credentials if any are present
-    await clearGoogleAuthCredentials();
+    await deleteSession();
 
     MetabaseAnalytics.trackEvent("Auth", "Logout");
 

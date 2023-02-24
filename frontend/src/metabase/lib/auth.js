@@ -1,18 +1,12 @@
-/*global gapi*/
+import { SessionApi } from "metabase/services";
 
-/// clear out Google Auth credentials in browser if present
-export async function clearGoogleAuthCredentials() {
-  const googleAuth =
-    typeof gapi !== "undefined" && gapi && gapi.auth2
-      ? gapi.auth2.getAuthInstance()
-      : undefined;
-  if (!googleAuth) {
-    return;
-  }
 
+export const deleteSession = async () => {
   try {
-    await googleAuth.signOut();
+    await SessionApi.delete();
   } catch (error) {
-    console.error("Problem clearing Google Auth credentials", error);
+    if (error.status !== 404) {
+      console.error("Problem clearing session", error);
+    }
   }
-}
+};

@@ -2,6 +2,7 @@
 
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
 // this polyfill so that those work in older browsers
@@ -77,13 +78,15 @@ function _init(reducers, getRoutes, callback) {
   const googleAuthClientId = MetabaseSettings.get("google-auth-client-id");
   let root;
   ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
-      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <ThemeProvider theme={theme}>
-          <Router history={history}>{routes}</Router>
-        </ThemeProvider>
-      </DragDropContextProvider>
-    </Provider>,
+    <GoogleOAuthProvider clientId={googleAuthClientId}>
+      <Provider store={store} ref={ref => (root = ref)}>
+        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+          <ThemeProvider theme={theme}>
+            <Router history={history}>{routes}</Router>
+          </ThemeProvider>
+        </DragDropContextProvider>
+      </Provider>
+    </GoogleOAuthProvider>,
     document.getElementById("root"),
   );
 
