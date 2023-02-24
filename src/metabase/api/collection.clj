@@ -50,9 +50,9 @@
    Will work in a single pass if collections are already ordered such that root (location = /)
    collections appear before children, but will catch any mis-ordered entries and
    do a final pass on those if needed."
+  ([collections]
+   (remove-other-users-personal-collections (:id @api/*current-user*) collections))
   ([user-id collections]
-   ([collections]
-    (remove-other-users-personal-collections (:id @api/*current-user*) collections))
    (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
           keep-roots     #{user-id}
           skip-roots     #{}

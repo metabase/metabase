@@ -34,7 +34,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time ZonedDateTime ZoneId)))
 
@@ -117,26 +118,26 @@
     (testing "You should only see your collection and public collections"
       (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
             crowberto-root (db/select-one Collection :personal_owner_id admin-user-id)]
-        (mt/with-temp* [Collection [collection]
-                        Collection [{collection-id :id} {:name "Collection with Items"}]
-                        Collection [_ {:name            "subcollection"
-                                       :location        (format "/%d/" collection-id)
-                                       :authority_level "official"}]
-                        Collection [_ {:name     "Crowberto's Child Collection"
-                                       :location (collection/location-path crowberto-root)}]]
-          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
-                crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into (set (map :name (db/select Collection))) public-collections)
-                   crowbertos))
-            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   crowbertos-with-excludes))
-            (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-            (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   luckys))
-            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
+        (t2.with-temp/with-temp [Collection collection          {}
+                                 Collection {collection-id :id} {:name "Collection with Items"}
+                                 Collection _                   {:name            "subcollection"
+                                                                 :location        (format "/%d/" collection-id)
+                                                                 :authority_level "official"}
+                                 Collection _                   {:name     "Crowberto's Child Collection"
+                                                                 :location (collection/location-path crowberto-root)}]
+                                (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
+                                      crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                                      crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                                      luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+                                  (is (= (into (set (map :name (db/select Collection))) public-collections)
+                                         crowbertos))
+                                  (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                                         crowbertos-with-excludes))
+                                  (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+                                  (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+                                  (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
+                                         luckys))
+                                  (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
