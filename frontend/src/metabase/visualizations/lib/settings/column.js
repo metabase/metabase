@@ -2,6 +2,7 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
@@ -24,23 +25,49 @@ import { currency } from "cljs/metabase.shared.util.currency";
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => (s.data && s.data.cols) || []));
 
+export const COLUMN_TITLES = "column_settings.titles";
+const COLUMN_SETTINGS = "column_settings";
+
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
   ...def
 } = {}) {
-  return nestedSettings("column_settings", {
-    section: t`Formatting`,
-    objectName: "column",
-    getObjects: getColumns,
-    getObjectKey: getColumnKey,
-    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
-    component: ChartNestedSettingColumns,
-    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
-    useRawSeries: true,
-    hidden,
-    ...def,
-  });
+  return {
+    ...nestedSettings(COLUMN_SETTINGS, {
+      section: t`Formatting`,
+      objectName: "column",
+      readDependencies: [COLUMN_TITLES],
+      getObjects: getColumns,
+      getObjectKey: getColumnKey,
+      getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
+      component: ChartNestedSettingColumns,
+      getInheritedSettingsForObject: getInhertiedSettingsForColumn,
+      useRawSeries: true,
+      hidden,
+      ...def,
+    }),
+    [COLUMN_TITLES]: {
+      getValue: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) =>
+        _.object(
+          cols.map(column => {
+            const key = getColumnKey(column);
+            return [
+              key,
+              getIn(settings, [COLUMN_SETTINGS, key, "column_title"]) ||
+                formatColumn(column),
+            ];
+          }),
+        ),
+    },
+  };
 }
 
 import MetabaseSettings from "metabase/lib/settings";

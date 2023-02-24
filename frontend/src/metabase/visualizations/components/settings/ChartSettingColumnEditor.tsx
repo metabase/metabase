@@ -34,7 +34,7 @@ interface ChartSettingColumnEditorProps {
   isDashboard?: boolean;
   metadata?: Metadata;
   isQueryRunning: boolean;
-  getItemTitle: (val: DatasetColumn) => string;
+  getCustomColumnName: (val: DatasetColumn) => string;
 }
 
 const structuredQueryFieldOptions = (
@@ -104,7 +104,7 @@ const ChartSettingColumnEditor = ({
   isDashboard,
   metadata,
   isQueryRunning,
-  getItemTitle,
+  getCustomColumnName,
 }: ChartSettingColumnEditorProps) => {
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
@@ -204,7 +204,7 @@ const ChartSettingColumnEditor = ({
     // This ensures that we get the {table}→{column} syntax when appropriate. On anything other than the
     // Source table, there should be a table header above the list so we should only show the field name.
     if (column) {
-      const customName = getItemTitle(column);
+      const customName = getCustomColumnName(column);
       if (customName) {
         return customName;
       } else if (sourceTable) {

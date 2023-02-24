@@ -18,7 +18,10 @@ import ChartSettingsTableFormatting, {
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  columnSettings,
+  COLUMN_TITLES,
+} from "metabase/visualizations/lib/settings/column";
 
 import {
   isMetric,
@@ -33,13 +36,15 @@ import {
   findColumnIndexForColumnSetting,
   findColumnForColumnSetting,
   findColumnSettingIndexForColumn,
-  fieldRefForColumn,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+
+const getColumnNameFromSettings = (vizSettings, column) =>
+  getIn(vizSettings, [COLUMN_TITLES, getColumnKey(column)]);
 
 export default class Table extends Component {
   static uiName = t`Table`;
@@ -173,7 +178,7 @@ export default class Table extends Component {
     "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
-      readDependencies: ["column_settings"],
+      readDependencies: [COLUMN_TITLES],
       widget: ChartSettingOrderedSimple,
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
       getValue: ([{ card, data }], vizSettings, extra = {}) => {
@@ -250,13 +255,7 @@ export default class Table extends Component {
             return "[Unknown]";
           }
 
-          const customName = getIn(vizSettings, [
-            "column_settings",
-            JSON.stringify(["ref", fieldRefForColumn(column)]),
-            "column_title",
-          ]);
-
-          return customName || formatColumn(column);
+          return getColumnNameFromSettings(vizSettings, column);
         },
       }),
     },
@@ -280,10 +279,10 @@ export default class Table extends Component {
         isDashboard: extra.isDashboard,
         metadata: extra.metadata,
         isQueryRunning: extra.isQueryRunning,
-        getItemTitle: column => {
+        getCustomColumnName: column => {
           const customName = getIn(vizSettings, [
             "column_settings",
-            JSON.stringify(["ref", fieldRefForColumn(column)]),
+            getColumnKey(column),
             "column_title",
           ]);
 
@@ -336,7 +335,11 @@ export default class Table extends Component {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => formatColumn(column),
+        getDefault: (column, settings, { settings: vizSettings }) =>
+          getColumnNameFromSettings(vizSettings, column),
+        getProps: (column, settings, onChange, { settings: vizSettings }) => ({
+          placeholder: getColumnNameFromSettings(vizSettings, column),
+        }),
       },
       click_behavior: {},
     };
