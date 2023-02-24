@@ -13,7 +13,6 @@ describe("syncFieldsWithParameters", () => {
         u2: createMockFieldSettings({ id: "u2" }),
       },
     });
-
     const parameters = [
       createMockParameter({
         id: "u1",
@@ -23,7 +22,9 @@ describe("syncFieldsWithParameters", () => {
       }),
     ];
 
-    expect(syncFieldsWithParameters(settings, parameters)).toBe(settings);
+    const newSettings = syncFieldsWithParameters(settings, parameters);
+
+    expect(newSettings).toBe(settings);
   });
 
   it("should add new fields and remove non-existing ones", () => {
@@ -33,7 +34,6 @@ describe("syncFieldsWithParameters", () => {
         u2: createMockFieldSettings({ id: "u2", fieldType: "number" }),
       },
     });
-
     const parameters = [
       createMockParameter({
         id: "u2",
@@ -43,11 +43,16 @@ describe("syncFieldsWithParameters", () => {
       }),
     ];
 
-    expect(syncFieldsWithParameters(settings, parameters)).toMatchObject({
+    const newSettings = syncFieldsWithParameters(settings, parameters);
+
+    expect(newSettings).toMatchObject({
       fields: {
         u2: { id: "u2", fieldType: "number" },
         u3: { id: "u3", fieldType: "string" },
       },
+    });
+    expect(newSettings).not.toMatchObject({
+      u1: { id: "u1" },
     });
   });
 });
