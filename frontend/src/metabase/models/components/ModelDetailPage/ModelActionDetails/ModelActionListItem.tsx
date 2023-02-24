@@ -4,19 +4,18 @@ import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
 import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
 import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
-  ActionCard,
+  ActionCardContainer,
   ActionHeader,
+  ActionRunButtonContainer,
   ActionRunButton,
   ActionSubtitle,
   ActionSubtitlePart,
   ActionTitle,
   CodeBlock,
   ImplicitActionCardContentRoot,
-  ImplicitActionMessage,
   MenuIcon,
 } from "./ModelActionListItem.styled";
 
@@ -39,8 +38,7 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 function ImplicitActionCardContent() {
   return (
     <ImplicitActionCardContentRoot>
-      <ImplicitActionIcon size={32} />
-      <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
+      <div>{t`Auto tracking schema`}</div>
     </ImplicitActionCardContentRoot>
   );
 }
@@ -101,7 +99,7 @@ function ModelActionListItem({
           trigger={<MenuIcon name="ellipsis" size={14} />}
         />
       </ActionHeader>
-      <ActionCard>
+      <ActionCardContainer>
         {action.type === "query" ? (
           <QueryActionCardContent action={action} />
         ) : action.type === "implicit" ? (
@@ -109,14 +107,24 @@ function ModelActionListItem({
         ) : null}
         {canRun && (
           <ModalWithTrigger
-            triggerElement={<ActionRunButton as={Link} icon="play" onlyIcon />}
+            triggerElement={
+              <ActionRunButtonContainer>
+                <ActionRunButton
+                  as={Link}
+                  icon="play"
+                  onlyIcon
+                  tooltip={t`Run`}
+                  aria-label={t`Run`}
+                />
+              </ActionRunButtonContainer>
+            }
           >
             {({ onClose }: ModalProps) => (
               <ActionExecuteModal actionId={action.id} onClose={onClose} />
             )}
           </ModalWithTrigger>
         )}
-      </ActionCard>
+      </ActionCardContainer>
       {confirmationModal}
     </>
   );

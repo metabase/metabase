@@ -311,7 +311,7 @@
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_ {:keys [query params]}]
   {:prepared-statement-args (not-empty params)
-   :replacement-snippet     (str "(" query ")")})
+   :replacement-snippet     (sql.qp/make-nestable-sql query)})
 
 
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------

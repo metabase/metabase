@@ -39,7 +39,11 @@ import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSideb
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
-import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./NativeQueryEditor/constants";
+import {
+  ACE_ELEMENT_ID,
+  SCROLL_MARGIN,
+  MIN_HEIGHT_LINES,
+} from "./NativeQueryEditor/constants";
 import {
   calcInitialEditorHeight,
   getEditorLineHeight,
@@ -578,7 +582,7 @@ class NativeQueryEditor extends Component {
             this._editor.resize();
           }}
         >
-          <div className="flex-full" id="id_sql" ref={this.editor} />
+          <div className="flex-full" id={ACE_ELEMENT_ID} ref={this.editor} />
 
           <RightClickPopover
             isOpen={this.state.isSelectedTextPopoverOpen}

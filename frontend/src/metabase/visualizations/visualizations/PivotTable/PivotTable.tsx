@@ -488,6 +488,7 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   uiName: t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
+  canSavePng: false,
   databaseSupportsPivotTables,
   isSensible,
   checkRenderable,

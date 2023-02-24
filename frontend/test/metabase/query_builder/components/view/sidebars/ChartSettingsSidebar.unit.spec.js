@@ -11,16 +11,17 @@ describe("ChartSettingsSidebar", () => {
     cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
   };
 
-  it("should not hide the title for gauge charts", () => {
+  it("should hide the title when showSidebarTitle is false", () => {
     render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("gauge")}
         result={{ data }}
+        showSidebarTitle={false}
       />,
     );
 
     // see options header with sections
-    expect(screen.getByText("Gauge options")).toBeInTheDocument();
+    expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
     expect(screen.getByText("Display")).toBeInTheDocument();
 
@@ -31,16 +32,17 @@ describe("ChartSettingsSidebar", () => {
     expect(screen.getByText("Style")).toBeInTheDocument();
 
     // but the sections and back title are unchanged
-    expect(screen.getByText("Gauge options")).toBeInTheDocument();
+    expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
     expect(screen.getByText("Display")).toBeInTheDocument();
   });
 
-  it("should not hide the title for scalar charts", () => {
+  it("should not hide the title when showSidebarTitle is false", () => {
     render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("scalar")}
         result={{ data }}
+        showSidebarTitle={true}
       />,
     );
 

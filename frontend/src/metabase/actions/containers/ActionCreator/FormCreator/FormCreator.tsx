@@ -50,7 +50,7 @@ function FormCreator({
 
   if (!sortedParams.length) {
     return (
-      <SidebarContent title={t`Action parameters`}>
+      <SidebarContent>
         <FormContainer>
           <EmptyFormPlaceholder />
         </FormContainer>

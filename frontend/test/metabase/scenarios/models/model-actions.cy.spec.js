@@ -154,7 +154,10 @@ describe(
       popover().findByText("Action").click();
 
       cy.findByText("Select a database").click();
-      popover().findByText("QA Postgres12").click();
+      popover().within(() => {
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("QA Postgres12").click();
+      });
 
       fillActionQuery(QUERY);
       cy.findByRole("button", { name: "Save" }).click();

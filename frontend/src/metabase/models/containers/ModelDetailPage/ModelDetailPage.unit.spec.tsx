@@ -1,6 +1,6 @@
 import React from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -194,33 +194,30 @@ async function setup({
   hasActionsEnabled = false,
   hasDataPermissions = true,
 }: SetupOpts) {
-  const scope = nock(location.origin).persist();
-
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   const card = model.card() as Card;
 
   if (hasDataPermissions) {
-    setupDatabasesEndpoints(scope, [
+    setupDatabasesEndpoints([
       hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
     ]);
   } else {
-    setupDatabasesEndpoints(scope, []);
-    scope.get(`/api/database/${TEST_DATABASE.id}`).reply(403);
-    scope.get(`/api/database/${TEST_DATABASE_WITH_ACTIONS.id}`).reply(403);
+    setupDatabasesEndpoints([]);
+    fetchMock.get(`path:/api/database/${TEST_DATABASE.id}`, 403);
   }
 
-  scope
-    .get("/api/card")
-    .query({ f: "using_model", model_id: card.id })
-    .reply(
-      200,
-      usedBy.map(question => question.card()),
-    );
+  fetchMock.get(
+    {
+      url: "path:/api/card",
+      query: { f: "using_model", model_id: card.id },
+    },
+    usedBy.map(question => question.card()),
+  );
 
-  setupCardsEndpoints(scope, [card]);
-  setupActionsEndpoints(scope, model.id(), actions);
-  setupCollectionsEndpoints(scope, collections);
+  setupCardsEndpoints([card]);
+  setupActionsEndpoints(model.id(), actions);
+  setupCollectionsEndpoints(collections);
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
@@ -256,7 +253,7 @@ async function setup({
 
   const metadata = getMetadata(store.getState());
 
-  return { history, baseUrl, metadata, scope, modelUpdateSpy };
+  return { history, baseUrl, metadata, modelUpdateSpy };
 }
 
 type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
@@ -272,10 +269,6 @@ function openActionMenu(action: WritebackAction) {
 }
 
 describe("ModelDetailPage", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   [
     { type: "structured", getModel: getStructuredModel },
     { type: "native", getModel: getNativeModel },
@@ -511,7 +504,7 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
-        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+        it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
 
@@ -530,6 +523,7 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
@@ -548,6 +542,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
+          expect(await screen.findByLabelText("Run")).toBeInTheDocument();
         });
 
         it("lists existing public query actions with public label", async () => {
@@ -576,6 +571,7 @@ describe("ModelDetailPage", () => {
           expect(screen.getByText("Create")).toBeInTheDocument();
           expect(screen.getByText("Update")).toBeInTheDocument();
           expect(screen.getByText("Delete")).toBeInTheDocument();
+          expect(await screen.findAllByLabelText("Run")).toHaveLength(3);
         });
 
         it("allows to create a new query action", async () => {
@@ -824,11 +820,11 @@ describe("ModelDetailPage", () => {
           const model = getModel();
           const actions = [
             ...createMockImplicitCUDActions(model.id()),
-            createMockQueryAction({ model_id: model.id() }),
+            createMockQueryAction({ id: 4, model_id: model.id() }),
           ];
           await setupActions({ model, actions, hasDataPermissions: false });
 
-          expect(queryIcon("play")).not.toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
       });
     });
