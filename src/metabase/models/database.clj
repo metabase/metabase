@@ -202,7 +202,7 @@
          ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
          (when (and (:database-enable-actions (or new-settings existing-settings))
                     (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
-           (throw (ex-info (trs "The databaase does not support actions.")
+           (throw (ex-info (trs "The database does not support actions.")
                            {:status-code     400
                             :existing-engine existing-engine
                             :new-engine      new-engine})))))))

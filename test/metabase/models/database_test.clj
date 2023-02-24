@@ -98,17 +98,17 @@
   (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
     (mt/with-temp Database [{db-id :id :as database} {:engine :sqlite}]
       (is (= false (driver/database-supports? :sqlite :actions database)))
-      (is (thrown?
+      (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"The databasae does not support actions."
+           #"The database does not support actions."
            (db/update! Database db-id :settings {:database-enable-actions true})))))
   (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
     (mt/with-temp Database [{db-id :id :as database} {:engine :h2 :settings {:database-enable-actions true}}]
       (is (= true (driver/database-supports? :h2 :actions database)))
       (is (= false (driver/database-supports? :sqlite :actions database)))
-      (is (thrown?
+      (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"The databasae does not support actions."
+           #"The database does not support actions."
            (db/update! Database db-id :engine :sqlite))))))
 
 (deftest sensitive-data-redacted-test
