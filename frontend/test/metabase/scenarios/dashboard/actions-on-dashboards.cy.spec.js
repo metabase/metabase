@@ -109,8 +109,8 @@ const MODEL_NAME = "Test Action Model";
         cy.button("Create").click();
 
         modal().within(() => {
-          cy.findByPlaceholderText("team_name").type("Zany Zebras");
-          cy.findByPlaceholderText("score").type("44");
+          cy.findByPlaceholderText("Team name").type("Zany Zebras");
+          cy.findByPlaceholderText("Score").type("44");
 
           cy.button("Save").click();
         });
@@ -152,12 +152,12 @@ const MODEL_NAME = "Test Action Model";
         cy.wait("@executePrefetch");
         // let's check that the existing values are pre-filled correctly
         modal().within(() => {
-          cy.findByPlaceholderText("team_name")
+          cy.findByPlaceholderText("Team name")
             .should("have.value", "Energetic Elephants")
             .clear()
             .type("Emotional Elephants");
 
-          cy.findByPlaceholderText("score")
+          cy.findByPlaceholderText("Score")
             .should("have.value", "30")
             .clear()
             .type("88");
@@ -202,7 +202,7 @@ const MODEL_NAME = "Test Action Model";
         cy.button("Delete").click();
 
         modal().within(() => {
-          cy.findByPlaceholderText("id").type("3");
+          cy.findByPlaceholderText("Id").type("3");
           cy.button("Delete").click();
         });
 
