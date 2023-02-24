@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -53,27 +53,27 @@ function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
 }: SetupOpts = {}) {
-  const scope = nock(location.origin);
   const models = hasModels ? [createMockCard({ dataset: true })] : [];
 
-  setupDatabasesEndpoints(scope, databases);
+  setupDatabasesEndpoints(databases);
 
-  scope.get(/\/api\/search/).reply(200, {
-    available_models: ["dataset"],
-    models: ["dataset"],
-    data: models,
-    total: models.length,
-  });
+  fetchMock.get(
+    {
+      url: "path:/api/search",
+    },
+    {
+      available_models: ["dataset"],
+      models: ["dataset"],
+      data: models,
+      total: models.length,
+    },
+  );
 
   renderWithProviders(<NewItemMenu trigger={<button>New</button>} />);
   userEvent.click(screen.getByText("New"));
 }
 
 describe("NewItemMenu", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();

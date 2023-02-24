@@ -91,6 +91,7 @@
    ;; returned for Database and Table
    :initial_sync_status :text
    ;; returned for Action
+   :model_id            :integer
    :model_name          :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

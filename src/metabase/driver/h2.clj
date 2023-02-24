@@ -185,11 +185,32 @@
         (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with h2."
                         {:classification query-classification}))))))
 
+(defn- read-only-statements? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (and (every? #{CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
+(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+  (when query
+    (let [query-classification (classify-query database query)]
+      (when-not (read-only-statements? query-classification)
+        (throw (ex-info "Only SELECT statements are allowed in a native query."
+                        {:classification query-classification}))))))
+
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
+
+(defmethod driver/execute-write-query! :h2
+  [driver query]
+  (check-native-query-not-using-default-user query)
+  (check-disallow-ddl-commands query)
+  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
@@ -406,8 +427,7 @@
   (db-type->base-type database-type))
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
+;; options users might try to put in their connection string, like INIT=...
 
 (defn- file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
@@ -426,8 +446,7 @@
                                                 ;; http://h2database.com/html/features.html#execute_sql_on_connection
                                                 (remove (fn [[k _]] (= (u/lower-case-en k) "init")))
                                                 (into {}))
-                                           {"IFEXISTS"         "TRUE"
-                                            "ACCESS_MODE_DATA" "r"}))))
+                                           {"IFEXISTS" "TRUE"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]

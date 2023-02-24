@@ -295,7 +295,7 @@ describe("scenarios > question > native subquery", () => {
     );
   });
 
-  it.skip("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+  it("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
     const questionDetails = {
       name: "28218",
       native: { query: "select 1;" }, // semicolon is important here

@@ -1,7 +1,6 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { waitFor } from "@testing-library/react";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockDashboard,
@@ -30,37 +29,30 @@ const dashboard = createMockDashboard({
   ordered_cards: [dashcard, actionDashcard, linkDashcard],
 });
 
-function setup({ matchTestSubscriptionPayload }) {
-  nock(location.origin)
-    .get("/api/pulse/form_input")
-    .reply(200, {
-      channels: {
-        email: {
-          type: "email",
-          name: "Email",
-          allows_recipients: true,
-          recipients: ["user", "email"],
-          schedules: ["hourly"],
-          configured: true,
-        },
+function setup() {
+  fetchMock.get("path:/api/pulse/form_input", {
+    channels: {
+      email: {
+        type: "email",
+        name: "Email",
+        allows_recipients: true,
+        recipients: ["user", "email"],
+        schedules: ["hourly"],
+        configured: true,
       },
-    });
+    },
+  });
 
-  nock(location.origin)
-    .get("/api/user")
-    .reply(200, {
-      data: [user],
-    });
+  fetchMock.get("path:/api/user", {
+    data: [user],
+  });
 
-  nock(location.origin)
-    .get(`/api/pulse?dashboard_id=${dashboard.id}`)
-    .reply(200, []);
+  fetchMock.get(
+    { url: `path:/api/pulse`, query: { dashboard_id: dashboard.id } },
+    [],
+  );
 
-  const sendTestSubscriptionScope = nock(location.origin)
-    .post("/api/pulse/test")
-    .reply(200, (_uri, body) => {
-      matchTestSubscriptionPayload(body);
-    });
+  fetchMock.post("path:/api/pulse/test", 200);
 
   renderWithProviders(<SharingSidebar dashboard={dashboard} />, {
     storeInitialState: {
@@ -80,18 +72,11 @@ function setup({ matchTestSubscriptionPayload }) {
       },
     },
   });
-
-  return { sendTestSubscriptionScope };
 }
 
 describe("SharingSidebar", () => {
   it("should filter out actions and links when sending a test subscription", async () => {
-    const { sendTestSubscriptionScope } = setup({
-      matchTestSubscriptionPayload: payload => {
-        expect(payload.cards).toHaveLength(1);
-        expect(payload.cards[0].id).toEqual(dashcard.id);
-      },
-    });
+    setup();
 
     userEvent.click(await screen.findByText("Email it"));
     userEvent.click(
@@ -104,6 +89,10 @@ describe("SharingSidebar", () => {
 
     userEvent.click(await screen.findByText("Send email now"));
 
-    await waitFor(() => expect(sendTestSubscriptionScope.isDone()).toBe(true));
+    const payload = await fetchMock
+      .lastCall("path:/api/pulse/test")
+      .request.json();
+    expect(payload.cards).toHaveLength(1);
+    expect(payload.cards[0].id).toEqual(dashcard.id);
   });
 });

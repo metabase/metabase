@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
@@ -72,61 +71,66 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql
-                                            :sparksql
-                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
-    (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
+                                   [[table [(sql.qp/->honeysql
+                                             :sparksql
+                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
+    (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
-    {:query (mt/native-query
-             {:query
-              (format-honeysql
-               {:select   [:*]
-                :from     [(identifier :venues)]
-                :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
-                :order-by [(identifier :venues :id)]})
+    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+      {:query (mt/native-query
+                {:query
+                 (format-honeysql
+                  {:select   [:*]
+                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
+                   :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
+                   :order-by [[(identifier :venues :id) :asc]]})
 
-              :template_tags
-              {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-     :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
+                 :template_tags
+                 {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+       :remappings {:cat ["variable" ["template-tag" "cat"]]}})))
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
-    {:query (mt/native-query
-             {:query
-              (format-honeysql
-               {:select    [(identifier :checkins :id)
-                            (identifier :checkins :user_id)
-                            (identifier :venues :name)
-                            (identifier :venues :category_id)]
-                :from      [(identifier :checkins)]
-                :left-join [(identifier :venues)
-                            [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
-                :order-by  [[(identifier :checkins :id) :asc]]})
+    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+      {:query (mt/native-query
+                {:query
+                 (format-honeysql
+                  {:select    [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :id))
+                               (sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :user_id))
+                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))
+                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :category_id))]
+                   :from      [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins))]
+                   :left-join [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))
+                               [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                   :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
+                   :order-by  [[(identifier :checkins :id) :asc]]})
 
-              :template_tags
-              {"user" {:name         "user"
-                       :display-name "User ID"
-                       :type         :number
-                       :required     true}}})
-     :remappings {:user ["variable" ["template-tag" "user"]]}}))
+                 :template_tags
+                 {"user" {:name         "user"
+                          :display-name "User ID"
+                          :type         :number
+                          :required     true}}})
+       :remappings {:user ["variable" ["template-tag" "user"]]}})))
 
 (defn- venue-names-native-gtap-def []
-  {:query (mt/native-query
-            {:query
-             (format-honeysql
-              {:select   [(identifier :venues :id) (identifier :venues :name)]
-               :from     [(identifier :venues)]
-               :order-by [(identifier :venues :id)]})})})
+  (driver/with-driver (or driver/*driver* :h2)
+    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+      {:query (mt/native-query
+                {:query
+                 (format-honeysql
+                  {:select   [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues :id))
+                              (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))]
+                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
+                   :order-by [[(identifier :venues :id) :asc]]})})})))
 
 (defn- run-venues-count-query []
   (mt/format-rows-by [int]
     (mt/rows
-      (mt/run-mbql-query venues {:aggregation [[:count]]}))))
+     (mt/run-mbql-query venues {:aggregation [[:count]]}))))
 
 (defn- run-checkins-count-broken-out-by-price-query []
   (mt/format-rows-by [#(some-> % int) int]
@@ -229,7 +233,7 @@
                   :query    {:aggregation  [[:count]]
                              :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                          "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
-                                                         "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
+                                                         "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
                                             :params []}}
 
                   ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
@@ -354,15 +358,16 @@
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
       (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
-        (mt/with-test-user :rasta
-          (is (= [[100]]
-                 (mt/format-rows-by [int]
-                   (mt/rows
-                    (qp/process-query
-                     {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (format "card__%s" (u/the-id card))
-                                 :aggregation  [["count"]]}}))))))))))
+        (let [query {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (format "card__%s" (u/the-id card))
+                                :aggregation  [["count"]]}}]
+          (mt/with-test-user :rasta
+            (mt/with-native-query-testing-context query
+              (is (= [[100]]
+                     (mt/format-rows-by [int]
+                       (mt/rows
+                        (qp/process-query query))))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below

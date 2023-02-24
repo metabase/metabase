@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
@@ -54,19 +54,13 @@ async function setupModal(options?: any) {
 }
 
 function setupPrefetch() {
-  nock(location.origin)
-    .get(uri => uri.includes("/api/dashboard/123/dashcard/456/execute"))
-    .reply(200, {
-      "1": "uno",
-      "2": "dos",
-    });
+  fetchMock.get("path:/api/dashboard/123/dashcard/456/execute", {
+    "1": "uno",
+    "2": "dos",
+  });
 }
 
 describe("Actions > ActionParametersInputForm", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should render an action form", async () => {
     await setup();
     expect(screen.getByTestId("action-form")).toBeInTheDocument();

@@ -1,4 +1,8 @@
 import * as dbTasks from "./db_tasks";
+const { verifyDownloadTasks } = require("cy-verify-downloads");
+const {
+  NodeModulesPolyfillPlugin,
+} = require("@esbuild-plugins/node-modules-polyfill");
 
 /**
  * This env var provides the token to the backend.
@@ -39,7 +43,10 @@ const defaultConfig = {
      **                        PREPROCESSOR                            **
      ********************************************************************/
 
-    on("file:preprocessor", createBundler());
+    on(
+      "file:preprocessor",
+      createBundler({ plugins: [NodeModulesPolyfillPlugin()] }),
+    );
 
     /********************************************************************
      **                         BROWSERS                               **
@@ -68,6 +75,7 @@ const defaultConfig = {
      ********************************************************************/
     on("task", {
       ...dbTasks,
+      ...verifyDownloadTasks,
     });
 
     /********************************************************************
