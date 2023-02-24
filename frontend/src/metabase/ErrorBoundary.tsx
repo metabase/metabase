@@ -1,10 +1,11 @@
-import React, { ErrorInfo } from "react";
+import React, { ErrorInfo, ComponentType } from "react";
 
 import { SmallGenericError } from "metabase/containers/ErrorPages";
 
 export default class ErrorBoundary extends React.Component<
   {
     onError?: (errorInfo: ErrorInfo) => void;
+    errorComponent?: ComponentType;
   },
   {
     hasError: boolean;
@@ -34,7 +35,10 @@ export default class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <SmallGenericError />;
+      const ErrorComponent = this.props.errorComponent
+        ? this.props.errorComponent
+        : SmallGenericError;
+      return <ErrorComponent />;
     }
 
     return this.props.children;
