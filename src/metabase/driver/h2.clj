@@ -184,7 +184,7 @@
   (when query
     (when-let [query-classification (classify-query database query)]
       (when-not (every-command-allowed-for-actions? query-classification)
-        (throw (ex-info "IllegalArgument: DDL commands are not allowed to be used with H2."
+        (throw (ex-info "DDL commands are not allowed to be used with H2."
                         {:classification query-classification}))))))
 
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
