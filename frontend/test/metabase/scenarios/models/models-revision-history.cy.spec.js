@@ -34,9 +34,7 @@ describe("scenarios > models > revision history", () => {
   it("should allow reverting to a saved question state", () => {
     visitModel(3);
 
-    questionInfoButton().click();
-
-    cy.findByText("History");
+    openRevisionHistory();
     cy.findAllByTestId("question-revert-button").click();
     cy.wait("@revertToRevision");
 
@@ -65,9 +63,7 @@ describe("scenarios > models > revision history", () => {
     assertIsQuestion();
     closeQuestionActions();
 
-    questionInfoButton().click();
-
-    cy.findByText("History");
+    openRevisionHistory();
 
     cy.findByText(/Turned this into a model/i)
       .closest("li")
@@ -112,4 +108,11 @@ function visitModel(id) {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.visit(`/model/${id}`);
   cy.wait("@dataset");
+}
+
+function openRevisionHistory() {
+  cy.intercept("GET", "/api/user").as("user");
+  questionInfoButton().click();
+  cy.wait("@user");
+  cy.findByText("History");
 }
