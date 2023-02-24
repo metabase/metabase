@@ -83,49 +83,44 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
-(defn- link-card->url
-  [{:keys [entity url] :as link-card}]
-  (if url
-    (:url link-card)
-    (let [{:keys [db_id id model]} entity]
-      (case model
-        "card"       (urls/card-url id)
-        "dataset"    (urls/card-url id)
-        "collection" (urls/collection-url id)
-        "dashboard"  (urls/dashboard-url id)
-        "database"   (urls/database-url id)
-        "table"      (urls/table-url db_id id)))))
+(defn virtual-card-of-type?
+  "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, eles returns `nil`.
 
-(defn- link-card->content
-  [{:keys [entity url] :as _link-card}]
-  (if url
-    url
-    (:name entity)))
+  There are currently 3 types of virtual card: \"text\", \"action\", \"link\"."
+  [dashcard ttype]
+  (when (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))
+    dashcard))
 
-(defn- link-card->description
-  [{:keys [entity url] :as _link-card}]
-  (if url
-    nil
-    (:description entity)))
+(defn- link-card-entity->url
+  [{:keys [db_id id model] :as _entity}]
+  (case model
+    "card"       (urls/card-url id)
+    "dataset"    (urls/card-url id)
+    "collection" (urls/collection-url id)
+    "dashboard"  (urls/dashboard-url id)
+    "database"   (urls/database-url id)
+    "table"      (urls/table-url db_id id)))
 
 (defn- link-card->text
-  [link-card]
-  {:text (str (format
-                "### [%s](%s)"
-                (link-card->content link-card)
-                (link-card->url link-card))
-              (when-let [description (link-card->description link-card)]
-                (format "\n%s" description)))})
+  [{:keys [entity url] :as _link-card}]
+  (let [url-link-card? (some? url)]
+    {:text (str (format
+                  "### [%s](%s)"
+                  (if url-link-card? url (:name entity))
+                  (if url-link-card? url (link-card-entity->url entity)))
+                (when-let [description (if url-link-card? nil (:description entity))]
+                  (format "\n%s" description)))}))
 
 (defn- dashcard-link-card->content
-  "Convert a dashcard that is a linkcard to pulse content."
-  [{viz-settings :visualization_settings :as _dashcard}]
-  (let [link-card (:link viz-settings)]
+  "Convert a dashcard that is a link card to pulse content."
+  [dashcard]
+  (let [link-card (get-in dashcard [:visualization_settings :link])]
     (cond
       (some? (:url link-card))
       (link-card->text link-card)
-      ;; if link card link to an entity, update the settins because
-      ;; its stored info might be out-of-date
+
+      ;; if link card link to an entity, update the setting because
+      ;; the info in viz-settings might be out-of-date
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
@@ -136,7 +131,7 @@
 
 (defn- dashcard->content
   "Given a dashcard returns its content based on its type."
-  [{viz-settings :visualization_settings :as dashcard} pulse dashboard]
+  [dashcard pulse dashboard]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
@@ -144,11 +139,11 @@
       (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
-    (pu/virtual-card-of-type? viz-settings "action")
+    (virtual-card-of-type? dashcard "action")
     nil
 
     ;; link cards
-    (pu/virtual-card-of-type? viz-settings "link")
+    (virtual-card-of-type? dashcard "link")
     (dashcard-link-card->content dashcard)
 
     ;; text cards has existed for a while and I'm not sure if all existing text cards
@@ -581,6 +576,3 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
-
-#_(send-pulse! (db/select-one Pulse :id 15))
-#_(send-pulse! (db/select-one Pulse :id 16))

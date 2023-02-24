@@ -13,14 +13,6 @@
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
-(defn virtual-card-of-type?
-  "Check if dashcard is a virtual with type `ttype`.
-
-  There are currently 3 types of virtual card: text, action, link."
-  [viz-setting ttype]
-  (and (map? viz-setting)
-       (= ttype (get-in viz-setting [:virtual_card :display]))))
-
 ;; TODO - this should be done async
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
