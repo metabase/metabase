@@ -51,7 +51,7 @@
    collections appear before children, but will catch any mis-ordered entries and
    do a final pass on those if needed."
   ([collections]
-   (remove-other-users-personal-collections (:id @api/*current-user*) collections))
+   (remove-other-users-personal-collections api/*current-user-id* collections))
   ([user-id collections]
    (loop [[{:keys [id location personal_owner_id] :as c} & r] collections
           keep-roots     #{user-id}
