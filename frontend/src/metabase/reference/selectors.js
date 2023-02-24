@@ -121,7 +121,7 @@ export const getMetricQuestions = createSelector(
     Object.values(questions)
       .filter(
         question =>
-          question.dataset_query.type === "query" &&
+          question.isStructured() &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
             aggregation => Aggregation.getMetric(aggregation) === metricId,
@@ -148,7 +148,7 @@ export const getSegmentQuestions = createSelector(
     Object.values(questions)
       .filter(
         question =>
-          question.dataset_query.type === "query" &&
+          question.isStructured() &&
           Query.getFilters(question.dataset_query.query).some(
             filter => Filter.isSegment(filter) && filter[1] === segmentId,
           ),
