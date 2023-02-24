@@ -7,7 +7,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -104,6 +104,13 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
+    (when (and database_id (not= database_id (:database_id model)))
+      (let [model-db (db/select-one Database :id (:database_id model))
+            action-db (db/select-one Database :id database_id)]
+       (throw (ex-info (tru "Model database not equal to action database")
+                       {:status-code 400
+                        :model-database (:name model-db)
+                        :action-database (:name action-db)}))))
     (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id

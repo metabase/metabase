@@ -99,6 +99,44 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
+(deftest create-action-test
+  (testing "when action's database and model's database disagree"
+    (mt/dataset sample-dataset
+      (mt/with-actions-enabled
+        (let [sample-dataset-id (mt/id)]
+          (mt/dataset test-data
+            (mt/with-actions-enabled
+              (is (not= (mt/id) sample-dataset-id))
+              (mt/with-temp* [Card [model {:dataset true
+                                           :dataset_query
+                                           (mt/native-query
+                                            {:query "select * from checkins limit 1"})}]]
+                (let [action {:name "test action",
+                              :type :query,
+                              :model_id (:id model),         ;; model against test-data
+                              :database_id sample-dataset-id ;; action against sample-dataset
+                              :dataset_query
+                              {:native
+                               {:query "update people
+                                        set source = {{source}}
+                                        where id = {{id}}",
+                                :template-tags {:source {:id "source-param",
+                                                         :name "source",
+                                                         :display-name "Source",
+                                                         :type "text"},
+                                                :id {:id "id-param",
+                                                     :name "id",
+                                                     :display-name "Id",
+                                                     :type "text"}}},
+                               :database sample-dataset-id
+                               :type "native"}}
+                      response (mt/user-http-request :rasta :post 400 "action"
+                                                     action)]
+                  (is (partial= {:message "Model database not equal to action database"
+                                 :data {:model-database "test-data",
+                                        :action-database "sample-dataset"}}
+                                response)))))))))))
+
 (deftest unified-action-create-test
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
