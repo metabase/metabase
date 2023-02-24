@@ -644,8 +644,7 @@
                                                               table-id
                                                               card-id
                                                               model-id
-                                                              dashboard-id
-                                                              url]}]
+                                                              dashboard-id]}]
        (let [site-url (public-settings/site-url)]
          (testing "should returns all link cards and name are newly fetched"
            (doseq [[model id]
