@@ -16,7 +16,8 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
@@ -448,4 +449,21 @@
                                       :dashboard_id       dashboard-id
                                       :visualization_settings {:text "{{foo}}"}}]]
       (is (= [{:text "Doohickey and Gizmo"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+
+(deftest link-cards-and-actions-are-skipped-test
+  (testing "Actions and link cards should be filtered out"
+    (t2.with-temp/with-temp
+      [Dashboard     {dashboard-id :id
+                      :as dashboard}   {:name "Dashboard"}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:text "Markdown"}}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:virtual_card {:display "link"}
+                                                                 :link         {:entity {:id    dashboard-id
+                                                                                         :model "dashboard"}}}}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:virtual_card {:display "action"}}}]
+
+      (is (= [{:text "Markdown"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))

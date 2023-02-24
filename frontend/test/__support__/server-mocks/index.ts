@@ -5,5 +5,5 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
-export * from "./table";
 export * from "./search";
+export * from "./table";

@@ -6,7 +6,6 @@ export const LegendCaptionRoot = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;
-  justify-content: space-between;
 `;
 
 export const LegendLabel = styled.div`
@@ -36,6 +35,7 @@ export const LegendDescriptionIcon = styled(Icon)`
 export const LegendRightContent = styled.div`
   display: flex;
   justify-content: flex-end;
+  margin-left: auto;
 `;
 
 LegendDescriptionIcon.defaultProps = {

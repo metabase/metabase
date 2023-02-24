@@ -80,20 +80,48 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
+(defn- virtual-card-of-type?
+  "Check if dashcard is a virtual with type `ttype`.
+
+  There are currently 3 types of virtual card: text, action, link."
+  [dashcard ttype]
+  (and (map? dashcard)
+       (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))))
+
+(defn- dashcard->content
+  "Given a dashcard returns its content based on its type."
+  [dashcard {pulse-creator-id :creator_id, :as pulse} dashboard]
+  (cond
+    (:card_id dashcard)
+    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) parameters))
+
+    ;; actions
+    (virtual-card-of-type? dashcard "action")
+    nil
+
+    ;; link cards
+    (virtual-card-of-type? dashcard "link")
+    nil
+
+    ;; text cards has existed for a while and I'm not sure if all existing text cards
+    ;; will have virtual_card.display = "text", so assume everything else is a text card
+    :else
+    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+      (-> dashcard
+          (params/process-virtual-dashcard parameters)
+          :visualization_settings))))
+
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
+  [pulse dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
-        ordered-dashcards (sort dashcard-comparator dashcards)
-        parameters        (merge-default-values (params/parameters pulse dashboard))]
-    (for [dashcard ordered-dashcards]
-      (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
-        ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
-        (-> dashcard
-            (params/process-virtual-dashcard parameters)
-            :visualization_settings)))))
+        ordered-dashcards (sort dashcard-comparator dashcards)]
+    (for [dashcard ordered-dashcards
+          :let  [content (dashcard->content dashcard pulse dashboard)]
+          :when (some? content)]
+      content)))
 
 (defn- database-id [card]
   (or (:database_id card)

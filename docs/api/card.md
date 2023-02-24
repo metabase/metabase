@@ -48,11 +48,11 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 ### PARAMS:
 
-*  **`card-id`** integer greater than or equal to 1
+*  **`card-id`** value must be an integer greater than zero.
 
-*  **`param-key`** string with length >= 1
+*  **`param-key`** value must be a non-blank string.
 
-*  **`query`** string with length >= 1
+*  **`query`** value must be a non-blank string.
 
 ## `GET /api/card/:card-id/params/:param-key/values`
 
@@ -63,9 +63,9 @@ Fetch possible values of the parameter whose ID is `:param-key`.
 
 ### PARAMS:
 
-*  **`card-id`** integer greater than or equal to 1
+*  **`card-id`** value must be an integer greater than zero.
 
-*  **`param-key`** string with length >= 1
+*  **`param-key`** value must be a non-blank string.
 
 ## `GET /api/card/:id`
 
