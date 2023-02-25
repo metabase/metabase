@@ -107,7 +107,7 @@
     (when (and database_id (not= database_id (:database_id model)))
       (let [model-db (db/select-one Database :id (:database_id model))
             action-db (db/select-one Database :id database_id)]
-       (throw (ex-info (tru "Model database not equal to action database")
+       (throw (ex-info (tru "Actions need to use the same database as the model.")
                        {:status-code 400
                         :model-database (:name model-db)
                         :action-database (:name action-db)}))))
