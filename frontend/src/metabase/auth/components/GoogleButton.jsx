@@ -30,6 +30,7 @@ export default class GoogleButton extends Component {
 
   render() {
     const { errorMessage } = this.state;
+    const { loginGoogle, location } = this.props;
     return (
       <div>
         <GoogleLogin

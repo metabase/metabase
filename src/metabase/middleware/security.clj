@@ -90,7 +90,10 @@
                                  "metabase.us10.list-manage.com"
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]
-                  :manifest-src ["'self'"]}]
+                  :manifest-src ["'self'"
+                                 ;; Google Identity Services
+                                 "https://accounts.google.com"]
+                                 }]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- embedding-app-origin
