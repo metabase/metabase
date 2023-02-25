@@ -283,7 +283,9 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`, {
+          delay: 100,
+        });
         cy.wait("@loadQuestion");
 
         cy.findByTestId("sidebar-header-title").should(
