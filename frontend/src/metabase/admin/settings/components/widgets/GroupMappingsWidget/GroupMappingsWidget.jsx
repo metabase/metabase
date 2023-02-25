@@ -10,7 +10,7 @@ import {
   reloadSettings,
 } from "metabase/admin/settings/settings";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import { SettingsApi } from "metabase/services";
+import Group from "metabase/entities/groups";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
@@ -32,6 +32,8 @@ const mapDispatchToProps = {
   initializeSettings,
   updateSetting,
   reloadSettings,
+  deleteGroup: Group.actions.delete,
+  clearGroupMember: Group.actions.clearMember,
 };
 
 const groupIsMappable = group => !isDefaultGroup(group);
@@ -39,18 +41,21 @@ const groupIsMappable = group => !isDefaultGroup(group);
 function GroupMappingsWidget({
   groupHeading,
   groupPlaceholder,
-  groups: groupsAll,
+  groups: allGroups = [],
   mappingSetting,
   settingValues,
+  deleteGroup,
+  clearGroupMember,
   updateSetting,
   onChangeSetting,
   ...props
 }) {
+  console.log("🚀", "In GroupMappingsWidget", settingValues[mappingSetting]);
   const [showAddRow, setShowAddRow] = useState(false);
   const [saveError, setSaveError] = useState({});
 
   const mappings = settingValues?.[mappingSetting] || {};
-  const groups = groupsAll.filter(groupIsMappable);
+  const groups = allGroups.filter(groupIsMappable);
 
   const handleShowAddRow = () => {
     setShowAddRow(true);
@@ -60,26 +65,22 @@ function GroupMappingsWidget({
     setShowAddRow(false);
   };
 
-  const handleAddMapping = name => {
+  const handleAddMapping = async name => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
-    updateSetting({ key: mappingSetting, value: mappingsPlusNewMapping });
-    setShowAddRow(false);
 
-    // SettingsApi.put({
-    //   key: mappingSetting,
-    //   value: mappingsPlusNewMapping,
-    // }).then(
-    //   () => {
-    //     onChangeSetting(mappingSetting, mappingsPlusNewMapping);
-
-    //     // setMappings(mappingsPlusNewMapping);
-    //     setSaveError(null);
-    //   },
-    //   e => setSaveError(e),
-    // );
+    try {
+      await updateSetting({
+        key: mappingSetting,
+        value: mappingsPlusNewMapping,
+      });
+      setShowAddRow(false);
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
-  const handleChangeMapping = name => (group, selected) => {
+  const handleChangeMapping = name => async (group, selected) => {
     const updatedMappings = selected
       ? { ...mappings, [name]: [...mappings[name], group.id] }
       : {
@@ -87,47 +88,35 @@ function GroupMappingsWidget({
           [name]: mappings[name].filter(id => id !== group.id),
         };
 
-    updateSetting({ key: mappingSetting, value: updatedMappings });
-    // TODO: Try removing line below and checking with LDAP, SAML and JWT
-    onChangeSetting(mappingSetting, updatedMappings);
-    /*
-    SettingsApi.put({
-      key: mappingSetting,
-      value: updatedMappings,
-    }).then(
-      () => {
-        onChangeSetting(mappingSetting, updatedMappings);
-        // setMappings(updatedMappings);
+    try {
+      await updateSetting({ key: mappingSetting, value: updatedMappings });
 
-        setSaveError(null);
-      },
-      e => setSaveError(e),
-    );
-    */
+      // TODO: Try removing line below and checking with LDAP, SAML and JWT
+      // onChangeSetting(mappingSetting, updatedMappings);
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
-  const handleDeleteMapping = ({ name, onSuccess, groupIdsToDelete = [] }) => {
+  const handleDeleteMapping = async ({
+    name,
+    onSuccess,
+    groupIdsToDelete = [],
+  }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
-    SettingsApi.put({
-      key: mappingSetting,
-      value: mappingsMinusDeletedMapping,
-    }).then(
-      async () => {
-        onChangeSetting(mappingSetting, mappingsMinusDeletedMapping);
+    try {
+      await updateSetting({
+        key: mappingSetting,
+        value: mappingsMinusDeletedMapping,
+      });
 
-        onSuccess && (await onSuccess());
-
-        // const { groups, mappings } = await loadGroupsAndMappings(
-        //   mappingSetting,
-        // );
-
-        // setGroups(groups);
-        // setMappings(mappings);
-        setSaveError(null);
-      },
-      e => setSaveError(e),
-    );
+      onSuccess && (await onSuccess());
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
   return (
@@ -181,6 +170,8 @@ function GroupMappingsWidget({
                     name={name}
                     groups={groups}
                     selectedGroupIds={selectedGroupIds}
+                    clearGroupMember={clearGroupMember}
+                    deleteGroup={deleteGroup}
                     onChange={handleChangeMapping(name)}
                     onDeleteMapping={handleDeleteMapping}
                   />
@@ -196,8 +187,6 @@ function GroupMappingsWidget({
     </WidgetAndErrorRoot>
   );
 }
-
-// export default GroupMappingsWidget;
 
 export default _.compose(connect(null, mapDispatchToProps))(
   GroupMappingsWidget,
