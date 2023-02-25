@@ -1,17 +1,31 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { getIn } from "icepick";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import {
   ORDERS,
   PRODUCTS,
+  PEOPLE,
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
 import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
+import { formatColumn } from "metabase/lib/formatting";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import Question from "metabase-lib/Question";
 
 function renderChartSettingOrderedColumns(props) {
-  render(<ChartSettingColumnEditor onChange={() => {}} {...props} />);
+  const getCustomColumnName = (column, _onlyCustom) => {
+    return formatColumn(column);
+  };
+
+  render(
+    <ChartSettingColumnEditor
+      onChange={() => {}}
+      getCustomColumnName={getCustomColumnName}
+      {...props}
+    />,
+  );
 }
 
 const toNativeColumn = column => ({
@@ -586,6 +600,150 @@ describe("ChartSettingOrderedColumns", () => {
       expect(screen.getByTestId("bulk-action-Columns")).toHaveTextContent(
         "Deselect All",
       );
+    });
+  });
+
+  describe("Custom Column Names", () => {
+    const setup = props => {
+      const columns = [
+        ORDERS.TOTAL.dimension().column(),
+        ORDERS.TAX.dimension().column(),
+        ORDERS.ID.dimension().column(),
+        {
+          ...PEOPLE.NAME.dimension().column(),
+          field_ref: [
+            "field",
+            PEOPLE.NAME.id,
+            { "source-field": ORDERS.USER_ID.id },
+          ],
+          display_name: "User → Name",
+          source_alias: "PEOPLE__via__USER_ID",
+        },
+        {
+          ...PEOPLE.CITY.dimension().column(),
+          field_ref: [
+            "field",
+            PEOPLE.CITY.id,
+            { "source-field": ORDERS.USER_ID.id },
+          ],
+          display_name: "User → City",
+          source_alias: "PEOPLE__via__USER_ID",
+        },
+      ];
+
+      const column_settings = {
+        [getColumnKey(columns[1])]: {
+          column_title: "Homies Tax",
+        },
+        [getColumnKey(columns[4])]: {
+          column_title: "Homies Hood",
+        },
+        [getColumnKey(columns[2])]: {
+          column_title: "",
+        },
+      };
+
+      const vizSettings = {
+        column_settings,
+        "table.columns": columns.map(column => ({
+          fieldRef: column.field_ref,
+          enabled: true,
+          name: column.name,
+        })),
+      };
+
+      const question = new Question(
+        {
+          dataset_query: {
+            database: SAMPLE_DATABASE.id,
+            query: {
+              fields: columns.map(col => col.field_ref),
+              "source-table": ORDERS.id,
+            },
+            type: "query",
+          },
+          vizSettings,
+        },
+
+        metadata,
+      );
+
+      const getCustomColumnName = (column, onlyCustom) => {
+        const customName = getIn(column_settings, [
+          getColumnKey(column),
+          "column_title",
+        ]);
+
+        if (customName || onlyCustom) {
+          return customName;
+        }
+        return formatColumn(column);
+      };
+
+      render(
+        <ChartSettingColumnEditor
+          onChange={() => {}}
+          getCustomColumnName={getCustomColumnName}
+          columns={columns}
+          question={question}
+          value={vizSettings["table.columns"]}
+          {...props}
+        />,
+      );
+    };
+
+    it("should use the correct column names in correct situations - query builder", () => {
+      setup();
+
+      //Source table should be applying custom names, then column names
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText("Total"),
+      ).toBeChecked();
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText(
+          "Homies Tax",
+        ),
+      ).toBeChecked();
+
+      // If the Custom name is empty, it should fall back to the column name
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText("ID"),
+      ).toBeChecked();
+
+      //Other tables should be applying custom names, then dimension names
+      expect(
+        within(screen.getByTestId("People-columns")).getByLabelText(
+          "Homies Hood",
+        ),
+      ).toBeChecked();
+      expect(
+        within(screen.getByTestId("People-columns")).getByLabelText("Name"),
+      ).toBeChecked();
+    });
+
+    it("should use the correct column names in correct situations - dashboard", () => {
+      setup({ isDashboard: true });
+
+      //Dashboards only show columns in one group. Should apply custom names, then column names.
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText("Total"),
+      ).toBeChecked();
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText(
+          "Homies Tax",
+        ),
+      ).toBeChecked();
+
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText(
+          "Homies Hood",
+        ),
+      ).toBeChecked();
+      expect(
+        within(screen.getByTestId("Orders-columns")).getByLabelText(
+          "User → Name",
+        ),
+      ).toBeChecked();
     });
   });
 });
