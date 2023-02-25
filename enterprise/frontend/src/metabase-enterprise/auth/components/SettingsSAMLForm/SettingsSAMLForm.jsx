@@ -23,12 +23,20 @@ import {
 } from "./SettingsSAMLForm.styled";
 
 const propTypes = {
+  groups: PropTypes.array,
   elements: PropTypes.array,
   settingValues: PropTypes.object,
   onSubmit: PropTypes.func,
 };
 
-const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
+const SettingsSAMLForm = ({
+  elements = [],
+  settingValues = {},
+  onSubmit,
+  groups,
+  ...props
+}) => {
+  console.log("🚀", "settingValues", settingValues["saml-group-mappings"]);
   const isEnabled = Boolean(settingValues["saml-enabled"]);
 
   const settings = useMemo(() => {
@@ -159,18 +167,27 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         </p>
         <FormField
           {...fields["saml-group-sync"]}
-          type={({ field: { value, onChange } }) => (
-            <GroupMappingsWidget
-              // map to legacy setting props
-              setting={{ key: "saml-group-sync", value }}
-              onChange={onChange}
-              settingValues={settingValues}
-              onChangeSetting={(key, value) => onSubmit({ [key]: value })}
-              mappingSetting="saml-group-mappings"
-              groupHeading={t`Group Name`}
-              groupPlaceholder={t`Group Name`}
-            />
-          )}
+          type={({ field: { value, onChange } }) => {
+            console.log(
+              "🚀",
+              "In FormField",
+              settingValues["saml-group-mappings"],
+              { value },
+            );
+            return (
+              <GroupMappingsWidget
+                // map to legacy setting props
+                setting={{ key: "saml-group-sync", value }}
+                onChange={onChange}
+                settingValues={settingValues}
+                onChangeSetting={(key, value) => onSubmit({ [key]: value })}
+                mappingSetting="saml-group-mappings"
+                groups={groups}
+                groupHeading={t`Group Name`}
+                groupPlaceholder={t`Group Name`}
+              />
+            );
+          }}
         />
         <FormField
           {...fields["saml-attribute-group"]}
