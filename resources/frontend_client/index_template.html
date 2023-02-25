@@ -43,6 +43,11 @@
   <body>
     <div id="root"></div>
 
+    <!-- If Google Auth is enabled load the Google Auth JS lib -->
+    {{#enableGoogleAuth}}
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {{/enableGoogleAuth}}
+
     <!-- Google Analytics -->
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
     {{#enableAnonTracking}}
