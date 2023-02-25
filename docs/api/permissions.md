@@ -32,7 +32,13 @@ You must be a superuser to do this.
 
 ## `GET /api/permissions/graph`
 
-Fetch a graph of all Permissions.
+Fetch a graph of all v1 Permissions (excludes v2 query and data permissions).
+
+You must be a superuser to do this.
+
+## `GET /api/permissions/graph-v2`
+
+Fetch a graph of all v2 Permissions (excludes v1 data permissions).
 
 You must be a superuser to do this.
 
@@ -80,7 +86,7 @@ Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging 
 
 *  **`user_id`** value must be an integer greater than zero.
 
-*  **`is_group_manager`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_group_manager`** nullable boolean
 
 ## `PUT /api/permissions/execution/graph`
 
@@ -145,7 +151,7 @@ Update a Permission Group membership. Returns the updated record.
 
 *  **`id`** 
 
-*  **`is_group_manager`** value must be a boolean.
+*  **`is_group_manager`** boolean
 
 ---
 
