@@ -35,7 +35,10 @@ export default class GoogleButton extends Component {
         <GoogleLogin
           useOneTap
           onSuccess={credentialResponse => {
-            console.log(credentialResponse);
+            loginGoogle(
+              credentialResponse,
+              location.query.redirect,
+            );
           }}
           onError={() => {
             console.log('Login Failed');
