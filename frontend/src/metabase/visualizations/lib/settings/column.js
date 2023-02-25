@@ -13,8 +13,9 @@ function getVisualizationRaw(...args) {
 
 import {
   formatColumn,
-  formatDateTimeWithUnit,
+  numberFormatterForOptions,
   getCurrencySymbol,
+  getDateFormatFromStyle,
 } from "metabase/lib/formatting";
 
 import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
@@ -115,13 +116,11 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   ];
   const seen = new Set();
   return options.filter(option => {
-    const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
-      date_style: option.value,
-    });
-    if (seen.has(formatted)) {
+    const format = getDateFormatFromStyle(option.value, unit);
+    if (seen.has(format)) {
       return false;
     } else {
-      seen.add(formatted);
+      seen.add(format);
       return true;
     }
   });
@@ -134,13 +133,13 @@ function dateStyleOption(
   abbreviate = false,
   separator,
 ) {
-  const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
-    date_style: style,
-    date_separator: separator,
-    output_density: abbreviate ? "condensed" : "default",
-  });
+  let format = getDateFormatFromStyle(style, unit, separator);
+  if (abbreviate) {
+    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+  }
   return {
-    name: formatted + (description ? ` (${description})` : ``),
+    name:
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
     value: style,
   };
 }
@@ -227,11 +226,8 @@ export const DATE_COLUMN_SETTINGS = {
     default: false,
     inline: true,
     getHidden: ({ unit }, settings) => {
-      const formatted = formatDateTimeWithUnit(EXAMPLE_DATE, unit, {
-        date_style: settings["date_style"],
-      });
-      // If it contains a full month name or full weekday, abbreviation should be an option, ie. not hidden.
-      return !formatted.match(/January|Sunday/);
+      const format = getDateFormatFromStyle(settings["date_style"], unit);
+      return !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
   },
@@ -409,6 +405,17 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       placeholder: t`dollars`,
     },
+  },
+  // Optimization: build a single NumberFormat object that is used by formatting.js
+  _numberFormatter: {
+    getValue: (column, settings) => numberFormatterForOptions(settings),
+    // NOTE: make sure to include every setting that affects the number formatter here
+    readDependencies: [
+      "number_style",
+      "currency_style",
+      "currency",
+      "decimals",
+    ],
   },
   _header_unit: {
     getValue: (column, settings) => {
