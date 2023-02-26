@@ -3,7 +3,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   visitDashboard,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {

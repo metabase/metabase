@@ -1,8 +1,4 @@
-import {
-  restore,
-  visitCollection,
-  visitDashboard,
-} from "__support__/e2e/helpers";
+import { restore, visitCollection, visitDashboard } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > duplicate", () => {
   beforeEach(() => {

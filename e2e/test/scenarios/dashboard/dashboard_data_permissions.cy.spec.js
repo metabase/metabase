@@ -3,7 +3,7 @@ import {
   popover,
   selectDashboardFilter,
   visitDashboard,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 function filterDashboard(suggests = true) {
   visitDashboard(1);

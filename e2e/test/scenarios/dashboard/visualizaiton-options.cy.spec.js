@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/helpers";
+import { restore, visitDashboard } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > visualization options", () => {
   beforeEach(() => {

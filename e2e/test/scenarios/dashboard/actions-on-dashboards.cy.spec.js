@@ -14,9 +14,9 @@ import {
   popover,
   filterWidget,
   createImplicitAction,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
