@@ -1,4 +1,4 @@
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
 
 Cypress.Commands.add("createUserFromRawData", user => {
   return cy.request("POST", "/api/user", user).then(({ body }) => {

@@ -1,4 +1,4 @@
-import { USER_GROUPS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
