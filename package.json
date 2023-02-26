@@ -329,7 +329,7 @@
     "validate-e2e-filenames": "node frontend/test/validate-e2e-test-files.js",
     "clean-cypress-artifacts": "rm -R -f cypress/",
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
-    "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
+    "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./e2e/test/visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open",
     "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-run",
     "prepare": "husky install",
