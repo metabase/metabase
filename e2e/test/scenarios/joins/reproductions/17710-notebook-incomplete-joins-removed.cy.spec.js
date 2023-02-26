@@ -3,7 +3,7 @@ import {
   popover,
   openOrdersTable,
   visualize,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe("issue 17710", () => {
   beforeEach(() => {

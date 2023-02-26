@@ -3,7 +3,7 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 

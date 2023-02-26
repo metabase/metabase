@@ -4,7 +4,7 @@ import {
   visualize,
   popover,
   summarize,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe("issue 18589", () => {
   beforeEach(() => {
