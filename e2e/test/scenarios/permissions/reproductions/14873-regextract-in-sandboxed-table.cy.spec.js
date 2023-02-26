@@ -3,8 +3,8 @@ import {
   withDatabase,
   describeEE,
   visitQuestion,
-} from "__support__/e2e/helpers";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
 

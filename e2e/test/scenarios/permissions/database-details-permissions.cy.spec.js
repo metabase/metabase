@@ -4,9 +4,9 @@ import {
   describeEE,
   assertPermissionForItem,
   modifyPermission,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DETAILS_PERMISSION_INDEX = 4;

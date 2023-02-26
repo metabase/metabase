@@ -1,5 +1,5 @@
-import { restore, describeEE } from "__support__/e2e/helpers";
-import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { restore, describeEE } from "e2e/support/helpers";
+import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 

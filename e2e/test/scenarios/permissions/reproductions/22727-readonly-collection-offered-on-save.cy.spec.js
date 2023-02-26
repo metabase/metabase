@@ -1,5 +1,5 @@
-import { restore, visitQuestion, popover } from "__support__/e2e/helpers";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { restore, visitQuestion, popover } from "e2e/support/helpers";
+import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 

@@ -4,8 +4,8 @@ import {
   visitQuestion,
   openQuestionActions,
   getFullName,
-} from "__support__/e2e/helpers";
-import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { nocollection } = USERS;
 

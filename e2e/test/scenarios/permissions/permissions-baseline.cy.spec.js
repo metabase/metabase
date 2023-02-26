@@ -2,8 +2,8 @@ import {
   restore,
   visitQuestion,
   visitQuestionAdhoc,
-} from "__support__/e2e/helpers";
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > permissions", () => {
   beforeEach(restore);

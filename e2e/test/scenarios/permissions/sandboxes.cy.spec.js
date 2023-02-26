@@ -15,11 +15,11 @@ import {
   visitDashboard,
   startNewQuestion,
   sendEmailAndAssert,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
   ORDERS,
