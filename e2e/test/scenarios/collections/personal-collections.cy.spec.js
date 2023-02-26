@@ -6,9 +6,9 @@ import {
   openNewCollectionItemFlowFor,
   getCollectionActions,
   openCollectionMenu,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
 
 const ADMIN_PERSONAL_COLLECTION_ID = 1;
 const NODATA_PERSONAL_COLLECTION_ID = 5;

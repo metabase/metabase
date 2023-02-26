@@ -11,8 +11,8 @@ import {
   openCollectionMenu,
   visitCollection,
   getPersonalCollectionName,
-} from "__support__/e2e/helpers";
-import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;

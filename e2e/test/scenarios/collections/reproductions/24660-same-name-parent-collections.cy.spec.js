@@ -1,4 +1,4 @@
-import { restore, startNewQuestion } from "__support__/e2e/helpers";
+import { restore, startNewQuestion } from "e2e/support/helpers";
 
 const collectionName = "Parent";
 

@@ -6,7 +6,7 @@ import {
   visitQuestion,
   questionInfoButton,
   rightSidebar,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

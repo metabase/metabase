@@ -8,9 +8,9 @@ import {
   openNativeEditor,
   openCollectionMenu,
   modal,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const PERMISSIONS = {
