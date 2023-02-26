@@ -4,10 +4,10 @@ import {
   popover,
   describeEE,
   getFullName,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USERS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const { admin, nodata } = USERS;

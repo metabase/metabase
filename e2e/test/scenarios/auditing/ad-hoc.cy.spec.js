@@ -1,4 +1,4 @@
-import { restore, describeEE, openNativeEditor } from "__support__/e2e/helpers";
+import { restore, describeEE, openNativeEditor } from "e2e/support/helpers";
 
 describeEE("audit > ad-hoc", () => {
   describe("native query", () => {
