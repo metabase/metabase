@@ -3,8 +3,8 @@ import {
   navigationSidebar,
   popover,
   getFullName,
-} from "__support__/e2e/helpers";
-import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 

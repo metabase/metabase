@@ -1,6 +1,6 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, popover, getFullName } from "__support__/e2e/helpers";
-import { USERS } from "__support__/e2e/cypress_data";
+import { restore, popover, getFullName } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
 
 const { normal } = USERS;
 

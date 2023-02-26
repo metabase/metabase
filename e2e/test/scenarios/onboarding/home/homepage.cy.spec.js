@@ -1,4 +1,4 @@
-import { popover, restore, visitDashboard } from "__support__/e2e/helpers";
+import { popover, restore, visitDashboard } from "e2e/support/helpers";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {

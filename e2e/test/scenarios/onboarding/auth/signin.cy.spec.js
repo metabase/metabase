@@ -1,5 +1,5 @@
-import { browse, restore } from "__support__/e2e/helpers";
-import { USERS } from "__support__/e2e/cypress_data";
+import { browse, restore } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
 
 const sizes = [
   [1280, 800],

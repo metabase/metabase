@@ -1,5 +1,5 @@
-import { getInbox, restore, setupSMTP } from "__support__/e2e/helpers";
-import { USERS } from "__support__/e2e/cypress_data";
+import { getInbox, restore, setupSMTP } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 

@@ -1,6 +1,6 @@
-import { restore } from "__support__/e2e/helpers/e2e-setup-helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
-import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
+import { restore } from "e2e/support/helpers/e2e-setup-helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

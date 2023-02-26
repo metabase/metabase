@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "__support__/e2e/helpers";
+import { restore, popover, modal } from "e2e/support/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
