@@ -5,7 +5,7 @@ import {
   restore,
   fillActionQuery,
   createAction,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 

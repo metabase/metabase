@@ -4,7 +4,7 @@ import {
   openNativeEditor,
   popover,
   openQuestionActions,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const snippetName = `string 'test'`;
 const questionName = "Converting questions with snippets to models";

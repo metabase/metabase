@@ -1,4 +1,4 @@
-import { restore, enterCustomColumnDetails } from "__support__/e2e/helpers";
+import { restore, enterCustomColumnDetails } from "e2e/support/helpers";
 
 const ccName = "CTax";
 

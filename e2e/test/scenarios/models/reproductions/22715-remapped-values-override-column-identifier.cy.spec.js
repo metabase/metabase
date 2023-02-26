@@ -1,9 +1,4 @@
-import {
-  restore,
-  visitQuestion,
-  popover,
-  filter,
-} from "__support__/e2e/helpers";
+import { restore, visitQuestion, popover, filter } from "e2e/support/helpers";
 
 describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
   beforeEach(() => {

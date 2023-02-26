@@ -1,4 +1,4 @@
-import { restore, openQuestionActions } from "__support__/e2e/helpers";
+import { restore, openQuestionActions } from "e2e/support/helpers";
 
 describe("issue 22517", () => {
   beforeEach(() => {

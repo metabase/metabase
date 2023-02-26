@@ -1,4 +1,4 @@
-import { restore, visitCollection } from "__support__/e2e/helpers";
+import { restore, visitCollection } from "e2e/support/helpers";
 
 const modelName = "A name";
 

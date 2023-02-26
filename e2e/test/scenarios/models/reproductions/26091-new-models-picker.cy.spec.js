@@ -1,5 +1,5 @@
-import { modal, popover, restore } from "__support__/e2e/helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { modal, popover, restore } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;

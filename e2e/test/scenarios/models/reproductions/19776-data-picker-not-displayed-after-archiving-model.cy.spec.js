@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/helpers";
+import { restore, popover } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
 

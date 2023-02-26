@@ -1,4 +1,4 @@
-import { restore, questionInfoButton } from "__support__/e2e/helpers";
+import { restore, questionInfoButton } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
