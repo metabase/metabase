@@ -1,5 +1,5 @@
-import { restore, navigationSidebar } from "__support__/e2e/helpers";
-import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
+import { restore, navigationSidebar } from "e2e/support/helpers";
+import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 describe("Bookmarks in a collection page", () => {
   beforeEach(() => {

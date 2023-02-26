@@ -2,7 +2,7 @@ import {
   restore,
   describeEE,
   typeAndBlurUsingLabel,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const CUSTOM_FONT_URL =
   "https://fonts.gstatic.com/s/robotomono/v21/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vq_ROW-AJi8SJQt.woff";

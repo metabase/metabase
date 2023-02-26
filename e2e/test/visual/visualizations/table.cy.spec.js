@@ -1,4 +1,4 @@
-import { restore, openReviewsTable, modal } from "__support__/e2e/helpers";
+import { restore, openReviewsTable, modal } from "e2e/support/helpers";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {
