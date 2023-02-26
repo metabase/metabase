@@ -4,8 +4,8 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
-} from "__support__/e2e/helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+} from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 

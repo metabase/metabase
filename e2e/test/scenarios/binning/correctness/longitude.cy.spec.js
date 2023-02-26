@@ -3,7 +3,7 @@ import {
   popover,
   openPeopleTable,
   summarize,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
 
