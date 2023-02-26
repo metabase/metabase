@@ -4,7 +4,7 @@ import {
   visitDashboard,
   visitQuestion,
   isEE,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 

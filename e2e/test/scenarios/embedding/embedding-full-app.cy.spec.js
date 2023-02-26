@@ -1,4 +1,4 @@
-import { adhocQuestionHash, popover, restore } from "__support__/e2e/helpers";
+import { adhocQuestionHash, popover, restore } from "e2e/support/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {

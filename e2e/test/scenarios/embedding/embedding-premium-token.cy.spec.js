@@ -1,4 +1,4 @@
-import { restore, isOSS } from "__support__/e2e/helpers";
+import { restore, isOSS } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licensePage = "/admin/settings/premium-embedding-license";

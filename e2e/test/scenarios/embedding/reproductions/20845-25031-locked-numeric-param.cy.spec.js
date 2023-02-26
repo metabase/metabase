@@ -3,7 +3,7 @@ import {
   visitEmbeddedPage,
   visitDashboard,
   visitQuestion,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const dashboardFilter = {
   name: "Equal to",

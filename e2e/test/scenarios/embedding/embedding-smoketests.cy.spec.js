@@ -5,7 +5,7 @@ import {
   isOSS,
   visitDashboard,
   visitIframe,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licenseUrl = "https://metabase.com/license/embedding";

@@ -4,7 +4,7 @@ import {
   filterWidget,
   visitEmbeddedPage,
   visitIframe,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 import { questionDetails } from "./shared/embedding-native";
 
