@@ -4,10 +4,10 @@ import {
   popover,
   navigationSidebar,
   visitCollection,
-} from "__support__/e2e/helpers";
-import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+} from "e2e/support/helpers";
+import { USERS, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 
-import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
+import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";

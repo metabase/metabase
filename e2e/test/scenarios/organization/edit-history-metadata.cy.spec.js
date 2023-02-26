@@ -1,9 +1,5 @@
-import {
-  restore,
-  visitQuestion,
-  visitDashboard,
-} from "__support__/e2e/helpers";
-import { USERS } from "__support__/e2e/cypress_data";
+import { restore, visitQuestion, visitDashboard } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
 
 describe("scenarios > collection items metadata", () => {
   beforeEach(() => {
