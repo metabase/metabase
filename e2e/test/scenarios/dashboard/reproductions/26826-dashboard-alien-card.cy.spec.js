@@ -3,7 +3,7 @@ import {
   visitDashboard,
   openProductsTable,
   saveDashboard,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe.skip("issue 26826", () => {
   beforeEach(() => {

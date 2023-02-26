@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore } from "e2e/support/helpers";
 
 const questionDetails27105 = {
   name: "27105",
