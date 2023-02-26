@@ -309,7 +309,7 @@ if (WEBPACK_BUNDLE !== "production") {
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
   config.devtool = process.env.BETTER_SOURCE_MAPS
-    ? "inline-source-map"
+    ? "eval-source-map"
     : "cheap-module-source-map";
 
   // helps with source maps
