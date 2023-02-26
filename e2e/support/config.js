@@ -101,7 +101,7 @@ const defaultConfig = {
 
     return config;
   },
-  supportFile: "frontend/test/__support__/e2e/cypress.js",
+  supportFile: "e2e/support/cypress.js",
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
@@ -112,7 +112,7 @@ const mainConfig = {
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  specPattern: "frontend/test/**/*.cy.spec.js",
+  specPattern: "e2e/test/**/*.cy.spec.js",
   projectId: "KetpiS",
   viewportHeight: 800,
   viewportWidth: 1280,

@@ -121,7 +121,7 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Display name").type("Metabase H2");
       cy.findByText("Connect database").closest("button").should("be.disabled");
 
-      const dbFilename = "frontend/test/__runner__/empty.db";
+      const dbFilename = "e2e/runner/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
       cy.findByText("Connect database")
@@ -191,7 +191,7 @@ describe("scenarios > setup", () => {
     cy.findByText("H2").click();
     cy.findByLabelText("Display name").type("Metabase H2");
 
-    const dbFilename = "frontend/test/__runner__/empty.db";
+    const dbFilename = "e2e/runner/empty.db";
     const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
     cy.findByLabelText("Connection String").type(`file:${dbPath}`);
     cy.button("Connect database").click();

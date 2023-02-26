@@ -169,7 +169,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js'
         env:
           TERM: xterm
 

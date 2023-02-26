@@ -42,7 +42,7 @@ describe("snapshots", () => {
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
-          "frontend/test/__support__/e2e/cypress_sample_database.json",
+          "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
         );
       });

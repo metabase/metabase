@@ -32,7 +32,7 @@ const parseArguments = async () => {
 };
 
 const getSourceFolder = folder => {
-  return `./frontend/test/metabase/scenarios/${folder}/**/*.cy.spec.js`;
+  return `./e2e/test/scenarios/${folder}/**/*.cy.spec.js`;
 };
 
 const runCypress = async (baseUrl, exitFunction) => {
@@ -43,7 +43,7 @@ const runCypress = async (baseUrl, exitFunction) => {
 
   const defaultConfig = {
     browser: "chrome",
-    configFile: "frontend/test/__support__/e2e/cypress.config.js",
+    configFile: "e2e/support/cypress.config.js",
     config: {
       baseUrl,
     },

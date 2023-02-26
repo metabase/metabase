@@ -3,7 +3,7 @@ const cypress = require("cypress");
 const getConfig = baseUrl => {
   return {
     browser: "chrome",
-    configFile: "frontend/test/__support__/e2e/cypress-snapshots.config.js",
+    configFile: "e2e/support/cypress-snapshots.config.js",
     config: {
       baseUrl,
     },
