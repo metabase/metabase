@@ -1,4 +1,4 @@
-import { getFullName, popover } from "__support__/e2e/helpers";
+import { getFullName, popover } from "e2e/support/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options

@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/helpers";
+import { popover } from "e2e/support/helpers";
 
 export function selectSidebarItem(item) {
   cy.findAllByRole("menuitem").contains(item).click();

@@ -1,4 +1,4 @@
-import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.

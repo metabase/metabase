@@ -1,7 +1,6 @@
-import { METABASE_SECRET_KEY } from "__support__/e2e/cypress_data";
+import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 
-const jwtSignLocation =
-  "frontend/test/__support__/e2e/external/e2e-jwt-sign.js";
+const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
 /**
  * Programatically generate token and visit the embedded page for question or dashboard

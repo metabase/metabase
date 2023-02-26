@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 export function withDatabase(databaseId, f) {
   cy.request(

@@ -1,7 +1,4 @@
-import {
-  modal,
-  popover,
-} from "__support__/e2e/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 export function setDropdownFilterType() {
   cy.findByText("Dropdown list").click();

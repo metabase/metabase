@@ -6,7 +6,7 @@ import {
   WRITABLE_DB_CONFIG,
   WRITABLE_DB_ID,
   QA_DB_CONFIG,
-} from "__support__/e2e/cypress_data";
+} from "e2e/support/cypress_data";
 
 /*****************************************
  **            QA DATABASES             **
