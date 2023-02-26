@@ -1,12 +1,12 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDatabase } from "__support__/e2e/helpers";
+import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
 import {
   USERS,
   USER_GROUPS,
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
   METABASE_SECRET_KEY,
-} from "__support__/e2e/cypress_data";
+} from "e2e/support/cypress_data";
 
 const {
   STATIC_ORDERS_ID,

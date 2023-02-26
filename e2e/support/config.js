@@ -83,8 +83,7 @@ const defaultConfig = {
      ********************************************************************/
 
     if (!isQaDatabase) {
-      config.excludeSpecPattern =
-        "frontend/test/snapshot-creators/qa-db.cy.snap.js";
+      config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
     }
 
     // `grepIntegrationFolder` needs to point to the root!
@@ -133,7 +132,7 @@ const mainConfig = {
 
 const snapshotsConfig = {
   ...defaultConfig,
-  specPattern: "frontend/test/snapshot-creators/**/*.cy.snap.js",
+  specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
 };
 
 const crossVersionSourceConfig = {

@@ -5,7 +5,7 @@ import {
   addMongoDatabase,
   addMySQLDatabase,
   setupWritableDB,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
   beforeEach(() => {
