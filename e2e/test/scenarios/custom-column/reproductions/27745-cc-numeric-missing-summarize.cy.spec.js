@@ -5,7 +5,7 @@ import {
   visualize,
   popover,
   resetTestTable,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 ["postgres", "mysql"].forEach(dialect => {
   describe.skip(`issue 27745 (${dialect})`, { tags: "@external" }, () => {

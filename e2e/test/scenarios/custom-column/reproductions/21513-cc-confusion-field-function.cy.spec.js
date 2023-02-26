@@ -4,7 +4,7 @@ import {
   openProductsTable,
   summarize,
   enterCustomColumnDetails,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe("issue 21513", () => {
   beforeEach(() => {

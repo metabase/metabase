@@ -5,7 +5,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const CC_NAME = "Math";
 describe("issue 13289", () => {

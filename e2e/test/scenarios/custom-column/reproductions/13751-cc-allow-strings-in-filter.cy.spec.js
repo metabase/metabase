@@ -4,7 +4,7 @@ import {
   visualize,
   restore,
   startNewQuestion,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const CC_NAME = "C-States";
 const PG_DB_NAME = "QA Postgres12";

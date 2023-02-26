@@ -1,4 +1,4 @@
-import { restore, withDatabase } from "__support__/e2e/helpers";
+import { restore, withDatabase } from "e2e/support/helpers";
 
 const CC_NAME = "Abbr";
 

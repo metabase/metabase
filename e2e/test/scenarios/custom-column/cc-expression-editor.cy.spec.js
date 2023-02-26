@@ -2,7 +2,7 @@ import {
   restore,
   openOrdersTable,
   enterCustomColumnDetails,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 // ExpressionEditorTextfield jsx component
 describe("scenarios > question > custom column > expression editor", () => {
