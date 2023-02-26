@@ -37,7 +37,7 @@ export default class GoogleButton extends Component {
           useOneTap
           onSuccess={credentialResponse => {
             loginGoogle(
-              credentialResponse,
+              credentialResponse.credential,
               location.query.redirect,
             );
           }}
