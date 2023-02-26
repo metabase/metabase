@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/helpers";
+import { restore, openNativeEditor } from "e2e/support/helpers";
 
 import { runQuery } from "../../native-filters/helpers/e2e-sql-filter-helpers";
 

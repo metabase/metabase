@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/helpers";
+import { restore, openNativeEditor } from "e2e/support/helpers";
 
 const dbName = "Sample2";
 

@@ -2,7 +2,7 @@ import {
   restore,
   POPOVER_ELEMENT,
   openNativeEditor,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const questionDetails = {
   name: "REVIEWS SQL",

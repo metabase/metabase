@@ -1,4 +1,4 @@
-import { restore, visitQuestion } from "__support__/e2e/helpers";
+import { restore, visitQuestion } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "20044",

@@ -1,6 +1,6 @@
-import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/helpers";
+import { restore, visitQuestionAdhoc, sidebar } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const nativeQuery = `
 SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",

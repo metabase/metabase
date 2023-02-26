@@ -5,7 +5,7 @@ import {
   visitQuestion,
   startNewNativeQuestion,
   runNativeQuery,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 

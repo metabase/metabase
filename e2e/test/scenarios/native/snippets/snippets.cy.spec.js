@@ -1,4 +1,4 @@
-import { restore, modal, openNativeEditor } from "__support__/e2e/helpers";
+import { restore, modal, openNativeEditor } from "e2e/support/helpers";
 
 // HACK which lets us type (even very long words) without losing focus
 // this is needed for fields where autocomplete suggestions are enabled

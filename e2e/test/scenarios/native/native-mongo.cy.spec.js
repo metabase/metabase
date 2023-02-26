@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/helpers";
+import { restore, modal } from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
