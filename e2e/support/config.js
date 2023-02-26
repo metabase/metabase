@@ -138,15 +138,13 @@ const snapshotsConfig = {
 const crossVersionSourceConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3000",
-  specPattern:
-    "frontend/test/metabase/scenarios/cross-version/source/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.js",
 };
 
 const crossVersionTargetConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3001",
-  specPattern:
-    "frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.js",
 };
 
 module.exports = {

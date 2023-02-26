@@ -1,4 +1,4 @@
-import { visualize } from "__support__/e2e/helpers";
+import { visualize } from "e2e/support/helpers";
 
 it("should create questions", () => {
   cy.signInAsAdmin();
