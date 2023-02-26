@@ -5,9 +5,9 @@ import {
   setupSMTP,
   visitDashboard,
   sendEmailAndAssert,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
 
 const {
   admin: { first_name, last_name },

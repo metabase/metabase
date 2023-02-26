@@ -5,7 +5,7 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";

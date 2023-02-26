@@ -6,10 +6,10 @@ import {
   sidebar,
   visitDashboard,
   clickSend,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
-import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;

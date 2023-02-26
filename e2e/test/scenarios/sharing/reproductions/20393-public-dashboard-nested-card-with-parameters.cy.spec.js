@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 describe("issue 20393", () => {
   beforeEach(() => {

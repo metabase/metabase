@@ -3,7 +3,7 @@ import {
   setupSMTP,
   mockSlackConfigured,
   visitQuestion,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
 

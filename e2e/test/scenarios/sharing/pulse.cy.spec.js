@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "__support__/e2e/helpers";
+import { restore, setupSMTP } from "e2e/support/helpers";
 
 describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {

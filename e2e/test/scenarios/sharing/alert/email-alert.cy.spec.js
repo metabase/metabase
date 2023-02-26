@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
+import { restore, setupSMTP, visitQuestion } from "e2e/support/helpers";
 
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {

@@ -4,7 +4,7 @@ import {
   setupSMTP,
   visitDashboard,
   sendEmailAndAssert,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 
 describe.skip("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
