@@ -1,4 +1,4 @@
-import { openOrdersTable, restore } from "__support__/e2e/helpers";
+import { openOrdersTable, restore } from "e2e/support/helpers";
 
 describe("issue 9339", () => {
   beforeEach(() => {

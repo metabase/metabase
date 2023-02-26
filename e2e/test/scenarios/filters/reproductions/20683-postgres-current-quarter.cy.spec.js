@@ -1,4 +1,4 @@
-import { restore, visualize } from "__support__/e2e/helpers";
+import { restore, visualize } from "e2e/support/helpers";
 
 describe("issue 20683", { tags: "@external" }, () => {
   beforeEach(() => {

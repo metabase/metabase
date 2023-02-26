@@ -1,4 +1,4 @@
-import { restore, popover, startNewQuestion } from "__support__/e2e/helpers";
+import { restore, popover, startNewQuestion } from "e2e/support/helpers";
 
 describe("operators in questions", () => {
   beforeEach(() => {

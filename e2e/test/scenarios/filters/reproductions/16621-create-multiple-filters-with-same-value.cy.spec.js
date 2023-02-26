@@ -1,4 +1,4 @@
-import { restore, openProductsTable } from "__support__/e2e/helpers";
+import { restore, openProductsTable } from "e2e/support/helpers";
 
 describe("issue 16661", () => {
   beforeEach(() => {

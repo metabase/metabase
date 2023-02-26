@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import { restore, popover, openOrdersTable } from "__support__/e2e/helpers";
+import { restore, popover, openOrdersTable } from "e2e/support/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",
