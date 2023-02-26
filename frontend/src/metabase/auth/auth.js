@@ -34,15 +34,13 @@ export const login = createThunkAction(
 // login Google
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
-  googleUser,
-  redirectUrl,
+  token,
+  redirectUrl = "/",
 ) {
   return async function(dispatch, getState) {
     try {
       // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.createWithGoogleAuth({
-        token: googleUser.getAuthResponse().id_token,
-      });
+      await SessionApi.createWithGoogleAuth({ token });
 
       MetabaseAnalytics.trackEvent("Auth", "Google Auth Login");
 
