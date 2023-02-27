@@ -10,7 +10,6 @@ import { isNotNull } from "metabase/core/utils/types";
 import Metadata from "metabase-lib/metadata/Metadata";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 
@@ -62,9 +61,8 @@ const structuredQueryFieldOptions = (
       ),
     )
     .filter(isNotNull);
-
   return {
-    name: query.sourceTable()?.display_name || t`Columns`,
+    name: query.table()?.display_name || t`Columns`,
     dimensions: options.dimensions.concat(missingDimensions).filter(isNotNull),
     fks: options.fks.map(fk => ({
       name:
@@ -80,7 +78,6 @@ const structuredQueryFieldOptions = (
 const nativeQueryFieldOptions = (
   columns: DatasetColumn[],
   metadata?: Metadata,
-  query?: AtomicQuery,
 ) => {
   const allDimensions = columns
     .map(column =>
@@ -88,10 +85,21 @@ const nativeQueryFieldOptions = (
     )
     .filter(isNotNull);
 
+  const groupedDimensions = _.groupBy(
+    allDimensions,
+    dimension => dimension.field().table?.displayName() || t`Columns`,
+  );
+  const tables = Object.keys(groupedDimensions);
+  const firstTable = tables[0];
   return {
-    name: query?.sourceTable()?.displayName() || t`Columns`,
-    dimensions: allDimensions,
-    fks: [],
+    name: firstTable,
+    dimensions: groupedDimensions[firstTable],
+    fks: tables
+      .filter(table => table !== firstTable)
+      .map(table => ({
+        name: table,
+        dimensions: groupedDimensions[table],
+      })),
   };
 };
 
@@ -106,14 +114,10 @@ const ChartSettingColumnEditor = ({
 }: ChartSettingColumnEditorProps) => {
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
-    if ((query instanceof NativeQuery || isDashboard) && columns) {
-      return nativeQueryFieldOptions(
-        columns,
-        metadata || query.metadata(),
-        query,
-      );
-    } else if (query instanceof StructuredQuery) {
+    if (query instanceof StructuredQuery && !isDashboard) {
       return structuredQueryFieldOptions(query, columns);
+    } else if ((query instanceof NativeQuery || isDashboard) && columns) {
+      return nativeQueryFieldOptions(columns, metadata);
     } else {
       return {
         name: "",
@@ -126,12 +130,6 @@ const ChartSettingColumnEditor = ({
   const getColumnSettingByDimension = (dimension: Dimension) => {
     return columnSettings.find(setting =>
       dimension.isSameBaseDimension(setting.fieldRef as ConcreteField),
-    );
-  };
-
-  const getColumnByDimension = (dimension: Dimension) => {
-    return columns.find(column =>
-      dimension.isSameBaseDimension(column.field_ref as ConcreteField),
     );
   };
 
@@ -195,43 +193,28 @@ const ChartSettingColumnEditor = ({
     ]);
   };
 
-  const getDimensionLabel = (dimension: Dimension, sourceTable = true) => {
-    const column = getColumnByDimension(dimension);
-
-    // When we have a colum returned, we want to use that display name as long as it's part of the source table
-    // This ensures that we get the {table}→{column} syntax when appropriate. On anything other than the
-    // Source table, there should be a table header above the list so we should only show the field name.
-    if (column && sourceTable) {
-      return column.display_name;
-    }
-
-    return dimension.displayName();
-  };
-
   return (
-    <div>
-      <div data-testid={`${fieldOptions.name}-columns`}>
-        <TableHeaderContainer>
-          <TableName>{fieldOptions.name}</TableName>
-          <BulkActionButton
-            tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
-            bulkEnable={() => enableColumns(fieldOptions.dimensions)}
-            bulkDisable={() => disableColumns(fieldOptions.dimensions)}
-            testid={`bulk-action-${fieldOptions.name}`}
-          />
-        </TableHeaderContainer>
-        {fieldOptions.dimensions.map((dimension, index) => (
-          <FieldCheckbox
-            label={getDimensionLabel(dimension)}
-            onClick={() => toggleColumn(dimension)}
-            checked={columnIsEnabled(dimension)}
-            key={`${dimension.displayName()}-${index}`}
-            disabled={isQueryRunning}
-          />
-        ))}
-      </div>
+    <div className="list">
+      <TableHeaderContainer>
+        <TableName>{fieldOptions.name}</TableName>
+        <BulkActionButton
+          tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
+          bulkEnable={() => enableColumns(fieldOptions.dimensions)}
+          bulkDisable={() => disableColumns(fieldOptions.dimensions)}
+          testid={`bulk-action-${fieldOptions.name}`}
+        />
+      </TableHeaderContainer>
+      {fieldOptions.dimensions.map((dimension, index) => (
+        <FieldCheckbox
+          label={dimension.displayName()}
+          onClick={() => toggleColumn(dimension)}
+          checked={columnIsEnabled(dimension)}
+          key={`${dimension.displayName()}-${index}`}
+          disabled={isQueryRunning}
+        />
+      ))}
       {fieldOptions.fks.map(fk => (
-        <div data-testid={`${fk.name}-columns`} key={`${fk.name}-columns`}>
+        <>
           <TableHeaderContainer>
             <TableName>{fk.name}</TableName>
             <BulkActionButton
@@ -243,14 +226,14 @@ const ChartSettingColumnEditor = ({
           </TableHeaderContainer>
           {fk.dimensions.map((dimension, index) => (
             <FieldCheckbox
-              label={getDimensionLabel(dimension, false)}
+              label={dimension.displayName()}
               onClick={() => toggleColumn(dimension)}
               checked={columnIsEnabled(dimension)}
               key={`${fk.name}-${dimension.displayName()}-${index}`}
               disabled={isQueryRunning}
             />
           ))}
-        </div>
+        </>
       ))}
     </div>
   );

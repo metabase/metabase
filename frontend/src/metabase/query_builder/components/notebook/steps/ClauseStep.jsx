@@ -22,7 +22,7 @@ export default function ClauseStep({
   ...props
 }) {
   return (
-    <NotebookCell color={color} data-testid={props["data-testid"]}>
+    <NotebookCell color={color}>
       {items.map((item, index) => (
         <PopoverWithTrigger
           tetherOptions={tetherOptions}
