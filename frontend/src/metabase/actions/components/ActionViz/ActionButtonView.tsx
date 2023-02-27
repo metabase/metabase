@@ -37,13 +37,14 @@ function ActionButtonView({
     <StyledButton
       disabled={!!disabled}
       onClick={onClick}
+      fullWidth
       isFullHeight={isFullHeight}
       focus={focus}
       aria-label={tooltip}
       {...variantProps}
     >
       <StyledButtonContent>
-        {icon && <Icon name={icon} tooltip={tooltip} />}
+        {icon && <Icon name={icon} />}
         <Ellipsified>{label ?? t`Click me`}</Ellipsified>
       </StyledButtonContent>
     </StyledButton>

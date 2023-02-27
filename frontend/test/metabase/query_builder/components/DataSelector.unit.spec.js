@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import _ from "underscore";
 
@@ -20,19 +20,19 @@ import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/
 
 describe("DataSelector", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/search?models=dataset&limit=1")
-      .reply(200, {
+    fetchMock.get(
+      {
+        url: "path:/api/search",
+        query: { models: "dataset", limit: 1 },
+      },
+      {
         data: [],
         limit: 1,
         models: ["dataset"],
         offset: 0,
         total: 0,
-      });
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+      },
+    );
   });
 
   const emptyMetadata = {

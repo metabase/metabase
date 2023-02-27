@@ -28,17 +28,18 @@
                              ;; not all schemas can generate values
                              (catch #?(:clj Exception :cljs js/Error) _ ::none))))
   ([schema value]
-   (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
-         url-value (if (= ::none value)
-                     ""
-                     (encode-uri (u/pprint-to-str value)))
-         url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
-     (cond
-       ;; functions are not going to work
-       (re-find #"#function" url) nil
-       ;; cant be too long
-       (<= 2000 (count url)) nil
-       :else url))))
+   (when schema
+     (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
+           url-value (if (= ::none value)
+                       ""
+                       (encode-uri (u/pprint-to-str value)))
+           url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
+       (cond
+         ;; functions are not going to work
+         (re-find #"#function" url) nil
+         ;; cant be too long
+         (<= 2000 (count url)) nil
+         :else url)))))
 
 (core/defn- humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
@@ -51,14 +52,14 @@
   [type data]
   (let [{:keys [input args output value]} data
         humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
-                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))]
+                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
+        link (cond input (->malli-io-link input args)
+                   output (->malli-io-link output value))]
     (throw (ex-info
             (pr-str humanized)
-            (merge {:type type :data data}
-                   (when data
-                     {:link (cond input (->malli-io-link input args)
-                                  output (->malli-io-link output value))
-                      :humanized humanized}))))))
+            (cond-> {:type type :data data}
+              data (assoc :humanized humanized)
+              (and data link) (assoc :link link))))))
 
 #?(:clj
    (core/defn- -defn [schema args]

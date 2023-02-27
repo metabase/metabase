@@ -712,7 +712,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 
-  it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
+  it("should retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,

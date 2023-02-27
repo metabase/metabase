@@ -10,7 +10,7 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
-  getFullName,
+  getPersonalCollectionName,
 } from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -503,10 +503,6 @@ describe("scenarios > collection defaults", () => {
     });
   });
 });
-
-function getPersonalCollectionName(user) {
-  return `${getFullName(USERS.admin)}'s Personal Collection`;
-}
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)

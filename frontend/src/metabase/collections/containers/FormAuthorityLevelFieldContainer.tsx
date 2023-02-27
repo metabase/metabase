@@ -12,7 +12,7 @@ import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
-type CollectionsMap = Record<Collection["id"], Collection>;
+type CollectionsMap = Partial<Record<Collection["id"], Collection>>;
 
 interface OwnProps {
   collectionParentId: Collection["id"];

@@ -8,7 +8,7 @@ on:
 jobs:
 
   trigger-docs-update:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - uses: actions/github-script@v6
@@ -25,7 +25,7 @@ jobs:
             });
 
   download-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - name: Download Uberjar for ${{ github.ref_name }}
@@ -56,7 +56,7 @@ jobs:
           ./SHA256.sum
 
   check-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 10
     strategy:
@@ -90,7 +90,7 @@ jobs:
       run: curl -s localhost:3000/api/health
 
   containerize:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: check-uberjar
     timeout-minutes: 15
     services:
@@ -239,7 +239,7 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
     steps:

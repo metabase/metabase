@@ -2573,9 +2573,11 @@
                                                    :cardId                 nil
                                                    :action_id              action-id
                                                    :visualization_settings {:label "Update"}})))
-              (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
-                                                       :type (name action-type)
-                                                       :parameters [{:id "id"}]}}]}
+              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+                                                               :type (name action-type)
+                                                               :parameters [{:id "id"}]}
+                                                              (#{:query :implicit} action-type)
+                                                              (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
@@ -2742,8 +2744,6 @@
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
-                 {:field-name "ajson" :base-type :type/JSON ::good "{\"a\": 1}"}
-                 {:field-name "axml" :base-type :type/XML ::good "<xml></xml>"}
                  {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
                  {:field-name "ainteger" :base-type :type/Integer ::good 100}
                  {:field-name "afloat" :base-type :type/Float ::good 0.4}

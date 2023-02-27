@@ -49,7 +49,6 @@ const ChartSettingsWidgetPopover = ({
 
   return (
     <TippyPopover
-      hideOnClick
       reference={anchor}
       content={
         widgets.length > 0 ? (
