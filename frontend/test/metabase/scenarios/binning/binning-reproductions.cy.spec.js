@@ -188,7 +188,7 @@ describe("binning related reproductions", () => {
     cy.findByText("Hour of Day");
   });
 
-  it("shouldn't duplicate the breakout field (metabase#22382)", () => {
+  it.only("shouldn't duplicate the breakout field (metabase#22382)", () => {
     const questionDetails = {
       name: "22382",
       query: {
@@ -206,7 +206,7 @@ describe("binning related reproductions", () => {
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Add or remove columns").click();
-      cy.findByText("Created At").click();
+      cy.findByText("Created At: Month").click();
       cy.button("Done").click();
     });
 

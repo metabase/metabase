@@ -1257,14 +1257,17 @@ class StructuredQueryInner extends AtomicQuery {
 
     const table = this.table();
 
+    console.log(this.sourceTable());
+
     if (table) {
       const dimensionIsFKReference = dimension => dimension.field?.().isFK();
 
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
       for (const dimension of filteredNonFKDimensions) {
+        console.log("pushing dimension, ", dimension);
         dimensionOptions.count++;
-        dimensionOptions.dimensions.push(dimension);
+        dimensionOptions.dimensions.push(dimension.withJoinAlias());
       }
 
       // de-duplicate explicit and implicit joined tables

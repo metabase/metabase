@@ -280,6 +280,7 @@ export default class Table extends Component {
         metadata: extra.metadata,
         isQueryRunning: extra.isQueryRunning,
         getCustomColumnName: (column, onlyCustom) => {
+          console.log(vizSettings);
           return onlyCustom
             ? getIn(vizSettings, [
                 "column_settings",

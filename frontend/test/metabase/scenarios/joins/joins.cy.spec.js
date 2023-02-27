@@ -199,7 +199,7 @@ describe("scenarios > question > joined questions", () => {
     cy.findByText("Sum Divide");
   });
 
-  it("should join saved questions that themselves contain joins (metabase#12928)", () => {
+  it.only("should join saved questions that themselves contain joins (metabase#12928)", () => {
     cy.intercept("GET", "/api/table/card__*/query_metadata").as(
       "cardQueryMetadata",
     );

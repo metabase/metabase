@@ -48,6 +48,8 @@ const structuredQueryFieldOptions = (
       [] as Dimension[],
     ),
   );
+
+  console.log(allFields.map(f => f.column()));
   const missingDimensions = columns
     .filter(
       column =>
@@ -64,6 +66,7 @@ const structuredQueryFieldOptions = (
     )
     .filter(isNotNull);
 
+  console.log(missingDimensions.map(f => f.column()));
   return {
     name: query.sourceTable()?.display_name || t`Columns`,
     dimensions: options.dimensions.concat(missingDimensions).filter(isNotNull),
