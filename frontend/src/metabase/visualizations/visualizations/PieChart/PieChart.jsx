@@ -365,8 +365,7 @@ export default class PieChart extends Component {
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
+        decimals,
       });
 
     const legendTitles = slices.map(slice => [

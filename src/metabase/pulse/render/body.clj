@@ -347,7 +347,9 @@
                       (= (:stackable.stack_type viz-settings) "stacked")
                       (and
                        (= (:display card) :area)
-                       (> (count (:graph.metrics viz-settings)) 1)))]
+                       (or
+                        (> (count (:graph.metrics viz-settings)) 1)
+                        (> (count (:graph.dimensions viz-settings)) 1))))]
     (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))
