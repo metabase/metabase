@@ -5,6 +5,7 @@
    [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [yaml.core :as yaml]
    [yaml.writer :as y.writer])
   (:import
@@ -25,6 +26,7 @@
   (spit (io/file file) (generate-yaml obj)))
 
 (defn- store-entity! [opts entity]
+  (log/info "Storing" (u.yaml/log-path-str (:serdes/meta entity)))
   (spit-yaml (u.yaml/hierarchy->file opts entity)
              (dissoc entity :serdes/meta)))
 

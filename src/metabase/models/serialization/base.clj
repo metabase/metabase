@@ -226,8 +226,13 @@
   {:arglists '([model-name opts instance])}
   (fn [model-name _opts _instance] model-name))
 
+(defn log-and-extract-one
+  [model opts instance]
+  (log/info "Extracting" model (:id instance))
+  (extract-one model opts instance))
+
 (defmethod extract-all :default [model opts]
-  (eduction (map (partial extract-one model opts))
+  (eduction (map (partial log-and-extract-one model opts))
             (extract-query model opts)))
 
 (defn extract-query-collections

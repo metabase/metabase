@@ -192,15 +192,16 @@
       (v2.extract/extract-metabase opts))))
 
 (defn- v2-dump [path opts]
+  (log/info "Exporting Metabase to" path (u/emoji "🏭 🚛💨"))
   (-> (v2-extract opts)
-      (v2.storage/store! path)))
+      (v2.storage/store! path))
+  (log/info "Export to" path "complete!" (u/emoji "🚛💨 📦")))
 
 (defn dump
-  "Serialized metabase instance into directory `path`."
+  "Serializes Metabase instance into directory `path`."
   [path {:keys [state user v2]
          :or {state :active}
          :as opts}]
-  (log/tracef "Dumping to %s with options %s" (pr-str path) (pr-str opts))
   (mdb/setup-db!)
   (db/select User) ;; TODO -- why???
   (if v2
