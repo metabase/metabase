@@ -27,7 +27,8 @@ frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/!(__support__|__runner__)/**"
   - "frontend/**/*.unit.*"
-  - "jest.config.js"
+  - "jest.unit.conf.json"
+  - "jest.tz.unit.conf.json"
 
 frontend_all: &frontend_all
   - *ci
