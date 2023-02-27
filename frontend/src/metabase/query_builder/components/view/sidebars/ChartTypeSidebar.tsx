@@ -83,21 +83,8 @@ const ChartTypeSidebar = ({
     );
   }, [result, query]);
 
-  const handleClick = useCallback(
-    display => {
-      const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-
-      updateQuestion(newQuestion, {
-        reload: false,
-        shouldUpdateUrl: question.query().isEditable(),
-      });
-      setUIControls({ isShowingRawTable: false });
-    },
-    [question, updateQuestion, setUIControls],
-  );
-
-  const handleSettingsClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+  const openChartSettings = useCallback(
+    (e: React.MouseEvent) => {
       e.stopPropagation();
 
       onOpenChartSettings({
@@ -106,6 +93,23 @@ const ChartTypeSidebar = ({
       });
     },
     [onOpenChartSettings],
+  );
+
+  const handleClick = useCallback(
+    (display, e) => {
+      if (display === question.display()) {
+        openChartSettings(e);
+      } else {
+        const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+
+        updateQuestion(newQuestion, {
+          reload: false,
+          shouldUpdateUrl: question.query().isEditable(),
+        });
+        setUIControls({ isShowingRawTable: false });
+      }
+    },
+    [question, updateQuestion, setUIControls, openChartSettings],
   );
 
   return (
@@ -123,8 +127,8 @@ const ChartTypeSidebar = ({
                 visualization={visualization}
                 isSelected={type === question.display()}
                 isSensible
-                onClick={() => handleClick(type)}
-                onSettingsClick={handleSettingsClick}
+                onClick={e => handleClick(type, e)}
+                onSettingsClick={openChartSettings}
               />
             )
           );
@@ -141,8 +145,8 @@ const ChartTypeSidebar = ({
                 visualization={visualization}
                 isSelected={type === question.display()}
                 isSensible={false}
-                onClick={() => handleClick(type)}
-                onSettingsClick={handleSettingsClick}
+                onClick={e => handleClick(type, e)}
+                onSettingsClick={openChartSettings}
               />
             )
           );
@@ -155,8 +159,8 @@ const ChartTypeSidebar = ({
 interface ChartTypeOptionProps {
   isSelected: boolean;
   isSensible: boolean;
-  onClick: () => void;
-  onSettingsClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onClick: (e: React.MouseEvent) => void;
+  onSettingsClick: (e: React.MouseEvent) => void;
   visualization: Visualization;
 }
 

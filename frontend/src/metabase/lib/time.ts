@@ -5,14 +5,40 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
 
-import {
-  coerce_to_time,
-  coerce_to_timestamp,
-} from "cljs/metabase.shared.util.time";
-
 addAbbreviatedLocale();
 
 const TIME_FORMAT_24_HOUR = "HH:mm";
+
+const TEXT_UNIT_FORMATS = {
+  "day-of-week": (value: string) =>
+    moment.parseZone(value, "ddd").startOf("day"),
+};
+
+const NUMERIC_UNIT_FORMATS = {
+  // workaround for https://github.com/metabase/metabase/issues/1992
+  "minute-of-hour": (value: number) => moment().minute(value).startOf("minute"),
+  "hour-of-day": (value: number) => moment().hour(value).startOf("hour"),
+  "day-of-week": (value: number) =>
+    moment()
+      .weekday(value - 1)
+      .startOf("day"),
+  "day-of-month": (value: number) =>
+    moment("2016-01-01") // initial date must be in month with 31 days to format properly
+      .date(value)
+      .startOf("day"),
+  "day-of-year": (value: number) =>
+    moment("2016-01-01") // initial date must be in leap year to format properly
+      .dayOfYear(value)
+      .startOf("day"),
+  "week-of-year": (value: number) => moment().week(value).startOf("week"),
+  "month-of-year": (value: number) =>
+    moment()
+      .month(value - 1)
+      .startOf("month"),
+  "quarter-of-year": (value: number) =>
+    moment().quarter(value).startOf("quarter"),
+  year: (value: number) => moment().year(value).startOf("year"),
+};
 
 // when you define a custom locale, moment automatically makes it the active global locale,
 // so we need to return to the user's initial locale.
@@ -80,7 +106,7 @@ export function getDefaultTimezone() {
 
 export function getNumericDateStyleFromSettings() {
   const dateStyle = getDateStyleFromSettings();
-  return dateStyle && /\//.test(dateStyle) ? dateStyle : "M/D/YYYY";
+  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
 }
 
 export function getRelativeTime(timestamp: string) {
@@ -130,14 +156,52 @@ export function msToSeconds(ms: number) {
   return ms / 1000;
 }
 
-export function parseTime(value: moment.Moment | string): moment.Moment {
-  return coerce_to_time(value);
+export function parseTime(value: moment.Moment | string) {
+  if (moment.isMoment(value)) {
+    return value;
+  } else if (typeof value === "string") {
+    return moment(value, [
+      "HH:mm:ss.sss[Z]",
+      "HH:mm:SS.sss",
+      "HH:mm:SS",
+      "HH:mm",
+    ]);
+  }
+
+  return moment.utc(value);
 }
 
+type NUMERIC_UNIT_FORMATS_KEY_TYPE =
+  | "minute-of-hour"
+  | "hour-of-day"
+  | "day-of-week"
+  | "day-of-month"
+  | "day-of-year"
+  | "week-of-year"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "year";
+
+// only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
+// moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(
   value: MomentInput,
   unit: DatetimeUnit | null = null,
   local: unknown = false,
-): moment.Moment {
-  return coerce_to_timestamp(value, { unit, local });
+) {
+  let m: any;
+  if (moment.isMoment(value)) {
+    m = value;
+  } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
+    m = moment.parseZone(value);
+  } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
+    m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
+  } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
+    m = NUMERIC_UNIT_FORMATS[unit as NUMERIC_UNIT_FORMATS_KEY_TYPE](value);
+  } else if (typeof value === "number") {
+    m = moment.utc(value, moment.ISO_8601);
+  } else {
+    m = moment.utc(value);
+  }
+  return local ? m.local() : m;
 }
