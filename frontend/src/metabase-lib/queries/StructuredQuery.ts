@@ -1264,7 +1264,7 @@ class StructuredQueryInner extends AtomicQuery {
 
       for (const dimension of filteredNonFKDimensions) {
         dimensionOptions.count++;
-        dimensionOptions.dimensions.push(dimension);
+        dimensionOptions.dimensions.push(dimension.withoutJoinAlias());
       }
 
       // de-duplicate explicit and implicit joined tables
