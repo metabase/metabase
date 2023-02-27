@@ -176,44 +176,29 @@ export default class Table extends Component {
       title: t`Columns`,
       widget: ChartSettingOrderedSimple,
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
-      getValue: ([{ card, data }], vizSettings, extra = {}) => {
+      isValid: ([{ card, data }], _vizSettings, extra = {}) =>
         // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        const tableColumns = vizSettings["table.columns"];
-
-        const isValid =
-          tableColumns &&
-          tableColumns.length !== 0 &&
-          (extra.isQueryRunning ||
-            _.all(
-              tableColumns,
-              columnSetting =>
-                !columnSettings.enabled ||
-                findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-            ));
-        if (!isValid) {
-          return data.cols.map(col => ({
-            name: col.name,
-            fieldRef: col.field_ref,
-            enabled: col.visibility_type !== "details-only",
-          }));
-        }
-
-        // Remove any columnSettings that do not appear in data.cols
-        const filteredTableColumns = tableColumns.filter(columnSetting =>
-          findColumnForColumnSetting(data.cols, columnSetting),
-        );
-
-        // Place any disabled columns at the end of the list and return them:
-        const [enabledColumns, disabledColumns] = _.partition(
-          filteredTableColumns,
-          columnSetting => columnSetting.enabled,
-        );
-
-        return [...enabledColumns, ...disabledColumns];
-      },
+        card.visualization_settings["table.columns"].length !== 0 &&
+        (extra.isQueryRunning ||
+          _.all(
+            card.visualization_settings["table.columns"],
+            columnSetting =>
+              !columnSettings.enabled ||
+              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+          )),
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) =>
+        cols.map(col => ({
+          name: col.name,
+          fieldRef: col.field_ref,
+          enabled: col.visibility_type !== "details-only",
+        })),
       getProps: ([
         {
           data: { cols },

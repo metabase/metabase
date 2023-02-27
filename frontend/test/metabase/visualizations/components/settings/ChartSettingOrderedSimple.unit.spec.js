@@ -27,6 +27,6 @@ describe("chartsettingorderedsimple", () => {
 
     expect(screen.getByText("foo")).toBeVisible();
     expect(screen.getByText("bar")).toBeVisible();
-    expect(screen.queryByText("another")).not.toBeInTheDocument();
+    expect(screen.queryByText("another")).not.toBeVisible();
   });
 });

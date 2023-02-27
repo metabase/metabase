@@ -62,10 +62,6 @@ export const ChartSettingOrderedSimple = ({
   paddingLeft,
   hideOnDisabled = false,
 }: ChartSettingOrderedSimpleProps) => {
-  const processedItems = hideOnDisabled
-    ? orderedItems.filter(item => item.enabled)
-    : orderedItems;
-
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(item => item.key === selectedItem.key);
     onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
@@ -112,9 +108,9 @@ export const ChartSettingOrderedSimple = ({
         </ExtraButton>
       )}
 
-      {processedItems.length > 0 ? (
+      {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
-          items={processedItems}
+          items={orderedItems}
           getItemName={getItemTitle}
           onRemove={hasOnEnable ? toggleDisplay : undefined}
           onEnable={hasOnEnable ? toggleDisplay : undefined}
