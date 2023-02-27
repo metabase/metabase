@@ -104,14 +104,9 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
-    (when (and database_id (not= database_id (:database_id model)))
-      (let [model-db (db/select-one Database :id (:database_id model))
-            action-db (db/select-one Database :id database_id)]
-       (throw (ex-info (tru "Actions need to use the same database as the model.")
-                       {:status-code 400
-                        :model-database (:name model-db)
-                        :action-database (:name action-db)}))))
-    (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
+    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+      (actions/check-actions-enabled-for-database!
+       (db/select-one 'Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (action/select-action :id action-id)
