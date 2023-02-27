@@ -189,7 +189,11 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
+    query: () => ({
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    }),
     loadingAndErrorWrapper: false,
   }),
   Databases.loadList({

@@ -40,8 +40,7 @@
   "coverageReporters": ["text", "html", "lcov"],
   "collectCoverageFrom": [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
-    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
-    "**/*.stories.{js,jsx,ts,tsx}"
+    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
   ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
@@ -50,7 +49,9 @@
     "/frontend/src/metabase/internal/",
     "/frontend/test/",
     ".styled.{jsx,tsx}",
-    ".info.js"
+    ".info.js",
+    "**/*.unit.*",
+    "**/*.stories.{js,jsx,ts,tsx}"
   ],
   "testEnvironment": "jest-environment-jsdom",
   "watchPlugins": [
