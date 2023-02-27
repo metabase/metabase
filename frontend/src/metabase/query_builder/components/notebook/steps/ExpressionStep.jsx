@@ -16,7 +16,7 @@ export default function ExpressionStep({
     <ClauseStep
       color={color}
       items={Object.entries(query.expressions())}
-      renderName={([name, expression]) => name}
+      renderName={([name]) => name}
       renderPopover={([name, expression] = [], onClose) => (
         <ExpressionWidget
           query={query}
