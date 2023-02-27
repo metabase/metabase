@@ -14,7 +14,7 @@ import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
-const nestedQuestionCard = {
+export const nestedQuestionCard = {
   table_id: null,
   result_metadata: [
     {

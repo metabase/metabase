@@ -78,6 +78,16 @@
   (fn [metadata _table-name-or-id-or-nil _field-name-or-id]
     (lib.dispatch/dispatch-value metadata)))
 
+;; NOCOMMIT
+(defmethod field-metadata* :default
+  [metadata table field]
+  (throw (ex-info (i18n/tru "Don''t know how to get metadata for Field {0} from {1}"
+                            (pr-str (if table
+                                      (str table \. field)
+                                      field))
+                            (pr-str metadata))
+                  {:table table, :field field, :metadata metadata})))
+
 (defmethod field-metadata* :metadata/database
   [database-metadata table-name-or-id field-name-or-id]
   (assert (some? table-name-or-id)

@@ -75,7 +75,10 @@
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [{query :dataset_query, metadata :result_metadata}]
-  (->query metadata query))
+  (let [metadata (if (vector? metadata)
+                   {:lib/type :metadata/results, :columns metadata}
+                   metadata)]
+    (->query metadata query)))
 
 (mu/defn metadata :- [:maybe Metadata]
   "Get the metadata associated with a `query`, if any."

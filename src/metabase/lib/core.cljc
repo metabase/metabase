@@ -19,22 +19,7 @@
          lib.temporal-bucket/keep-me)
 
 (shared.ns/import-fns
- [lib.append
-  append]
- [lib.field
-  field]
- [lib.filter
-  =]
- [lib.join
-  join
-  joins]
- [lib.order-by
-  order-by
-  order-bys]
- [lib.query
-  metadata
-  native-query
-  query
-  saved-question-query]
- [lib.temporal-bucket
-  temporal-bucket])
+ )
+
+#?(:cljs
+   )

@@ -867,7 +867,7 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^{:arglists '([outer-query])} normalize
+(def ^{:arglists '([outer-query])} ^:export normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   (let [normalize* (comp remove-empty-clauses
