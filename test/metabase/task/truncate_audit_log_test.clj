@@ -26,7 +26,7 @@
 
     (testing "Cloud instances can have their value set by env var only, and default to 365"
       (with-redefs [premium-features/is-hosted? (constantly true)]
-        (is (= 365 (task.truncate-audit-log/audit-max-retention-days)))
+        (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days)))
 
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
           (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days))))

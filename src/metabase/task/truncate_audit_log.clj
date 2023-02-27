@@ -31,10 +31,9 @@
               ##Inf
               (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
                   (cond
-                    (nil? env-var-value)  365
-                    (zero? env-var-value) ##Inf
-                    (< env-var-value 30)  30
-                    :else                 env-var-value)))))
+                    ((some-fn nil? zero?) env-var-value)  ##Inf
+                    (< env-var-value 30)                  30
+                    :else                                 env-var-value)))))
 
 (defn- query-execution-cleanup!
   "Delete QueryExecution rows older than the configured threshold."
