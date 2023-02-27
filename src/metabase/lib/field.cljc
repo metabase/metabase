@@ -3,9 +3,11 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]))
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defmulti ^:private ->field
   {:arglists '([query stage-number field])}
@@ -70,7 +72,14 @@
   [[_placeholder options] unit]
   [:field/unresolved (assoc options :temporal-unit unit)])
 
-(defn field
+(mu/defn field :- [:or
+                   [:fn fn?]
+                   ::lib.schema.ref/field]
+  "Create a `:field` clause. With one or two args: return a function with the signature
+
+    (f query stage-number)
+
+  that can be called later to resolve to a `:field` clause. With three args: return a `:field` clause right away."
   ([x]
    (fn [query stage-number]
      (->field query stage-number x)))
