@@ -3,7 +3,7 @@
 (defn- mbql-clause-type [x]
   (when (and (vector? x)
              (keyword? (first x)))
-    (keyword (first x))))
+    (first x)))
 
 (defn- cljc-friendly-type-keyword
   "This should probably just be `type`, but these keys are here for now until I figure out how to do this in a
@@ -12,7 +12,6 @@
   (cond
     (map? x)     (or (:lib/type x)
                      :type/map)
-    (map? x)     :type/map
     (nil? x)     :type/nil
     (string? x)  :type/string
     (integer? x) :type/integer
