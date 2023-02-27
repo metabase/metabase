@@ -95,7 +95,7 @@
                (encode-decode pg-db)))))))
 
 (deftest driver-supports-actions-and-database-enable-actions-test
-  (mt/with-test-drivers #{:sqlite}
+  (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
       (mt/with-temp Database [database {:engine :sqlite}]
         (is (= false (driver/database-supports? :sqlite :actions database)))
