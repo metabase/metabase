@@ -261,14 +261,14 @@
                                                       [:field (mt/id :products :price) nil]]},
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [{source-id :id :as card} {:table_id        (mt/id :products)
-                                                          :collection_id   collection-id
-                                                          :dataset_query   source-query
-                                                          :result_metadata (mt/with-test-user
-                                                                             :rasta
-                                                                             (result-metadata-for-query
-                                                                              source-query))
-                                                          :dataset         true}]]
+                          Card [card {:table_id        (mt/id :products)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :products) dashboard)
               ;; At this time, this card has no dimensions, so the only useful thing to produce
@@ -291,14 +291,14 @@
                                                       [:field temporal-field-id nil]]},
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [{source-id :id :as card} {:table_id        (mt/id :products)
-                                                          :collection_id   collection-id
-                                                          :dataset_query   source-query
-                                                          :result_metadata (mt/with-test-user
-                                                                             :rasta
-                                                                             (result-metadata-for-query
-                                                                              source-query))
-                                                          :dataset         true}]]
+                          Card [card {:table_id        (mt/id :products)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:ordered_cards dashboard)
                                            :let [fields (get-in card [:card :dataset_query :query :breakout])]

@@ -781,7 +781,7 @@
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters."
-  [{:keys [source entity] :as root}, {rule-name :rule :as rule} :- rules/Rule]
+  [{:keys [source] :as root}]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? Table source)
                                          (linked-tables source)))
@@ -793,9 +793,9 @@
                                               (:cell-query root))}))
 
 (s/defn ^:private make-context
-  [{:keys [source entity] :as root}, {rule-name :rule :as rule} :- rules/Rule]
+  [{:keys [source] :as root}, rule :- rules/Rule]
   {:pre [source]}
-  (let [base-context (make-base-context root rule)]
+  (let [base-context (make-base-context root)]
     (as-> base-context context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
@@ -1027,7 +1027,7 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule show rules-prefix full-name] :as root}]
+  [{:keys [rule rules-prefix full-name] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
