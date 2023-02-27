@@ -44,7 +44,7 @@
  [db-tracking
   track!
   untrack-all!
-  reset-tracking!
+  reset-changes!
   changes])
 
 (def initialized?

@@ -9,7 +9,7 @@
     > (changes)
     ;; => {:report_card {:insert ...}}
 
-  You can use [[reset-tracking!]] to clear our all the current trackings.
+  You can use [[reset-changes!]] to clear our all the current trackings.
   And [[untrack-all!]] or [[untrack!]] to stop tracking."
   (:require
    [clojure.pprint :as pprint]
@@ -95,15 +95,15 @@
   (doseq [model (map t2.model/resolve-model models)]
     (untrack-one! model)))
 
-(defn reset-tracking!
-  "Reset all trackings."
+(defn reset-changes!
+  "Empty all the recorded changes."
   []
   (reset! tracking {}))
 
 (defn untrack-all!
   "Quickly untrack all the tracked models."
   []
-  (reset-tracking!)
+  (reset-changes!)
   (apply untrack! @tracked-models)
   (reset! tracked-models #{}))
 
@@ -118,7 +118,7 @@
   (require '[metabase.models :as models])
   (track! models/Dashboard models/Card models/DashboardCard)
 
-  (reset-tracking!)
+  (reset-changes!)
 
   (untrack! models/Dashboard models/Card models/DashboardCard)
   (untrack-all!))
