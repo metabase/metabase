@@ -74,6 +74,7 @@ function Form<Values extends BaseFieldValues>({
   validate,
   initial,
   normalize,
+  aKey,
   onValuesChange,
   onSubmit,
   onSubmitSuccess,
@@ -227,6 +228,7 @@ function Form<Values extends BaseFieldValues>({
       enableReinitialize={overwriteOnInitialValuesChange}
       validate={handleValidation}
       onSubmit={handleSubmit}
+      key={aKey ? aKey : "a key"}
     >
       {formikProps => (
         <FormikFormViewAdapter<Values>

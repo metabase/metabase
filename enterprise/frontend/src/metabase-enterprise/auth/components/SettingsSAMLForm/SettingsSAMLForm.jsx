@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
@@ -36,8 +36,25 @@ const SettingsSAMLForm = ({
   groups,
   ...props
 }) => {
-  console.log("🚀", "settingValues", settingValues["saml-group-mappings"]);
-  const isEnabled = Boolean(settingValues["saml-enabled"]);
+  const [initialValues, setInitialValues] = useState({});
+  const [aKey, setAKey] = useState(Date.now());
+
+  useEffect(() => {
+    const settings = _.indexBy(elements, "key");
+    const defaultValues = _.mapObject(settings, "default");
+    const attrValues = getAttributeValues(settingValues, defaultValues);
+    setInitialValues({ ...settingValues, ...attrValues, fakeId: Date.now() });
+    setAKey(Date.now());
+  }, [elements, settingValues]);
+
+  console.log(
+    "🚀",
+    "settingValues",
+    settingValues["saml-group-mappings"],
+    "initialValues",
+    initialValues?.["saml-group-mappings"],
+    initialValues,
+  );
 
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
@@ -60,13 +77,16 @@ const SettingsSAMLForm = ({
     [onSubmit],
   );
 
+  const isEnabled = Boolean(settingValues["saml-enabled"]);
+
   return (
     <Form
       className="mx2"
-      initialValues={{ ...settingValues, ...attributeValues }}
+      initialValues={initialValues}
       disablePristineSubmit
       overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
+      aKey={aKey}
     >
       <Breadcrumbs
         className="mb3"
@@ -121,7 +141,6 @@ const SettingsSAMLForm = ({
           title={t`SAML Identity Provider URL`}
           placeholder="https://your-org-name.yourIDP.com"
           required
-          autoFocus
         />
         <FormField
           {...fields["saml-identity-provider-certificate"]}
@@ -167,12 +186,12 @@ const SettingsSAMLForm = ({
         </p>
         <FormField
           {...fields["saml-group-sync"]}
-          type={({ field: { value, onChange } }) => {
+          type={({ field: { value, onChange }, ...rest }, form, meta) => {
             console.log(
               "🚀",
               "In FormField",
               settingValues["saml-group-mappings"],
-              { value },
+              { rest, form, meta },
             );
             return (
               <GroupMappingsWidget
