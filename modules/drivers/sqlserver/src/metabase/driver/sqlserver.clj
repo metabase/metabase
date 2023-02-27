@@ -561,8 +561,6 @@
 
 (defmethod sql.qp/preprocess :sqlserver
   [_driver inner-query]
-
-  ;; [[rewrite-percentile-aggregations]] must come after nest-expressions
   (-> inner-query
       add/add-alias-info
       nest-query/nest-expressions
