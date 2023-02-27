@@ -1,5 +1,5 @@
-import { restore, visitDashboard } from "../helpers";
-import { USERS } from "../cypress_data";
+import { restore, visitDashboard } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
 
 import { setup } from "./visit-dashboard";
 

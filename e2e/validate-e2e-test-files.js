@@ -6,7 +6,7 @@ const glob = require("glob");
 const chalk = require("chalk");
 
 const E2E_FILE_EXTENSION = ".cy.spec.js";
-const E2E_HOME = "frontend/test/metabase/scenarios/";
+const E2E_HOME = "e2e/test/";
 
 init();
 

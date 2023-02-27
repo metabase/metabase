@@ -20,7 +20,7 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { questionInfoButton } from "../../../e2e/support/helpers/e2e-ui-elements-helpers";
+import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,

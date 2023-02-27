@@ -88,7 +88,7 @@ const defaultConfig = {
 
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../../../";
+    config.env.grepIntegrationFolder = "../";
     config.env.grepFilterSpecs = true;
 
     config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;

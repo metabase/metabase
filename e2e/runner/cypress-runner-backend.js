@@ -27,7 +27,7 @@ const CypressBackend = {
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
-        `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+        `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
       ];
 
       const metabaseConfig = {

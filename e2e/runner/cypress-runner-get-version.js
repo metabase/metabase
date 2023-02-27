@@ -4,7 +4,7 @@ const { printBold, printCyan } = require("./cypress-runner-utils.js");
 const getVersion = async () => {
   try {
     const version = fs.readFileSync(
-      __dirname + "/../../../resources/version.properties",
+      __dirname + "/../../resources/version.properties",
     );
 
     printBold("Running e2e test runner with this build:");
