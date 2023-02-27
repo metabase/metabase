@@ -347,7 +347,7 @@
                          mt/rows
                          ffirst))))))))
 
-;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
+;;;; Percentile aggregations with use of window function
 
 (deftest percentile-aggregations-median-test
   (mt/test-driver
@@ -381,7 +381,6 @@
                    :order-by    [[:asc $category_id]]
                    :limit       3})
                  (mt/formatted-rows [int 2.0 2.0 2.0 2.0 2.0])))))))
-
 
 (deftest percentile-aggregations-breakout-test
   (mt/test-driver
@@ -467,7 +466,7 @@
               [24 444.3 243971.04 244415.34]]
              (->> (mt/run-mbql-query
                    orders
-                   {;; 1. expression with source of percentile aggregation
+                   {;; Expression with percentile aggregation source.
                     :fields       [*quantity_times_4/Integer
                                    *p50/Float
                                    *sum/Integer
@@ -477,23 +476,24 @@
                                    :expressions  {"total + subtotal" [:+ $total $subtotal]
                                                   "quantity * total" [:* $total $quantity]
                                                   "quantity_times_4" [:* $quantity 4]}
-                                   ;; 2. expression used in filter in "source data" for aggregations
-                                   :filter       [:< [:expression "total + subtotal"] [:expression "quantity * total"]]
-                                   :aggregation  [;; 3. other aggregation has expression source
+                                   ;; Expression used for filtering source data for aggregations,
+                                   ;; including percentile.
+                                   :filter       [:< [:expression "total + subtotal"]
+                                                  [:expression "quantity * total"]]
+                                   :aggregation  [;; Other aggregation of expression.
                                                   [:aggregation-options
                                                    [:sum [:expression "total + subtotal"]] {:name "sum"}]
-                                                  ;; 4. other than percentile aggregation used with expression
+                                                  ;; Percentile aggregation of expression.
                                                   [:aggregation-options
                                                    [:percentile [:expression "quantity * total"] 0.5] {:name "p50"}]]
                                    :breakout     [[:expression "quantity_times_4"]]
                                    :limit        5}})
                   (mt/formatted-rows [int 2.0 2.0 2.0]))))))))
 
-
 (deftest percentile-aggregations-as-source-test
   (mt/test-driver
    :sqlserver
-   (testing "Query with percentile aggregation as source for other computation produces expected results"
+   (testing "Query with percentile aggregation as source for other computations produces expected results"
      (mt/dataset
       sample-dataset
       (is (= [[82.18 34 50.45]
@@ -503,13 +503,13 @@
               [84.43 24 51.83]]
              (-> (mt/run-mbql-query
                   orders
-                  {;; percentile as source for expression
+                  {;; Percentile as source for expression.
                    :expressions  {"p75 + subtotal" [:+ *p75/Float &Orders.subtotal]}
-                   ;; percentile as source for filter
+                   ;; Percentile as source for filter.
                    :filter       [:> *p75/Float 50]
-                   :aggregation  [;; percentile as source for other aggregation
+                   :aggregation  [;; Percentile as source for other aggregation.
                                   [:aggregation-options [:count *p75/Float] {:name "count"}]
-                                  ;; percentile as source for percentile aggregation
+                                  ;; Percentile as source for percentile aggregation.
                                   [:aggregation-options [:percentile *p75/Float 0.3] {:name "p30"}]]
                    :breakout     [[:expression "p75 + subtotal"]]
                    :order-by     [[:asc [:expression "p75 + subtotal"]]]
@@ -528,7 +528,7 @@
    :sqlserver
    (mt/dataset
     sample-dataset
-    (testing "Percentile aggregation column can be joined"
+    (testing "Percentile aggregation columns can be joined"
       (is (= [[448 61 1 30.86 116.91]
               [493 65 1 30.64 76.6]
               [607 74 1 47.28 53.91]
