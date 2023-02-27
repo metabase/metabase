@@ -10,7 +10,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -31,11 +30,11 @@
              (tu/boolean-ids-and-timestamps ((mt/user-http-request :rasta :get 200 "user") :data))))
       (testing "Should return themselves when the user is a segmented group manager"
         (mt/with-group [group {:name "a group"}]
-          (let [membership (db/select-one PermissionsGroupMembership
+          (let [membership (t2/select-one PermissionsGroupMembership
                                           :group_id (u/the-id group)
                                           :user_id (mt/user->id :rasta))]
-            (db/update! PermissionsGroupMembership (:id membership)
-                        :is_group_manager true))
+            (t2/update! PermissionsGroupMembership :id (:id membership)
+                        {:is_group_manager true}))
           (is (= [{:common_name "Rasta Toucan"
                    :last_name   "Toucan"
                    :first_name  "Rasta"
