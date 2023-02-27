@@ -54,6 +54,12 @@
                       (json/generate-string cols)
                       (json/generate-string viz-settings)))
 
+(defn- parse-number
+  [s]
+  (if (str/includes? s ".")
+    (parse-double s)
+    (parse-long s)))
+
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
@@ -63,7 +69,8 @@
                      (instance? NumericWrapper cell-value)
                      (-> ^NumericWrapper cell-value
                          .toString
-                         (str/replace #"," ""))
+                         (str/replace #"," "")
+                         parse-number)
                      :else
                      cell-value)]
    (.asString (js/execute-fn color-selector cell-value row-index column-name))))
