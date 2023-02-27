@@ -60,6 +60,12 @@ Open up the visualization settings to define your own ranges, choose colors for 
 
 The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
 
+Table-specific settings include:
+
+- [Rearranging, adding, and removing columns](#rearranging-adding-and-removing-columns)
+- [Column formatting](#column-formatting-options)
+- [Conditional formatting](#conditional-table-formatting)
+
 ### Rearranging, adding, and removing columns
 
 Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables, if any, that you can add to the current table view.
@@ -70,9 +76,13 @@ To hide a column, click the X icon on it; that'll send it down to the **More col
 
 ### Column formatting options
 
-To format the display of any column in a table, click on the column heading and choose the **Formatting** option (you can also get there by clicking on the gear on any column when in the **Columns** tab of the visualization settings).
+To format the display of any column in a table, click on the column heading and choose the **Formatting** option:
 
 ![Column formatting](../images/column-header-formatting.png)
+
+You can also get there by clicking on the gear on any column when in the **Columns** tab of the visualization settings:
+
+![Chart formatting](../images/chart-formatting.png)
 
 The options you see will differ depending on the [data type](/learn/databases/data-types-overview) of the column you're viewing:
 
@@ -102,16 +112,6 @@ Currency columns have all the same options as numbers, plus the following:
 - **Unit of Currency** lets you change the unit of currency from whatever the system default is.
 - **Currency label style** allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
 - **Where to display the unit of currency** lets you toggle between showing the currency label in the column heading or in every cell in the column.
-
-### Formatting data in charts
-
-While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the **Data** tab:
-
-![Chart formatting](../images/chart-formatting.png)
-
-Then click on the gear icon next to the column that you want to format. Dates, numbers, and currencies tend to have the most useful formatting options.
-
-![Chart formatting options](../images/chart-formatting-options.png)
 
 ### Conditional table formatting
 
@@ -173,6 +173,8 @@ For more, check out [How to create a pivot table to summarize your data](https:/
 ## Line charts
 
 Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
+
+![Trend lines](../images/trend-lines.png)
 
 ## Bar charts
 
@@ -308,7 +310,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 When you open up the Map options, you can manually switch between a region map (e.g., United States) and a pin map. If you're using a region map, you can also choose which field to use as the measurement, and which field to use as the region (e.g., State or Country).
 
-Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
+Metabase also allows admins to add [custom region maps](../../configuring-metabase/custom-maps.md). 
 
 Learn more about [visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps.html).
 
