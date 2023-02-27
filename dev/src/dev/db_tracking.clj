@@ -61,10 +61,10 @@
 
 (def ^:private hook-and-actions
   "A list of toucan hooks that we will subscribed to when tracking a model."
-  [;; will be better if we could use after-delete to get the inserted id, but toucan2 doesn't define a multimethod for after-insert
+  [;; will be better if we could use after-insert to get the inserted id, but toucan2 doesn't define a multimethod for after-insert
    [#'t2.before-insert/before-insert :after :insert]
    [#'t2.before-update/before-update :after :update]
-   ;; we do before aux-method instead of :after for delete bacause the after method has input is number of affected rows
+   ;; we do :before aux-method instead of :after for delete bacause the after method has input is number of affected rows
    [#'t2.before-delete/before-delete :before :delete]])
 
 (defn- track-one!
