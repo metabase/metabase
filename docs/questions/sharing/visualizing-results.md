@@ -65,6 +65,7 @@ Table-specific settings include:
 - [Rearranging, adding, and removing columns](#rearranging-adding-and-removing-columns)
 - [Column formatting](#column-formatting-options)
 - [Conditional formatting](#conditional-table-formatting)
+- [Auto-pivot](#auto-pivot)
 
 ### Rearranging, adding, and removing columns
 
@@ -84,7 +85,7 @@ You can also get there by clicking on the gear on any column when in the **Colum
 
 ![Chart formatting](../images/chart-formatting.png)
 
-The options you see will differ depending on the [data type](/learn/databases/data-types-overview) of the column you're viewing:
+The options you see will differ depending on the [data type](https://www.metabase.com//learn/databases/data-types-overview.html) of the column you're viewing:
 
 - [Dates](#dates)
 - [Numbers](#numbers-1)
@@ -126,13 +127,13 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
-### Pivoted tables
+### Auto-pivot
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](../images/pivot.png)
 
-If you want to create a pivot table with subtotals and grand totals, use the [pivot table visualization](#pivot-table).
+If you want to create a detailed pivot table with subtotals and grand totals, use the [pivot table visualization](#pivot-table).
 
 ## Pivot table
 
@@ -172,7 +173,7 @@ For more, check out [How to create a pivot table to summarize your data](https:/
 
 ## Line charts
 
-Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
+Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
 
 ![Trend lines](../images/trend-lines.png)
 
@@ -318,4 +319,4 @@ Learn more about [visualizing data with maps](https://www.metabase.com/learn/bas
 
 - [Charts with multiple series](../../dashboards/multiple-series.md)
 - [Appearance](../../configuring-metabase/appearance.md)
-- [BI dashboard best practices](/learn/dashboards/bi-dashboard-best-practices)
+- [BI dashboard best practices](https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices.html)
