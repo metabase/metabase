@@ -84,9 +84,7 @@ describe("scenarios > question > download", () => {
     });
 
     it("from query builder", () => {
-      cy.createQuestion(canSavePngQuestion).then(({ body: { id } }) => {
-        cy.visit(`/question/${id}`);
-      });
+      cy.createQuestion(canSavePngQuestion, { visitQuestion: true });
 
       cy.findByTestId("download-button").click();
 
@@ -96,9 +94,7 @@ describe("scenarios > question > download", () => {
 
       cy.verifyDownload(".png", { contains: true });
 
-      cy.createQuestion(cannotSavePngQuestion).then(({ body: { id } }) => {
-        cy.visit(`/question/${id}`);
-      });
+      cy.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
 
       cy.findByTestId("download-button").click();
 
