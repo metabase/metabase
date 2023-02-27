@@ -226,7 +226,7 @@
   {:arglists '([model-name opts instance])}
   (fn [model-name _opts _instance] model-name))
 
-(defn log-and-extract-one
+(defn- log-and-extract-one
   [model opts instance]
   (log/info "Extracting" model (:id instance))
   (extract-one model opts instance))
