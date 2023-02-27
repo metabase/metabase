@@ -15,8 +15,7 @@
                                          {:lib/uuid string?}
                                          [:field (meta/id :venues :id) {:lib/uuid string?}]]]}]}
             (-> (lib/query meta/metadata "VENUES")
-                (lib/append (lib/order-by (lib/field "VENUES" "ID")))
-                (dissoc :lib/metadata)))))
+                (lib/order-by (lib/field "VENUES" "ID"))))))
 
 (t/deftest ^:parallel threading-test
   (t/is (=? {:database (meta/id)
@@ -43,35 +42,33 @@
                 (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel specific-stage-test
-  (t/are [x] (=? {:lib/type :mbql/query
-                  :database 1
-                  :type     :pipeline
-                  :stages   [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid string?}
-                              :source-table (meta/id :venues)}
-                             {:lib/type    :mbql.stage/mbql
-                              :lib/options {:lib/uuid string?}
-                              :order-by    [[:asc
-                                             {:lib/uuid string?}
-                                             [:field
-                                              (meta/id :venues :id)
-                                              {:lib/uuid string?}]]]}
-                             {:lib/type    :mbql.stage/mbql
-                              :lib/options {:lib/uuid string?}}]}
-                 (-> (lib/query meta/metadata {:database 1
-                                               :type     :query
-                                               :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}})
-                     x
-                     (dissoc :lib/metadata)))
-    (lib/append 1 (lib/order-by (lib/field "VENUES" "ID")))
-    (lib/order-by 1 (lib/field "VENUES" "ID"))))
+  (t/is (=? {:lib/type :mbql/query
+             :database 1
+             :type     :pipeline
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :lib/options  {:lib/uuid string?}
+                         :source-table (meta/id :venues)}
+                        {:lib/type    :mbql.stage/mbql
+                         :lib/options {:lib/uuid string?}
+                         :order-by    [[:asc
+                                        {:lib/uuid string?}
+                                        [:field
+                                         (meta/id :venues :id)
+                                         {:lib/uuid string?}]]]}
+                        {:lib/type    :mbql.stage/mbql
+                         :lib/options {:lib/uuid string?}}]}
+            (-> (lib/query meta/metadata {:database 1
+                                          :type     :query
+                                          :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}})
+                (lib/order-by 1 (lib/field "VENUES" "ID"))
+                (dissoc :lib/metadata)))))
 
 (t/deftest ^:parallel order-by-field-metadata-test
   (t/testing "Should be able to create an order by using raw Field metadata"
     (t/is (=? [:asc
                {:lib/uuid string?}
                [:field (meta/id :venues :id) {:lib/uuid string?}]]
-              (lib/order-by (lib.metadata/field-metadata meta/metadata "VENUES" "ID"))))))
+              (lib/order-by-clause {} -1 (lib.metadata/field-metadata meta/metadata "VENUES" "ID"))))))
 
 (t/deftest ^:parallel append-order-by-field-metadata-test
   (t/testing "Should be able to add an order by using raw Field metadata"
@@ -92,5 +89,5 @@
               {:lib/uuid string?}
               [:field (meta/id :venues :id) {:lib/uuid string?}]]]
             (-> (lib/query meta/metadata "VENUES")
-                (lib/append (lib/order-by (lib/field "VENUES" "ID")))
+                (lib/order-by (lib/field "VENUES" "ID"))
                 lib/order-bys))))

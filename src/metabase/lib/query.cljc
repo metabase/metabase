@@ -11,7 +11,7 @@
 (def ^:private Metadata
   [:or
    lib.metadata/DatabaseMetadata
-   lib.metadata/SourceQueryMetadata])
+   lib.metadata/StageMetadata])
 
 (defmulti ^:private ->query
   "Implementation for [[query]]."
@@ -62,7 +62,7 @@
     :lib/type     :mbql/query
     :lib/metadata database-metadata})
   ([database-metadata :- lib.metadata/DatabaseMetadata
-    results-metadata  :- lib.metadata/SourceQueryMetadata
+    results-metadata  :- lib.metadata/StageMetadata
     query]
    {:lib/type     :mbql/query
     :lib/metadata results-metadata
@@ -72,6 +72,7 @@
                         :native   query}
                        lib.options/ensure-uuid)]}))
 
+;;; TODO -- this needs database metadata passed in as well.
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [{query :dataset_query, metadata :result_metadata}]

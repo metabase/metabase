@@ -1,5 +1,4 @@
 (ns metabase.lib.options
-  "TODO -- should this just be part of [[metabase.lib.interface]]?"
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.shared.util.i18n :as i18n]))

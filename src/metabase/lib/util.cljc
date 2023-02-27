@@ -49,7 +49,7 @@
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
   [stages       :- [:sequential ::lib.schema/stage]
-   stage-number :- [:int]]
+   stage-number :- :int]
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
                         stage-number)]
@@ -59,12 +59,22 @@
                       {})))
     stage-number'))
 
+(defn has-stage?
+  "Whether the query has a stage with `stage-number` (can be zero-indexed)."
+  [{:keys [stages], :as _query} stage-number]
+  ;; TODO -- this is a little bit duplicated from the logic above... find a way to consolidate?
+  (let [stage-number (if (neg? stage-number)
+                       (+ (count stages) stage-number)
+                       stage-number)]
+    (and (not (neg? stage-number))
+         (< stage-number (count stages)))))
+
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indecies as well, e.g. `-1` will return the last stage of
   the query."
-  [outer-query  :- [:map [:type [:keyword]]]
-   stage-number :- [:int]]
-  (let [{:keys [stages]} (pipeline outer-query)]
+  [query        :- [:map [:type [:keyword]]]
+   stage-number :- :int]
+  (let [{:keys [stages]} (pipeline query)]
     (nth (vec stages) (non-negative-stage-index stages stage-number))))
 
 (mu/defn update-query-stage :- ::lib.schema/query
@@ -74,7 +84,7 @@
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
   [query        :- [:map [:type [:keyword]]]
-   stage-number :- [:int]
+   stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
         stage-number'               (non-negative-stage-index stages stage-number)

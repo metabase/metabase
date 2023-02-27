@@ -17,6 +17,7 @@
     (string? x)  :type/string
     (integer? x) :type/integer
     (number? x)  :type/number
+    (fn? x)      :type/fn
     ;; we should add more mappings here as needed
     :else        (type x)))
 
