@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.serialization.cmd :refer [dump load]]
+   [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
     :refer [Card
@@ -316,8 +316,8 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                          :only-db-ids #{db-id}})
+                          (v1-dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                             :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root
@@ -393,7 +393,7 @@
                                            [Card               (db/select-one Card :id card-id-with-native-snippet)]
                                            [Card               (db/select-one Card :id card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :skip})
+          (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
