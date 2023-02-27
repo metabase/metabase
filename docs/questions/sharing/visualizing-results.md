@@ -8,25 +8,6 @@ redirect_from:
 
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data using charts.
 
-In Metabase, an answer to a question can be visualized in a number of ways:
-
-- [Numbers](#numbers)
-- [Trend](#trends)
-- [Progress bar](#progress-bars)
-- [Gauge](#gauges)
-- [Table](#tables)
-- [Pivot table](#pivot-table)
-- [Line chart](#line-charts)
-- [Bar chart](#bar-charts)
-- [Area chart](#area-charts)
-- [Combo chart](#combo-charts)
-- [Waterfall chart](#waterfall-charts)
-- [Row chart](#row-charts)
-- [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
-- [Pie/donut chart](#pie-or-donut-charts)
-- [Funnel](#funnel)
-- [Map](#maps)
-
 To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
 
 ![Visualization options](../images/VisualizeChoices.png)
@@ -41,7 +22,7 @@ Each visualization type has its own advanced options. Click the **Settings** but
 
 Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/visualization/chart-guide)
 
-### Numbers
+## Numbers
 
 The **Numbers** option is for displaying a single number, nice and big. The options for numbers include:
 
@@ -51,7 +32,7 @@ The **Numbers** option is for displaying a single number, nice and big. The opti
 
 ![Number](../images/number.png)
 
-### Trends
+## Trends
 
 ![Trend settings](../images/trend-settings.png)
 
@@ -59,13 +40,13 @@ The **Trend** visualization is great for displaying how a single number has chan
 
 By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings.
 
-### Progress bars
+## Progress bars
 
 **Progress bars** are for comparing a single number to a goal value that you set. Open up the settings for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
 
 ![Progress bar](../images/progress.png)
 
-### Gauges
+## Gauges
 
 Ah, **gauges**: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number in the context of a set of colored ranges that you can specify. By default, when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
 
@@ -75,11 +56,11 @@ Open up the visualization settings to define your own ranges, choose colors for 
 
 ![Gauge settings](../images/gauge-settings.png)
 
-### Tables
+## Tables
 
 The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
 
-#### Rearranging, adding, and removing columns
+### Rearranging, adding, and removing columns
 
 Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables, if any, that you can add to the current table view.
 
@@ -87,21 +68,25 @@ To hide a column, click the X icon on it; that'll send it down to the **More col
 
 > Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../dashboards/start.md).
 
-#### Column formatting options
+### Column formatting options
 
-To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
+To format the display of any column in a table, click on the column heading and choose the **Formatting** option (you can also get there by clicking on the gear on any column when in the **Columns** tab of the visualization settings).
 
 ![Column formatting](../images/column-header-formatting.png)
 
-The options you see will differ depending on the type of column you're viewing:
+The options you see will differ depending on the [data type](/learn/databases/data-types-overview) of the column you're viewing:
 
-**Dates**
+- [Dates](#dates)
+- [Numbers](#numbers-1)
+- [Currency](#currency)
+
+#### Dates
 
 - **Date style** gives you a bunch of different choices for how to display the date.
-- **Abbreviate names of days and months**, when turned on, will turn things like `January` to `Jan`, and `Monday` to `Mon`.
+- **Abbreviate names of days and months**, when turned on, will turn things like "January" to "Jan", and "Monday" to "Mon".
 - **Show the time** lets you decide whether or not to display the time, and if so, how. You can include hours and minutes, and additionally seconds and milliseconds.
 
-**Numbers**
+#### Numbers
 
 - **Show a mini bar chart** will display a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
 - **Style** lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
@@ -110,16 +95,17 @@ The options you see will differ depending on the type of column you're viewing:
 - **Multiply by a number** multiplies each number in this column by whatever you type here. Just don't type an emoji here; it almost always causes a temporal vortex to manifest.
 - **Add a prefix/suffix** lets you put a symbol, word, or whatever before or after each cell's value.
 
-**Currency**
+#### Currency
+
 Currency columns have all the same options as numbers, plus the following:
 
 - **Unit of Currency** lets you change the unit of currency from whatever the system default is.
 - **Currency label style** allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
 - **Where to display the unit of currency** lets you toggle between showing the currency label in the column heading or in every cell in the column.
 
-#### Formatting data in charts
+### Formatting data in charts
 
-While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
+While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the **Data** tab:
 
 ![Chart formatting](../images/chart-formatting.png)
 
@@ -127,7 +113,7 @@ Then click on the gear icon next to the column that you want to format. Dates, n
 
 ![Chart formatting options](../images/chart-formatting-options.png)
 
-#### Conditional table formatting
+### Conditional table formatting
 
 Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
@@ -140,15 +126,15 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
-#### Pivoted tables
+### Pivoted tables
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](../images/pivot.png)
 
-This auto-pivoting is distinct from the pivot table visualization, which we cover next.
+If you want to create a pivot table with subtotals and grand totals, use the [pivot table visualization](#pivot-table).
 
-### Pivot table
+## Pivot table
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
@@ -184,25 +170,23 @@ To collapse a group on a pivot table, you can click on the minus (–) button ne
 
 For more, check out [How to create a pivot table to summarize your data](https://www.metabase.com/learn/basics/visualizing-data/how-to-create-pivot-tables.html).
 
-### Line charts
+## Line charts
 
 Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
 
-### Bar charts
+## Bar charts
 
-Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
+Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year). Learn more about [bar charts](https://www.metabase.com/learn/basics/visualizing-data/bar-charts.html).
 
 ![Bar chart](../images/bar.png)
 
-Learn more about [Bar charts](https://www.metabase.com/learn/basics/visualizing-data/bar-charts.html).
-
-### Area charts
+## Area charts
 
 Area charts are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
 ![Stacked area chart](../images/area.png)
 
-### Combo charts 
+## Combo charts 
 
 Combo charts let you combine bars and lines (or areas) on the same chart.
 
@@ -219,6 +203,16 @@ To use a Combo chart you'll either need to have two or more metrics selected in 
 Or you'll need a question with a single metric and two grouping columns, like this:
 
 ![Data for Line + Bar chart](../images/combo-chart-data-2.png)
+
+## Histograms
+
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of bar chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically. [Learn more about histograms](https://www.metabase.com/learn/basics/visualizing-data/histograms.html).
+
+![Histogram](../images/histogram.png)
+
+By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
+
+![Binning options](../images/histogram-bins.png)
 
 ### Options for line, bar, and area charts
 
@@ -257,25 +251,13 @@ There are three main ways to configure axes:
 
 Here's where you can choose to hide the **label** for your x- or y-axis. You can also customize the text for your axes labels here.
 
-### Row charts
+## Row charts
 
 If you're trying to group a number by a column that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a **row chart**. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
 
 ![Row chart](../images/row.png)
 
-#### Histograms
-
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
-
-![Histogram](../images/histogram.png)
-
-By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
-
-![Binning options](../images/histogram-bins.png)
-
-[Learn more about histograms](https://www.metabase.com/learn/basics/visualizing-data/histograms.html).
-
-### Waterfall charts
+## Waterfall charts
 
 Waterfall charts are a kind of bar chart useful for visualizing results that contain both positive and negative values. Each bar on a waterfall chart shows either an increase or decrease, with a final bar on the right of the chart that represents the total value.
 
@@ -285,7 +267,7 @@ In the example above, the waterfall chart displays "Profit" for each "Product:" 
 
 For waterfall charts, you'll want a query that is a single metric grouped by a single dimension: by time or category.
 
-### Scatterplots and bubble charts
+## Scatterplots and bubble charts
 
 **Scatterplots** are useful for visualizing the correlation between two variables, like comparing the age of your users vs. how many dollars they've spent on your products. To use a scatterplot, you'll need to ask a question that results in two numeric columns, like `Count of Orders grouped by Customer Age`. Alternatively, you can use a raw data table and select the two numeric fields you want to use in the chart options.
 
@@ -295,7 +277,7 @@ Scatterplots and bubble charts also have similar chart options as line, bar, and
 
 ![Scatter](../images/scatter.png)
 
-### Pie or donut charts
+## Pie or donut charts
 
 A **pie or donut chart** can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender. If you have more than a few breakouts, like users per country, it's usually better to use a bar chart so that your users can more easily compare the relative sizes of each bar.
 
@@ -303,7 +285,7 @@ The options for pie charts let you choose which field to use as your measurement
 
 ![Donut](../images/donut.png)
 
-### Funnel
+## Funnel
 
 **Funnels** are commonly used in e-commerce or sales to visualize how many customers are present within each step of a checkout flow or sales cycle. At their most general, funnels show you values broken out by steps, and the percent decrease between each successive step. To create a funnel in Metabase, you'll need to have a table with at least two columns: one column that contains the metric you're interested in, and another that contains the funnel's steps.
 
@@ -311,7 +293,7 @@ For example, I might have an Opportunities table, and I could create a question 
 
 ![Funnel](../images/funnel.png)
 
-### Maps
+## Maps
 
 When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set. Here are the maps that Metabase uses:
 
@@ -329,3 +311,9 @@ When you open up the Map options, you can manually switch between a region map (
 Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
 
 Learn more about [visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps.html).
+
+## Further reading
+
+- [Charts with multiple series](../../dashboards/multiple-series.md)
+- [Appearance](../../configuring-metabase/appearance.md)
+- [BI dashboard best practices](/learn/dashboards/bi-dashboard-best-practices)
