@@ -46,19 +46,15 @@
 (declare root-collection)
 
 (defn- remove-other-users-personal-collections
-  "From a seq of Collections, determine which are personal collections not belonging to the current user.
-  Remove all collections owned directly or indirectly by those other users."
   [user-id collections]
   (let [personal-ids (into #{} (comp (filter :personal_owner_id)
                                      (remove (comp #{user-id} :personal_owner_id))
                                      (map :id))
                            collections)
-        prefixes     (into [] (map (fn [id] (format "/%d/" id))) personal-ids)
+        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
         personal?    (fn [{^String location :location id :id}]
                        (or (personal-ids id)
-                           (some (fn [^String prefix]
-                                   (.startsWith location prefix))
-                                 prefixes)))]
+                           (prefixes (re-find #"^/\d+/" location))))]
     (if (seq prefixes)
       (remove personal? collections)
       collections)))
@@ -154,6 +150,33 @@
                 (remove-other-users-personal-collections api/*current-user-id*))
         colls-with-details (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls-with-details)))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 1]
+    (time
+     (let [exclude-archived?               false
+           exclude-other-user-collections? true
+           coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                                     (update acc (if dataset :dataset :card) conj collection_id))
+                                                   {:dataset #{}
+                                                    :card    #{}}
+                                                   (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                               :from            [:report_card]
+                                                                               :where           [:= :archived false]}))
+           colls                           (cond->>
+                                             (db/select Collection
+                                               {:where [:and
+                                                        (when exclude-archived?
+                                                          [:= :archived false])
+                                                        [:= :namespace nil]
+                                                        (collection/visible-collection-ids->honeysql-filter-clause
+                                                         :id
+                                                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                                             exclude-other-user-collections?
+                                             (remove-other-users-personal-collections api/*current-user-id*))
+           colls-with-details              (map collection/personal-collection-with-ui-details colls)]
+       (collection/collections->tree coll-type-ids colls-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
