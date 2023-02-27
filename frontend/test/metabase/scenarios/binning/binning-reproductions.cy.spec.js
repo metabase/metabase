@@ -205,8 +205,8 @@ describe("binning related reproductions", () => {
     cy.findByTestId("viz-settings-button").click();
 
     cy.findByTestId("sidebar-left").within(() => {
-      cy.findByText("Add or remove columns").click();
-      cy.findByText("Created At").click();
+      cy.findByTextEnsureVisible("Table options");
+      cy.findByText("Created At").siblings(".Icon-eye_outline").click();
       cy.button("Done").click();
     });
 
