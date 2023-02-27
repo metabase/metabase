@@ -106,7 +106,7 @@
   (let [model (api/write-check Card model_id)]
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (db/select-one 'Database :id db-id))))
+       (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (action/select-action :id action-id)
