@@ -1,4 +1,4 @@
-export const many_data_types_data = [
+export const many_data_types_rows = [
   {
     uuid: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
     integer: 1,
