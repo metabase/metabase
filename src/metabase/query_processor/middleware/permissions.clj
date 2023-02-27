@@ -109,7 +109,8 @@
       ;; set iff the user should see this when able to view a dashboard and the user can view said dashboard.
       ;; the motivating use here is chain-filters.
       *user-can-read-dashboard*
-      nil
+      (when-not (has-data-perms? (required-perms outer-query))
+        (check-block-permissions outer-query))
 
       :else
       (check-ad-hoc-query-perms outer-query))))

@@ -1944,7 +1944,7 @@
                          query)
                     query-params))
 
-(deftest bcm-dashboard-chain-filter-permissions-test
+(deftest dashboard-chain-filter-permissions-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
