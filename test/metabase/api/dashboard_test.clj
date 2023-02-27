@@ -1951,19 +1951,16 @@
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
-              (is
-               (=
-                {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
-                (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
+              (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
+                     (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
+
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
-              (is
-               (=
-                {:values ["Japanese" "Steakhouse"], :has_more_values false}
-                (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
+              (is (= {:values ["Japanese" "Steakhouse"], :has_more_values false}
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -2033,17 +2030,7 @@
           (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
-                      (chain-filter-test/take-n-values 3)))))))
-
-    ;; TODO: how do you test blocked when non ee without breaking CI?
-    #_(testing "blocked data perms should affect perms for the Fields in question when users have collection access"
-      (mt/with-temp-copy-of-db
-        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data] {:schemas :block})
-          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
-            (is (= "You don't have permissions to do that."
-                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                        (mt/user-http-request :rasta :get 403))))))))))
+                      (chain-filter-test/take-n-values 3)))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
