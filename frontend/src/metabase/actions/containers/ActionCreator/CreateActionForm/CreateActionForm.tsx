@@ -58,8 +58,8 @@ function CreateActionForm({
       validationSchema={ACTION_SCHEMA}
       onSubmit={onCreate}
     >
-      {({ dirty }) => (
-        <Form disabled={!dirty}>
+      {({ isValid }) => (
+        <Form disabled={!isValid}>
           <FormInput
             name="name"
             title={t`Name`}
@@ -78,7 +78,7 @@ function CreateActionForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+            <FormSubmitButton title={t`Create`} disabled={!isValid} primary />
           </FormFooter>
         </Form>
       )}
