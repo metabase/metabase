@@ -101,6 +101,10 @@
   [_entity-type segment-id-str]
   (api/read-check (db/select-one Segment :id (ensure-int segment-id-str))))
 
+(defmethod ->entity :model
+  [_entity-type card-id-str]
+  (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
+
 (defmethod ->entity :question
   [_entity-type card-id-str]
   (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
