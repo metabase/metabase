@@ -77,9 +77,13 @@ describe("issues 15119 and 16112", () => {
         cy.get('[data-metabase-event="Dashboard;Edit"]').click();
         cy.findByText("Rating Filter").click();
         cy.findByText("Linked filters").click();
-        cy.get(
-          "#root > div > div > main > div > div > div > div > aside > div.flex.flex-column.flex-auto.overflow-y-auto > div.css-16pq3z3-SidebarBody.e1u0knat0 > div > div:nth-child(2) > div > div > input",
-        ).click();
+        // cy.findByText("Reviewer Filter").click();
+        cy.findByText("Limit this filter's choices")
+          .parent()
+          .within(() => {
+            // turn on the toggle
+            cy.get("input").click();
+          });
         cy.findByText("Save").click();
 
         cy.signIn("nodata");
