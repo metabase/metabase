@@ -1,6 +1,7 @@
 {
   "plugins": [
     "babel-plugin-styled-components",
+    ["transform-object-rest-spread", { "useBuiltIns": true }],
     "transform-flow-strip-types",
     "add-react-displayname",
     "transform-decorators-legacy",

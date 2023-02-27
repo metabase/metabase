@@ -33,6 +33,7 @@ const NODE_ENV = process.env["NODE_ENV"] || "development";
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  plugins: [require('babel-plugin-transform-object-rest-spread')]
 };
 
 const CSS_CONFIG = {
@@ -67,7 +68,7 @@ const config = (module.exports = {
     rules: [
       {
         test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
+        exclude: /node_modules\/(?!(@react-oauth)\/).*/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
