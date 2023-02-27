@@ -17,7 +17,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { WRITABLE_DB_ID } from "__support__/e2e/cypress_data";
-import { many_data_types_data } from "__support__/e2e/test_tables_data";
+import { many_data_types_rows } from "__support__/e2e/test_tables_data";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -45,418 +45,404 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
           "executeAPI",
         );
-
-        resetTestTable({ type: dialect, table: TEST_TABLE });
-        restore(`${dialect}-writable`);
-        cy.signInAsAdmin();
-        resyncDatabase(WRITABLE_DB_ID);
       });
 
-      it("adds a custom query action to a dashboard and runs it", () => {
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(0);
+      describe("adding and executing actions", () => {
+        beforeEach(() => {
+          resetTestTable({ type: dialect, table: TEST_TABLE });
+          restore(`${dialect}-writable`);
+          cy.signInAsAdmin();
+          resyncDatabase(WRITABLE_DB_ID);
         });
 
-        createModelFromTable(TEST_TABLE);
+        it("adds a custom query action to a dashboard and runs it", () => {
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(0);
+          });
 
-        cy.get("@modelId").then(id => {
-          cy.visit(`/model/${id}/detail`);
-          cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
-        });
+          createModelFromTable(TEST_TABLE);
 
-        cy.findByRole("tab", { name: "Actions" }).click();
-        cy.findByText("New action").click();
+          cy.get("@modelId").then(id => {
+            cy.visit(`/model/${id}/detail`);
+            cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
+          });
 
-        cy.findByRole("dialog").within(() => {
-          fillActionQuery(
-            `INSERT INTO ${TEST_TABLE} (team_name) VALUES ('Zany Zebras')`,
+          cy.findByRole("tab", { name: "Actions" }).click();
+          cy.findByText("New action").click();
+
+          cy.findByRole("dialog").within(() => {
+            fillActionQuery(
+              `INSERT INTO ${TEST_TABLE} (team_name) VALUES ('Zany Zebras')`,
+            );
+            cy.findByText("Save").click();
+          });
+
+          cy.findByPlaceholderText("My new fantastic action").type(
+            "Add Zebras",
           );
-          cy.findByText("Save").click();
+          cy.findByText("Create").click();
+
+          createDashboardWithActionButton({
+            actionName: "Add Zebras",
+          });
+
+          clickHelper("Add Zebras");
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+          });
         });
 
-        cy.findByPlaceholderText("My new fantastic action").type("Add Zebras");
-        cy.findByText("Create").click();
+        it("adds an implicit create action to a dashboard and runs it", () => {
+          createModelFromTable(TEST_TABLE);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "create",
+              model_id: id,
+            });
+          });
 
-        createDashboardWithActionButton({
-          actionName: "Add Zebras",
+          createDashboardWithActionButton({
+            actionName: "Create",
+          });
+
+          clickHelper("Create");
+
+          modal().within(() => {
+            cy.findByPlaceholderText("Team name").type("Zany Zebras");
+            cy.findByPlaceholderText("Score").type("44");
+
+            cy.button("Save").click();
+          });
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+
+            expect(result.rows[0].score).to.equal(44);
+          });
         });
 
-        clickHelper("Add Zebras");
+        it("adds an implicit update action to a dashboard and runs it", () => {
+          const actionName = "Update";
 
-        cy.wait("@executeAPI");
+          createModelFromTable(TEST_TABLE);
 
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName,
+            idFilter: true,
+          });
+
+          filterWidget().click();
+          addWidgetStringFilter("5");
+
+          clickHelper(actionName);
+
+          cy.wait("@executePrefetch");
+          // let's check that the existing values are pre-filled correctly
+          modal().within(() => {
+            cy.findByPlaceholderText("Team name")
+              .should("have.value", "Energetic Elephants")
+              .clear()
+              .type("Emotional Elephants");
+
+            cy.findByPlaceholderText("Score")
+              .should("have.value", "30")
+              .clear()
+              .type("88");
+
+            cy.button("Update").click();
+          });
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+
+            expect(result.rows[0].score).to.equal(88);
+          });
+        });
+
+        it("adds an implicit delete action to a dashboard and runs it", () => {
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].id).to.equal(3);
+          });
+
+          createModelFromTable(TEST_TABLE);
+
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "delete",
+              model_id: id,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: "Delete",
+          });
+
+          clickHelper("Delete");
+
+          modal().within(() => {
+            cy.findByPlaceholderText("Id").type("3");
+            cy.button("Delete").click();
+          });
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(0);
+          });
         });
       });
 
-      it("adds an implicit create action to a dashboard and runs it", () => {
-        createModelFromTable(TEST_TABLE);
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "create",
-            model_id: id,
+      describe(`Actions Data Types`, () => {
+        beforeEach(() => {
+          resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
+          restore(`${dialect}-writable`);
+          cy.signInAsAdmin();
+          resyncDatabase(WRITABLE_DB_ID);
+        });
+
+        it("can update various data types via implicit actions", () => {
+          createModelFromTable(TEST_COLUMNS_TABLE);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: "Update",
+            idFilter: true,
+          });
+
+          filterWidget().click();
+          addWidgetStringFilter("1");
+
+          clickHelper("Update");
+
+          cy.wait("@executePrefetch");
+
+          const oldRow = many_data_types_rows[0];
+
+          modal().within(() => {
+            changeValue({
+              fieldName: "Uuid",
+              fieldType: "text",
+              oldValue: oldRow.uuid,
+              newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+            });
+
+            changeValue({
+              fieldName: "Integer",
+              fieldType: "number",
+              oldValue: oldRow.integer,
+              newValue: 123,
+            });
+
+            changeValue({
+              fieldName: "Float",
+              fieldType: "number",
+              oldValue: oldRow.float,
+              newValue: 2.2,
+            });
+
+            cy.findByLabelText("Boolean").should("be.checked").click();
+
+            changeValue({
+              fieldName: "String",
+              fieldType: "text",
+              oldValue: oldRow.string,
+              newValue: "new string",
+            });
+
+            changeValue({
+              fieldName: "Date",
+              fieldType: "date",
+              oldValue: oldRow.date,
+              newValue: "2020-05-01",
+            });
+
+            // we can't assert on this value because mysql and postgres seem to
+            // handle timezones differently 🥴
+            cy.findByPlaceholderText("Timestamptz")
+              .should("have.attr", "type", "datetime-local")
+              .clear()
+              .type("2020-05-01T16:45:00");
+
+            cy.button("Update").click();
+          });
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+
+            const row = result.rows[0];
+
+            expect(row).to.have.property(
+              "uuid",
+              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+            );
+            expect(row).to.have.property("integer", 123);
+            expect(row).to.have.property("float", 2.2);
+            expect(row).to.have.property("string", "new string");
+            expect(row).to.have.property(
+              "boolean",
+              dialect === "mysql" ? 0 : false,
+            );
+            expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
+            expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
           });
         });
 
-        createDashboardWithActionButton({
-          actionName: "Create",
-        });
+        it("can insert various data types via implicit actions", () => {
+          createModelFromTable(TEST_COLUMNS_TABLE);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "create",
+              model_id: id,
+            });
+          });
 
-        clickHelper("Create");
+          createDashboardWithActionButton({
+            actionName: "Create",
+          });
 
-        modal().within(() => {
-          cy.findByPlaceholderText("Team name").type("Zany Zebras");
-          cy.findByPlaceholderText("Score").type("44");
+          clickHelper("Create");
 
-          cy.button("Save").click();
-        });
+          modal().within(() => {
+            cy.findByPlaceholderText("Uuid").type(
+              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
+            );
 
-        cy.wait("@executeAPI");
+            cy.findByPlaceholderText("Integer").type("-20");
+            cy.findByPlaceholderText("Integerunsigned").type("20");
+            cy.findByPlaceholderText("Tinyint").type("101");
+            cy.findByPlaceholderText("Tinyint1").type("1");
+            cy.findByPlaceholderText("Smallint").type("32767");
+            cy.findByPlaceholderText("Mediumint").type("8388607");
+            cy.findByPlaceholderText("Bigint").type("922337204775");
+            cy.findByPlaceholderText("Float").type("3.4");
+            cy.findByPlaceholderText("Double").type("1.79769313486");
+            cy.findByPlaceholderText("Decimal").type("123901.21");
 
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
+            cy.findByLabelText("Boolean").click();
 
-          expect(result.rows[0].score).to.equal(44);
-        });
-      });
+            cy.findByPlaceholderText("String").type("Zany Zebras");
+            cy.findByPlaceholderText("Text").type("Zany Zebras");
 
-      it("adds an implicit update action to a dashboard and runs it", () => {
-        const actionName = "Update";
+            cy.findByPlaceholderText("Date").type("2020-02-01");
+            cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Datetimetz").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Time").type("12:57:57");
+            cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Timestamptz").type("2020-03-01T12:00:00");
 
-        createModelFromTable(TEST_TABLE);
+            cy.button("Save").click();
+          });
 
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "update",
-            model_id: id,
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
+            const row = result.rows[0];
+
+            expect(row.uuid).to.equal("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15");
+
+            expect(row.integer).to.equal(-20);
+            expect(row.integerUnsigned).to.equal(20);
+            expect(row.tinyint).to.equal(101);
+            expect(row.tinyint1).to.equal(1);
+            expect(row.smallint).to.equal(32767);
+            expect(row.mediumint).to.equal(8388607);
+            expect(row.bigint).to.equal(
+              dialect === "mysql" ? 922337204775 : String(922337204775), // the pg driver makes this a string
+            );
+            expect(row.float).to.equal(3.4);
+            expect(row.double).to.equal(1.79769313486);
+            expect(row.decimal).to.equal("123901.21"); // js needs this to be a string
+
+            expect(row.boolean).to.equal(dialect === "mysql" ? 1 : true);
+
+            expect(row.string).to.equal("Zany Zebras");
+            expect(row.text).to.equal("Zany Zebras");
+
+            expect(row.date).to.include("2020-02-01"); // js converts this to a full date
+
+            // timezones are problematic here
+            expect(row.datetime).to.include("2020-03-01");
+            expect(row.datetimeTZ).to.include("2020-03-01");
+            expect(row.time).to.include("57:57");
+            expect(row.timestamp).to.include("2020-03-01");
+            expect(row.timestampTZ).to.include("2020-03-01");
           });
         });
 
-        createDashboardWithActionButton({
-          actionName,
-          idFilter: true,
-        });
-
-        filterWidget().click();
-        addWidgetStringFilter("5");
-
-        clickHelper(actionName);
-
-        cy.wait("@executePrefetch");
-        // let's check that the existing values are pre-filled correctly
-        modal().within(() => {
-          cy.findByPlaceholderText("Team name")
-            .should("have.value", "Energetic Elephants")
-            .clear()
-            .type("Emotional Elephants");
-
-          cy.findByPlaceholderText("Score")
-            .should("have.value", "30")
-            .clear()
-            .type("88");
-
-          cy.button("Update").click();
-        });
-
-        cy.wait("@executeAPI");
-
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
-
-          expect(result.rows[0].score).to.equal(88);
-        });
-      });
-
-      it("adds an implicit delete action to a dashboard and runs it", () => {
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
-          expect(result.rows[0].id).to.equal(3);
-        });
-
-        createModelFromTable(TEST_TABLE);
-
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "delete",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName: "Delete",
-        });
-
-        clickHelper("Delete");
-
-        modal().within(() => {
-          cy.findByPlaceholderText("Id").type("3");
-          cy.button("Delete").click();
-        });
-
-        cy.wait("@executeAPI");
-
-        queryWritableDB(
-          `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(0);
-        });
-      });
-    },
-  );
-
-  describe(
-    `Actions Data Types (${dialect})`,
-    { tags: ["@external", "@actions"] },
-    () => {
-      beforeEach(() => {
-        cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-          "getCardAssociations",
-        );
-        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
-
-        cy.intercept(
-          "GET",
-          "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("executePrefetch");
-
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-          "executeAPI",
-        );
-
-        resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
-        restore(`${dialect}-writable`);
-        cy.signInAsAdmin();
-        resyncDatabase(WRITABLE_DB_ID);
-        cy.wait(300);
-      });
-
-      it("can update various data types via implicit actions", () => {
-        createModelFromTable(TEST_COLUMNS_TABLE);
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "update",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName: "Update",
-          idFilter: true,
-        });
-
-        filterWidget().click();
-        addWidgetStringFilter("1");
-
-        clickHelper("Update");
-
-        cy.wait("@executePrefetch");
-
-        const oldRow = many_data_types_data[0];
-
-        modal().within(() => {
-          changeValue({
-            fieldName: "Uuid",
-            fieldType: "text",
-            oldValue: oldRow.uuid,
-            newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+        it("does not show json, enum, or binary columns for implicit actions", () => {
+          createModelFromTable(TEST_COLUMNS_TABLE);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "create",
+              model_id: id,
+            });
           });
 
-          changeValue({
-            fieldName: "Integer",
-            fieldType: "number",
-            oldValue: oldRow.integer,
-            newValue: 123,
+          createDashboardWithActionButton({
+            actionName: "Create",
+            idFilter: true,
           });
 
-          changeValue({
-            fieldName: "Float",
-            fieldType: "number",
-            oldValue: oldRow.float,
-            newValue: 2.2,
+          clickHelper("Create");
+
+          modal().within(() => {
+            cy.findByPlaceholderText("Uuid").should("be.visible");
+            cy.findByPlaceholderText("Json").should("not.exist");
+            cy.findByPlaceholderText("Jsonb").should("not.exist");
+            cy.findByPlaceholderText("Binary").should("not.exist");
+
+            if (dialect === "mysql") {
+              // we only have enums in postgres as of Feb 2023
+              cy.findByPlaceholderText("Enum").should("not.exist");
+            }
           });
-
-          cy.findByLabelText("Boolean").should("be.checked").click();
-
-          changeValue({
-            fieldName: "String",
-            fieldType: "text",
-            oldValue: oldRow.string,
-            newValue: "new string",
-          });
-
-          changeValue({
-            fieldName: "Date",
-            fieldType: "date",
-            oldValue: oldRow.date,
-            newValue: "2020-05-01",
-          });
-
-          // we can't assert on this value because mysql and postgres seem to
-          // handle timezones differently 🥴
-          cy.findByPlaceholderText("Timestamptz")
-            .should("have.attr", "type", "datetime-local")
-            .clear()
-            .type("2020-05-01T16:45:00");
-
-          cy.button("Update").click();
-        });
-
-        cy.wait("@executeAPI");
-
-        queryWritableDB(
-          `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
-
-          const row = result.rows[0];
-
-          expect(row).to.have.property(
-            "uuid",
-            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-          );
-          expect(row).to.have.property("integer", 123);
-          expect(row).to.have.property("float", 2.2);
-          expect(row).to.have.property("string", "new string");
-          expect(row).to.have.property(
-            "boolean",
-            dialect === "mysql" ? 0 : false,
-          );
-          expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
-          expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
-        });
-      });
-
-      it("can insert various data types via implicit actions", () => {
-        createModelFromTable(TEST_COLUMNS_TABLE);
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "create",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName: "Create",
-        });
-
-        clickHelper("Create");
-
-        modal().within(() => {
-          cy.findByPlaceholderText("Uuid").type(
-            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
-          );
-
-          cy.findByPlaceholderText("Integer").type("-20");
-          cy.findByPlaceholderText("Integerunsigned").type("20");
-          cy.findByPlaceholderText("Tinyint").type("101");
-          cy.findByPlaceholderText("Tinyint1").type("1");
-          cy.findByPlaceholderText("Smallint").type("32767");
-          cy.findByPlaceholderText("Mediumint").type("8388607");
-          cy.findByPlaceholderText("Bigint").type("922337204775");
-          cy.findByPlaceholderText("Float").type("3.4");
-          cy.findByPlaceholderText("Double").type("1.79769313486");
-          cy.findByPlaceholderText("Decimal").type("123901.21");
-
-          cy.findByLabelText("Boolean").click();
-
-          cy.findByPlaceholderText("String").type("Zany Zebras");
-          cy.findByPlaceholderText("Text").type("Zany Zebras");
-
-          cy.findByPlaceholderText("Date").type("2020-02-01");
-          cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
-          cy.findByPlaceholderText("Datetimetz").type("2020-03-01T12:00:00");
-          cy.findByPlaceholderText("Time").type("12:57:57");
-          cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
-          cy.findByPlaceholderText("Timestamptz").type("2020-03-01T12:00:00");
-
-          cy.button("Save").click();
-        });
-
-        cy.wait("@executeAPI");
-
-        queryWritableDB(
-          `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
-          dialect,
-        ).then(result => {
-          expect(result.rows.length).to.equal(1);
-          const row = result.rows[0];
-
-          expect(row.uuid).to.equal("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15");
-
-          expect(row.integer).to.equal(-20);
-          expect(row.integerUnsigned).to.equal(20);
-          expect(row.tinyint).to.equal(101);
-          expect(row.tinyint1).to.equal(1);
-          expect(row.smallint).to.equal(32767);
-          expect(row.mediumint).to.equal(8388607);
-          expect(row.bigint).to.equal(
-            dialect === "mysql" ? 922337204775 : String(922337204775), // the pg driver makes this a string
-          );
-          expect(row.float).to.equal(3.4);
-          expect(row.double).to.equal(1.79769313486);
-          expect(row.decimal).to.equal("123901.21"); // js needs this to be a string
-
-          expect(row.boolean).to.equal(dialect === "mysql" ? 1 : true);
-
-          expect(row.string).to.equal("Zany Zebras");
-          expect(row.text).to.equal("Zany Zebras");
-
-          expect(row.date).to.include("2020-02-01"); // js converts this to a full date
-
-          // timezones are problematic here
-          expect(row.datetime).to.include("2020-03-01");
-          expect(row.datetimeTZ).to.include("2020-03-01");
-          expect(row.time).to.include("57:57");
-          expect(row.timestamp).to.include("2020-03-01");
-          expect(row.timestampTZ).to.include("2020-03-01");
-        });
-      });
-
-      it("does not show json, enum, or binary columns for implicit actions", () => {
-        createModelFromTable(TEST_COLUMNS_TABLE);
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "create",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName: "Create",
-          idFilter: true,
-        });
-
-        clickHelper("Create");
-
-        modal().within(() => {
-          cy.findByPlaceholderText("Uuid").should("be.visible");
-          cy.findByPlaceholderText("Json").should("not.exist");
-          cy.findByPlaceholderText("Jsonb").should("not.exist");
-          cy.findByPlaceholderText("Binary").should("not.exist");
-
-          if (dialect === "mysql") {
-            // we only have enums in postgres as of Feb 2023
-            cy.findByPlaceholderText("Enum").should("not.exist");
-          }
         });
       });
     },

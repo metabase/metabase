@@ -5,7 +5,7 @@
 // json-serializable data to cypress tasks (which run in node)
 // https://docs.cypress.io/api/commands/task#Arguments
 
-import { many_data_types_data } from "./test_tables_data";
+import { many_data_types_rows } from "./test_tables_data";
 
 export const colors27745 = async dbClient => {
   const tableName = "colors27745";
@@ -22,7 +22,7 @@ export const colors27745 = async dbClient => {
     { name: "blue" },
   ]);
 
-  return true;
+  return null;
 };
 
 export const scoreboard_actions = async dbClient => {
@@ -54,7 +54,7 @@ export const scoreboard_actions = async dbClient => {
     { team_name: "Nifty Narwhals", score: 100 },
   ]);
 
-  return true;
+  return null;
 };
 
 export const many_data_types = async dbClient => {
@@ -98,6 +98,6 @@ export const many_data_types = async dbClient => {
     table.binary("binary");
   });
 
-  await dbClient(tableName).insert(many_data_types_data);
-  return true;
+  await dbClient(tableName).insert(many_data_types_rows);
+  return null;
 };
