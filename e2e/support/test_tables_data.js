@@ -42,7 +42,7 @@ export const many_data_types_rows = [
     boolean: false,
     date: "2020-02-01",
     datetime: "2020-02-01 12:30:30",
-    datetimeTZ: "2020-02-01 12:30:30Z00:00",
+    datetimeTZ: "2020-02-01 12:30:30",
     time: "12:30:30",
     timestamp: "2020-02-01 12:30:30",
     timestampTZ: "2020-02-01 12:30:30",
