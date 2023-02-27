@@ -41,6 +41,11 @@ const structuredQueryFieldOptions = (
   columns: DatasetColumn[],
 ) => {
   const options = query.fieldsOptions();
+  // Remove join alias from source table (#28663)
+  options.dimensions = options.dimensions.map(dimension =>
+    dimension.withoutJoinAlias(),
+  );
+
   const allFields = options.dimensions.concat(
     options.fks.reduce(
       (memo, fk) => memo.concat(fk.dimensions),
