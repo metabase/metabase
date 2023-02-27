@@ -208,6 +208,110 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
+(defn- ensure-card-sourcing
+  "Ensure that destination data is only derived from source data.
+  This is a check against a card being generated that presents results unavailable to it with respect to its source data."
+  [{source-card-id     :id
+    source-database-id :database_id
+    source-table-id    :table_id
+    source-meta        :result_metadata
+    :as                _source-card}
+   {magic-card-table-id    :table_id
+    magic-card-database-id :database_id
+    magic-card-query       :dataset_query
+    :as                    _magic-card}]
+  (let [valid-source-ids (set (map (fn [{:keys [name id]}] (or id name)) source-meta))
+        {query-db-id  :database
+         query-actual :query} magic-card-query
+        {source-table :source-table
+         breakout     :breakout} query-actual]
+    (is (= source-database-id magic-card-database-id))
+    (is (= source-database-id query-db-id))
+    (is (= source-table-id magic-card-table-id))
+    (is (= (format "card__%s" source-card-id) source-table))
+    (is (= true (every? (fn [[_ id]] (valid-source-ids id)) breakout)))))
+
+(defn- ensure-dashboard-sourcing [source-card dashboard]
+  (doseq [magic-card (->> dashboard
+                          :ordered_cards
+                          (filter :card)
+                          (map :card))]
+    (ensure-card-sourcing source-card magic-card)))
+
+(defn- ensure-single-table-sourced
+  "Check that the related table from the x-ray is the table we are sourcing from.
+  This is applicable for a query/card/etc/ that is sourced directly from one table only."
+  [table-id dashboard]
+  (is (=
+       (format "/auto/dashboard/table/%s" table-id)
+       (-> dashboard :related :zoom-out first :url))))
+
+(deftest basic-root-model-test
+  ;; These test scenarios consist of a single model sourced from one table.
+  ;; Key elements being tested:
+  ;; - The dashboard should only present data visible to the model
+  ;; (don't show non-selected fields from within the model or its parent)
+  ;; - The dashboard should reference its source as a :related field
+  (testing "Simple model with no dimensions detected"
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :query    {:source-table (mt/id :products)
+                                       :fields       [[:field (mt/id :products :category) nil]
+                                                      [:field (mt/id :products :price) nil]]},
+                            :type     :query}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [{source-id :id :as card} {:table_id        (mt/id :products)
+                                                          :collection_id   collection-id
+                                                          :dataset_query   source-query
+                                                          :result_metadata (mt/with-test-user
+                                                                             :rasta
+                                                                             (result-metadata-for-query
+                                                                              source-query))
+                                                          :dataset         true}]]
+            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
+              (ensure-single-table-sourced (mt/id :products) dashboard)
+              ;; At this time, this card has no dimensions, so the only useful thing to produce
+              ;; is a count aggregation. Note that this is example-based, so in the future if we
+              ;; properly detect `:category` as a dimension we'd see another card (potentially a
+              ;; histogram of sum/avg/etc. of price within each category.)
+              (is (= 1 (->> dashboard :ordered_cards (filter :card) count)))
+              (ensure-dashboard-sourcing card dashboard)
+              dashboard))))))
+  (testing "Simple model with a temporal dimension detected"
+    ;; Same as above, but the code should detect the time dimension of the model and present
+    ;; cards with a time axis.
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [temporal-field-id (mt/id :products :created_at)
+              source-query {:database (mt/id)
+                            :query    {:source-table (mt/id :products)
+                                       :fields       [[:field (mt/id :products :category) nil]
+                                                      [:field (mt/id :products :price) nil]
+                                                      [:field temporal-field-id nil]]},
+                            :type     :query}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [{source-id :id :as card} {:table_id        (mt/id :products)
+                                                          :collection_id   collection-id
+                                                          :dataset_query   source-query
+                                                          :result_metadata (mt/with-test-user
+                                                                             :rasta
+                                                                             (result-metadata-for-query
+                                                                              source-query))
+                                                          :dataset         true}]]
+            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                  temporal-field-ids (for [card (:ordered_cards dashboard)
+                                           :let [fields (get-in card [:card :dataset_query :query :breakout])]
+                                           [_ field-id m] fields
+                                           :when (:temporal-unit m)]
+                                       field-id)]
+              (ensure-single-table-sourced (mt/id :products) dashboard)
+              (ensure-dashboard-sourcing card dashboard)
+              ;; We want to produce at least one temporal axis card
+              (is (pos? (count temporal-field-ids)))
+              ;; We only have one temporal field, so ensure that's what's used for the temporal cards
+              (is (every? #{temporal-field-id} temporal-field-ids)))))))))
+
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]

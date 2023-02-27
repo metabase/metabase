@@ -103,9 +103,9 @@
   [[op & args :as metric]]
   (cond
     (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
-    (adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric) (->> args first (db/select-one Metric :id) :name)
-    :else (second args)))
+    (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)                (->> args first (db/select-one Metric :id) :name)
+    :else                                 (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
@@ -223,15 +223,6 @@
   "Is this card or question native (SQL)?"
   (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
-;; MSB - Maybe this isn't right. This is just saying "What is the source of this data?"
-;; We still need to downselect somewhere else.
-;(defn- source-question
-;  [{:keys [result_metadata] :as card-or-question}]
-;  (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
-;    (let [ids (set (map :id result_metadata))]
-;      (-> (db/select-one Card :id source-card-id)
-;          (update :result_metadata (fn [rmd] (filter (comp ids :id) rmd)))))))
-
 (defn- source-question
   [card-or-question]
   (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
@@ -254,19 +245,15 @@
 (defn- source
   [card]
   (cond
+    ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
+    ;; problems as other cards -- The x-ray is not done on the card, but on its source.
     (nested-query? card) (-> card
                              source-question
                              (assoc :entity_type :entity/GenericTable))
-    ;;
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
     ;; This is a non-native question with no ancestors (It is a query on a table).
-    ;; Something like this seems right, but isn't. Not all cards can be treated as tables.
-    ;; It also wreaks havok on some of the tests.
-    ;:else (assoc card :entity_type :entity/GenericTable)
-    ;; TODO - Fix this - This is wrong as it will x-ray the underlying table and not the card itself
     (:dataset card) card
-    :else (->> card table-id (db/select-one Table :id))
-    ))
+    :else (->> card table-id (db/select-one Table :id))))
 
 (defmethod ->root Card
   [card]
@@ -291,8 +278,8 @@
      :query-filter (get-in query [:dataset_query :query :filter])
      :full-name    (cond
                      (native-query? query) (tru "Native query")
-                     (table-like? query) (-> source ->root :full-name)
-                     :else (question-description {:source source} query))
+                     (table-like? query)   (-> source ->root :full-name)
+                     :else                 (question-description {:source source} query))
      :short-name   (source-name {:source source})
      :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json (:dataset_query query)))
      :rules-prefix [(if (table-like? query)
@@ -300,10 +287,10 @@
                       "question")]}))
 
 (defmulti
-  ^{:doc      "Get a reference for a given model to be injected into a template
+  ^{:doc "Get a reference for a given model to be injected into a template
           (either MBQL, native query, or string)."
     :arglists '([template-type model])
-    :private  true}
+    :private true}
   ->reference (fn [template-type model]
                 [template-type (mi/model model)]))
 
@@ -318,8 +305,8 @@
     (if (and earliest latest)
       ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
       (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-        (t/hours 3) :minute
-        (t/days 7) :hour
+        (t/hours 3)  :minute
+        (t/days 7)   :hour
         (t/months 6) :day
         (t/years 10) :month
         :year)
@@ -329,10 +316,10 @@
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
-                     link [:field id {:source-field link}]
+                     link               [:field id {:source-field link}]
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                     id [:field id nil]
-                     :else [:field name {:base-type base_type}]))]
+                     id                 [:field id nil]
+                     :else              [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)
       (mbql.u/with-temporal-unit reference (keyword (or aggregation
@@ -349,10 +336,10 @@
   [_ {:keys [display_name full-name link]}]
   (cond
     full-name full-name
-    link (format "%s → %s"
-                 (-> (db/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
-                 display_name)
-    :else display_name))
+    link      (format "%s → %s"
+                      (-> (db/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                      display_name)
+    :else     display_name))
 
 (defmethod ->reference [:string Table]
   [_ {:keys [display_name full-name]}]
@@ -405,9 +392,15 @@
                         (fn [{:keys [semantic_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
-                            target (recur target)
-                            :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
+                            (#{:type/PK :type/FK} fieldspec)
+                            (isa? semantic_type fieldspec)
+
+                            target
+                            (recur target)
+
+                            :else
+                            (and (not (key-col? field))
+                                 (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
                                  u/lower-case-en
@@ -460,9 +453,7 @@
                        set)
                   u/the-id)
             (field-candidates context (dissoc constraints :links_to)))
-    ;; e.g. [:entity/GenericTable :type/Country]
     (let [[tablespec fieldspec] field_type]
-      ;;fieldspec is a :type/Foo
       (if fieldspec
         (mapcat (fn [table]
                   (some->> table
@@ -482,7 +473,7 @@
   (->> definition
        (field-candidates context)
        (map #(->> (merge % definition)
-                  vector                                    ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
+                  vector ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
                   (assoc definition :matches)
                   (hash-map (name identifier))))))
 
@@ -514,11 +505,10 @@
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
-                             1 a
-                             0 (update a :matches concat (:matches b))
+                             1  a
+                             0  (update a :matches concat (:matches b))
                              -1 b))
-              {})
-       ))
+              {})))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -627,7 +617,7 @@
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
               :and (mapcat collect-dimensions args)
-              := (filters/collect-field-references args)
+              :=   (filters/collect-field-references args)
               nil))]
     (->> root
          :cell-query
@@ -687,9 +677,9 @@
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics metrics
-                             :dimensions (map (comp :name bindings second) dimensions)
-                             :score score))))))))
+                             :metrics       metrics
+                             :dimensions    (map (comp :name bindings second) dimensions)
+                             :score         score))))))))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.
@@ -711,10 +701,10 @@
    be returned."
   [table]
   (for [{:keys [id target]} (field/with-targets
-                             (db/select Field
-                               :table_id (u/the-id table)
-                               :fk_target_field_id [:not= nil]
-                               :active true))
+                              (db/select Field
+                                :table_id           (u/the-id table)
+                                :fk_target_field_id [:not= nil]
+                                :active             true))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
@@ -762,8 +752,7 @@
   context)
 
 (defn- relevant-fields
-  "Source fields from tables that are applicable to the entity being x-rayed.
-  MSB NOTE: This may be true - Just trying to document how it works."
+  "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
   (let [engine (source->engine source)]
     (if (mi/instance-of? Table source)
@@ -794,8 +783,7 @@
   "Create the underlying context to which we will add metrics, dimensions, and filters."
   [{:keys [source entity] :as root}, {rule-name :rule :as rule} :- rules/Rule]
   {:pre [source]}
-  (let [;; TODO MSB - This is sus. What if the source is not a table?
-        tables        (concat [source] (when (mi/instance-of? Table source)
+  (let [tables        (concat [source] (when (mi/instance-of? Table source)
                                          (linked-tables source)))
         table->fields (relevant-fields root tables)]
     {:source       (assoc source :fields (table->fields source))
@@ -814,87 +802,11 @@
       (assoc context :filters (resolve-overloading context (:filters rule)))
       (inject-root context (:entity root)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;; Begin MSB make-context exploration ;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; http://localhost:3000/model/181-simple-raw-model/notebook
-;; This is a model that selects ID, Subtotal, and Created At from Orders and joins
-;; on people to get username and products to get category. Note that the automagic
-;; dashboard (locally http://localhost:3000/auto/dashboard/question/181) only shows
-;; the native columns (nothing from the joined tables).
-;;
-;; The approach I want to take is to do a fanout of field queries in table->fields
-;; of make-context to choose the right columns to work off of.
-;(let [{:keys [result_metadata] :as entity} (db/select-one 'Card :id 181)
-;      valid-fields (map :field_ref result_metadata)
-;      root (->root entity)
-;      [_ rule _] (find-first-match-rule root)
-;      context (make-context root rule)]
-;  ;; These actually align. So why no cards?
-;  [valid-fields
-;   (->> context :source :fields (map :id))]
-;  ;; I think we miss that category is a dimension
-;  (db/select [Field :id :name :semantic_type :base_type :effective_type :fingerprint] :id [:in [78 74 79 91 96]])
-;  ;; I think this is a big part of the problem -- It returns only column 79 (created_at) as a dimension
-;  ;; So, next question -- How are dimensions handled/matched?
-;  (:dimensions context)
-;  rule
-;  )
-;
-;; Here we're gonna drill into bind dimensions
-#_
-(let [{:keys [result_metadata] :as entity} (db/select-one 'Card :id 181)
-      valid-fields (map :field_ref result_metadata)
-      root         (->root entity)
-      [_ rule _] (find-first-match-rule root)
-      context      (make-base-context root rule)
-      dimensions   (:dimensions rule)]
-  ;(bind-dimensions context dimensions)
-  (->> dimensions
-       (map first)
-       (map (partial make-binding context))
-       ;(apply concat)
-       ;(group-by (comp id-or-name first :matches val first))
-       ;(mapv (comp most-specific-definition val))
-       ;(apply merge-with (fn [a b]
-       ;                    (case (compare (:score a) (:score b))
-       ;                      1 a
-       ;                      0 (update a :matches concat (:matches b))
-       ;                      -1 b))
-       ;       {})
-       )
-  (field-candidates context {:field_type [:entity/GenericTable :type/Country], :score 100})
-  (field-candidates context {:field_type [:type/DateTime], :score 60})
-  (filter-fields {:fieldspec       :type/DateTime
-                  :named           nil
-                  :max-cardinality nil}
-                 (-> context :source :fields))
-  (filter (->> {:fieldspec       :type/DateTime
-                :named           nil
-                :max-cardinality nil}
-               (keep (fn [[k v]]
-                       (when-let [pred (field-filters k)]
-                         (some-> v pred))))
-               (apply every-pred))
-          (-> context :source :fields))
-
-  (let [fieldspec       :type/DateTime
-        field (db/select-one Field :id 79)]
-    (and (not (key-col? field)) (field-isa? field fieldspec))
-    ((juxt :base_type :semantic-type) field))
-
-  ;(:tables context)
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;; End MSB make-context exploration ;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a rule and is not a db entity Card."
   [context {:keys [cards]}]
   (some->> cards
-           ;; Cards is a seq of maps, each with one item, so why the first?
-           ;; At least the GenericTable rule is this way
-           ;; TODO - Look at all rules for any exceptions
            (map first)
            (map-indexed (fn [position [identifier card]]
                           (some->> (assoc card :position position)
@@ -924,7 +836,7 @@
 
   Returns nil if no cards are produced."
   [root, {rule-name :rule :as rule} :- rules/Rule]
-  (log/infof "Applying rule '%s'" rule-name)
+  (log/debugf "Applying rule '%s'" rule-name)
   (let [context   (make-context root rule)
         dashboard (make-dashboard root rule context)
         filters   (->> rule
@@ -936,7 +848,7 @@
               (-> rule :cards nil?))
       [(assoc dashboard
          :filters filters
-         :cards cards)
+         :cards   cards)
        rule
        context])))
 
@@ -1011,21 +923,21 @@
   "We fill available slots round-robin style. Each selector is a list of fns that are tried against
    `related` in sequence until one matches."
   [available-slots selectors related]
-  (let [pop-first    (fn [m ks]
-                       (loop [[k & ks] ks]
-                         (let [item (-> k m first)]
-                           (cond
-                             item [item (update m k rest)]
-                             (empty? ks) [nil m]
-                             :else (recur ks)))))
-        count-leafs  (comp count (partial mapcat val))
+  (let [pop-first         (fn [m ks]
+                            (loop [[k & ks] ks]
+                              (let [item (-> k m first)]
+                                (cond
+                                  item        [item (update m k rest)]
+                                  (empty? ks) [nil m]
+                                  :else       (recur ks)))))
+        count-leafs        (comp count (partial mapcat val))
         [selected related] (reduce-kv
                             (fn [[selected related] k v]
                               (loop [[selector & remaining-selectors] v
-                                     related  related
-                                     selected selected]
+                                     related                          related
+                                     selected                         selected]
                                 (let [[next related] (pop-first related (mapcat shuffle selector))
-                                      num-selected (count-leafs selected)]
+                                      num-selected   (count-leafs selected)]
                                   (cond
                                     (= num-selected available-slots)
                                     (reduced [selected related])
@@ -1113,8 +1025,9 @@
        (remove (comp nil? second))
        (into {})))
 
-
-(defn find-first-match-rule [{:keys [rule show rules-prefix full-name] :as root}]
+(defn- find-first-match-rule
+  "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
+  [{:keys [rule show rules-prefix full-name] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
@@ -1142,12 +1055,12 @@
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)
-        (assoc :related (related context rule)
-               :more (when (and (not= show :all)
-                                (-> dashboard :cards count (> show)))
-                       (format "%s#show=all" (:url root)))
+        (assoc :related           (related context rule)
+               :more              (when (and (not= show :all)
+                                             (-> dashboard :cards count (> show)))
+                                    (format "%s#show=all" (:url root)))
                :transient_filters (:query-filter context)
-               :param_fields (->> context :query-filter (filter-referenced-fields root))))))
+               :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
 
 
 (defmulti automagic-analysis
@@ -1187,8 +1100,8 @@
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (filters/collect-field-references breakout))
-        :let [field (->field root field-clause)]
-        :when field]
+        :let         [field (->field root field-clause)]
+        :when        field]
     field))
 
 (defn- decompose-question
@@ -1196,9 +1109,9 @@
   (letfn [(analyze [x]
             (try
               (automagic-analysis x (assoc opts
-                                      :source (:source root)
-                                      :query-filter (:query-filter root)
-                                      :database (:database root)))
+                                           :source       (:source root)
+                                           :query-filter (:query-filter root)
+                                           :database     (:database root)))
               (catch Throwable e
                 (throw (ex-info (tru "Error decomposing question: {0}" (ex-message e))
                                 {:root root, :question question, :object x}
@@ -1221,26 +1134,26 @@
   [t-str unit]
   (let [dt (u.date/parse t-str)]
     (case unit
-      :second (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
-      :minute (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
-      :hour (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
-      :day (tru "on {0}" (t/format "MMMM d, YYYY" dt))
-      :week (tru "in {0} week - {1}"
-                 (pluralize (u.date/extract dt :week-of-year))
-                 (str (u.date/extract dt :year)))
-      :month (tru "in {0}" (t/format "MMMM YYYY" dt))
-      :quarter (tru "in Q{0} - {1}"
-                    (u.date/extract dt :quarter-of-year)
-                    (str (u.date/extract dt :year)))
-      :year (t/format "YYYY" dt)
-      :day-of-week (t/format "EEEE" dt)
-      :hour-of-day (tru "at {0}" (t/format "h a" dt))
-      :month-of-year (t/format "MMMM" dt)
+      :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
+      :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
+      :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
+      :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
+      :week            (tru "in {0} week - {1}"
+                            (pluralize (u.date/extract dt :week-of-year))
+                            (str (u.date/extract dt :year)))
+      :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
+      :quarter         (tru "in Q{0} - {1}"
+                            (u.date/extract dt :quarter-of-year)
+                            (str (u.date/extract dt :year)))
+      :year            (t/format "YYYY" dt)
+      :day-of-week     (t/format "EEEE" dt)
+      :hour-of-day     (tru "at {0}" (t/format "h a" dt))
+      :month-of-year   (t/format "MMMM" dt)
       :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year) (u.date/extract dt unit))))
+       :week-of-year)  (u.date/extract dt unit))))
 
 (defn- field-reference->field
   [root field-reference]
@@ -1256,7 +1169,7 @@
       (assoc :unit temporal-unit))))
 
 (defmulti
-  ^{:private  true
+  ^{:private true
     :arglists '([fieldset [op & args]])}
   humanize-filter-value (fn [_ [op & _args]]
                           (qp.util/normalize-token op)))
@@ -1314,9 +1227,9 @@
   "Recursively finds key in coll, returns true or false"
   [coll k]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-             (loop [x coll-zip]
-               (when-not (zip/end? x)
-                 (if (k (zip/node x)) true (recur (zip/next x))))))))
+            (loop [x coll-zip]
+              (when-not (zip/end? x)
+                (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]
@@ -1360,13 +1273,13 @@
 
 (defmethod automagic-analysis Query
   [query {:keys [cell-query] :as opts}]
-  (let [root       (->root query)
+  (let [root     (->root query)
         cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
-        cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint
-                           (encode-base64-json (:dataset_query query))
-                           (encode-base64-json cell-query))]
+        cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
+                         (encode-base64-json (:dataset_query query))
+                         (encode-base64-json cell-query))]
     (maybe-enrich-joins
      query
      (if (table-like? query)
@@ -1393,7 +1306,7 @@
 (defn- enhance-table-stats
   "Add a stats field to each provided table with the following data:
   - num-fields: The number of Fields in each table
-  - list-like?:
+  - list-like?: Is this field 'list like'
   - link-table?: Is every Field a foreign key to another table"
   [tables]
   (when (not-empty tables)
@@ -1451,9 +1364,9 @@
   ([database schema]
    (let [rules (rules/get-rules ["table"])]
      (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
-                 (cond-> [:db_id (u/the-id database)
+                 (cond-> [:db_id           (u/the-id database)
                           :visibility_type nil
-                          :active true]
+                          :active          true]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
