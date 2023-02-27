@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -38,7 +38,7 @@ const setupState = ({
 };
 
 const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  nock(location.origin).get("/api/premium-features/token/status").reply(200, {
+  fetchMock.get("path:/api/premium-features/token/status", {
     valid,
     "valid-thru": "2099-12-31T12:00:00",
     features,
@@ -46,18 +46,15 @@ const mockTokenStatus = (valid: boolean, features: string[] = []) => {
 };
 
 const mockTokenNotExist = () => {
-  nock(location.origin).get("/api/premium-features/token/status").reply(404);
+  fetchMock.get("path:/api/premium-features/token/status", 404);
 };
 
 const mockUpdateToken = (valid: boolean) => {
-  nock(location.origin)
-    .put("/api/setting/premium-embedding-token")
-    .reply(valid ? 200 : 400);
+  fetchMock.put("path:/api/setting/premium-embedding-token", valid ? 200 : 400);
 };
 
 describe("LicenseAndBilling", () => {
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 

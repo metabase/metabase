@@ -390,3 +390,7 @@ export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
 
   return mergedColumnsResult;
 };
+
+export function getCardKey(card) {
+  return `${card?.id ?? "unsaved"}`;
+}

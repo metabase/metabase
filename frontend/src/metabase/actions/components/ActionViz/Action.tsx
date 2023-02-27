@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 
 import { executeRowAction } from "metabase/dashboard/actions";
 
+import Tooltip from "metabase/core/components/Tooltip";
+
 import type {
   ActionDashboardCard,
   ParametersForActionExecution,
@@ -33,6 +35,7 @@ import {
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
+import { FullContainer } from "./ActionButton.styled";
 
 export interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
@@ -140,13 +143,17 @@ export function ActionFn(props: ActionProps) {
       : t`Actions are not enabled for this database`;
 
     return (
-      <ActionButtonView
-        disabled
-        icon="bolt"
-        tooltip={tooltip}
-        settings={props.settings}
-        focus={props.isEditingDashcard}
-      />
+      <Tooltip tooltip={tooltip}>
+        <FullContainer>
+          <ActionButtonView
+            disabled
+            icon="bolt"
+            tooltip={tooltip}
+            settings={props.settings}
+            focus={props.isEditingDashcard}
+          />
+        </FullContainer>
+      </Tooltip>
     );
   }
 

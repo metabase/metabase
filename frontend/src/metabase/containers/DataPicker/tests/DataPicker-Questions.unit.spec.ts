@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -26,10 +25,6 @@ const ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID =
 describe("DataPicker — picking questions", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("opens the picker", async () => {

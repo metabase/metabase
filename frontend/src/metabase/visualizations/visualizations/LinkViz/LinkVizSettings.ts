@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 export const settings = {
   uiName: "Link",
+  canSavePng: false,
   identifier: "link",
   iconName: "link",
   disableSettingsConfig: true,

@@ -215,7 +215,7 @@
 
     (grouped-datetime :day :timestamp) ;; -> `cast(timestamp AS date)` [honeysql equivalent]"
   [unit expr]
-  (binding [hx/*honey-sql-version* 2]
+  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
     (sql.qp/date (mdb/db-type) (keyword unit) expr)))
 
 (defn first-non-null

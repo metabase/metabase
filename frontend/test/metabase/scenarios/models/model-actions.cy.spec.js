@@ -154,7 +154,10 @@ describe(
       popover().findByText("Action").click();
 
       cy.findByText("Select a database").click();
-      popover().findByText("QA Postgres12").click();
+      popover().within(() => {
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("QA Postgres12").click();
+      });
 
       fillActionQuery(QUERY);
       cy.findByRole("button", { name: "Save" }).click();
@@ -236,7 +239,7 @@ describe(
         cy.visit(url);
 
         // Order 1 has quantity 2 by default, so we're not actually mutating data
-        cy.findByLabelText("id").type("1");
+        cy.findByLabelText("Id").type("1");
         cy.findByLabelText(/quantity/i).type("2");
 
         cy.findByRole("button", { name: "Submit" }).click();

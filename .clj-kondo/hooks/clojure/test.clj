@@ -11,10 +11,10 @@
   (letfn [(f [form]
             (when-let [sexpr (and (hooks/token-node? form)
                                   (hooks/sexpr form))]
-                (when (disallowed-parallel-forms sexpr))
-                    (hooks/reg-finding! (assoc (meta form)
-                                               :message (format "%s is not allowed inside a ^:parallel test" sexpr)
-                                               :type :metabase/validate-deftest)))))))
+              (when (disallowed-parallel-forms sexpr)
+                (hooks/reg-finding! (assoc (meta form)
+                                           :message (format "%s is not allowed inside a ^:parallel test" sexpr)
+                                           :type :metabase/validate-deftest)))))
           (walk [form]
             (f form)
             (doseq [child (:children form)]

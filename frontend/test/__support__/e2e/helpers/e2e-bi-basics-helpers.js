@@ -1,5 +1,10 @@
 import { popover } from "__support__/e2e/helpers";
 
+/**
+ * Initiate Summarize action
+ *
+ * @param {(undefined|"notebook")} mode
+ */
 export function summarize({ mode } = {}) {
   initiateAction("Summarize", mode);
 }
@@ -10,6 +15,10 @@ export function filter({ mode } = {}) {
 
 export function join() {
   initiateAction("Join", "notebook");
+}
+
+export function addCustomColumn() {
+  initiateAction("CustomColumn", "notebook");
 }
 
 export function filterField(
@@ -67,7 +76,7 @@ function changeValue(subject, newValue, placeholder) {
 /**
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.
  *
- * @param {("Summarize"|"Filter")} actionType
+ * @param {("Summarize"|"Filter"|"Join"|"CustomColumn")} actionType
  * @param {(undefined|"notebook")} mode
  */
 function initiateAction(actionType, mode) {
@@ -83,31 +92,19 @@ function initiateAction(actionType, mode) {
   }
 }
 
+const ACTION_TYPE_TO_ICON_MAP = {
+  Filter: "filter",
+  Summarize: "sum",
+  Join: "join_left_outer",
+  CustomColumn: "add_data",
+};
+
 /**
  * Get the appropriate icon depending on the action type.
  *
- * @param {("Summarize"|"Filter")} actionType
+ * @param {("Summarize"|"Filter"|"Join"|"CustomColumn")} actionType
  * @returns string
  */
 function getIcon(actionType) {
-  let icon;
-
-  switch (actionType) {
-    case "Filter":
-      icon = "filter";
-      break;
-
-    case "Summarize":
-      icon = "sum";
-      break;
-
-    case "Join":
-      icon = "join_left_outer";
-      break;
-
-    default:
-      break;
-  }
-
-  return icon;
+  return ACTION_TYPE_TO_ICON_MAP[actionType];
 }
