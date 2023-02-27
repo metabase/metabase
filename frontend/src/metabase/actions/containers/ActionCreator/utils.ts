@@ -117,17 +117,6 @@ export const setParameterTypesFromFieldSettings = (
   });
 };
 
-export const removeOrphanSettings = (
-  formSettings: ActionFormSettings,
-  parameters: Parameter[],
-): ActionFormSettings => {
-  const parameterIds = parameters.map(parameter => parameter.id);
-  return {
-    ...formSettings,
-    fields: _.pick(formSettings.fields || {}, parameterIds),
-  };
-};
-
 export const syncFieldsWithParameters = (
   settings: ActionFormSettings,
   parameters: Parameter[],
@@ -164,10 +153,7 @@ export const convertQuestionToAction = (
     formSettings,
     cleanQuestion.parameters(),
   );
-  const visualization_settings = removeOrphanSettings(
-    syncFieldsWithParameters(formSettings, parameters),
-    parameters,
-  );
+
   return {
     id: question.id(),
     name: question.displayName() as string,
@@ -175,7 +161,7 @@ export const convertQuestionToAction = (
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
-    visualization_settings,
+    visualization_settings: formSettings,
   };
 };
 
