@@ -1,10 +1,13 @@
 import { msgid, ngettext } from "ttag";
 import { Moment } from "moment-timezone";
-import {
-  format_time,
-  format_time_with_unit,
-} from "cljs/metabase.shared.formatting.time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
+
 import type { DatetimeUnit } from "metabase-types/api/query";
+import {
+  DEFAULT_TIME_STYLE,
+  getTimeFormatFromStyle,
+  hasHour,
+} from "./datetime-utils";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;
@@ -25,12 +28,15 @@ export function duration(milliseconds: number) {
 }
 
 export function formatTime(time: Moment) {
-  return format_time(time);
+  const parsedTime = parseTime(time);
+
+  return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
 }
 
 interface TimeWithUnitType {
   local?: boolean;
   time_enabled?: "minutes" | "milliseconds" | "seconds" | boolean;
+  time_format?: string;
   time_style?: string;
 }
 
@@ -39,5 +45,24 @@ export function formatTimeWithUnit(
   unit: DatetimeUnit,
   options: TimeWithUnitType = {},
 ) {
-  return format_time_with_unit(value, { ...options, unit });
+  const m = parseTimestamp(value, unit, options.local);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const timeStyle = options.time_style
+    ? options.time_style
+    : DEFAULT_TIME_STYLE;
+
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
+  const timeFormat = options.time_format
+    ? options.time_format
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+
+  return m.format(timeFormat);
 }

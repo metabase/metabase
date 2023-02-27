@@ -239,7 +239,7 @@ describe(
         cy.visit(url);
 
         // Order 1 has quantity 2 by default, so we're not actually mutating data
-        cy.findByLabelText("id").type("1");
+        cy.findByLabelText("Id").type("1");
         cy.findByLabelText(/quantity/i).type("2");
 
         cy.findByRole("button", { name: "Submit" }).click();

@@ -50,6 +50,7 @@
   ;; :keyword-binding                       {:level :warning}
   ;; :main-without-gen-class                {:level :warning}
   ;; :shadowed-var                          {:level :warning}
+
   :deprecated-var
   {:exclude
    {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
@@ -65,18 +66,58 @@
     metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*field-options*               {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*source-query*                {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*table-alias*                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/escape-alias                  {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->alias                  {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->identifier             {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/prefix-field-alias            {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
+    metabase.util.honeysql-extensions/*                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/*honey-sql-version*                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/+                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/-                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->boolean                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->date                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->datetime                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->integer                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->time                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->timestamp                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->timestamp-with-time-zone                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions//                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/IdentifierType                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/abs                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/at-time-zone                               {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/call                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/cast                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/cast-unless-type-in                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/ceil                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/concat                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/database-type                              {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/day                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/dec                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/floor                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/format                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/hour                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/identifier                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/identifier?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/inc                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/is-of-type?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/literal                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/maybe-cast                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/minute                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/mod                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/month                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/quarter                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/quoted-cast                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/raw                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/round                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/second                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/type-info                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/type-info->db-type                         {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/unwrap-typed-honeysql-form                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/week                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/with-database-type-info                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/with-type-info                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/year                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
@@ -103,7 +144,7 @@
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces             {:level :warning}
+  :unsorted-required-namespaces {:level :warning}
 
   :consistent-alias
   {:aliases
@@ -542,6 +583,7 @@
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
+   metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
