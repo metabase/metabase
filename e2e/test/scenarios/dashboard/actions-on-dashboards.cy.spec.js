@@ -495,6 +495,8 @@ function createDashboardWithActionButton({
     cy.button("Pick an action").click();
   });
 
+  cy.wait("@getActions");
+
   cy.findByRole("dialog").within(() => {
     cy.findByText(modelName).click();
     cy.findByText(actionName).click();
