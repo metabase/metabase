@@ -14,7 +14,7 @@
     [:map-of
      :keyword
      :any]
-    (deferred-tru "value must a map of keywords to any values")))
+    (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint
