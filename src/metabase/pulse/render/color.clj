@@ -4,9 +4,14 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.js-engine :as js]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]))
+   [schema.core :as s])
+  (:import
+    (metabase.pulse.render.common NumericWrapper)))
+
 
 (set! *warn-on-reflection* true)
 
@@ -54,4 +59,11 @@
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
   for more info."
   ^String [color-selector cell-value column-name row-index]
-  (.asString (js/execute-fn color-selector cell-value row-index column-name)))
+  (let [cell-value (cond
+                     (instance? NumericWrapper cell-value)
+                     (-> ^NumericWrapper cell-value
+                         .toString
+                         (str/replace #"," ""))
+                     :else
+                     cell-value)]
+   (.asString (js/execute-fn color-selector cell-value row-index column-name))))
