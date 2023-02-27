@@ -2,9 +2,6 @@ codecov:
     bot: "codecov-io"
     require_ci_to_pass: false
 
-ignore:
-  - "**/*.unit.*"
-
 coverage:
   status:
     project:

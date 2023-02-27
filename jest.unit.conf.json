@@ -50,7 +50,8 @@
     "/frontend/src/metabase/internal/",
     "/frontend/test/",
     ".styled.{jsx,tsx}",
-    ".info.js"
+    ".info.js",
+    "**/*.unit.*"
   ],
   "testEnvironment": "jest-environment-jsdom",
   "watchPlugins": [
