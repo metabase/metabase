@@ -1,5 +1,5 @@
-(ns metabase.api.logs-test
-  "Tests for /api/logs endpoints"
+(ns metabase-enterprise.advanced-config.api.logs-test
+  "Tests for /api/ee/logs endpoints"
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
@@ -28,7 +28,7 @@
                                                    {:executor_id user-id
                                                     :started_at  (t/minus now (t/days 32))})]]
         (is (= [(select-keys qe-a [:started_at :id])]
-               (->> (mt/user-http-request test-user :get 200 "logs/query_execution/30")
+               (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/30")
                     (filter #(#{user-id} (:executor_id %)))
                     (map #(select-keys % [:started_at :id]))))
             "Only Query Executions within `:days` are returned.")))))

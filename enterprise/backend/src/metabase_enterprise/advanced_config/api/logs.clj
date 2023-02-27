@@ -1,4 +1,4 @@
-(ns metabase.api.logs
+(ns metabase-enterprise.advanced-config.api.logs
   "/api/logs endpoints.
 
   These endpoints are meant to be used by admins to download logs before entries are auto-removed after the day limit.
