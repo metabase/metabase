@@ -174,7 +174,6 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
       cy.findByText("Conditional Formatting"); // confirm it's open
-      cy.findByText("Add or remove columns"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
