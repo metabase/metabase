@@ -11,13 +11,18 @@
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting define-multi-setting-impl]]
    [metabase.models.task-history :as task-history]
+   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; Load EE implementation if available
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.task.truncate-audit-log))
 
 (define-multi-setting audit-max-retention-days
   (deferred-tru "Retention policy for the `query_execution` table.")
