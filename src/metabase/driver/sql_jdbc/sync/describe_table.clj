@@ -413,7 +413,6 @@
           (if (empty? unfolding-json-fields)
             #{}
             (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-              (sc.api/spy)
               (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
                     table-identifier (apply hx/identifier :table table-identifier-info)
                     sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
