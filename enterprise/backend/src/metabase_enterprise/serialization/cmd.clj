@@ -176,12 +176,13 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
-(defn- v2-extract [opts]
-  ;; if opts has `collections` (a comma-separated string) then convert those to a list of `:targets`
+(defn- v2-extract
+  "Extract entities to store. Takes map of options.
+   :collections - optional seq of collection IDs"
+  [{:keys [collections] :as opts}]
   (let [opts (cond-> opts
-               (:collections opts)
-               (assoc :targets (for [c (str/split (:collections opts) #",")]
-                                 ["Collection" (Integer/parseInt c)])))]
+               collections
+               (assoc :targets (for [c collections] ["Collection" c])))]
     ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
     ;; elsewhere) use [[v2.extract/extract-subtrees]]
     (if (:targets opts)

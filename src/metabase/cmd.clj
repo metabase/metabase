@@ -175,13 +175,19 @@
                        (cmd-args->map options))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path options)))
 
+(defn- parse-int-list
+  [s]
+  (when-not (str/blank? s)
+    (map #(Integer/parseInt %) (str/split s #","))))
+
 (defn ^:command export
   "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
 
   `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
   archived entities."
   [path & options]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path (cmd-args->map options)))
+  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them."
