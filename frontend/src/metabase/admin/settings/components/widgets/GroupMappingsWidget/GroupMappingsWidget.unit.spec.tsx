@@ -51,12 +51,9 @@ describe("GroupMappingsWidget", () => {
       // Confirm remove
       userEvent.click(screen.getByText("Yes"));
 
-      await waitFor(
-        () => {
-          expect(onChangeSettingSpy).toHaveBeenCalledTimes(1);
-        },
-        { timeout: 10000 },
-      );
+      await waitFor(() => {
+        expect(onChangeSettingSpy).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
@@ -112,7 +109,7 @@ describe("GroupMappingsWidget", () => {
 
     it("handles deleting mapped groups after deleting mapping", async () => {
       fetchMock.delete("path:/api/permissions/group/3", 200);
-      fetchMock.delete("/api/permissions/group/4", 200);
+      fetchMock.delete("path:/api/permissions/group/4", 200);
       setup();
 
       expect(await screen.findByText("cn=People")).toBeInTheDocument();

@@ -16,8 +16,6 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -269,8 +267,7 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  (binding [hx/*honey-sql-version* 2]
-    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type))))
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj

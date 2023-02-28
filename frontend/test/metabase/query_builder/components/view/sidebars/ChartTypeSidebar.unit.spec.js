@@ -47,6 +47,21 @@ describe("ChartSettingsSidebar", () => {
     expect(updateQuestion).toHaveBeenCalled();
   });
 
+  it("should transition to settings page when clicking on the active display type", () => {
+    const onOpenChartSettings = jest.fn();
+
+    setup({
+      onOpenChartSettings,
+    });
+
+    fireEvent.click(screen.getByTestId("Gauge-button"));
+
+    expect(onOpenChartSettings).toHaveBeenCalledWith({
+      initialChartSettings: { section: "Data" },
+      showSidebarTitle: true,
+    });
+  });
+
   it("should display a gear icon when hovering selected display type", () => {
     const onOpenChartSettings = jest.fn();
     setup({

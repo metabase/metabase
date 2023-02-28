@@ -103,17 +103,12 @@ describe("scenarios > admin > databases > list", () => {
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
-  it.skip("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.request("GET", "/api/database/1").then(({ body }) => {
-      const stubbedResponse = {
-        ...body,
-        details: null,
-      };
-
-      cy.intercept("GET", "/api/database/1", req => {
-        req.reply({ body: stubbedResponse });
-      }).as("loadDatabase");
-    });
+  it("should handle malformed (null) database details (metabase#25715)", () => {
+    cy.intercept("GET", "/api/database/1", req => {
+      req.reply(res => {
+        res.body.details = null;
+      });
+    }).as("loadDatabase");
 
     cy.visit("/admin/databases/1");
     cy.wait("@loadDatabase");

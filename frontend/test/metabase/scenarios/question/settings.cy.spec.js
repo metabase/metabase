@@ -263,8 +263,8 @@ describe("scenarios > question > settings", () => {
 
       cy.findByText("In every table cell").click();
 
-      cy.findByText("₿2.07000000");
-      cy.findByText("₿6.10000000");
+      cy.findByText("₿ 2.07");
+      cy.findByText("₿ 6.10");
     });
   });
 

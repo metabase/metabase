@@ -60,7 +60,7 @@ export default class QueryVisualization extends Component {
     } = this.props;
 
     return (
-      <div className={cx(className, "relative stacking-context")}>
+      <div className={cx(className, "relative stacking-context full-height")}>
         {isRunning ? (
           <VisualizationRunningState
             className="spread z2"
