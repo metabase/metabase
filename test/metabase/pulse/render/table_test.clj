@@ -2,11 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.test :as mt])
-  (:import
-    (metabase.pulse.render.common NumericWrapper)))
+   [metabase.test :as mt]))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -62,19 +61,21 @@
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]
-                              [7 8 (NumericWrapper. "4.5")]
-                              [7 8 (NumericWrapper. "1,001")]]}]
-    (is (= {"1"     nil
-            "2"     nil
-            "3"     "rgba(0, 255, 0, 0.75)"
-            "4"     nil
-            "4.5"   "rgba(0, 191, 64, 0.75)"
-            "5"     nil
-            "6"     "rgba(0, 128, 128, 0.75)"
-            "7"     "rgba(255, 0, 0, 0.65)"
-            "8"     "rgba(255, 0, 0, 0.2)"
-            "9"     "rgba(0, 0, 255, 0.75)"
-            "1,001" "rgba(0, 0, 255, 0.75)"}
+                              [7 8 (common/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
+                              [7 8 (common/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
+                              [7 8 (common/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
+    (is (= {"1"       nil
+            "2"       nil
+            "3"       "rgba(0, 255, 0, 0.75)"
+            "4"       nil
+            "4.5"     "rgba(0, 191, 64, 0.75)"
+            "5"       nil
+            "6"       "rgba(0, 128, 128, 0.75)"
+            "7"       "rgba(255, 0, 0, 0.65)"
+            "8"       "rgba(255, 0, 0, 0.2)"
+            "9"       "rgba(0, 0, 255, 0.75)"
+            "1.001,5" "rgba(0, 0, 255, 0.75)"
+            "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
                (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
                find-table-body

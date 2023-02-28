@@ -47,7 +47,7 @@
   (set (map (comp count :row) results)))
 
 (defn- number [x]
-  (common/map->NumericWrapper {:num-str x}))
+  (common/map->NumericWrapper {:num-str x :value x}))
 
 (def ^:private default-header-result
   [{:row       [(number "ID") (number "Latitude") "Last Login" "Name"]

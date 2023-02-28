@@ -4,7 +4,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.pulse.render.common :as common]
    [metabase.pulse.render.js-engine :as js]
    [metabase.util.i18n :refer [trs]]
@@ -53,24 +52,12 @@
                       rows
                       (json/generate-string cols)
                       (json/generate-string viz-settings)))
-
-(defn- parse-number
-  [s]
-  (if (str/includes? s ".")
-    (parse-double s)
-    (parse-long s)))
-
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
   for more info."
   ^String [color-selector cell-value column-name row-index]
-  (let [cell-value (cond
-                     (instance? NumericWrapper cell-value)
-                     (-> ^NumericWrapper cell-value
-                         .toString
-                         (str/replace #"," "")
-                         parse-number)
-                     :else
+  (let [cell-value (if (instance? NumericWrapper cell-value)
+                     (:num-value cell-value)
                      cell-value)]
-   (.asString (js/execute-fn color-selector cell-value row-index column-name))))
+    (.asString (js/execute-fn color-selector cell-value row-index column-name))))
