@@ -452,40 +452,43 @@ class Visualization extends React.PureComponent {
 
     return (
       <ErrorBoundary>
-        <VisualizationRoot className={className} style={style}>
-          {!!hasHeader && (
-            <VisualizationHeader>
-              <ChartCaption
-                series={series}
-                settings={settings}
-                icon={headerIcon}
-                actionButtons={extra}
-                onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
-                }
+        <div
+          data-card-key={getCardKey(series[0].card)}
+          className="flex flex-column full-height"
+        >
+          <VisualizationRoot className={className} style={style}>
+            {!!hasHeader && (
+              <VisualizationHeader>
+                <ChartCaption
+                  series={series}
+                  settings={settings}
+                  icon={headerIcon}
+                  actionButtons={extra}
+                  onChangeCardAndRun={
+                    this.props.onChangeCardAndRun && !replacementContent
+                      ? this.handleOnChangeCardAndRun
+                      : null
+                  }
+                />
+              </VisualizationHeader>
+            )}
+            {replacementContent ? (
+              replacementContent
+            ) : isDashboard && noResults ? (
+              <NoResultsView isSmall={small} />
+            ) : error ? (
+              <ErrorView
+                error={error}
+                icon={errorIcon}
+                isSmall={small}
+                isDashboard={isDashboard}
               />
-            </VisualizationHeader>
-          )}
-          {replacementContent ? (
-            replacementContent
-          ) : isDashboard && noResults ? (
-            <NoResultsView isSmall={small} />
-          ) : error ? (
-            <ErrorView
-              error={error}
-              icon={errorIcon}
-              isSmall={small}
-              isDashboard={isDashboard}
-            />
-          ) : loading ? (
-            <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
-          ) : (
-            <div
-              data-card-key={getCardKey(series[0].card)}
-              className="flex flex-column full-height"
-            >
+            ) : loading ? (
+              <LoadingView
+                expectedDuration={expectedDuration}
+                isSlow={isSlow}
+              />
+            ) : (
               <CardVisualization
                 {...this.props}
                 // NOTE: CardVisualization class used to target ExplicitSize HOC
@@ -511,20 +514,24 @@ class Visualization extends React.PureComponent {
                     : null
                 }
               />
-            </div>
-          )}
-          <ChartTooltip series={series} hovered={hovered} settings={settings} />
-          {this.props.onChangeCardAndRun && (
-            <ChartClickActions
-              clicked={clicked}
-              clickActions={clickActions}
-              onChangeCardAndRun={this.handleOnChangeCardAndRun}
-              onClose={this.hideActions}
+            )}
+            <ChartTooltip
               series={series}
-              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+              hovered={hovered}
+              settings={settings}
             />
-          )}
-        </VisualizationRoot>
+            {this.props.onChangeCardAndRun && (
+              <ChartClickActions
+                clicked={clicked}
+                clickActions={clickActions}
+                onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                onClose={this.hideActions}
+                series={series}
+                onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+              />
+            )}
+          </VisualizationRoot>
+        </div>
       </ErrorBoundary>
     );
   }
