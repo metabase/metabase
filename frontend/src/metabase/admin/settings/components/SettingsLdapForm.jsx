@@ -9,10 +9,9 @@ import { FormButton } from "./SettingsLdapForm.styled";
 const propTypes = {
   settingValues: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
-  groups: PropTypes.array.isRequired,
 };
 
-const SettingsLdapForm = ({ settingValues, onSubmit, groups, ...props }) => {
+const SettingsLdapForm = ({ settingValues, onSubmit, ...props }) => {
   const isEnabled = settingValues["ldap-enabled"];
   const layout = getLayout(settingValues);
   const breadcrumbs = getBreadcrumbs();
@@ -27,7 +26,6 @@ const SettingsLdapForm = ({ settingValues, onSubmit, groups, ...props }) => {
   return (
     <SettingsBatchForm
       {...props}
-      groups={groups}
       layout={layout}
       breadcrumbs={breadcrumbs}
       settingValues={settingValues}

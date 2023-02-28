@@ -185,7 +185,7 @@ function GroupMappingsWidget({
   );
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  Group.loadList(),
 )(GroupMappingsWidget);
