@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.pivots :as api.pivots]
@@ -1395,4 +1396,16 @@
                        (client/client
                         :post 400
                         (format "public/action/%s/execute" public_uuid)
-                        {:parameters {:id 1 :name "European"}})))))))))))
+                        {:parameters {:id 1 :name "European"}})))))
+            (testing "Check that we track snowplow when execute an action"
+              (snowplow-test/with-fake-snowplow-collector
+                (client/client
+                  :post 200
+                  (format "public/action/%s/execute" public_uuid)
+                  {:parameters {:id 1 :name "European"}})
+                (is (= {:data   {"action_id" (db/select-one-id 'Action :public_uuid public_uuid)
+                                 "event"     "execute"
+                                 "source"    "dashboard"
+                                 "type"      "query"}
+                        :user-id nil}
+                       (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
