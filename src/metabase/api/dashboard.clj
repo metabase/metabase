@@ -720,7 +720,9 @@
              [field-id value])))
 
 (mu/defn chain-filter
-  "C H A I N filters!"
+  "C H A I N filters!
+
+  Used to query for values that populate chained filter dropdowns and text search boxes."
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
