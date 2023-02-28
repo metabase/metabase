@@ -58,7 +58,8 @@
   (let [updater (a/thread
                   (let [metadata (a/<!! (qp.async/result-metadata-for-query-async query))]
                     (db/update! 'Card id :result_metadata metadata)))]
-    (when (= ::timed-out (mt/wait-for-result updater 2000 ::timed-out))
+    ;; 4 seconds is long but redshift can be a little slow
+    (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"
                       {:location `populate-metadata})))))
 
