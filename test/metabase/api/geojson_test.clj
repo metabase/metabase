@@ -8,7 +8,10 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
+   [ring.adapter.jetty9 :as ring-jetty]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
@@ -140,7 +143,23 @@
              (mt/user-http-request :crowberto :get 200 "geojson" :url test-geojson-url))))
     (testing "error is returned if URL connection fails"
       (is (= "GeoJSON URL failed to load"
-             (mt/user-http-request :crowberto :get 400 "geojson" :url test-broken-geojson-url))))
+             (mt/user-http-request :crowberto :get 400 "geojson"
+                                   :url test-broken-geojson-url))))
+    (testing "error is returned if URL server never responds (#28752)"
+      (let [never-responder    (fn silent-async-handler [_request _respond _raise])
+            server             (ring-jetty/run-jetty never-responder
+                                                     {:join?         false
+                                                      :async?        true
+                                                      :port          0
+                                                      :async-timeout 60000})
+            port               (.. server getURI getPort)
+            never-responds-url (str "http://localhost:" port)]
+        (try
+          (testing "error is returned if URL connection fails"
+            (is (= "GeoJSON URL failed to load"
+                   (mt/user-http-request :crowberto :get 400 "geojson"
+                                         :url never-responds-url))))
+          (finally (.stop server)))))
     (testing "error is returned if URL is invalid"
       (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
                   "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
