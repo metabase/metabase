@@ -1383,7 +1383,6 @@
                    native
                    (sql-source-query native params)
 
-
                    :else
                    (apply-clauses driver {} source-query))
                  (let [table-alias (->honeysql driver (hx/identifier :table-alias source-query-alias))]
