@@ -46,11 +46,12 @@
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
 
-(defn- number [x]
-  (common/map->NumericWrapper {:num-str x :value x}))
+(defn- number [num-str num-value]
+  (common/map->NumericWrapper {:num-str   (str num-str)
+                               :num-value num-value}))
 
 (def ^:private default-header-result
-  [{:row       [(number "ID") (number "Latitude") "Last Login" "Name"]
+  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name"]
     :bar-width nil}
    #{4}])
 
@@ -151,23 +152,23 @@
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
-  (is (= [{:row [(number "ID") (number "Latitude")]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]
            :bar-width 99}
           #{2}]
          (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249),  :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -201,16 +202,16 @@
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (deftest remapped-col
-  (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name"]
            :bar-width nil}
           #{5}]
          (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.1") "Bad" "April 1, 2014" "Stout Burgers & Beers"]
-          [(number "2") (number "34.04") "Ok" "December 5, 2014" "The Apple Pan"]
-          [(number "3") (number "34.05") "Good" "August 1, 2014" "The Gorbals"]]
+  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "April 1, 2014" "Stout Burgers & Beers"]
+          [(number "2" 2) (number "34.04" 34.0406) "Ok" "December 5, 2014" "The Apple Pan"]
+          [(number "3" 3) (number "34.05" 34.0474) "Good" "August 1, 2014" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
                                                           {}
                                                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -232,9 +233,9 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows test-data})))))
