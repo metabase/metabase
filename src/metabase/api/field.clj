@@ -103,7 +103,7 @@
   [old-field nfc_enabled]
   (when (and (false? nfc_enabled)
              (true? (:nfc_enabled old-field)))
-    (let [nested-fields (->> (db/select 'Field :table_id (:table_id old-field) :nfc_path [:not= nil])
+    (let [nested-fields (->> (db/select Field :table_id (:table_id old-field) :nfc_path [:not= nil] :active true)
                              (filter (fn [field]
                                        (= (first (:nfc_path field))
                                           (:name old-field)))))]
