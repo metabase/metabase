@@ -152,7 +152,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),
 )(SavedQuestionPicker);

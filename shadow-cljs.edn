@@ -10,7 +10,8 @@
  :builds
  {:app
   {:target     :npm-module
-   :output-dir "frontend/src/cljs/"
+   :output-dir "frontend/src/cljs_release/"
+   :dev        {:output-dir "frontend/src/cljs/"}
    :entries    [metabase.domain-entities.queries.util
                 metabase.mbql.js
                 metabase.types
@@ -20,7 +21,8 @@
                 metabase.shared.formatting.time
                 metabase.shared.util.currency
                 metabase.shared.util.time
-                metabase.shared.parameters.parameters]}
+                metabase.shared.parameters.parameters
+                metabase.util.devtools]}
 
   :test
   {:target    :node-test

@@ -94,6 +94,22 @@
                 "id"          3}
                (encode-decode pg-db)))))))
 
+(deftest driver-supports-actions-and-database-enable-actions-test
+  (mt/test-drivers #{:sqlite}
+    (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :sqlite}]
+        (is (= false (driver/database-supports? :sqlite :actions database)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :settings {:database-enable-actions true})))))
+    (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :engine :sqlite)))))))
+
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter

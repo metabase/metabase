@@ -268,7 +268,7 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
-  it.skip("should be able to reference a nested question (metabase#25988)", () => {
+  it("should be able to reference a nested question (metabase#25988)", () => {
     const questionDetails = {
       name: "Nested GUI question",
       query: {
@@ -280,13 +280,18 @@ describe("scenarios > question > native subquery", () => {
     cy.createQuestion(questionDetails).then(
       ({ body: { id: nestedQuestionId } }) => {
         const tagID = `#${nestedQuestionId}`;
+        cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`, {
+          delay: 100,
+        });
+        cy.wait("@loadQuestion");
 
-        cy.findByTestId("sidebar-header-title")
-          .invoke("text")
-          .should("eq", questionDetails.name);
+        cy.findByTestId("sidebar-header-title").should(
+          "have.text",
+          questionDetails.name,
+        );
 
         runNativeQuery();
 

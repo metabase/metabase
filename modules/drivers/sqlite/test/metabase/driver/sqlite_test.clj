@@ -217,14 +217,7 @@
       (mt/dataset sample-dataset
         (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                             COUNT (*)         AS count]
-                 :from     [{:select [products.id              AS id
-                                      products.ean             AS ean
-                                      products.title           AS title
-                                      products.category        AS category
-                                      products.vendor          AS vendor
-                                      products.price           AS price
-                                      products.rating          AS rating
-                                      products.created_at      AS created_at
+                 :from     [{:select [products.category       AS category
                                       products.category || ?  AS CATEGORY_2]
                              :from   [products]}
                             AS source]

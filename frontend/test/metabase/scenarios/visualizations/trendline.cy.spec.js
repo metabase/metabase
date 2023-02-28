@@ -27,12 +27,7 @@ describe("scenarios > question > trendline", () => {
   it("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
     // Change settings to trendline
     cy.findByText("Visualization").click();
-    sidebar().within(() => {
-      cy.icon("line").click();
-    });
-    cy.findByTestId("Line-button").within(() => {
-      cy.icon("gear").click();
-    });
+    cy.findByTestId("viz-settings-button").click();
     cy.findByText("Display").click();
     cy.findByText("Trend line").parent().children().last().click();
 

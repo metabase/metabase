@@ -9,7 +9,6 @@ import type { TemplateTagType } from "metabase-types/types/Query";
 import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
 
 import {
-  removeOrphanSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "../utils";
@@ -41,55 +40,6 @@ const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
   });
 
 describe("entities > actions > utils", () => {
-  describe("removeOrphanSettings", () => {
-    it("should remove orphan settings", () => {
-      const formSettings = getDefaultFormSettings({
-        name: "test form",
-        fields: {
-          aaa: getDefaultFieldSettings(),
-          bbb: getDefaultFieldSettings(),
-          ccc: getDefaultFieldSettings(),
-        },
-      });
-
-      const parameters = [
-        { id: "aaa", name: "foo" },
-        { id: "ccc", name: "bar" },
-      ] as Parameter[];
-
-      const result = removeOrphanSettings(formSettings, parameters);
-
-      expect(result.name).toEqual("test form");
-      expect(result.fields).toHaveProperty("aaa");
-      expect(result.fields).toHaveProperty("ccc");
-      expect(result.fields).not.toHaveProperty("bbb");
-    });
-
-    it("should leave non-orphan settings intact", () => {
-      const formSettings = getDefaultFormSettings({
-        name: "test form",
-        fields: {
-          aaa: getDefaultFieldSettings(),
-          bbb: getDefaultFieldSettings(),
-          ccc: getDefaultFieldSettings(),
-        },
-      });
-
-      const parameters = [
-        { id: "aaa", name: "foo" },
-        { id: "bbb", name: "foo" },
-        { id: "ccc", name: "bar" },
-      ] as Parameter[];
-
-      const result = removeOrphanSettings(formSettings, parameters);
-
-      expect(result.name).toEqual("test form");
-      expect(result.fields).toHaveProperty("aaa");
-      expect(result.fields).toHaveProperty("bbb");
-      expect(result.fields).toHaveProperty("ccc");
-    });
-  });
-
   describe("setParameterTypesFromFieldSettings", () => {
     it("should set string parameter types", () => {
       const formSettings = getDefaultFormSettings({
