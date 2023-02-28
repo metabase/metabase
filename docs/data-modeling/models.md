@@ -166,12 +166,6 @@ To set up model caching:
 1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
 2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
 
-### Model caching location
-
-If you're self-hosting Metabase, cached models will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
-
-If you're using Metabase Cloud, cached models will be saved to Metabase's servers in the United States.
-
 ### Enable model caching in Metabase
 
 Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
