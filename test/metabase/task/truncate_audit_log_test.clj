@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.task.truncate-audit-log :as task.truncate-audit-log]
+   [metabase.task.truncate-audit-log.interface :as truncate-audit-log.i]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -14,10 +15,10 @@
   ;; Tests for the EE implementation are in `metabase-enterprise.task.truncate-audit-log-test`
   (with-redefs [premium-features/enable-advanced-config? (constantly false)]
     (testing "Self-hosted OSS instances default to infinite retention and cannot be changed"
-        (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days)))
+        (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
-          (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days))))
+          (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days))))
 
         (is (thrown-with-msg?
              java.lang.UnsupportedOperationException
@@ -26,17 +27,17 @@
 
     (testing "Cloud instances can have their value set by env var only, and default to 365"
       (with-redefs [premium-features/is-hosted? (constantly true)]
-        (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days)))
+        (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
-          (is (= ##Inf (task.truncate-audit-log/audit-max-retention-days))))
+          (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days))))
 
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
-          (is (= 100 (task.truncate-audit-log/audit-max-retention-days))))
+          (is (= 100 (truncate-audit-log.i/audit-max-retention-days))))
 
         ;; Acceptable values have a lower bound of 30
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
-          (is (= 30 (task.truncate-audit-log/audit-max-retention-days))))
+          (is (= 30 (truncate-audit-log.i/audit-max-retention-days))))
 
         (is (thrown-with-msg?
              java.lang.UnsupportedOperationException

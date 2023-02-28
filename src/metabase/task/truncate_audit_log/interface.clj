@@ -1,5 +1,5 @@
 (ns metabase.task.truncate-audit-log.interface
-  ""
+  "Common definitions for the OSS and EE implementations of `truncate-audit-log`"
   (:require
    [metabase.config :as config]
    [metabase.models.setting.multi-setting :refer [define-multi-setting]]
@@ -23,5 +23,3 @@
   (log/warn (trs "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
                  env-var-value
                  min-retention-days)))
-
-

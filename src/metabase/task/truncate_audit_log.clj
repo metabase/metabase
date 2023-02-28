@@ -5,17 +5,17 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time :as t]
-   [metabase.config :as config]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.multi-setting
-    :refer [define-multi-setting define-multi-setting-impl]]
+    :refer [define-multi-setting-impl]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
+   [metabase.task.truncate-audit-log.interface :as truncate-audit-log.i]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -24,46 +24,30 @@
 ;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.task.truncate-audit-log))
 
-(define-multi-setting audit-max-retention-days
-  (deferred-tru "Retention policy for the `query_execution` table.")
-  (fn [] (if (and config/ee-available? (premium-features/enable-advanced-config?)) :ee :oss))
-  :visibility :internal
-  :setter     :none)
-
-(def min-retention-days
-  "Minimum allowed value for `audit-max-retention-days`."
-  30)
-
-(defn log-minimum-value-warning
-  "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overriden."
-  [env-var-value]
-  (log/warn (trs "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
-                 env-var-value
-                 min-retention-days)))
-
-(define-multi-setting-impl audit-max-retention-days :oss
+(define-multi-setting-impl truncate-audit-log.i/audit-max-retention-days :oss
   :getter (fn []
             (if-not (premium-features/is-hosted?)
               ##Inf
-              (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
+              (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
+                    min-retention-days truncate-audit-log.i/min-retention-days]
                 (cond
                   ((some-fn nil? zero?) env-var-value) ##Inf
                   (< env-var-value min-retention-days) (do
-                                                         (log-minimum-value-warning env-var-value)
+                                                         (truncate-audit-log.i/log-minimum-value-warning env-var-value)
                                                          min-retention-days)
                   :else                                env-var-value)))))
 
 (defn- query-execution-cleanup!
   "Delete QueryExecution rows older than the configured threshold."
   []
-  (when-not (infinite? (audit-max-retention-days))
+  (when-not (infinite? (truncate-audit-log.i/audit-max-retention-days))
     (task-history/with-task-history {:task "task-history-cleanup"}
       (try
         (log/info (trs "Cleaning up query_execution table"))
         (let [rows-deleted (t2/delete!
                             QueryExecution
                             :started_at
-                            [:<= (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))])]
+                            [:<= (t/minus (t/offset-date-time) (t/days (truncate-audit-log.i/audit-max-retention-days)))])]
           (log/info
            (if (> rows-deleted 0)
              (trs "query_execution cleanup successful, {0} rows were deleted" rows-deleted)
