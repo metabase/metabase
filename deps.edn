@@ -443,7 +443,7 @@
                ["test" "enterprise/backend/test" "shared/test"]
 
                :ns-regex
-               ["^metabase.*" "^metabase-enterprise.*"]
+               ["^metabase\\..*" "^metabase-enterprise\\..*"]
 
                ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
                ;; as part of recording test coverage, which means they can give us false positives.
@@ -451,9 +451,7 @@
                ;; regex literals aren't allowed in EDN. We parse them in `./test/cloverage.clj`
                :ns-exclude-regex
                ["metabase\\.driver\\.mysql"
-                "metabase\\.driver\\.postgres"
-                ;; this namespace only exists for Cljs purposes and fails when Cloverage tries to instrument
-                "metabase\\.test-runner\\.assert-exprs\\.approximately-equal-js"]}
+                "metabase\\.driver\\.postgres"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"]}
 
