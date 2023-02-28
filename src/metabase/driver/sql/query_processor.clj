@@ -1377,11 +1377,12 @@
                           :as source-query} :source-query}]
   (assoc honeysql-form
          :from [[(cond
+                   persisted
+                   (sql-source-query persisted nil)
+
                    native
                    (sql-source-query native params)
 
-                   persisted
-                   (sql-source-query persisted nil)
 
                    :else
                    (apply-clauses driver {} source-query))
