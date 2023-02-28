@@ -103,14 +103,6 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
-(defn- sub-cached-field-refs
-  "Change field refs by id into field refs by name."
-  [metadata]
-  (map (fn [m]
-         ;; is it ok to clobber expressions like this? I think so.
-         (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
-       metadata))
-
 (defn- source-query
   "Get the query to be run from the card"
   [{dataset-query :dataset_query card-id :id :as card}]
@@ -152,7 +144,7 @@
        (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
                       card-id
                       (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                      (:table_name card))))
+                      (:table_name persisted-info))))
 
      ;; log the query at this point, it's useful for some purposes
      (log/debug (trs "Fetched source query from Card {0}:" card-id)
@@ -165,8 +157,7 @@
                                  (assoc :persisted-info/native
                                         (qp.persisted/persisted-info-native-query persisted-info)))
               :database        database-id
-              :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
-                                 persisted? sub-cached-field-refs)}
+              :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
        dataset? (assoc :source-query/dataset? dataset?)))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
