@@ -784,8 +784,8 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    ;; If a user can read the dashboard, then they can lookup the chain-filter. This also works with sandboxing.
-    (binding [qp.perms/*user-can-read-dashboard* true]
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key query-params))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -800,8 +800,8 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    ;; If a user can read the dashboard, then they can lookup the chain-filter. This also works with sandboxing.
-    (binding [qp.perms/*user-can-read-dashboard* true]
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key query-params query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

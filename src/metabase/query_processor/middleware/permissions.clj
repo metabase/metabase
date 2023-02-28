@@ -90,8 +90,8 @@
   (doseq [{query :dataset_query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
-(def ^:dynamic *user-can-read-dashboard*
-  "Used to allow users looking at a dashboard to view chained filters."
+(def ^:dynamic *param-values-query*
+  "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
 
 (mu/defn ^:private check-query-permissions*
@@ -106,9 +106,9 @@
         (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
 
-      ;; set iff the user should see this when able to view a dashboard and the user can view said dashboard.
-      ;; the motivating use here is chain-filters.
-      *user-can-read-dashboard*
+      ;; set when querying for field values of dashboard filters, which only require
+      ;; collection perms for the dashboard and not ad-hoc query perms
+      *param-values-query*
       (when-not (has-data-perms? (required-perms outer-query))
         (check-block-permissions outer-query))
 
