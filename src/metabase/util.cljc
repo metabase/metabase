@@ -727,7 +727,7 @@
     (integer? x)    :dispatch-type/integer
     (number? x)     :dispatch-type/number
     (map? x)        :dispatch-type/map
-    (sequential? x) :dispatch-type/sequence
+    (sequential? x) :dispatch-type/sequential
     (set? x)        :dispatch-type/set
     (symbol? x)     :dispatch-type/symbol
     (fn? x)         :dispatch-type/fn

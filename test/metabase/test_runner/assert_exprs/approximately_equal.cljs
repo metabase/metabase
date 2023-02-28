@@ -16,23 +16,23 @@
   (when-not (= expected actual)
     (list 'not= expected actual)))
 
-(defmethod =?-diff [:type/regex :type/string]
+(defmethod =?-diff [:dispatch-type/regex :dispatch-type/string]
   [expected-regex s]
   (when-not (re-matches expected-regex s)
     (list 'not (list 're-matches expected-regex s))))
 
 ;;; two regexes should be treated as equal if they're the same pattern.
-(defmethod =?-diff [:type/regex :type/regex]
+(defmethod =?-diff [:dispatch-type/regex :dispatch-type/regex]
   [expected actual]
   (when-not (= (str expected) (str actual))
     (list 'not= (list 'str expected) (list 'str actual))))
 
-(defmethod =?-diff [:type/fn ::u/type-keyword]
+(defmethod =?-diff [:dispatch-type/fn :dispatch-type/*]
   [pred actual]
   (when-not (pred actual)
     (list 'not (list pred actual))))
 
-(defmethod =?-diff [:type/sequential :type/sequential]
+(defmethod =?-diff [:dispatch-type/sequential :dispatch-type/sequential]
   [expected actual]
   (let [same-size? (= (count expected)
                       (count actual))]
@@ -55,7 +55,7 @@
         (let [this-diff (=?-diff (first expected) (first actual))]
           (recur (conj diffs this-diff) (rest expected) (rest actual)))))))
 
-(defmethod =?-diff [:type/map :type/map]
+(defmethod =?-diff [:dispatch-type/map :dispatch-type/map]
   [expected-map actual-map]
   (not-empty (into {} (for [[k expected] expected-map
                             :let         [actual (get actual-map k (symbol "nil #_\"key is not present.\""))

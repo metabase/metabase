@@ -330,7 +330,7 @@
     1                                     :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
-    [1]                                   :dispatch-type/sequence
+    [1]                                   :dispatch-type/sequential
     #{:a}                                 :dispatch-type/set
     'str                                  :dispatch-type/symbol
     #"\d+"                                :dispatch-type/regex
@@ -344,7 +344,7 @@
       :dispatch-type/integer
       :dispatch-type/number
       :dispatch-type/map
-      :dispatch-type/sequence
+      :dispatch-type/sequential
       :dispatch-type/set
       :dispatch-type/symbol
       :dispatch-type/regex
