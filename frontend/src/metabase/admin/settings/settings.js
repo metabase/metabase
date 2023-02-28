@@ -16,7 +16,6 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 // ACTION TYPES AND ACTION CREATORS
 
 export const reloadSettings = () => async (dispatch, getState) => {
-  console.log("🚀", "In reloadSettings");
   await Promise.all([
     dispatch(refreshSettingsList()),
     dispatch(refreshSiteSettings()),

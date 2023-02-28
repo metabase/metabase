@@ -652,7 +652,6 @@ export const getSections = createSelector(
       });
       sectionsWithAPISettings[slug] = { ...section, settings };
     }
-    console.log("🚀", { sectionsWithAPISettings });
     return sectionsWithAPISettings;
   },
 );

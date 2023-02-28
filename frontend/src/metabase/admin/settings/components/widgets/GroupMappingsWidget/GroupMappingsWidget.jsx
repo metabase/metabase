@@ -28,7 +28,8 @@ import MappingRow from "./MappingRow";
 
 const mapStateToProps = (state, props) => {
   return {
-    mappings: getSetting(state, props.mappingSetting),
+    allGroups: Group.selectors.getList(state),
+    mappings: getSetting(state, props.mappingSetting) || {},
   };
 };
 
@@ -43,7 +44,7 @@ const groupIsMappable = group => !isDefaultGroup(group);
 function GroupMappingsWidget({
   groupHeading,
   groupPlaceholder,
-  groups: allGroups = [],
+  allGroups = [],
   mappingSetting,
   deleteGroup,
   clearGroupMember,
