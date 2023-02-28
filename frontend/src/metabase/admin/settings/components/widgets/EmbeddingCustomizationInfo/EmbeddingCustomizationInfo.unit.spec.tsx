@@ -12,6 +12,6 @@ describe("EmbeddingCustomizationInfo", () => {
 
     expect(
       screen.getByRole("link", { name: "one of our paid plans." }),
-    ).toHaveAttribute("href", expect.stringContaining("embed_fullapp"));
+    ).toHaveAttribute("href", expect.stringContaining("embed_standalone"));
   });
 });
