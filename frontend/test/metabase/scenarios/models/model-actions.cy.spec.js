@@ -160,9 +160,11 @@ describe(
       });
 
       fillActionQuery(QUERY);
+      cy.findByText(/New Action/)
+        .clear()
+        .type("Discount order");
       cy.findByRole("button", { name: "Save" }).click();
       modal().within(() => {
-        cy.findByLabelText("Name").type("Discount order");
         cy.findByText("Select a model").click();
       });
       popover().findByText(SAMPLE_ORDERS_MODEL.name).click();
@@ -239,7 +241,7 @@ describe(
         cy.visit(url);
 
         // Order 1 has quantity 2 by default, so we're not actually mutating data
-        cy.findByLabelText("id").type("1");
+        cy.findByLabelText("Id").type("1");
         cy.findByLabelText(/quantity/i).type("2");
 
         cy.findByRole("button", { name: "Submit" }).click();

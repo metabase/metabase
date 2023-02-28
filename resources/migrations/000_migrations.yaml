@@ -14263,6 +14263,14 @@ databaseChangeLog:
       rollback: # nothing to do, since we don't know which drivers used to be presto
 
   - changeSet:
+      id: v46.00-080
+      author: noahmoss
+      comment: Migrate data permission paths from v1 to v2 (splitting them into separate data and query permissions)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.SplitDataPermissions"
+
+  - changeSet:
       id: v46.00-084
       author: qnkhuat
       comment: Added 0.46.0 - CASCADE delete for action.model_id

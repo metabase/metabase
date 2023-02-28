@@ -47,6 +47,7 @@ export default class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
+  static canSavePng = false;
 
   static minSize = { width: 4, height: 3 };
 

@@ -87,6 +87,18 @@ const helperTextStrings: HelpTextConfig[] = [
     ],
   },
   {
+    name: "median",
+    structure: "Median(" + t`column` + ")",
+    description: () => t`Returns the median of all the values of a column.`,
+    example: "Median([" + t`Quantity` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The numeric column whose values to average.`,
+      },
+    ],
+  },
+  {
     name: "min",
     structure: "Min(" + t`column` + ")",
     description: () => t`Returns the smallest value found in the column`,

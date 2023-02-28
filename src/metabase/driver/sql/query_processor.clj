@@ -1411,6 +1411,8 @@
   [driver {inner-query :query}]
   (binding [driver/*driver*        driver
             hx/*honey-sql-version* (honey-sql-version driver)]
+    (when (= hx/*honey-sql-version* 1)
+      (sql.qp.deprecated/log-deprecation-warning driver "Honey SQL 1" "0.46.0"))
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)

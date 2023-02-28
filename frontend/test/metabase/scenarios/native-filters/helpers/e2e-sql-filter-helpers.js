@@ -83,6 +83,9 @@ export function runQuery(xhrAlias = "dataset") {
  *
  * @param {string} query
  */
-export function enterParameterizedQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
+export function enterParameterizedQuery(query, options = {}) {
+  cy.get("@editor").type(query, {
+    parseSpecialCharSequences: false,
+    ...options,
+  });
 }
