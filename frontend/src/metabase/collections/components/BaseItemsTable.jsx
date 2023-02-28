@@ -2,6 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import CheckBox from "metabase/core/components/CheckBox";
+import { EntityIconWrapper } from "metabase/components/EntityItem.styled";
 import BaseTableItem from "./BaseTableItem";
 import {
   ColumnHeader,
@@ -68,11 +70,14 @@ BaseItemsTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   collection: PropTypes.object,
   selectedItems: PropTypes.arrayOf(PropTypes.object),
+  hasUnselected: PropTypes.bool,
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
   sortingOptions: sortingOptsShape,
   onSortingOptionsChange: PropTypes.func,
   onToggleSelected: PropTypes.func,
+  onSelectAll: PropTypes.func,
+  onSelectNone: PropTypes.func,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
@@ -95,6 +100,7 @@ function BaseItemsTable({
   items,
   collection = {},
   selectedItems,
+  hasUnselected,
   isPinned,
   renderItem = defaultItemRenderer,
   onCopy,
@@ -103,6 +109,8 @@ function BaseItemsTable({
   sortingOptions,
   onSortingOptionsChange,
   onToggleSelected,
+  onSelectAll,
+  onSelectNone,
   getIsSelected = () => false,
   headless = false,
   ...props
@@ -127,6 +135,7 @@ function BaseItemsTable({
     <Table {...props}>
       <colgroup>
         <col style={{ width: "70px" }} />
+        <col style={{ width: "70px" }} />
         <col />
         <LastEditedByCol />
         <col style={{ width: "140px" }} />
@@ -139,6 +148,16 @@ function BaseItemsTable({
           }
         >
           <tr>
+            <ColumnHeader>
+              <EntityIconWrapper>
+                <CheckBox
+                  checked={selectedItems.length > 0}
+                  indeterminate={selectedItems.length > 0 && hasUnselected}
+                  onChange={hasUnselected ? onSelectAll : onSelectNone}
+                  data-testid="bulk-select"
+                />
+              </EntityIconWrapper>
+            </ColumnHeader>
             <SortableColumnHeader
               name="model"
               sortingOptions={sortingOptions}
