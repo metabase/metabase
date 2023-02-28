@@ -61,16 +61,16 @@
               (and data link) (assoc :link link))))))
 
 #?(:clj
-   (defn- instrument! [id]
+   (clojure.core/defn instrument!
+     "Instrument a [[metabase.util.malli/defn]]."
+     [id]
      (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
                          :report  explain-fn-fail!}))
-
-   ;; No-op for Cljs; instrumentation currently only works in Clojure AFAIK. [[malli.instrument]] is a Clj-only
-   ;; namespace
-
    :cljs
-   #_{:clj-kondo/ignore [:unused-private-var]}
-   (defn- instrument! [_id]))
+   (clojure.core/defn instrument!
+     "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
+     Clojure AFAIK. [[malli.instrument]] is a Clj-only namespace."
+     [_id]))
 
 #?(:clj
    (core/defn- -defn [schema args]
