@@ -21,9 +21,9 @@ export const getUpgradeUrl = createSelector(
   (state: State) => getUtmSource(state),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
   (source, media) => {
-    const url = new URL("https://www.metabase.com/upgrade/");
-    url.searchParams.append("utm_source", source);
+    const url = new URL("https://www.metabase.com/upgrade");
     url.searchParams.append("utm_media", media);
+    url.searchParams.append("utm_source", source);
 
     return url.toString();
   },
