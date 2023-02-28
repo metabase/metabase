@@ -72,6 +72,7 @@ function ModelActionDetails({
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
+  const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -106,7 +107,7 @@ function ModelActionDetails({
         icon: "bolt",
         action: onDeleteImplicitActions,
       });
-    } else {
+    } else if (supportsImplicitActions) {
       items.push({
         title: t`Create basic actions`,
         icon: "bolt",
@@ -115,7 +116,12 @@ function ModelActionDetails({
     }
 
     return items;
-  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitActions]);
+  }, [
+    implicitActions,
+    supportsImplicitActions,
+    onEnableImplicitActions,
+    onDeleteImplicitActions,
+  ]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -143,11 +149,13 @@ function ModelActionDetails({
       {canWrite && (
         <ActionsHeader>
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          <ActionMenu
-            triggerIcon="ellipsis"
-            items={menuItems}
-            triggerProps={{ "aria-label": t`Actions menu` }}
-          />
+          {menuItems.length > 0 && (
+            <ActionMenu
+              triggerIcon="ellipsis"
+              items={menuItems}
+              triggerProps={{ "aria-label": t`Actions menu` }}
+            />
+          )}
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
@@ -161,7 +169,7 @@ function ModelActionDetails({
         </ActionList>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite}
+          hasCreateButton={canWrite && supportsImplicitActions}
           onCreateClick={onEnableImplicitActions}
         />
       )}
