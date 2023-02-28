@@ -4,7 +4,8 @@ import { connect } from "react-redux";
 import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import MetabaseSettings from "metabase/lib/settings";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { State } from "metabase-types/store";
 import { LicenseInput } from "../../components/LicenseInput";
 import { initializeSettings } from "../../settings";
 import { getSettings } from "../../selectors";
@@ -17,7 +18,11 @@ import {
   PremiumEmbeddingLicensePageContent,
 } from "./PremiumEmbeddingLicensePage.styled";
 
-const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
+const getDescription = (
+  upgradeUrl: string,
+  tokenStatus?: TokenStatus,
+  hasToken?: boolean,
+) => {
   if (!hasToken) {
     return t`Our Premium Embedding product has been discontinued, but if you already have a license you can activate it here. You’ll continue to receive support for the duration of your license.`;
   }
@@ -26,7 +31,7 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     return (
       <>
         {jt`Your Premium Embedding license isn’t valid anymore. ${(
-          <ExternalLink href={MetabaseSettings.upgradeUrl()}>
+          <ExternalLink href={upgradeUrl}>
             {t`Explore our paid plans.`}
           </ExternalLink>
         )}`}
@@ -39,9 +44,10 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your Premium Embedding license is active until ${validUntil}.`;
 };
 
-const mapStateToProps = (state: any) => {
+const mapStateToProps = (state: State) => {
   return {
     settings: getSettings(state),
+    upgradeUrl: getUpgradeUrl(state, { utm_media: "embed_premium" }),
   };
 };
 
@@ -52,11 +58,13 @@ const mapDispatchToProps = {
 interface PremiumEmbeddingLicensePage {
   initializeSettings: () => void;
   settings: any[];
+  upgradeUrl: string;
 }
 
 export const PremiumEmbeddingLicensePage = ({
   settings,
   initializeSettings,
+  upgradeUrl,
 }: PremiumEmbeddingLicensePage) => {
   const tokenSetting = settings.find(
     setting => setting.key === "premium-embedding-token",
@@ -93,7 +101,7 @@ export const PremiumEmbeddingLicensePage = ({
       <PremiumEmbeddingLicensePageContent>
         <PremiumEmbeddingHeading>{t`Premium embedding`}</PremiumEmbeddingHeading>
         <PremiumEmbeddingDescription>
-          {getDescription(tokenStatus, !!token)}
+          {getDescription(upgradeUrl, tokenStatus, !!token)}
         </PremiumEmbeddingDescription>
         {!tokenStatus?.isValid && (
           <LicenseInputTitle>
