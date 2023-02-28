@@ -25,7 +25,9 @@ interface DatabaseEditAppSidebarProps {
   database: Database;
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
-  updateDatabase: (database: { id: DatabaseId } & Partial<IDatabase>) => void;
+  updateDatabase: (
+    database: { id: DatabaseId } & Partial<IDatabase>,
+  ) => Promise<void>;
   syncDatabaseSchema: (databaseId: DatabaseId) => void;
   dismissSyncSpinner: (databaseId: DatabaseId) => void;
   rescanDatabaseFields: (databaseId: DatabaseId) => void;
