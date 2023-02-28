@@ -29,7 +29,7 @@
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
-(defmethod ->join-clause :type/fn
+(defmethod ->join-clause :dispatch-type/fn
   [query stage-number f]
   (->join-clause query stage-number (f query stage-number)))
 
@@ -42,7 +42,7 @@
   [_query _stage-number x]
   x)
 
-(defmethod ->join-condition :type/fn
+(defmethod ->join-condition :dispatch-type/fn
   [query stage-number f]
   (->join-condition query stage-number (f query stage-number)))
 

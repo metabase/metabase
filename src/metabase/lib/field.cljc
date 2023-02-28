@@ -49,16 +49,16 @@
                        :field        id-or-name})))
     (->field query stage-number metadata)))
 
-(defmethod ->field :type/string
+(defmethod ->field :dispatch-type/string
   [query stage field-name]
   (resolve-field query stage nil field-name))
 
-(defmethod ->field :type/integer
+(defmethod ->field :dispatch-type/integer
   [query stage field-id]
   (resolve-field query stage nil field-id))
 
 ;;; Pass in a function that takes `query` and `stage` to support ad-hoc usage in tests etc
-(defmethod ->field :type/fn
+(defmethod ->field :dispatch-type/fn
   [query stage f]
   (f query stage))
 

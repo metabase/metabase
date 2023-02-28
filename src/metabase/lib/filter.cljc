@@ -20,7 +20,7 @@
   [query stage-number field-metadata]
   (lib.field/field query stage-number field-metadata))
 
-(defmethod ->filter-arg :type/fn
+(defmethod ->filter-arg :dispatch-type/fn
   [query stage-number f]
   (->filter-arg query stage-number (f query stage-number)))
 

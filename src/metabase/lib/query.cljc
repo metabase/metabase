@@ -20,7 +20,7 @@
     (lib.dispatch/dispatch-value x)))
 
 ;;; for a native query.
-(defmethod ->query :type/string
+(defmethod ->query :dispatch-type/string
   [database-metadata table-name]
   (mc/coerce lib.metadata/DatabaseMetadata database-metadata)
   {:lib/type     :mbql/query
@@ -32,7 +32,7 @@
                          :source-table (:id table)}
                         lib.options/ensure-uuid))]})
 
-(defmethod ->query :type/map
+(defmethod ->query :dispatch-type/map
   [metadata query]
   (-> (lib.util/pipeline query)
       (assoc :lib/metadata metadata

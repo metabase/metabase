@@ -1,27 +1,13 @@
 (ns metabase.test-runner.assert-exprs.approximately-equal
   "JavaScript version of the hawk approximately-equal test assertion type. Experimental! Doesn't support everything!"
+  (:require [metabase.util :as u])
   (:require-macros [metabase.test-runner.assert-exprs.approximately-equal-js]))
-
-(derive ::regexp     ::object)
-(derive ::sequential ::object)
-(derive ::map        ::object)
-(derive ::string     ::object)
-(derive ::fn         ::object)
-
-(defn- type+ [x]
-  (cond
-    (sequential? x) ::sequential
-    (map? x)        ::map
-    (regexp? x)     ::regexp
-    (string? x)     ::string
-    (fn? x)         ::fn
-    :else           ::object))
 
 (defmulti =?-diff
   "Multimethod to use to diff two things with `=?`."
   {:arglists '([expected actual])}
   (fn [expected actual]
-    [(type+ expected) (type+ actual)]))
+    [(u/dispatch-type-keyword expected) (u/dispatch-type-keyword actual)]))
 
 ;;;; Default method impls
 
@@ -30,23 +16,23 @@
   (when-not (= expected actual)
     (list 'not= expected actual)))
 
-(defmethod =?-diff [::regexp ::string]
+(defmethod =?-diff [:type/regex :type/string]
   [expected-regex s]
   (when-not (re-matches expected-regex s)
     (list 'not (list 're-matches expected-regex s))))
 
 ;;; two regexes should be treated as equal if they're the same pattern.
-(defmethod =?-diff [::regexp ::regexp]
+(defmethod =?-diff [:type/regex :type/regex]
   [expected actual]
   (when-not (= (str expected) (str actual))
     (list 'not= (list 'str expected) (list 'str actual))))
 
-(defmethod =?-diff [::fn ::object]
+(defmethod =?-diff [:type/fn ::u/type-keyword]
   [pred actual]
   (when-not (pred actual)
     (list 'not (list pred actual))))
 
-(defmethod =?-diff [::sequential ::sequential]
+(defmethod =?-diff [:type/sequential :type/sequential]
   [expected actual]
   (let [same-size? (= (count expected)
                       (count actual))]
@@ -69,7 +55,7 @@
         (let [this-diff (=?-diff (first expected) (first actual))]
           (recur (conj diffs this-diff) (rest expected) (rest actual)))))))
 
-(defmethod =?-diff [::map ::map]
+(defmethod =?-diff [:type/map :type/map]
   [expected-map actual-map]
   (not-empty (into {} (for [[k expected] expected-map
                             :let         [actual (get actual-map k (symbol "nil #_\"key is not present.\""))
