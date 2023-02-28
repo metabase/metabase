@@ -551,10 +551,8 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should render previews of questions (#28726)", () => {
-    startNewQuestion();
-    cy.findByText("Sample Database").click();
-    cy.findByText("Orders").click();
+  it("should properly render previews (metabase#28726)", () => {
+    openOrdersTable({ mode: "notebook" });
     cy.findByTestId("step-data-0-0").within(() => {
       cy.icon("play").click();
       cy.findByTextEnsureVisible("Subtotal");
