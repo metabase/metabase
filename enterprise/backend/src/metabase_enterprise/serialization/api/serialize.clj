@@ -34,10 +34,7 @@
       (throw (ex-info (tru "Invalid Collection ID(s). These Collections do not exist: {0}"
                            (pr-str (set/difference (set collection_ids) (set existing-collection-ids))))
                       {:status-code 404}))))
-  (serialization.cmd/v2-dump path
-                             {:selected-collections collection_ids
-                              :targets              (for [collection-id collection_ids]
-                                                      ["Collection" collection-id])})
+  (serialization.cmd/v2-dump path {:collections collection_ids})
   ;; TODO -- not 100% sure this response makes sense. We can change it later with something more meaningful maybe
   {:status :ok})
 
