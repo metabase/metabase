@@ -193,7 +193,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn token-features :- #{su/NonBlankString}
+  (schema/defn ^:private token-features :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
