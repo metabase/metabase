@@ -4,7 +4,7 @@ import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { State } from "metabase-types/store";
-import SettingHeader from "../SettingHeader";
+import SettingHeader from "../../SettingHeader";
 
 interface StateProps {
   upgradeUrl: string;
