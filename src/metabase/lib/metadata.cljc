@@ -195,8 +195,8 @@
             (when metadata
               (field-metadata* metadata table field)))]
     (or
-     ;;; ignore stage metadata if Table is specified. This is probably wrong -- what about joined Fields? But it's ok
-     ;;; for now
+     ;; ignore stage metadata if Table is specified. This is probably wrong -- what about joined Fields? But it's ok
+     ;; for now
      (when-not table
        (or
         ;; resolve field from the current stage
