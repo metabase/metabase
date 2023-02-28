@@ -149,11 +149,13 @@ function ModelActionDetails({
       {canWrite && (
         <ActionsHeader>
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          <ActionMenu
-            triggerIcon="ellipsis"
-            items={menuItems}
-            triggerProps={{ "aria-label": t`Actions menu` }}
-          />
+          {menuItems.length > 0 && (
+            <ActionMenu
+              triggerIcon="ellipsis"
+              items={menuItems}
+              triggerProps={{ "aria-label": t`Actions menu` }}
+            />
+          )}
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
