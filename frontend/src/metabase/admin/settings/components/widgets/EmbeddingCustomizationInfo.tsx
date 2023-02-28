@@ -1,13 +1,27 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t, jt } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { State } from "metabase-types/store";
 import SettingHeader from "../SettingHeader";
 
-export const EmbeddingCustomizationInfo = () => {
+interface StateProps {
+  upgradeUrl: string;
+}
+
+type EmbeddingCustomizationInfoProps = StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  upgradeUrl: getUpgradeUrl(state, { utm_media: "embed_premium" }),
+});
+
+const EmbeddingCustomizationInfo = ({
+  upgradeUrl,
+}: EmbeddingCustomizationInfoProps) => {
   const setting = {
     description: jt`In order to remove the Metabase logo from embeds, you can always upgrade to ${(
-      <ExternalLink key="upgrade-link" href={MetabaseSettings.upgradeUrl()}>
+      <ExternalLink key="upgrade-link" href={upgradeUrl}>
         {t`one of our paid plans.`}
       </ExternalLink>
     )}`,
@@ -15,3 +29,5 @@ export const EmbeddingCustomizationInfo = () => {
 
   return <SettingHeader id="embedding-customization-info" setting={setting} />;
 };
+
+export default connect(mapStateToProps)(EmbeddingCustomizationInfo);

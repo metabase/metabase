@@ -14,7 +14,7 @@ import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
+import EmbeddingCustomizationInfo from "./components/widgets/EmbeddingCustomizationInfo";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
