@@ -400,10 +400,7 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [unfolding-disabled-field-names (->> (db/select 'Field :table_id (u/the-id table))
-                                                  (filter #(= (:nfc_enabled %) false))
-                                                  (map :name)
-                                                  set)
+        (let [unfolding-disabled-field-names (set (db/select-field :name 'Field :table_id (u/the-id table) :nfc_enabled false))
               unfolding-json-fields          (filter (fn [field]
                                                        (not (contains? unfolding-disabled-field-names (:name field))))
                                                      json-fields)]
