@@ -95,7 +95,7 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 export default class ChoroplethMap extends Component {
   static propTypes = {};
 
-  static minSize = { width: 4, height: 4 };
+  static defaultSize = { width: 4, height: 4 };
 
   static isSensible({ cols }) {
     return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;

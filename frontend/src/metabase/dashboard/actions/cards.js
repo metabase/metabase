@@ -36,7 +36,7 @@ export const addCardToDashboard =
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
     const { visualization } = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.minSize || DEFAULT_CARD_SIZE;
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,

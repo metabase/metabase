@@ -38,7 +38,7 @@ export default class Funnel extends Component {
 
   static noHeader = true;
 
-  static minSize = {
+  static defaultSize = {
     width: 5,
     height: 4,
   };

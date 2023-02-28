@@ -31,7 +31,7 @@ export default class Smart extends React.Component {
   static iconName = "smartscalar";
   static canSavePng = false;
 
-  static minSize = { width: 3, height: 3 };
+  static defaultSize = { width: 3, height: 3 };
 
   static noHeader = true;
 

@@ -7,7 +7,7 @@ export type Visualization = {
   noun: string;
   hidden?: boolean;
   noHeader: boolean;
-  minSize: {
+  defaultSize: {
     width: number;
     height: number;
   };

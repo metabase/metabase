@@ -17,7 +17,7 @@ export default Object.assign(Action, {
   disableSettingsConfig: true,
   canSavePng: false,
 
-  minSize: { width: 1, height: 1 },
+  defaultSize: { width: 1, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,

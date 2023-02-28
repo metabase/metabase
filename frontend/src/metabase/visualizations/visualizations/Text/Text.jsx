@@ -45,7 +45,7 @@ export default class Text extends Component {
   static hidden = true;
   static supportPreviewing = true;
 
-  static minSize = { width: 4, height: 1 };
+  static defaultSize = { width: 4, height: 1 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here
