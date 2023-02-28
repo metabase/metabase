@@ -27,7 +27,7 @@ function ModelActionsSection({
       setError(null);
       await onToggleModelActionsEnabled(enabled);
     } catch (err) {
-      setError(getResponseErrorMessage(err) || t`Something went wrong`);
+      setError(getResponseErrorMessage(err) || t`An error occurred`);
     }
   };
 
