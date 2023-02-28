@@ -10,13 +10,11 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/core/components/Tooltip";
-import CheckBox from "metabase/core/components/CheckBox";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";
 
-import { EntityIconWrapper } from "metabase/components/EntityItem.styled";
 import {
   ItemCell,
   ItemNameCell,
@@ -95,13 +93,17 @@ export function BaseTableItem({
     return (
       <tr key={item.id} data-testid={testId} style={trStyles}>
         <ItemCell data-testid={`${testId}-check`}>
-          <EntityIconWrapper>
-            <CheckBox
-              disabled={!canSelect}
-              checked={isSelected}
-              onChange={handleSelectionToggled}
-            />
-          </EntityIconWrapper>
+          <EntityIconCheckBox
+            item={item}
+            variant="list"
+            icon={icon}
+            pinned={isPinned}
+            disabled={!canSelect}
+            selected={isSelected}
+            onToggleSelected={handleSelectionToggled}
+            selectable
+            showCheckbox
+          />
         </ItemCell>
         <ItemCell data-testid={`${testId}-type`}>
           <EntityIconCheckBox

@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import { EntityIconWrapper } from "metabase/components/EntityItem.styled";
 import BaseTableItem from "./BaseTableItem";
 import {
   ColumnHeader,
@@ -12,6 +11,7 @@ import {
   SortingControlContainer,
   TBody,
   LastEditedByCol,
+  BulkSelectWrapper,
 } from "./BaseItemsTable.styled";
 
 const sortingOptsShape = PropTypes.shape({
@@ -149,14 +149,14 @@ function BaseItemsTable({
         >
           <tr>
             <ColumnHeader>
-              <EntityIconWrapper>
+              <BulkSelectWrapper>
                 <CheckBox
                   checked={selectedItems.length > 0}
                   indeterminate={selectedItems.length > 0 && hasUnselected}
                   onChange={hasUnselected ? onSelectAll : onSelectNone}
                   data-testid="bulk-select"
                 />
-              </EntityIconWrapper>
+              </BulkSelectWrapper>
             </ColumnHeader>
             <SortableColumnHeader
               name="model"

@@ -10,6 +10,7 @@ import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 const LAST_EDITED_BY_INDEX = 4;
 const LAST_EDITED_AT_INDEX = 5;
@@ -53,6 +54,12 @@ export const ColumnHeader = styled.th`
   padding: 1em 1em 0.75em !important;
   font-weight: bold;
   color: ${color("text-medium")};
+`;
+
+export const BulkSelectWrapper = styled(IconButtonWrapper)`
+  padding-left: 12px;
+  padding-right: 12px;
+  width: 3em;
 `;
 
 export const LastEditedByCol = styled.col`
