@@ -880,6 +880,9 @@ describe("ModelDetailPage", () => {
       await setup({ model });
 
       expect(screen.queryByLabelText("Action menu")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Create basic actions" }),
+      ).not.toBeInTheDocument();
     });
   });
 

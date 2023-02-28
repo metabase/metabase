@@ -169,7 +169,7 @@ function ModelActionDetails({
         </ActionList>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite}
+          hasCreateButton={canWrite && supportsImplicitActions}
           onCreateClick={onEnableImplicitActions}
         />
       )}
