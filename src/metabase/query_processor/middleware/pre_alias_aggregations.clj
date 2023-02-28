@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
-  (:require [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.annotate :as annotate]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [ag-clause]
   (driver/escape-alias driver/*driver* (annotate/aggregation-name ag-clause)))

@@ -10,6 +10,9 @@ import type { Collection } from "metabase-types/api";
 import type Table from "metabase-lib/metadata/Table";
 
 import type { DataPickerSelectedItem, VirtualTable } from "../types";
+
+import EmptyState from "../EmptyState";
+import LoadingState from "../LoadingState";
 import PanePicker from "../PanePicker";
 
 import { StyledSelectList } from "./CardPicker.styled";
@@ -21,6 +24,7 @@ interface CardPickerViewProps {
   virtualTables?: VirtualTable[];
   selectedItems: DataPickerSelectedItem[];
   targetModel: TargetModel;
+  isLoading: boolean;
   onSelectCollection: (id: Collection["id"]) => void;
   onSelectedVirtualTable: (id: Table["id"]) => void;
   onBack?: () => void;
@@ -73,6 +77,7 @@ function CardPickerView({
   virtualTables,
   selectedItems,
   targetModel,
+  isLoading,
   onSelectCollection,
   onSelectedVirtualTable,
   onBack,
@@ -111,6 +116,8 @@ function CardPickerView({
     [selectedVirtualTableIds, targetModel, onSelectedVirtualTable],
   );
 
+  const isEmpty = _.isEmpty(virtualTables);
+
   return (
     <PanePicker
       data={collectionTree}
@@ -118,9 +125,15 @@ function CardPickerView({
       onSelect={handlePanePickerSelect}
       onBack={onBack}
     >
-      <StyledSelectList>
-        {virtualTables?.map?.(renderVirtualTable)}
-      </StyledSelectList>
+      {isLoading ? (
+        <LoadingState />
+      ) : isEmpty ? (
+        <EmptyState />
+      ) : (
+        <StyledSelectList>
+          {virtualTables?.map?.(renderVirtualTable)}
+        </StyledSelectList>
+      )}
     </PanePicker>
   );
 }

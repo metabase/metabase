@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.visualization-settings-test
   "Tests for visualization settings processing"
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card Field]]
-            [metabase.query-processor.middleware.visualization-settings :as viz-settings]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Card Field]]
+   [metabase.query-processor.middleware.visualization-settings
+    :as viz-settings]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]))
 
 (defn- update-viz-settings
   ([query] (update-viz-settings query true))

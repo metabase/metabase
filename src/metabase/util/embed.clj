@@ -1,15 +1,18 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.sign.jwt :as jwt]
-            [cheshire.core :as json]
-            [clojure.string :as str]
-            [hiccup.core :refer [html]]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [ring.util.codec :as codec]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.sign.jwt :as jwt]
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [hiccup.core :refer [html]]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [ring.util.codec :as codec]))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
 

@@ -2,7 +2,6 @@ import {
   restore,
   getDimensionByName,
   visitQuestionAdhoc,
-  popover,
   summarize,
   visualize,
   startNewQuestion,
@@ -21,6 +20,21 @@ describe("scenarios > x-rays", () => {
   });
 
   const XRAY_DATASETS = 11; // enough to load most questions
+
+  it.skip("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
+    cy.request("PUT", "api/setting/enable-xrays", { value: false });
+
+    cy.visit("/");
+    cy.findByText("Metabase tips");
+
+    cy.findByText(
+      "Try out these sample x-rays to see what Metabase can do.",
+    ).should("not.exist");
+    cy.findByText(/^A summary of/).should("not.exist");
+    cy.findByText(/^A glance at/).should("not.exist");
+    cy.findByText(/^A look at/).should("not.exist");
+    cy.findByText(/^Some insights about/).should("not.exist");
+  });
 
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
@@ -148,7 +162,9 @@ describe("scenarios > x-rays", () => {
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
+    cy.intercept("GET", "/app/assets/geojson/**").as("geojson");
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    cy.wait("@geojson", { timeout });
 
     // confirm results of "Total transactions" card are present
     cy.findByText("18,760", timeout);
@@ -162,11 +178,10 @@ describe("scenarios > x-rays", () => {
 
     // add a parameter filter to the auto dashboard
     cy.findByText("State", timeout).click();
-    popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("GA{enter}");
-      cy.findByText("GA").click();
-      cy.findByText("Add filter").click();
-    });
+
+    cy.findByPlaceholderText("Search the list").type("GA{enter}");
+    cy.findByTestId("GA-filter-value").should("be.visible").click();
+    cy.button("Add filter").click();
 
     // confirm results of "Total transactions" card were updated
     cy.findByText("463", timeout);

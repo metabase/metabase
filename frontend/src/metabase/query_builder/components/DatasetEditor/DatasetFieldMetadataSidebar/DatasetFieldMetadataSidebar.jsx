@@ -8,6 +8,7 @@ import React, {
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import { usePrevious } from "react-use";
 
 import Radio from "metabase/core/components/Radio";
 
@@ -17,7 +18,6 @@ import {
 } from "metabase/lib/core";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import RootForm from "metabase/containers/FormikForm";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ColumnSettings, {

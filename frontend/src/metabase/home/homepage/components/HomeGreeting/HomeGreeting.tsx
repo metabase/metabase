@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { User } from "metabase-types/api";
 import {
   GreetingLogo,

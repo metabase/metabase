@@ -46,7 +46,7 @@ describe("getColumnKey", () => {
           JSON.stringify(["name", "foo"]),
         );
       });
-      it("should return [name ...] for aggregation", () => {
+      it("should return [name ...] for aggregation on field literal", () => {
         const col = {
           name: "foo",
           id: ["field", "foo", { "base-type": "type/Integer" }],

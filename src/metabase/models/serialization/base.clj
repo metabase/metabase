@@ -9,13 +9,15 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.interface :as mi]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              :serdes/meta                                                      |
@@ -44,7 +46,8 @@
   By default this is a column, `:entity_id`.
 
   Models that have a different portable ID should override this."
-  (fn [model-name _] model-name))
+  {:arglists '([model-name instance])}
+  (fn [model-name _instance] model-name))
 
 (defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
   entity_id)
@@ -80,7 +83,8 @@
   - The primary key might still be attached, during extraction.
   - `:label` is optional
   - The logic to guess the leaf part of the path is in [[infer-self-path]], for use in overriding."
-  (fn [model _] model))
+  {:arglists '([model-name instance])}
+  (fn [model-name _instance] model-name))
 
 (defn infer-self-path
   "Implements the default logic from [[serdes-generate-path]] that guesses the `:id` of this entity. Factored out
@@ -184,7 +188,8 @@
 
   You probably don't want to implement this directly. The default implementation delegates to [[extract-query]] and
   [[extract-one]], which are usually more convenient to override."
-  (fn [model _] model))
+  {:arglists '([model-name opts])}
+  (fn [model-name _opts] model-name))
 
 (defmulti extract-query
   "Performs the select query, possibly filtered, for all the entities of this model that should be serialized. Called
@@ -199,7 +204,8 @@
   Defaults to using `(toucan.db/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
-  (fn [model _] model))
+  {:arglists '([model-name opts])}
+  (fn [model-name _opts] model-name))
 
 (defmulti extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
@@ -218,10 +224,16 @@
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _opts _entity] model))
+  {:arglists '([model-name opts instance])}
+  (fn [model-name _opts _instance] model-name))
+
+(defn- log-and-extract-one
+  [model opts instance]
+  (log/info (trs "Extracting {0} {1}" model (:id instance)))
+  (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]
-  (eduction (map (partial extract-one model opts))
+  (eduction (map (partial log-and-extract-one model opts))
             (extract-query model opts)))
 
 (defn extract-query-collections
@@ -257,6 +269,39 @@
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
+
+(defmulti serdes-descendants
+  "Captures the notion that eg. a dashboard \"contains\" its cards.
+  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
+  or requires to be executed.
+  Dispatches on the model name.
+
+  For example:
+  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
+  - a `Dashboard` contains its `DashboardCard`s;
+  - each `DashboardCard` contains its `Card`;
+  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
+  - a `NativeQuerySnippet` similarly might derive from others;
+
+  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
+  `Collection` and all its contents.
+
+  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
+  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
+
+  What about [[serdes-dependencies]]?
+  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
+  all entities that are \"part\" of the given entity.
+
+  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
+  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
+  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
+  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod serdes-descendants :default [_ _]
+  nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Deserialization Process                                                |
@@ -326,6 +371,7 @@
   the incoming key. For the identity hash, this scans the entire table and builds a cache of
   [[serdes.hash/identity-hash]] to primary keys, since the identity hash cannot be queried directly.
   This cache is cleared at the beginning and end of the deserialization process."
+  {:arglists '([path])}
   (fn [path]
     (-> path last :model)))
 
@@ -439,38 +485,6 @@
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
 
-(defmulti serdes-descendants
-  "Captures the notion that eg. a dashboard \"contains\" its cards.
-  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
-  or requires to be executed.
-  Dispatches on the model name.
-
-  For example:
-  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
-  - a `Dashboard` contains its `DashboardCard`s;
-  - each `DashboardCard` contains its `Card`;
-  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
-  - a `NativeQuerySnippet` similarly might derive from others;
-
-  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
-  `Collection` and all its contents.
-
-  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
-  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
-
-  What about [[serdes-dependencies]]?
-  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
-  all entities that are \"part\" of the given entity.
-
-  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
-  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
-  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
-  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
-  {:arglists '([model-name db-id])}
-  (fn [model-name _] model-name))
-
-(defmethod serdes-descendants :default [_ _]
-  nil)
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."

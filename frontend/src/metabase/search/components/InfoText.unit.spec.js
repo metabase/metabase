@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
@@ -9,24 +9,19 @@ const table = { id: 1, display_name: "Table Name" };
 const database = { id: 1, name: "Database Name" };
 
 async function setup(result) {
-  nock(location.origin).get("/api/table/1").reply(200, table);
-
-  nock(location.origin).get("/api/database/1").reply(200, database);
+  fetchMock.get("path:/api/table/1", table);
+  fetchMock.get("path:/api/database/1", database);
 
   renderWithProviders(<InfoText result={result} />);
 }
 
 describe("InfoText", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows collection info for a question", async () => {
     await setup({
       model: "card",
       getCollection: () => collection,
     });
-    expect(screen.queryByText("Saved question in")).toHaveTextContent(
+    expect(screen.getByText("Saved question in")).toHaveTextContent(
       "Saved question in Collection Name",
     );
   });
@@ -37,14 +32,14 @@ describe("InfoText", () => {
       model: "collection",
       collection,
     });
-    expect(screen.queryByText("Collection")).toBeInTheDocument();
+    expect(screen.getByText("Collection")).toBeInTheDocument();
   });
 
   it("shows Database for databases", async () => {
     await setup({
       model: "database",
     });
-    expect(screen.queryByText("Database")).toBeInTheDocument();
+    expect(screen.getByText("Database")).toBeInTheDocument();
   });
 
   it("shows segment's table name", async () => {
@@ -92,7 +87,7 @@ describe("InfoText", () => {
       getCollection: () => collection,
     });
 
-    expect(screen.queryByText("Pulse in")).toHaveTextContent(
+    expect(screen.getByText("Pulse in")).toHaveTextContent(
       "Pulse in Collection Name",
     );
   });
@@ -103,7 +98,7 @@ describe("InfoText", () => {
       getCollection: () => collection,
     });
 
-    expect(screen.queryByText("Dashboard in")).toHaveTextContent(
+    expect(screen.getByText("Dashboard in")).toHaveTextContent(
       "Dashboard in Collection Name",
     );
   });

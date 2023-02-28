@@ -10,7 +10,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // remove column
     cy.findByTestId("sidebar-content")

@@ -1,7 +1,8 @@
 (ns metabase.test.data.sql-jdbc.spec
-  (:require [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data.interface :as tx]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test.data.interface :as tx]))
 
 (defmulti dbdef->spec
   "Return a JDBC spec that should be used to connect to `dbdef`. Uses `jdbc-sql.conn/connection-details->spec` by

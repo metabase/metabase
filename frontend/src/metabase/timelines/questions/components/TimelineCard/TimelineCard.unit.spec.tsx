@@ -37,30 +37,16 @@ describe("TimelineCard", () => {
     render(<TimelineCard {...props} />);
     userEvent.click(screen.getByRole("checkbox"));
 
-    expect(props.onToggleTimeline).toHaveBeenCalled();
-  });
-
-  it("should make a timeline visible when its event is selected", () => {
-    const props = getProps({
-      timeline: createMockTimeline({
-        name: "Releases",
-        events: [createMockTimelineEvent({ name: "RC" })],
-      }),
-      isVisible: false,
-    });
-
-    render(<TimelineCard {...props} />);
-    userEvent.click(screen.getByText("Releases"));
-    userEvent.click(screen.getByText("RC"));
-
-    expect(props.onToggleTimeline).toHaveBeenCalledWith(props.timeline, true);
+    expect(props.onShowTimelineEvents).toHaveBeenCalled();
   });
 });
 
 const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({
   timeline: createMockTimeline(),
+  visibleEventIds: [],
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),
-  onToggleTimeline: jest.fn(),
+  onShowTimelineEvents: jest.fn(),
+  onHideTimelineEvents: jest.fn(),
   ...opts,
 });

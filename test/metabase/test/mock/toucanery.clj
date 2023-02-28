@@ -1,9 +1,10 @@
 (ns metabase.test.mock.toucanery
   "A document style database mocked for testing. This is a dynamic schema db with `:nested-fields`. Most notably meant
   to serve as a representation of a Mongo database."
-  (:require [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.test.mock.util :as mock.util]))
+  (:require
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.test.mock.util :as mock.util]))
 
 (def toucanery-tables
   {"transactions" {:name   "transactions"

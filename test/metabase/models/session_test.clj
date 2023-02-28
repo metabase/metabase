@@ -1,10 +1,10 @@
 (ns metabase.models.session-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.session :as session :refer [Session]]
-            [metabase.server.middleware.misc :as mw.misc]
-            [metabase.test :as mt]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.session :as session :refer [Session]]
+   [metabase.server.middleware.misc :as mw.misc]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
@@ -13,26 +13,23 @@
 (defn- new-session []
   (try
     (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
-    (-> (db/select-one Session :id (str test-uuid)) models/post-insert (dissoc :created_at))
     (finally
       (db/delete! Session :id (str test-uuid)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"
-    (is (= {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
-            :user_id         (mt/user->id :trashbird)
-            :anti_csrf_token nil
-            :type            :normal}
-           (mt/derecordize
-            (new-session))))))
+    (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
+             :user_id         (mt/user->id :trashbird)
+             :anti_csrf_token nil
+             :type            :normal}
+            (new-session)))))
 
 (deftest embedding-test
   (testing "if request is an embedding request, we should get ourselves an embedded Session"
     (binding [mw.misc/*request* {:headers {"x-metabase-embedded" "true"}}]
       (with-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
-        (is (= {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
-                :user_id         (mt/user->id :trashbird)
-                :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"
-                :type            :full-app-embed}
-               (mt/derecordize
-                (new-session))))))))
+        (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
+                 :user_id         (mt/user->id :trashbird)
+                 :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"
+                 :type            :full-app-embed}
+                (new-session)))))))

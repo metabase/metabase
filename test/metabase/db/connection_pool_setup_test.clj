@@ -1,17 +1,21 @@
 (ns metabase.db.connection-pool-setup-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.models :refer [Database]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import [com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource]
-           metabase.db.connection_pool_setup.DbActivityTracker))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.models :refer [Database]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
+   (metabase.db.connection_pool_setup DbActivityTracker)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

@@ -1,18 +1,21 @@
 (ns metabase.driver.sql-jdbc.connection-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Secret]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Secret]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

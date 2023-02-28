@@ -1,4 +1,4 @@
-name: Rerun Flaky Workflows
+name: Re-run Flaky Workflows
 
 on:
   workflow_run:
@@ -8,24 +8,28 @@ on:
 
 jobs:
   rerun-on-failure:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion }} == 'failure'
+    name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
-      - uses: actions/github-script@v6
+      - name: Generate job summary
+        run: |
+          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Trigger a re-run
+        uses: actions/github-script@v6
         with:
           script: |
             const MAX_ATTEMPTS = 2;
             const ATTEMPT = ${{ github.event.workflow_run.run_attempt }};
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
-              console.log("Rerruning...");
-
               github.rest.actions.reRunWorkflowFailedJobs({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 run_id: ${{ github.event.workflow_run.id }},
               });
-            } else {
-              console.log("Rerunning didn't help!");
-              console.log("Please check workflow " + ${{ github.event.workflow_run.id }});
             }

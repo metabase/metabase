@@ -1,12 +1,13 @@
 (ns metabase.test.data.impl.verify
   "Logic for verifying that test data was loaded correctly."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.models :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
 (defmulti verify-data-loaded-correctly
   "Make sure a `DatabaseDefinition` (see `metabase.test.data.interface`) was loaded correctly. This checks that all

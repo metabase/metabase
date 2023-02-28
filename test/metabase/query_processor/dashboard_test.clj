@@ -1,13 +1,15 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.api.dashboard-test]]."
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.card-test :as qp.card-test]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card-test :as qp.card-test]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.test :as mt]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
 

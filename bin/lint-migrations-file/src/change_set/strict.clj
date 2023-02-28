@@ -1,8 +1,9 @@
 (ns change-set.strict
-  (:require change-set.common
-            change.strict
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]))
+  (:require
+   [change-set.common]
+   [change.strict]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
 (comment change-set.common/keep-me
          change.strict/keep-me)
@@ -54,7 +55,10 @@
     :renameSequence
     :renameTable
     :renameTrigger
-    :renameView})
+    :renameView
+    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
+    ;; metabase.db.custom-migrations
+    :customChange})
 
 (defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\""

@@ -2,8 +2,9 @@
   "Classifier that decides whether a Field should be marked 'No Preview Display'.
    (This means Fields are generally not shown in Table results and the like, but
    still shown in a single-row object detail page.)"
-  (:require [metabase.sync.interface :as i]
-            [schema.core :as s]))
+  (:require
+   [metabase.sync.interface :as i]
+   [schema.core :as s]))
 
 (def ^:private ^:const ^Long average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."

@@ -1,10 +1,14 @@
 (ns metabase.db.connection-pool-setup
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
-  (:require [java-time :as t]
-            [metabase.config :as config]
-            [metabase.connection-pool :as connection-pool]
-            [schema.core :as s])
-  (:import [com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource]))
+  (:require
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.connection-pool :as connection-pool]
+   [schema.core :as s])
+  (:import
+   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private latest-activity (atom nil))
 

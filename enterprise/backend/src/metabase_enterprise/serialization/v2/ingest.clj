@@ -3,7 +3,8 @@
   producing Clojure maps with `:serdes/meta` keys.
 
   See the detailed description of the (de)serialization processes in [[metabase.models.serialization.base]]."
-  (:require [potemkin.types :as p]))
+  (:require
+   [potemkin.types :as p]))
 
 (p/defprotocol+ Ingestable
   ;; Represents a data source for deserializing previously-exported appdb content into this Metabase instance.

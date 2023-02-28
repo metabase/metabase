@@ -1,32 +1,35 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase-enterprise.serialization.dump :as dump]
-            [metabase-enterprise.serialization.load :as load]
-            [metabase-enterprise.serialization.v2.extract :as v2.extract]
-            [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
-            [metabase-enterprise.serialization.v2.load :as v2.load]
-            [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
-            [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
-            [metabase.db :as mdb]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.plugins :as plugins]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase-enterprise.serialization.dump :as dump]
+   [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
+   [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
+   [metabase.db :as mdb]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.plugins :as plugins]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private Mode
   (su/with-api-error-message (s/enum :skip :update)
@@ -189,15 +192,16 @@
       (v2.extract/extract-metabase opts))))
 
 (defn- v2-dump [path opts]
+  (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (-> (v2-extract opts)
-      (v2.storage/store! path)))
+      (v2.storage/store! path))
+  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 
 (defn dump
-  "Serialized metabase instance into directory `path`."
+  "Serializes Metabase instance into directory `path`."
   [path {:keys [state user v2]
          :or {state :active}
          :as opts}]
-  (log/tracef "Dumping to %s with options %s" (pr-str path) (pr-str opts))
   (mdb/setup-db!)
   (db/select User) ;; TODO -- why???
   (if v2

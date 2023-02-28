@@ -25,7 +25,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.icon("filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("Dropdown").click();
+        cy.findByText("Is").click();
       });
 
       // connect that to people.state
@@ -43,7 +43,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("add another dashboard filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("Dropdown").click();
+        cy.findByText("Is").click();
       });
 
       // connect that to person.city
@@ -159,6 +159,10 @@ describe("scenarios > dashboard > chained filter", () => {
         // Add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 8,
+          size_y: 6,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect filter to that question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

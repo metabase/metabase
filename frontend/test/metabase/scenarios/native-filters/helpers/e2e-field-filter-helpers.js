@@ -24,8 +24,12 @@ export function setWidgetType(type) {
  * @param {string} value
  */
 export function addWidgetStringFilter(value) {
-  popover().find("input").first().type(`${value}{enter}`);
+  setWidgetStringFilter(value);
   cy.button("Add filter").click();
+}
+
+export function setWidgetStringFilter(value) {
+  popover().find("input").first().type(`${value}{enter}`);
 }
 
 /**
@@ -34,10 +38,13 @@ export function addWidgetStringFilter(value) {
  * @param {string} value
  */
 
-export function selectFilterValueFromList(value) {
+export function selectFilterValueFromList(value, { addFilter = true } = {}) {
   popover().within(() => {
     cy.findByText(value).click();
-    cy.button("Add filter").click();
+
+    if (addFilter) {
+      cy.button("Add filter").click();
+    }
   });
 }
 
@@ -49,7 +56,7 @@ export function selectFilterValueFromList(value) {
  */
 
 export function applyFilterByType(filter, value) {
-  if (["Dropdown", "Is not"].includes(filter)) {
+  if (["Is", "Is not"].includes(filter)) {
     selectFilterValueFromList(value);
   } else {
     addWidgetStringFilter(value);
@@ -119,6 +126,12 @@ export function openEntryForm(isFilterRequired) {
   selector.click();
 }
 
+export function closeEntryForm() {
+  popover().within(() => {
+    cy.get("input").type("{esc}");
+  });
+}
+
 // LOCAL SCOPE
 
 /**
@@ -161,7 +174,16 @@ function enterDefaultValue(value) {
 export function pickDefaultValue(searchTerm, result) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
-  popover().findByText(result).click();
+
+  // Popover is re-rendering every 100ms!
+  // That prevents us from targeting popover() element first,
+  // and then searching for strings inside of it.
+  //
+  // Until FE finds a better solution, our best bet for E2E tests
+  // is to make sure the string is "visible" before acting on it.
+  // This seems to help with the flakiness.
+  //
+  cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
 
   cy.button("Add filter").click();
 }

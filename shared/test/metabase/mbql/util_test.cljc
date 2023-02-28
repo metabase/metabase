@@ -1,8 +1,9 @@
 (ns metabase.mbql.util-test
-  (:require [clojure.string :as str]
-            [clojure.test :as t]
-            [metabase.mbql.util :as mbql.u]
-            metabase.types))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :as t]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.types]))
 
 (comment metabase.types/keep-me)
 
@@ -371,6 +372,20 @@
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
                (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
+(t/deftest ^:parallel desugar-divide-with-extra-args-test
+  (t/testing `mbql.u/desugar-expression
+    (t/are [expression expected] (= expected
+                                    (mbql.u/desugar-expression expression))
+      [:/ 1 2]     [:/ 1 2]
+      [:/ 1 2 3]   [:/ [:/ 1 2] 3]
+      [:/ 1 2 3 4] [:/ [:/ [:/ 1 2] 3] 4]))
+  (t/testing `mbql.u/desugar-filter-clause
+    (t/are [expression expected] (= expected
+                                    (mbql.u/desugar-filter-clause expression))
+      [:= 1 [:/ 1 2]]     [:= 1 [:/ 1 2]]
+      [:= 1 [:/ 1 2 3]]   [:= 1 [:/ [:/ 1 2] 3]]
+      [:= 1 [:/ 1 2 3 4]] [:= 1 [:/ [:/ [:/ 1 2] 3] 4]])))
+
 (t/deftest ^:parallel negate-simple-filter-clause-test
   (t/testing :=
     (t/is (= [:!= [:field 1 nil] 10]
@@ -639,6 +654,7 @@
                 (unique-name :x "A")
                 (unique-name :y "A")]))))
 
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (t/testing "options"
     (t/testing :name-key-fn
       (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]

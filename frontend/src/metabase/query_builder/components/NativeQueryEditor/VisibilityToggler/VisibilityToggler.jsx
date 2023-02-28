@@ -30,7 +30,11 @@ const VisibilityToggler = ({
 
   return (
     <Container>
-      <a className={classNames} onClick={toggleEditor}>
+      <a
+        className={classNames}
+        onClick={toggleEditor}
+        data-testid="visibility-toggler"
+      >
         <Span>{text}</Span>
         <Icon name={icon} size={18} />
       </a>

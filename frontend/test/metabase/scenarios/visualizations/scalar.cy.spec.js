@@ -41,6 +41,10 @@ describe("scenarios > visualizations > scalar", () => {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            row: 0,
+            col: 0,
+            size_x: 4,
+            size_y: 4,
           }).then(({ body: { id: dashCardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
@@ -77,7 +81,7 @@ describe("scenarios > visualizations > scalar", () => {
     });
 
     cy.findByText("April 30, 2018");
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     cy.findByText("Show the time").should("be.hidden");
     cy.findByText("Time style").should("be.hidden");

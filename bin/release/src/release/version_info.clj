@@ -1,10 +1,11 @@
 (ns release.version-info
   "Code for generating, uploading, and validating version-info.json."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common.github :as github]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [metabuild-common.core :as u]
+   [release.common :as c]
+   [release.common.github :as github]))
 
 (defn- version-info-filename []
   (case (c/edition)

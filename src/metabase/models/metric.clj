@@ -35,14 +35,12 @@
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Metric)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types      (constantly {:definition :metric-segment-definition})
-    :properties (constantly {:timestamped? true
-                             :entity_id    true})
-    :pre-update pre-update}))
+(mi/define-methods
+ Metric
+ {:types      (constantly {:definition :metric-segment-definition})
+  :properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :pre-update pre-update})
 
 (defmethod serdes.hash/identity-hash-fields Metric
   [_metric]

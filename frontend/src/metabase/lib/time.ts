@@ -1,9 +1,5 @@
 import { t } from "ttag";
-import moment, {
-  DurationInputArg1,
-  DurationInputArg2,
-  MomentInput,
-} from "moment-timezone";
+import moment, { DurationInputArg2, MomentInput } from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -110,7 +106,7 @@ export function getDefaultTimezone() {
 
 export function getNumericDateStyleFromSettings() {
   const dateStyle = getDateStyleFromSettings();
-  return /\//.test(dateStyle) ? dateStyle : "M/D/YYYY";
+  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
 }
 
 export function getRelativeTime(timestamp: string) {

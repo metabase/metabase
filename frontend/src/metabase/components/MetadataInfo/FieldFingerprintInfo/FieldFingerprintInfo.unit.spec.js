@@ -7,20 +7,27 @@ import Dimension from "metabase-lib/Dimension";
 import FieldFingerprintInfo from "./FieldFingerprintInfo";
 
 function setup(field) {
-  return renderWithProviders(<FieldFingerprintInfo field={field} />);
+  return renderWithProviders(
+    <div data-testid="container">
+      <FieldFingerprintInfo field={field} />
+    </div>,
+  );
 }
 
 describe("FieldFingerprintInfo", () => {
   describe("without fingerprint", () => {
-    it("should render nothing", () => {
-      const field = Dimension.parseMBQL(
-        ["field", PRODUCTS.CREATED_AT.id, null],
-        metadata,
-      ).field();
+    const field = Dimension.parseMBQL(
+      ["field", PRODUCTS.CREATED_AT.id, null],
+      metadata,
+    )
+      .field()
+      .clone();
 
-      delete field.fingerprint;
-      const { container } = setup(field);
-      expect(container.firstChild).toBeNull();
+    delete field.fingerprint;
+
+    it("should render nothing", () => {
+      setup(field);
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
   });
 
@@ -28,48 +35,48 @@ describe("FieldFingerprintInfo", () => {
     const dateField = Dimension.parseMBQL(
       ["field", PRODUCTS.CREATED_AT.id, null],
       metadata,
-    ).field();
-    let container;
+    )
+      .field()
+      .clone();
 
     describe("without type/DateTime fingerprint", () => {
-      beforeEach(() => {
-        dateField.fingerprint = { type: {} };
-        const wrapper = setup(dateField);
-        container = wrapper.container;
-      });
+      const field = dateField.clone();
+      field.fingerprint = { type: {} };
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        setup(field);
+        expect(screen.getByTestId("container")).toBeEmptyDOMElement();
       });
     });
 
     describe("with type/DateTime fingerprint", () => {
-      beforeEach(() => {
-        dateField.fingerprint = {
-          type: {
-            "type/DateTime": {
-              earliest: "2021-11-09T04:43:33.667Z",
-              latest: "2021-12-09T04:43:33.667Z",
-            },
+      const field = dateField.clone();
+      field.fingerprint = {
+        type: {
+          "type/DateTime": {
+            earliest: "2021-11-09T04:43:33.667Z",
+            latest: "2021-12-09T04:43:33.667Z",
           },
-        };
-        dateField.table = {
-          database: {
-            timezone: "America/Los_Angeles",
-          },
-        };
-        setup(dateField);
-      });
+        },
+      };
+      field.table = {
+        database: {
+          timezone: "America/Los_Angeles",
+        },
+      };
 
       it("should show the timezone of the field", () => {
+        setup(field);
         expect(screen.getByText("America/Los_Angeles")).toBeVisible();
       });
 
       it("should render formatted earliest time", () => {
+        setup(field);
         expect(screen.getByText("November 9, 2021, 4:43 AM")).toBeVisible();
       });
 
       it("should render formatted latest time", () => {
+        setup(field);
         expect(screen.getByText("December 9, 2021, 4:43 AM")).toBeVisible();
       });
     });
@@ -80,84 +87,79 @@ describe("FieldFingerprintInfo", () => {
       ["field", PRODUCTS.RATING.id, null],
       metadata,
     ).field();
+
     numberField.semantic_type = null;
-    let container;
 
     describe("without type/Number fingerprint", () => {
-      beforeEach(() => {
-        numberField.fingerprint = { type: {} };
-        const wrapper = setup(numberField);
-        container = wrapper.container;
-      });
+      const field = numberField.clone();
+      field.fingerprint = { type: {} };
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        setup(field);
+        expect(screen.getByTestId("container")).toBeEmptyDOMElement();
       });
     });
 
     describe("with type/Number fingerprint", () => {
-      beforeEach(() => {
-        numberField.fingerprint = {
-          type: {
-            "type/Number": {
-              avg: 3.33333,
-              min: 1,
-              max: 5,
-            },
+      const field = numberField.clone();
+      field.fingerprint = {
+        type: {
+          "type/Number": {
+            avg: 3.33333,
+            min: 1,
+            max: 5,
           },
-        };
-
-        setup(numberField);
-      });
+        },
+      };
 
       it("should render avg", () => {
+        setup(field);
         expect(screen.getByText("3.33")).toBeVisible();
       });
 
       it("should render min", () => {
+        setup(field);
         expect(screen.getByText("1")).toBeVisible();
       });
 
       it("should render max", () => {
+        setup(field);
         expect(screen.getByText("5")).toBeVisible();
       });
     });
 
     describe("with empty type/Number fingerprint", () => {
-      beforeEach(() => {
-        numberField.fingerprint = {
-          type: {
-            "type/Number": {},
-          },
-        };
-
-        setup(numberField);
-      });
+      const field = numberField.clone();
+      field.fingerprint = {
+        type: {
+          "type/Number": {},
+        },
+      };
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        setup(field);
+        expect(screen.getByTestId("container")).toBeEmptyDOMElement();
       });
     });
 
     describe("with missing type/Number property", () => {
-      beforeEach(() => {
-        numberField.fingerprint = {
-          type: {
-            "type/Number": {
-              min: 1,
-              max: 5,
-            },
+      const field = numberField.clone();
+      field.fingerprint = {
+        type: {
+          "type/Number": {
+            min: 1,
+            max: 5,
           },
-        };
-
-        setup(numberField);
-      });
+        },
+      };
 
       it("should not render anything for the avg", () => {
-        expect(screen.queryByText("Average")).toBeNull();
+        setup(field);
+        expect(screen.queryByText("Average")).not.toBeInTheDocument();
       });
 
       it("should still render min and max", () => {
+        setup(field);
         expect(screen.getByText("1")).toBeVisible();
         expect(screen.getByText("5")).toBeVisible();
       });
@@ -165,22 +167,24 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Other field types", () => {
-    it("should render nothing", () => {
-      const idField = Dimension.parseMBQL(
-        ["field", PRODUCTS.ID.id, null],
-        metadata,
-      ).field();
-      idField.fingerprint = {
-        type: {
-          global: {
-            "distinct-count": 123,
-          },
-          "type/ID": {},
-        },
-      };
+    const idField = Dimension.parseMBQL(
+      ["field", PRODUCTS.ID.id, null],
+      metadata,
+    ).field();
 
-      const { container } = setup(idField);
-      expect(container.firstChild).toBeNull();
+    const field = idField.clone();
+    field.fingerprint = {
+      type: {
+        global: {
+          "distinct-count": 123,
+        },
+        "type/ID": {},
+      },
+    };
+
+    it("should render nothing", () => {
+      setup(field);
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
   });
 });

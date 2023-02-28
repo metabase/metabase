@@ -1,9 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions
-  (:require [metabase.api.common :as api]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.api.common :as api]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- current-user-has-block-permissions-for-database?
   [database-or-id]

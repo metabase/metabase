@@ -1,14 +1,16 @@
 (ns metabuild-common.files
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [metabuild-common.misc :as misc]
-            [metabuild-common.output :as out]
-            [metabuild-common.shell :as shell]
-            [metabuild-common.steps :as steps])
-  (:import java.io.File
-           [java.nio.file Files FileSystems FileVisitOption Path Paths]
-           java.util.function.BiPredicate
-           org.apache.commons.io.FileUtils))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabuild-common.misc :as misc]
+   [metabuild-common.output :as out]
+   [metabuild-common.shell :as shell]
+   [metabuild-common.steps :as steps])
+  (:import
+   (java.io File)
+   (java.nio.file Files FileSystems FileVisitOption Path Paths)
+   (java.util.function BiPredicate)
+   (org.apache.commons.io FileUtils)))
 
 (defn file-exists?
   "Does a file or directory with `filename` exist?"

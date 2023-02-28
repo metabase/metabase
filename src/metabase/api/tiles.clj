@@ -1,21 +1,25 @@
 (ns metabase.api.tiles
   "`/api/tiles` endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.awt.Color
-           java.awt.image.BufferedImage
-           java.io.ByteArrayOutputStream
-           javax.imageio.ImageIO))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (java.awt Color)
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayOutputStream)
+   (javax.imageio ImageIO)))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
@@ -165,7 +169,8 @@
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
 ;; at the same time
-(api/defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:zoom/:x/:y/:lat-field/:lon-field"
   "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
   appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in

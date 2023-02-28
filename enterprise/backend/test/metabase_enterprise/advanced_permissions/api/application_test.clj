@@ -1,9 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.api.application-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [PermissionsGroup]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [PermissionsGroup]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]))
 
 (deftest application-permissions-test
   (mt/with-temp PermissionsGroup [_]

@@ -35,7 +35,7 @@
 /docs/uberdoc.html
 /frontend/test/snapshots/*
 /lein-plugins/*/target
-/local/src
+/local
 /locales/metabase-*.pot
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
@@ -74,6 +74,7 @@ dev/src/dev/nocommit/
 *~
 **/cypress_sample_database.json
 /frontend/src/cljs
+/frontend/src/cljs_release
 .shadow-cljs
 
 # lsp: ignore all but the config file
@@ -83,3 +84,6 @@ dev/src/dev/nocommit/
 *.code-workspace
 
 .calva/
+
+# malli + clj-kondo: ignore malli-types
+.clj-kondo/metosin/malli-types

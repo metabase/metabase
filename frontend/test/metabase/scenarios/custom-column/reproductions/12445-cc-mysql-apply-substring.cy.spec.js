@@ -21,7 +21,7 @@ describe.skip("issue 12445", { tags: "@external" }, () => {
               [CC_NAME]: [
                 "substring",
                 ["field", PEOPLE.SOURCE, null],
-                0,
+                1,
                 4, // we want 4 letter abbreviation
               ],
             },

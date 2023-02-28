@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
-            [metabase.test :as mt]
-            [metabase.util.date-2 :as u.date]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.optimize-temporal-filters
+    :as optimize-temporal-filters]
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -192,7 +194,7 @@
 
 (deftest e2e-test
   (testing :=
-    (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 9 25) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
@@ -203,12 +205,12 @@
            (mt/$ids checkins
              (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :between
-    (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
              (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))
-    (is (= {:query "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params           [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
                                (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
            (mt/$ids checkins
@@ -300,14 +302,14 @@
 (deftest optimize-relative-datetimes-e2e-test
   (testing "Should optimize relative-datetime clauses (#11837)"
     (mt/dataset attempted-murders
-      (is (= (str "SELECT count(*) AS \"count\" "
+      (is (= (str "SELECT COUNT(*) AS \"count\" "
                   "FROM \"PUBLIC\".\"ATTEMPTS\" "
                   "WHERE"
                   " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " >= date_trunc('month', dateadd('month', CAST(-1 AS long), CAST(now() AS datetime)))"
+                  " >= DATE_TRUNC('month', DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))))"
                   " AND"
-                  " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " < date_trunc('month', now()))")
+                  " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
+                  " < DATE_TRUNC('month', NOW()))")
              (:query
               (qp/compile
                (mt/mbql-query attempts

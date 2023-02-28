@@ -1,23 +1,27 @@
 (ns metabase.pulse.render.body
-  (:require [clojure.string :as str]
-            [hiccup.core :refer [h]]
-            [medley.core :as m]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.color :as color]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as style]
-            [metabase.pulse.render.table :as table]
-            [metabase.pulse.util :as pu]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ui-logic :as ui-logic]
-            [schema.core :as s])
-  (:import [java.text DecimalFormat DecimalFormatSymbols]))
+  (:require
+   [clojure.string :as str]
+   [hiccup.core :refer [h]]
+   [medley.core :as m]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.datetime :as datetime]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.render.style :as style]
+   [metabase.pulse.render.table :as table]
+   [metabase.pulse.util :as pu]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.ui-logic :as ui-logic]
+   [schema.core :as s])
+  (:import
+   (java.text DecimalFormat DecimalFormatSymbols)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private card-error-rendered-info
   "Default rendered-info map when there is an error running a card on the card run.
@@ -343,7 +347,9 @@
                       (= (:stackable.stack_type viz-settings) "stacked")
                       (and
                        (= (:display card) :area)
-                       (> (count (:graph.metrics viz-settings)) 1)))]
+                       (or
+                        (> (count (:graph.metrics viz-settings)) 1)
+                        (> (count (:graph.dimensions viz-settings)) 1))))]
     (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))
@@ -546,12 +552,15 @@
   [col-a col-b]
   (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
         [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
-        valid-ranges?    (and min-a min-b max-a max-b)
+        valid-ranges?    (and min-a min-b max-a max-b
+                              ;; ranges with same min and max won't be considered ranges.
+                              (not= min-a max-a)
+                              (not= min-b max-b))
         overlapping-and-valid? (and valid-ranges?
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (if
-    overlapping-and-valid?
+     overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
@@ -737,7 +746,6 @@
         series-seqs     [(if (= (count x-cols) 1)
                            (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
-
         labels          (combo-label-info x-cols y-cols viz-settings)
         settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle

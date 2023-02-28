@@ -1,22 +1,26 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [metabase.util.ssh :as ssh]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.DataSources
-           javax.sql.DataSource))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.config :as config]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [metabase.util.ssh :as ssh]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (com.mchange.v2.c3p0 DataSources)
+   (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -68,6 +72,7 @@
   ((some-fn :db
             :dbname
             :sid
+            :service-name
             :catalog)
    details))
 

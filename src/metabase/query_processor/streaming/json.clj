@@ -1,13 +1,17 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
-  (:require [cheshire.core :as json]
-            [java-time :as t]
-            [metabase.query-processor.streaming.common :as common]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           java.nio.charset.StandardCharsets))
+  (:require
+   [cheshire.core :as json]
+   [java-time :as t]
+   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
+
+(set! *warn-on-reflection* true)
 
 (defmethod qp.si/stream-options :json
   ([_]

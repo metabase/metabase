@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
@@ -11,38 +11,43 @@ describe("ChartSettingsSidebar", () => {
     cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
   };
 
-  it("should not hide the title for gauge charts", () => {
-    const { getByText } = render(
+  it("should hide the title when showSidebarTitle is false", () => {
+    render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("gauge")}
         result={{ data }}
+        showSidebarTitle={false}
       />,
     );
+
     // see options header with sections
-    getByText("Gauge options");
-    getByText("Formatting");
-    getByText("Display");
+    expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
+    expect(screen.getByText("Formatting")).toBeInTheDocument();
+    expect(screen.getByText("Display")).toBeInTheDocument();
 
     // click on formatting section
-    fireEvent.click(getByText("Formatting"));
+    fireEvent.click(screen.getByText("Formatting"));
 
     // you see the formatting stuff
-    getByText("Style");
+    expect(screen.getByText("Style")).toBeInTheDocument();
+
     // but the sections and back title are unchanged
-    getByText("Gauge options");
-    getByText("Formatting");
-    getByText("Display");
+    expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
+    expect(screen.getByText("Formatting")).toBeInTheDocument();
+    expect(screen.getByText("Display")).toBeInTheDocument();
   });
 
-  it("should not hide the title for scalar charts", () => {
-    const { getByText } = render(
+  it("should not hide the title when showSidebarTitle is false", () => {
+    render(
       <ChartSettingsSidebar
         question={SAMPLE_DATABASE.question().setDisplay("scalar")}
         result={{ data }}
+        showSidebarTitle={true}
       />,
     );
+
     // see header with formatting fields
-    getByText("Number options");
-    getByText("Style");
+    expect(screen.getByText("Number options")).toBeInTheDocument();
+    expect(screen.getByText("Style")).toBeInTheDocument();
   });
 });

@@ -1,8 +1,9 @@
 (ns metabase.pulse.render.common-test
   (:refer-clojure :exclude [format])
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.common :as common]
-            [metabase.shared.models.visualization-settings :as mb.viz]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.common :as common]
+   [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
   (str ((common/number-formatter {:id 1}
@@ -53,7 +54,7 @@
       (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"
                             ::mb.viz/decimals     2})))
       (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
-                             ::mb.viz/decimals     4})))
+                              ::mb.viz/decimals     4})))
       (is (= "-1.23E4" (format  -12345 {::mb.viz/number-style "scientific"}))))
     (testing "Percentage"
       (is (= "1,234,554.32%" (fmt {::mb.viz/number-style "percent"})))

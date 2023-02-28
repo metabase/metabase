@@ -40,7 +40,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     cy.get(".Visualization").within(() => {
       assertOnPivotFields();
@@ -54,7 +54,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     // Open Pivot table side-bar
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     assertOnPivotSettings();
   });
@@ -114,10 +114,10 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
 
     // Open Pivot table side-bar
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // Give it some time to open the side-bar fully before we start dragging
-    cy.findByText(/Pivot Table options/i);
+    assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
     dragField(1, 0);
@@ -232,7 +232,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("3,520"); // check for one of the subtotals
 
     // open settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
@@ -261,7 +261,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("3,520"); // affiliate subtotal is visible
 
     // open settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
 
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
@@ -276,7 +276,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Users? → Source/);
 
@@ -296,7 +296,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -319,7 +319,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -350,7 +350,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     // open settings and expand Total column settings
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     openColumnSettings(/Total/);
 
     // sort descending
@@ -456,6 +456,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -516,6 +520,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -814,7 +822,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
-    cy.findByText("Settings").click();
+    cy.findByTestId("viz-settings-button").click();
     cy.findByText("Conditional Formatting").click();
 
     cy.findByText("Add a rule").click();
@@ -829,7 +837,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     );
   });
 
-  it.skip("should sort by metric (metabase#22872)", () => {
+  it("should sort by metric (metabase#22872)", () => {
     const questionDetails = {
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -873,6 +881,56 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.get("[role=rowgroup] > div").eq(5).invoke("text").should("eq", value);
     }
   });
+
+  describe("column resizing", () => {
+    const getCellWidth = textEl =>
+      textEl.closest("[data-testid=pivot-table-cell]").width();
+
+    it("should persist column sizes in visualization settings", () => {
+      visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+      const leftHeaderColHandle = cy
+        .findAllByTestId("pivot-table-resize-handle")
+        .first();
+      const totalHeaderColHandle = cy
+        .findAllByTestId("pivot-table-resize-handle")
+        .last();
+
+      dragColumnHeader(leftHeaderColHandle, -100);
+      dragColumnHeader(totalHeaderColHandle, 100);
+
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText("User → Source").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(80); // min width is 80
+        });
+        cy.findByText("Row totals").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(200);
+        });
+      });
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Save").click();
+      });
+
+      cy.get("#SaveQuestionModal").within(() => {
+        cy.findByText("Save").click();
+      });
+
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText("Not now").click();
+      });
+
+      cy.reload(); // reload to make sure the settings are persisted
+
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText("User → Source").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(80);
+        });
+        cy.findByText("Row totals").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(200);
+        });
+      });
+    });
+  });
 });
 
 const testQuery = {
@@ -899,7 +957,6 @@ function assertOnPivotSettings() {
   cy.findAllByTestId(/draggable-item/).as("fieldOption");
 
   cy.log("Implicit side-bar assertions");
-  cy.findByText(/Pivot Table options/i);
 
   cy.findAllByTestId("pivot-table-setting").eq(0);
   cy.get("@fieldOption")
@@ -922,6 +979,18 @@ function assertOnPivotFields() {
   cy.findByText("3,520");
   cy.findByText("4,784");
   cy.findByText("18,760");
+}
+
+function dragColumnHeader(el, xDistance = 50) {
+  const HANDLE_WIDTH = xDistance > 0 ? 2 : -2;
+  el.then($el => {
+    const currentXPos = $el[0].getBoundingClientRect().x;
+    el.trigger("mousedown", { which: 1 })
+      .trigger("mousemove", {
+        clientX: currentXPos + (xDistance + HANDLE_WIDTH),
+      })
+      .trigger("mouseup");
+  });
 }
 
 // Rely on native drag events, rather than on the coordinates

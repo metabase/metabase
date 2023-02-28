@@ -1,4 +1,9 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  saveDashboard,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -421,6 +426,10 @@ function setupDashboard(cardId, addedSeriesCardId) {
     return cy
       .request("POST", `/api/dashboard/${dashboardId}/cards`, {
         cardId,
+        row: 0,
+        col: 0,
+        size_x: 18,
+        size_y: 12,
       })
       .then(({ body: { id: dashCardId } }) => {
         return cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -486,5 +495,6 @@ function saveDashCardVisualizationOptions() {
   cy.get(".Modal").within(() => {
     cy.findByText("Done").click();
   });
-  cy.findByText("Save").click();
+
+  saveDashboard();
 }

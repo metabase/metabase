@@ -3,23 +3,27 @@
   (:refer-clojure :exclude [replace])
   #?@
   (:clj
-   [(:require [clojure.string :as str]
-              [clojure.tools.logging :as log]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.models.dispatch :as models.dispatch]
-              [metabase.shared.util.i18n :as i18n]
-              metabase.util.i18n
-              [potemkin :as p]
-              [schema.core :as s])]
+   [(:require
+     [clojure.string :as str]
+     [metabase.mbql.predicates :as mbql.preds]
+     [metabase.mbql.schema :as mbql.s]
+     [metabase.mbql.schema.helpers :as schema.helpers]
+     [metabase.mbql.util.match :as mbql.match]
+     [metabase.models.dispatch :as models.dispatch]
+     [metabase.shared.util.i18n :as i18n]
+     [metabase.util.i18n]
+     [metabase.util.log :as log]
+     [potemkin :as p]
+     [schema.core :as s])]
    :cljs
-   [(:require [clojure.string :as str]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.shared.util.i18n :as i18n]
-              [schema.core :as s])]))
+   [(:require
+     [clojure.string :as str]
+     [metabase.mbql.predicates :as mbql.preds]
+     [metabase.mbql.schema :as mbql.s]
+     [metabase.mbql.schema.helpers :as schema.helpers]
+     [metabase.mbql.util.match :as mbql.match]
+     [metabase.shared.util.i18n :as i18n]
+     [schema.core :as s])]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -32,6 +36,7 @@
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
@@ -278,6 +283,22 @@
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
+(defn- desugar-divide-with-extra-args [expression]
+  (mbql.match/replace expression
+    [:/ x y z & more]
+    (recur (into [:/ [:/ x y]] (cons z more)))))
+
+(s/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+  "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
+  to compile."
+  [expression :- mbql.s/FieldOrExpressionDef]
+  (-> expression
+      desugar-divide-with-extra-args))
+
+(defn- maybe-desugar-expression [clause]
+  (cond-> clause
+    (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -293,7 +314,8 @@
       desugar-is-empty-and-not-empty
       desugar-inside
       simplify-compound-filter
-      desugar-temporal-extract))
+      desugar-temporal-extract
+      maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
 

@@ -1,11 +1,12 @@
 (ns metabase.sync.sync-metadata.dbms-version
-  (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.interface :as i]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.interface :as i]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def DBMSVersion
   "Schema for the expected output of `describe-table-fks`."

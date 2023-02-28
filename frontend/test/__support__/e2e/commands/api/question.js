@@ -54,9 +54,12 @@ function question(
     query,
     database = SAMPLE_DB_ID,
     display = "table",
+    parameters,
     visualization_settings = {},
     collection_id,
     collection_position,
+    embedding_params,
+    enable_embedding = false,
   } = {},
   {
     loadMetadata = false,
@@ -75,6 +78,7 @@ function question(
       database,
     },
     display,
+    parameters,
     visualization_settings,
     collection_id,
     collection_position,
@@ -91,8 +95,12 @@ function question(
       cy.wrap(body.id).as(idAlias);
     }
 
-    if (dataset) {
-      cy.request("PUT", `/api/card/${body.id}`, { dataset });
+    if (dataset || enable_embedding) {
+      cy.request("PUT", `/api/card/${body.id}`, {
+        dataset,
+        enable_embedding,
+        embedding_params,
+      });
     }
 
     if (loadMetadata || visitQuestion) {

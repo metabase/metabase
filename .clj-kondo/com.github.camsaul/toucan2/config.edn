@@ -1,0 +1,39 @@
+{:config-paths
+ ["macros"]
+
+ :lint-as
+ {toucan2.core/build             clojure.core/identity
+  toucan2.core/compile           clojure.core/identity
+  toucan2.query/with-built-query clojure.core/let
+  toucan2.tools.compile/build    clojure.core/identity
+  toucan2.tools.compile/compile  clojure.core/identity}
+
+ :hooks
+ {:analyze-call
+  {toucan2.connection/with-connection                      hooks.toucan2.connection/with-connection
+   toucan2.connection/with-transaction                     hooks.toucan2.connection/with-transaction
+   toucan2.core/with-connection                            hooks.toucan2.connection/with-connection
+   toucan2.core/with-transaction                           hooks.toucan2.connection/with-transaction
+   toucan2.tools.simple-out-transform/define-out-transform hooks.toucan2.tools.simple-out-transform/define-out-transform
+   toucan2.tools.with-temp/with-temp                       hooks.toucan2.tools.with-temp/with-temp}
+
+  :macroexpand
+  {toucan.db/with-call-counting                       macros.toucan2.execute/with-call-count
+   toucan.models/defmodel                             macros.toucan.models/defmodel
+   toucan2.core/define-after-insert                   macros.toucan2.tools.after-insert/define-after-insert
+   toucan2.core/define-after-select                   macros.toucan2.tools.helpers/define-after-select
+   toucan2.core/define-after-update                   macros.toucan2.tools.after-update/define-after-update
+   toucan2.core/define-before-delete                  macros.toucan2.tools.helpers/define-before-delete
+   toucan2.core/define-before-insert                  macros.toucan2.tools.before-insert/define-before-insert
+   toucan2.core/define-before-select                  macros.toucan2.tools.helpers/define-before-select
+   toucan2.core/define-before-update                  macros.toucan2.tools.before-update/define-before-update
+   toucan2.execute/with-call-count                    macros.toucan2.execute/with-call-count
+   toucan2.tools.after-insert/define-after-insert     macros.toucan2.tools.after-insert/define-after-insert
+   toucan2.tools.after-select/define-after-select     macros.toucan2.tools.helpers/define-after-select
+   toucan2.tools.after-update/define-after-update     macros.toucan2.tools.after-update/define-after-update
+   toucan2.tools.before-delete/define-before-delete   macros.toucan2.tools.helpers/define-before-delete
+   toucan2.tools.before-insert/define-before-insert   macros.toucan2.tools.before-insert/define-before-insert
+   toucan2.tools.before-select/define-before-select   macros.toucan2.tools.helpers/define-before-select
+   toucan2.tools.before-update/define-before-update   macros.toucan2.tools.before-update/define-before-update
+   toucan2.tools.default-fields/define-default-fields macros.toucan2.tools.default-fields/define-default-fields
+   toucan2.tools.named-query/define-named-query       macros.toucan2.tools.named-query/define-named-query}}}

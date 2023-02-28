@@ -54,28 +54,39 @@ export const saveDashboardAndCards = createThunkAction(
         dashboard.ordered_cards
           .filter(dc => dc.isRemoved && !dc.isAdded)
           .map(dc =>
-            DashboardApi.removecard({
+            DashboardApi.removeCard({
               dashId: dashboard.id,
               dashcardId: dc.id,
             }),
           ),
       );
 
-      // add isAdded dashboards
+      // update parameter mappings
+      dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
+        ...dc,
+        parameter_mappings: dc.parameter_mappings.filter(
+          mapping =>
+            // filter out mappings for deleted parameters
+            _.findWhere(dashboard.parameters, {
+              id: mapping.parameter_id,
+            }) &&
+            // filter out mappings for deleted series
+            (!dc.card_id ||
+              dc.action ||
+              dc.card_id === mapping.card_id ||
+              _.findWhere(dc.series, { id: mapping.card_id })),
+        ),
+      }));
+
+      // add new cards to dashboard
       const updatedDashcards = await Promise.all(
         dashboard.ordered_cards
           .filter(dc => !dc.isRemoved)
           .map(async dc => {
             if (dc.isAdded) {
-              const result = await DashboardApi.addcard({
+              const result = await DashboardApi.addCard({
                 dashId: dashboard.id,
                 cardId: dc.card_id,
-              });
-              dispatch(updateDashcardId(dc.id, result.id));
-
-              // mark isAdded because addcard doesn't record the position
-              return {
-                ...result,
                 col: dc.col,
                 row: dc.row,
                 size_x: dc.size_x,
@@ -83,8 +94,10 @@ export const saveDashboardAndCards = createThunkAction(
                 series: dc.series,
                 parameter_mappings: dc.parameter_mappings,
                 visualization_settings: dc.visualization_settings,
-                isAdded: true,
-              };
+                action_id: dc.action_id,
+              });
+              dispatch(updateDashcardId(dc.id, result.id));
+              return result;
             } else {
               return dc;
             }
@@ -106,45 +119,21 @@ export const saveDashboardAndCards = createThunkAction(
         );
       }
 
-      // reposition the cards
-      if (_.some(updatedDashcards, dc => dc.isDirty || dc.isAdded)) {
-        const cards = updatedDashcards.map(
-          ({
-            id,
-            card_id,
-            row,
-            col,
-            size_x,
-            size_y,
-            series,
-            parameter_mappings,
-            visualization_settings,
-          }) => ({
-            id,
-            card_id,
-            row,
-            col,
-            size_x,
-            size_y,
-            series,
-            visualization_settings,
-            parameter_mappings:
-              parameter_mappings &&
-              parameter_mappings.filter(
-                mapping =>
-                  // filter out mappings for deleted parameters
-                  _.findWhere(dashboard.parameters, {
-                    id: mapping.parameter_id,
-                  }) &&
-                  // filter out mappings for deleted series
-                  (!card_id ||
-                    card_id === mapping.card_id ||
-                    _.findWhere(series, { id: mapping.card_id })),
-              ),
-          }),
-        );
-
-        const result = await DashboardApi.reposition_cards({
+      // update the dashboard cards
+      if (_.some(updatedDashcards, dc => dc.isDirty)) {
+        const cards = updatedDashcards.map(dc => ({
+          id: dc.id,
+          card_id: dc.card_id,
+          action_id: dc.action_id,
+          row: dc.row,
+          col: dc.col,
+          size_x: dc.size_x,
+          size_y: dc.size_y,
+          series: dc.series,
+          visualization_settings: dc.visualization_settings,
+          parameter_mappings: dc.parameter_mappings,
+        }));
+        const result = await DashboardApi.updateCards({
           dashId: dashboard.id,
           cards,
         });

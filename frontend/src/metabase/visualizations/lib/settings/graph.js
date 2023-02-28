@@ -349,12 +349,19 @@ export const STACKABLE_SETTINGS = {
       }
       return true;
     },
-    getDefault: ([{ card, data }], settings) =>
+    getDefault: ([{ card, data }], settings) => {
       // legacy setting and default for D-M-M+ charts
-      settings["stackable.stacked"] ||
-      (card.display === "area" && settings["graph.metrics"].length > 1)
-        ? "stacked"
-        : null,
+      if (settings["stackable.stacked"]) {
+        return settings["stackable.stacked"];
+      }
+
+      const shouldStack =
+        card.display === "area" &&
+        (settings["graph.metrics"].length > 1 ||
+          settings["graph.dimensions"].length > 1);
+
+      return shouldStack ? "stacked" : null;
+    },
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
@@ -362,7 +369,7 @@ export const STACKABLE_SETTINGS = {
       );
       return stackableDisplays.length <= 1;
     },
-    readDependencies: ["graph.metrics", "series"],
+    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
   "stackable.stack_display": {
     section: t`Display`,

@@ -1,23 +1,23 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
-  (:require [cheshire.core :as json]
-            [clojure.walk :as walk]
-            [metabase.db :as mdb]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.interface :as mi]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.walk :as walk]
+   [metabase.db :as mdb]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan.db :as db]
+   [toucan.models :as models]))
+
+(set! *warn-on-reflection* true)
 
 (models/defmodel Query :query)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Query)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:query :json})
-          :primary-key (constantly :query_hash)}))
-
+(mi/define-methods
+ Query
+ {:types       (constantly {:query :json})
+  :primary-key (constantly :query_hash)})
 
 ;;; Helper Fns
 
@@ -38,28 +38,30 @@
     :integer))
 
 (defn- update-rolling-average-execution-time!
-  "Update the rolling average execution time for query with QUERY-HASH. Returns `true` if a record was updated,
+  "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
    or `false` if no matching records were found."
-  ^Boolean [query, ^bytes query-hash, ^Integer execution-time-ms]
-  (let [avg-execution-time (hx/cast (int-casting-type) (hx/round (hx/+ (hx/* 0.9 :average_execution_time)
-                                                                       (*    0.1 execution-time-ms))
-                                                                 0))]
+  ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
+  (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline 0.9] :average_execution_time)
+                                                                          [:inline (* 0.1 execution-time-ms)])
+                                                                   [:inline 0]))]
 
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (db/update-where! Query {:query_hash query-hash, :query nil}
-       :query                 (json/generate-string query)
-       :average_execution_time avg-execution-time)
+     (db/update-where! Query
+                       {:query_hash query-hash, :query nil}
+                       :query                 (json/generate-string query)
+                       :average_execution_time avg-execution-time)
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
-     (db/update-where! Query {:query_hash query-hash}
-       :average_execution_time avg-execution-time))))
+     (db/update-where! Query
+                       {:query_hash query-hash}
+                       :average_execution_time avg-execution-time))))
 
 (defn- record-new-query-entry!
   "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.
   `execution-time-ms` is used as a starting point."
-  [query, ^bytes query-hash, ^Integer execution-time-ms]
+  [query ^bytes query-hash ^Integer execution-time-ms]
   (db/insert! Query
     :query                  query
     :query_hash             query-hash

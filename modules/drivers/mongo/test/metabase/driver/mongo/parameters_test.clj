@@ -1,16 +1,20 @@
 (ns metabase.driver.mongo.parameters-test
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.mongo.parameters :as mongo.params]
-            [metabase.models :refer [NativeQuerySnippet]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.models :refer [NativeQuerySnippet]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ->utc-instant-test
   (doseq [t [#t "2020-03-14"
@@ -41,6 +45,9 @@
 
 (defn- comma-separated-numbers [nums]
   (params/->CommaSeparatedNumbers nums))
+
+(defn- multiple-values [& values]
+  (params/->MultipleValues values))
 
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -93,6 +100,14 @@
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
            (substitute {:id (comma-separated-numbers [1 2 3])}
+                       [(param :id)]))))
+  (testing "multiple-values single (#22486)"
+    (is (= "{$in: [\"33 Taps\"]}"
+           (substitute {:id (multiple-values "33 Taps")}
+                       [(param :id)]))))
+  (testing "multiple-values multi (#22486)"
+    (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
+           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON
@@ -139,15 +154,15 @@
       (letfn [(substitute-date-range [s]
                 (substitute {:date (field-filter "date" :date/range s)}
                             ["[{$match: " (param :date) "}]"]))]
-        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
-                                          {"date" {:$lt  (ISODate "2019-12-13")}}]}}])
+        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08T00:00:00Z")}}
+                                          {"date" {:$lt  (ISODate "2019-12-13T00:00:00Z")}}]}}])
                (substitute-date-range "past5days")))
         (testing "Make sure ranges like last[x]/this[x] include the full range (#11715)"
-          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01")}}
-                                            {"date" {:$lt  (ISODate "2020-01-01")}}]}}])
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01T00:00:00Z")}}
+                                            {"date" {:$lt  (ISODate "2020-01-01T00:00:00Z")}}]}}])
                  (substitute-date-range "thismonth")))
-          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01")}}
-                                            {"date" {:$lt  (ISODate "2019-12-01")}}]}}])
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01T00:00:00Z")}}
+                                            {"date" {:$lt  (ISODate "2019-12-01T00:00:00Z")}}]}}])
                  (substitute-date-range "lastmonth")))))))
   (testing "multiple values"
     (doseq [[message v] {"values are a vector of numbers" [1 2 3]
@@ -292,7 +307,7 @@
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
         (mt/dataset geographical-tips
-          (is (= [[5 "tupac"]]
+          (is (= [["tupac" 5]]
                  (mt/rows
                    (qp/process-query
                      (mt/query tips
@@ -300,7 +315,8 @@
                         :native     {:query         (json/generate-string
                                                      [{:$match (json-raw "{{username}}")}
                                                       {:$sort {:_id 1}}
-                                                      {:$project {"username" "$source.username"}}
+                                                      {:$project {"username" "$source.username"
+                                                                  "_id" 1}}
                                                       {:$limit 1}])
                                      :collection    "tips"
                                      :template-tags {"username" {:name         "username"

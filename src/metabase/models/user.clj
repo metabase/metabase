@@ -2,8 +2,9 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
+   [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-group-membership
@@ -15,7 +16,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
@@ -23,6 +25,8 @@
    [toucan.models :as models])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -50,7 +54,7 @@
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
    insert-default-values
    user
@@ -81,20 +85,24 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when (some? superuser?)
-    (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (perms-group/admin))
-                               :user_id  id)]
+  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+                           :group_id (:id (perms-group/admin))
+                           :user_id  id)]
+    ;; Do not let the last admin archive themselves
+    (when (and in-admin-group?
+               (false? active?))
+      (perms-group-membership/throw-if-last-admin!))
+    (when (some? superuser?)
       (cond
         (and superuser?
-             (not membership-exists?))
+             (not in-admin-group?))
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
         ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
-             membership-exists?)
+             in-admin-group?)
         (db/simple-delete! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
@@ -102,7 +110,7 @@
   (when email
     (assert (u/email? email)))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
     (db/delete! 'PulseChannelRecipient :user_id id))
@@ -144,18 +152,17 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class User)
-  models/IModel
-  (merge models/IModelDefaults
-         {:default-fields (constantly default-user-columns)
-          :hydration-keys (constantly [:author :creator :user])
-          :properties     (constantly {:updated-at-timestamped? true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :post-select    post-select
-          :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+(mi/define-methods
+ User
+ {:default-fields (constantly default-user-columns)
+  :hydration-keys (constantly [:author :creator :user])
+  :properties     (constantly {::mi/updated-at-timestamped? true})
+  :pre-insert     pre-insert
+  :post-insert    post-insert
+  :pre-update     pre-update
+  :post-select    post-select
+  :types          (constantly {:login_attributes :json-no-keywordization
+                               :settings         :encrypted-json})})
 
 (defmethod serdes.hash/identity-hash-fields User
   [_user]
@@ -195,18 +202,18 @@
           ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
           (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))
           ;; include the other Perms entries for any Group this User is in (1 DB Call)
-          (map :object (db/query {:select [:p.object]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                           [:permissions :p]        [:= :p.group_id :pg.id]]
-                                  :where  [:= :pgm.user_id user-id]}))))))
+          (map :object (mdb.query/query {:select [:p.object]
+                                         :from   [[:permissions_group_membership :pgm]]
+                                         :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                                  [:permissions :p]        [:= :p.group_id :pg.id]]
+                                         :where  [:= :pgm.user_id user-id]}))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn add-user-group-memberships
+(mi/define-batched-hydration-method add-user-group-memberships
+  :user_group_memberships
   "Add to each `user` a list of Group Memberships Info with each item is a map with 2 keys [:id :is_group_manager].
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
-  {:batched-hydrate :user_group_memberships}
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
@@ -218,10 +225,10 @@
       (for [user users]
         (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
 
-(defn add-group-ids
+(mi/define-batched-hydration-method add-group-ids
+  :group_ids
   "Efficiently add PermissionsGroup `group_ids` to a collection of `users`.
   TODO: deprecate :group_ids and use :user_group_memberships instead"
-  {:batched-hydrate :group_ids}
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
@@ -229,11 +236,11 @@
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
-(defn add-has-invited-second-user
+(mi/define-batched-hydration-method add-has-invited-second-user
+  :has_invited_second_user
   "Adds the `has_invited_second_user` flag to a collection of `users`. This should be `true` for only the user who
   underwent the initial app setup flow (with an ID of 1), iff more than one user exists. This is used to modify
   the wording for this user on a homepage banner that prompts them to add their database."
-  {:batched-hydrate :has_invited_second_user}
   [users]
   (when (seq users)
     (let [user-count (db/count User)]
@@ -241,11 +248,11 @@
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
 
-(defn add-is-installer
+(mi/define-batched-hydration-method add-is-installer
+  :is_installer
   "Adds the `is_installer` flag to a collection of `users`. This should be `true` for only the user who
   underwent the initial app setup flow (with an ID of 1). This is used to modify the experience of the
   starting page for users."
-  {:batched-hydrate :is_installer}
   [users]
   (when (seq users)
     (for [user users]
@@ -281,6 +288,18 @@
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
+
+(def DefaultUser
+  "Standard form of a user (for consumption by the frontend and such)"
+  {:id           su/IntGreaterThanOrEqualToZero
+   :email        su/NonBlankString
+   :first_name   su/NonBlankString
+   :last_name    su/NonBlankString
+   :common_name  su/NonBlankString
+   :last_login   schema/Any
+   :date_joined  schema/Any
+   :is_qbnewb    schema/Bool
+   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

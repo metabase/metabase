@@ -1,21 +1,24 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.table :as api.table]
-            [metabase.driver.util :as driver.u]
-            [metabase.http-client :as client]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Database Field FieldValues Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :as table]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.table :as api.table]
+   [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -44,6 +47,7 @@
     :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
+    :settings                    nil
     :cache_ttl                   nil}))
 
 (defn- table-defaults []
@@ -326,31 +330,33 @@
                             (let [fut (original unhidden)]
                               (when (future? fut)
                                 (deref fut)))))]
-            (let [set-visibility (fn [state]
-                                   (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name    "Userz"
-                                                          :visibility_type state
-                                                          :description     "What a nice table!"}))
-                  set-name      (fn []
-                                  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name (mt/random-name)
-                                                          :description  "What a nice table!"}))]
+            (letfn [(set-visibility! [state]
+                      (testing (format "Set state => %s" (pr-str state))
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name    "Userz"
+                                               :visibility_type state
+                                               :description     "What a nice table!"})))
+                    (set-name! []
+                      (testing "set display name"
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name (mt/random-name)
+                                               :description  "What a nice table!"})))]
 
-              (set-visibility "hidden")
-              (set-visibility nil)        ; <- should get synced
+              (set-visibility! "hidden")
+              (set-visibility! nil)     ; <- should get synced
               (is (= 1
                      @called))
-              (set-visibility "hidden")
-              (set-visibility "cruft")
-              (set-visibility "technical")
-              (set-visibility nil)        ; <- should get synced again
+              (set-visibility! "hidden")
+              (set-visibility! "cruft")
+              (set-visibility! "technical")
+              (set-visibility! nil)     ; <- should get synced again
               (is (= 2
                      @called))
-              (set-visibility "technical")
+              (set-visibility! "technical")
               (is (= 2
                      @called))
               (testing "Update table's properties shouldn't trigger sync"
-                (set-name)
+                (set-name!)
                 (is (= 2
                        @called)))))))))
 
@@ -359,17 +365,18 @@
       (mt/with-temp* [Table [{id-1 :id} {}]
                       Table [{id-2 :id} {:visibility_type "hidden"}]]
         (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
-          (let [set-many-vis (fn [ids state]
-                               (reset! unhidden-ids #{})
-                               (mt/user-http-request :crowberto :put 200 "table/"
-                                                     {:ids ids :visibility_type state}))]
-            (set-many-vis [id-1 id-2] nil) ;; unhides only 2
+          (letfn [(set-many-vis! [ids state]
+                    (reset! unhidden-ids #{})
+                    (testing (format "Set visibility type => %s" (pr-str state))
+                      (mt/user-http-request :crowberto :put 200 "table/"
+                                            {:ids ids :visibility_type state})))]
+            (set-many-vis! [id-1 id-2] nil) ;; unhides only 2
             (is (= @unhidden-ids #{id-2}))
 
-            (set-many-vis [id-1 id-2] "hidden")
+            (set-many-vis! [id-1 id-2] "hidden")
             (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
 
-            (set-many-vis [id-1 id-2] nil) ;; both are made unhidden so both synced
+            (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest get-fks-test
@@ -587,10 +594,9 @@
         :when (contains? (set category-names) (:name field))]
     (-> field
         (select-keys [:id :table_id :name :values :dimensions])
-        (update :dimensions (fn [dim]
-                              (if (map? dim)
-                                (dissoc dim :id :entity_id :created_at :updated_at)
-                                dim))))))
+        (update :dimensions (fn [dimensions]
+                              (for [dim dimensions]
+                                (dissoc dim :id :entity_id :created_at :updated_at)))))))
 
 (defn- category-id-semantic-type
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
@@ -606,10 +612,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -624,10 +630,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [internal remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil
-                              :type                    "internal"}}
+                 :dimensions [{:name                    "Category ID [internal remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id nil
+                               :type                    "internal"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -643,10 +649,10 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID [external remap]"
-                              :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id (mt/id :categories :name)
-                              :type                    "external"}}
+                 :dimensions [{:name                    "Category ID [external remap]"
+                               :field_id                (mt/id :venues :category_id)
+                               :human_readable_field_id (mt/id :categories :name)
+                               :type                    "external"}]}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -825,7 +831,7 @@
                                           {:field_order :database})
                     :fields
                     (map :name)))))
-      (testing "Cane we set custom field ordering?"
+      (testing "Can we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))

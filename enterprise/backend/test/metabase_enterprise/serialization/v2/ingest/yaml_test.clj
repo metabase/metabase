@@ -1,10 +1,11 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.ingest :as ingest]
-            [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
-            [yaml.core :as yaml]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+   [yaml.core :as yaml]))
 
 (deftest basic-ingest-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

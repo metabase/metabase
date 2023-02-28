@@ -7,16 +7,20 @@
   That said, these migrations should be idempotent, e.g:
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [cheshire.core :as json]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.db.query :as mdb.query]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan.models :as models]))
+
+(set! *warn-on-reflection* true)
 
 ;;; # Migration Helpers
 
@@ -151,6 +155,7 @@
             x
             ks)))
 
+;;; TODO -- this can just be done with vis settings versioning migrations from [[metabase.models.interface]] now
 (defmigration
   ^{:author "dpsutton"
     :added  "0.38.1"
@@ -160,25 +165,25 @@
                    (map fix-click-through)
                    (filter :visualization_settings))
              (completing
-               (fn [_ {:keys [id visualization_settings]}]
-                 (db/update! DashboardCard id :visualization_settings visualization_settings)))
+              (fn [_ {:keys [id visualization_settings]}]
+                (db/update! DashboardCard id :visualization_settings visualization_settings)))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
-             (db/query {:select [:dashcard.id
-                                 [:card.visualization_settings :card_visualization]
-                                 [:dashcard.visualization_settings :dashcard_visualization]]
-                        :from   [[:report_dashboardcard :dashcard]]
-                        :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
-                        :where  [:or
-                                 [:like
-                                  :card.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :card.visualization_settings "%\"click_link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+             (mdb.query/query {:select [:dashcard.id
+                                        [:card.visualization_settings :card_visualization]
+                                        [:dashcard.visualization_settings :dashcard_visualization]]
+                               :from   [[:report_dashboardcard :dashcard]]
+                               :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                               :where  [:or
+                                        [:like
+                                         :card.visualization_settings "%\"link_template\":%"]
+                                        [:like
+                                         :card.visualization_settings "%\"click_link_template\":%"]
+                                        [:like
+                                         :dashcard.visualization_settings "%\"link_template\":%"]
+                                        [:like
+                                         :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (defn- raw-setting
   "Get raw setting directly from DB.

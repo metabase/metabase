@@ -9,7 +9,7 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
@@ -17,10 +17,13 @@ import { getFullName } from "metabase/lib/user";
 
 import {
   ItemCell,
+  ItemNameCell,
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
   DescriptionIcon,
+  ModelDetailLink,
+  RowActionsContainer,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -114,8 +117,8 @@ export function BaseTableItem({
             showCheckbox={isHoveringOverRow}
           />
         </ItemCell>
-        <ItemCell data-testid={`${testId}-name`}>
-          <ItemLink {...linkProps} to={item.getUrl({ isModelDetail: true })}>
+        <ItemNameCell data-testid={`${testId}-name`}>
+          <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
@@ -129,7 +132,7 @@ export function BaseTableItem({
               />
             )}
           </ItemLink>
-        </ItemCell>
+        </ItemNameCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
@@ -141,15 +144,18 @@ export function BaseTableItem({
           )}
         </ItemCell>
         <ItemCell>
-          <ActionMenu
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            bookmarks={bookmarks}
-            item={item}
-            collection={collection}
-            onCopy={onCopy}
-            onMove={onMove}
-          />
+          <RowActionsContainer>
+            <ActionMenu
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              bookmarks={bookmarks}
+              item={item}
+              collection={collection}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
+            {item.model === "dataset" && <ModelDetailLink model={item} />}
+          </RowActionsContainer>
         </ItemCell>
       </tr>
     );

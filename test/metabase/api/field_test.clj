@@ -1,19 +1,20 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.field :as api.field]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.field :as api.field]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -64,7 +65,7 @@
                  :database_required false
                  :dimensions       []
                  :name_field       nil})
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
 
@@ -334,10 +335,10 @@
 (defn- dimension-for-field [field-id]
   (-> (db/select-one Field :id field-id)
       (hydrate :dimensions)
-      :dimensions))
+      :dimensions
+      first))
 
 (defn- create-dimension-via-API!
-  {:style/indent 1}
   [field-id map-to-post & {:keys [expected-status-code]
                            :or   {expected-status-code 200}}]
   (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
@@ -345,7 +346,7 @@
 (deftest create-update-dimension-test
   (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (testing "no dimension should exist for a new Field"
-      (is (= []
+      (is (= nil
              (dimension-for-field field-id))))
     (testing "Create a dimension"
       (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
@@ -385,7 +386,7 @@
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name "Field Test 2"}]]
       (testing "before creation"
-        (is (= []
+        (is (= nil
                (dimension-for-field field-id-1))))
       (create-dimension-via-API! field-id-1
         {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
@@ -432,7 +433,7 @@
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
         (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" field-id))
         (testing "after deletion"
-          (is (= []
+          (is (= nil
                  (dimension-for-field field-id))))))))
 
 (deftest delete-dimension-permissions-test
@@ -462,7 +463,7 @@
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-1) {:semantic_type nil})
         (testing "after update"
-          (is (= []
+          (is (= nil
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))))))
 
 (deftest update-field-should-not-affect-dimensions-test
@@ -620,7 +621,7 @@
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type "type/AvatarURL"})
         (testing "after API request"
-          (is (= []
+          (is (= nil
                  (dimension-for-field field-id))))))
 
     (testing "Change from supported type to supported type will leave the dimension"

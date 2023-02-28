@@ -1,18 +1,22 @@
 (ns metabase.plugins
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.plugins.initialize :as plugins.init]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :refer [trs]]
-            [yaml.core :as yaml])
-  (:import java.io.File
-           [java.nio.file Files Path]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.initialize :as plugins.init]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml])
+  (:import
+   (java.io File)
+   (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
@@ -126,7 +130,8 @@
            :when      (and (.isDirectory file)
                            (not (.isHidden file))
                            (str/includes? (str file) "modules/drivers")
-                           (str/ends-with? (str file) "resources"))
+                           (or (str/ends-with? (str file) "resources")
+                               (str/ends-with? (str file) "resources-ee")))
            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
            :when      (.exists manifest-file)]
        manifest-file)

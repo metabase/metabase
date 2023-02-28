@@ -2,14 +2,18 @@
   "Implementations of `sql-jdbc.execute` methods for JDBC drivers that aren't fully JDBC 4.2 compliant or otherwise
   don't fully support the new JSR-310 `java.time` classes. Drivers with `::use-legacy-classes-for-read-and-set` as a
   parent will use these implementations instead of the defaults."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.sql PreparedStatement ResultSet Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [java.util Calendar TimeZone]))
+  (:require
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql PreparedStatement ResultSet Types)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util Calendar TimeZone)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - need to do a legacy implementation using the new methods as well...
 

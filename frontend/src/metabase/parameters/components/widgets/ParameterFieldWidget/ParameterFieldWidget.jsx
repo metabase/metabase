@@ -27,6 +27,7 @@ const propTypes = {
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
   value: PropTypes.string,
+  question: PropTypes.object,
   dashboard: PropTypes.object,
 };
 
@@ -38,6 +39,7 @@ export default function ParameterFieldWidget({
   parameter,
   parameters,
   placeholder = t`Enter a value...`,
+  question,
   dashboard,
 }) {
   const [unsavedValue, setUnsavedValue] = useState(() => normalizeValue(value));
@@ -47,9 +49,12 @@ export default function ParameterFieldWidget({
   const disableSearch = operator && isFuzzyOperator(operator);
   const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
 
+  const supportsMultipleValues =
+    multi && !parameter.hasVariableTemplateTagTarget;
+
   const isValid =
     unsavedValue.every(value => value != null) &&
-    (multi || unsavedValue.length === numFields);
+    (supportsMultipleValues || unsavedValue.length === numFields);
 
   return (
     <WidgetRoot>
@@ -59,8 +64,10 @@ export default function ParameterFieldWidget({
         )}
 
         {_.times(numFields, index => {
-          const value = multi ? unsavedValue : [unsavedValue[index]];
-          const onValueChange = multi
+          const value = supportsMultipleValues
+            ? unsavedValue
+            : [unsavedValue[index]];
+          const onValueChange = supportsMultipleValues
             ? newValues => setUnsavedValue(newValues)
             : ([value]) => {
                 const newValues = [...unsavedValue];
@@ -74,12 +81,13 @@ export default function ParameterFieldWidget({
               value={value}
               parameter={parameter}
               parameters={parameters}
+              question={question}
               dashboard={dashboard}
               onChange={onValueChange}
               placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}
               autoFocus={index === 0}
-              multi={multi}
+              multi={supportsMultipleValues}
               disableSearch={disableSearch}
               formatOptions={
                 operator && getFilterArgumentFormatOptions(operator, index)

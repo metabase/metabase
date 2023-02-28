@@ -1,12 +1,16 @@
 (ns metabase.util.yaml
   (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :refer [trs]]
-            [yaml.core :as yaml])
-  (:import [java.nio.file Files Path]))
+  (:require
+   [clojure.string :as str]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml])
+  (:import
+   (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."
@@ -35,5 +39,5 @@
    (u.files/with-open-path-to-resource [dir dir]
      (with-open [ds (Files/newDirectoryStream dir)]
        (->> ds
-            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
+            (filter (comp #(str/ends-with? % ".yaml") u/lower-case-en (memfn ^Path getFileName)))
             (mapv (partial load constructor)))))))

@@ -103,32 +103,23 @@ describe("scenarios > admin > databases > list", () => {
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
-  it("should display a deprecated database warning", () => {
-    cy.intercept("/api/database*", req => {
+  it("should handle malformed (null) database details (metabase#25715)", () => {
+    cy.intercept("GET", "/api/database/1", req => {
       req.reply(res => {
-        res.body.data = res.body.data.map(database => ({
-          ...database,
-          engine: "presto",
-        }));
+        res.body.details = null;
       });
-    });
+    }).as("loadDatabase");
 
-    cy.visit("/admin");
+    cy.visit("/admin/databases/1");
+    cy.wait("@loadDatabase");
 
-    cy.findByRole("status").within(() => {
-      cy.findByText("Database driver");
-      cy.findByText(/which is now deprecated/);
-      cy.findByText("Database driver").click();
-    });
-
-    cy.findByRole("table").within(() => {
-      cy.findByText("Sample Database");
-    });
-
-    cy.findByRole("status").within(() => {
-      cy.findByLabelText("close icon").click();
-    });
-
-    cy.findByRole("status").should("not.exist");
+    // It is unclear how this issue will be handled,
+    // but at the very least it shouldn't render the blank page.
+    cy.get("nav").should("contain", "Metabase Admin");
+    // The response still contains the database name,
+    // so there's no reason we can't display it.
+    cy.contains(/Sample Database/i);
+    // This seems like a reasonable CTA if the database is beyond repair.
+    cy.button("Remove this database");
   });
 });

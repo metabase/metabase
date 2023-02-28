@@ -1,19 +1,25 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml
   "Note that throughout the YAML file handling, the `:serdes/meta` abstract path is referred to as the \"hierarchy\",
   to avoid confusion with filesystem paths."
-  (:require [clojure.java.io :as io]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.v2.ingest :as ingest]
-            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-            [metabase.util.date-2 :as u.date]
-            [yaml.core :as yaml]
-            [yaml.reader :as y.reader])
-  (:import java.io.File
-           java.time.temporal.Temporal))
+  (:require
+   [clojure.java.io :as io]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml]
+   [yaml.reader :as y.reader])
+  (:import
+   (java.io File)
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- build-settings [file]
   (let [settings (yaml/from-file file)]
@@ -68,7 +74,7 @@
 (def ^:private legal-top-level-paths
   "These are all the legal first segments of paths. This is used by ingestion to avoid `.git`, `.github`, `README.md`
   and other such extras."
-  #{"collections" "databases" "snippets" "settings.yaml"})
+  #{"actions" "collections" "databases" "snippets" "settings.yaml"})
 
 (defn- ingest-all [^File root-dir]
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
@@ -91,6 +97,7 @@
     (when-not @cache
       (reset! cache (ingest-all root-dir)))
     (let [{:keys [model id]} (first abs-path)]
+      (log/info (trs "Loading {0}" (u.yaml/log-path-str abs-path)))
       (if (and (= (count abs-path) 1)
                (= model "Setting"))
         {:serdes/meta abs-path :key (keyword id) :value (get settings (keyword id))}

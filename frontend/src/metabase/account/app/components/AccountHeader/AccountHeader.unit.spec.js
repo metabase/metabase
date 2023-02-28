@@ -31,10 +31,10 @@ describe("AccountHeader", () => {
 
     render(<AccountHeader user={user} />);
 
-    screen.getByText("Profile");
-    screen.getByText("Password");
-    screen.getByText("Login History");
-    screen.getByText("Notifications");
+    expect(screen.getByText("Profile")).toBeInTheDocument();
+    expect(screen.getByText("Password")).toBeInTheDocument();
+    expect(screen.getByText("Login History")).toBeInTheDocument();
+    expect(screen.getByText("Notifications")).toBeInTheDocument();
   });
 
   it("should show the password tab if it is enabled by a plugin", () => {
@@ -43,7 +43,7 @@ describe("AccountHeader", () => {
 
     render(<AccountHeader user={user} />);
 
-    screen.getByText("Password");
+    expect(screen.getByText("Password")).toBeInTheDocument();
   });
 
   it("should hide the password tab if it is disabled by a plugin", () => {

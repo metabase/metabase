@@ -1,11 +1,15 @@
 (ns metabase.test.integrations.ldap
-  (:require [clojure.java.io :as io]
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
-  (:import [com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig]
-           com.unboundid.ldap.sdk.schema.Schema
-           com.unboundid.ldif.LDIFReader
-           [java.io File FileNotFoundException]))
+  (:require
+   [clojure.java.io :as io]
+   [metabase.test.util :as tu]
+   [metabase.util :as u])
+  (:import
+   (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
+   (com.unboundid.ldap.sdk.schema Schema)
+   (com.unboundid.ldif LDIFReader)
+   (java.io File FileNotFoundException)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic ^InMemoryDirectoryServer *ldap-server*
   "An in-memory LDAP testing server."

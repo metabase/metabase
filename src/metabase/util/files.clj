@@ -5,16 +5,20 @@
 
   As much as possible, this namespace aims to abstract away the `nio.file` library and expose a set of high-level
   *file-manipulation* functions for the sorts of operations the plugin system needs to perform."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
-  (:import java.io.FileNotFoundException
-           java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption]
-           java.nio.file.attribute.FileAttribute
-           java.util.Collections))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.io FileNotFoundException)
+   (java.net URL)
+   (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
+   (java.nio.file.attribute FileAttribute)
+   (java.util Collections)))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 

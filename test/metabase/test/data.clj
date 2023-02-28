@@ -33,15 +33,18 @@
       ;; -> {:source-table (data/id :venues), :fields [(data/id :venues :name)]}
 
      (There are several variations of this macro; see documentation below for more details.)"
-  (:require [clojure.test :as t]
-            [colorize.core :as colorize]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.query-processor :as qp]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :as t]
+   [colorize.core :as colorize]
+   [hawk.init]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.query-processor :as qp]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+   [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
@@ -138,7 +141,8 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-inner-query <>))))
+     (mbql-query-impl/wrap-inner-query <>)
+     (vary-meta <> assoc :type :mbql))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -193,7 +197,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
-   (test-runner.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
+   (hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (u/the-id (db)))
 
   ([table-name]

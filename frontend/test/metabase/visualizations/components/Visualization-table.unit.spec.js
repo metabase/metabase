@@ -1,7 +1,5 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
-
-import { createMockQueryBuilderState } from "metabase-types/store/mocks/qb";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn } from "../__support__/visualizations";
@@ -38,24 +36,13 @@ describe("Table", () => {
         },
       ],
     };
-    const qbState = createMockQueryBuilderState();
-    const { getByText } = renderWithProviders(
-      <Visualization rawSeries={series(rows, settings)} />,
-      {
-        withSettings: true,
-        withEmbedSettings: true,
-        storeInitialState: {
-          qb: qbState,
-        },
-        reducers: {
-          qb: () => qbState,
-        },
-      },
-    );
+
+    renderWithProviders(<Visualization rawSeries={series(rows, settings)} />);
     jest.runAllTimers();
-    const bgColors = rows.map(
-      ([v]) => getByText(String(v)).parentNode.style["background-color"],
-    );
+
+    const bgColors = rows
+      .map(([value]) => screen.getByText(String(value)))
+      .map(element => element.parentNode.style["background-color"]);
     expect(bgColors).toEqual([
       "",
       "",

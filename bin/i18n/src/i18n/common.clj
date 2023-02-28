@@ -1,8 +1,10 @@
 (ns i18n.common
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [metabuild-common.core :as u])
-  (:import [org.fedorahosted.tennera.jgettext Catalog HeaderFields Message PoParser]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabuild-common.core :as u])
+  (:import
+   (org.fedorahosted.tennera.jgettext Catalog HeaderFields Message PoParser)))
 
 (defn locales
   "Set of all locales for which we have i18n bundles.

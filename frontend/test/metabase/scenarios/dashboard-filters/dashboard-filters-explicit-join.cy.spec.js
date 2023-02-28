@@ -1,9 +1,4 @@
-import {
-  restore,
-  filterWidget,
-  popover,
-  visitDashboard,
-} from "__support__/e2e/helpers";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -24,6 +19,7 @@ const questionDetails = {
         alias: "Products",
       },
     ],
+    limit: 5,
   },
 };
 
@@ -41,6 +37,10 @@ const dashboardDetails = {
 
 describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
+    cy.intercept("GET", `/api/dashboard/*/params/${filter.id}/values`).as(
+      "filterValues",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -78,6 +78,7 @@ describe("scenarios > dashboard > filters", () => {
 
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
+    cy.wait("@filterValues");
 
     cy.findByPlaceholderText("Search the list").type("Awe");
 
@@ -100,9 +101,7 @@ describe("scenarios > dashboard > filters", () => {
 });
 
 function selectFromDropdown(values) {
-  popover().within(() => {
-    values.forEach(value => {
-      cy.findByText(value).click();
-    });
+  values.forEach(value => {
+    cy.findByTestId(`${value}-filter-value`).should("be.visible").click();
   });
 }

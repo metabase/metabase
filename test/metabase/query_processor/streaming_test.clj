@@ -1,22 +1,28 @@
 (ns metabase.query-processor.streaming-test
-  (:require [cheshire.core :as json]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.embed-test :as embed-test]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.test-util :as streaming.test-util]
-            [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.embed-test :as embed-test]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (jakarta.servlet AsyncContext ServletOutputStream)
+   (jakarta.servlet.http HttpServletResponse)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defn- maybe-remove-checksum
   "remove metadata checksum if present because it can change between runs if encryption is in play"
@@ -80,18 +86,18 @@
                                      (qp.context/reducef (qp.context/rff context) context metadata rows))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
-                                  {:response      (reify javax.servlet.http.HttpServletResponse
+                                  {:response      (reify HttpServletResponse
                                                     (setStatus [_ _])
                                                     (setHeader [_ _ _])
                                                     (setContentType [_ _])
                                                     (getOutputStream [_]
-                                                      (proxy [javax.servlet.ServletOutputStream] []
+                                                      (proxy [ServletOutputStream] []
                                                         (write
                                                           ([byytes]
                                                            (.write os ^bytes byytes))
                                                           ([byytes offset length]
                                                            (.write os ^bytes byytes offset length))))))
-                                   :async-context (reify javax.servlet.AsyncContext
+                                   :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (= true

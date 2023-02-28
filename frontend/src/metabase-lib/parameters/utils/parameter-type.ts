@@ -22,6 +22,11 @@ function splitType(parameterOrType: Parameter | string) {
   return parameterType.split("/");
 }
 
+export function isIdParameter(parameter: Parameter | string) {
+  const type = getParameterType(parameter);
+  return type === "id";
+}
+
 export function isDateParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
   return type === "date";

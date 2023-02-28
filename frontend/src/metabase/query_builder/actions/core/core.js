@@ -8,6 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
@@ -39,7 +40,6 @@ import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
 import { updateQuestion } from "./updateQuestion";
-import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";

@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-implicit-joins
+    :as qp.add-implicit-joins]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (deftest resolve-implicit-joins-test
   (mt/dataset sample-dataset

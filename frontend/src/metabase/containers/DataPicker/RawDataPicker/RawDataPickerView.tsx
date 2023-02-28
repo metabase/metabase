@@ -11,6 +11,8 @@ import type Schema from "metabase-lib/metadata/Schema";
 
 import type { DataPickerSelectedItem } from "../types";
 
+import EmptyState from "../EmptyState";
+import LoadingState from "../LoadingState";
 import PanePicker from "../PanePicker";
 import { StyledSelectList } from "./RawDataPicker.styled";
 
@@ -18,6 +20,7 @@ interface RawDataPickerViewProps {
   databases: Database[];
   tables?: Table[];
   selectedItems: DataPickerSelectedItem[];
+  isLoading: boolean;
   onSelectDatabase: (id: Database["id"]) => void;
   onSelectSchema: (id: Schema["id"]) => void;
   onSelectedTable: (id: Table["id"]) => void;
@@ -74,6 +77,7 @@ function RawDataPickerView({
   databases,
   tables,
   selectedItems,
+  isLoading,
   onSelectDatabase,
   onSelectSchema,
   onSelectedTable,
@@ -142,6 +146,10 @@ function RawDataPickerView({
     [selectedTableIds, onSelectedTable],
   );
 
+  const hasDatabases = databases.length > 0;
+  const hasTables = !_.isEmpty(tables);
+  const isEmpty = !hasDatabases || (selectedDatabaseId && !hasTables);
+
   return (
     <PanePicker
       data={treeData}
@@ -149,7 +157,13 @@ function RawDataPickerView({
       onSelect={handlePanePickerSelect}
       onBack={onBack}
     >
-      <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
+      {isLoading ? (
+        <LoadingState />
+      ) : isEmpty ? (
+        <EmptyState />
+      ) : (
+        <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
+      )}
     </PanePicker>
   );
 }

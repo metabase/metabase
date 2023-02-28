@@ -1,15 +1,16 @@
 (ns metabase.pulse.render
-  (:require [clojure.tools.logging :as log]
-            [hiccup.core :refer [h]]
-            [metabase.models.dashboard-card :as dashboard-card]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.png :as png]
-            [metabase.pulse.render.style :as style]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.urls :as urls]
-            [schema.core :as s]))
+  (:require
+   [hiccup.core :refer [h]]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.png :as png]
+   [metabase.pulse.render.style :as style]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.urls :as urls]
+   [schema.core :as s]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"

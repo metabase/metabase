@@ -5,8 +5,8 @@ import { forceRedraw } from "metabase/lib/dom";
 import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 type Props = {
-  value: string;
-  setValue: (v: string | null) => void;
+  value: string | number;
+  setValue: (v: string | number | null) => void;
   className?: string;
   isEditing: boolean;
   commitImmediately?: boolean;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 type State = {
-  value: string | null;
+  value: string | number | null;
   isFocused: boolean;
 };
 
@@ -73,11 +73,11 @@ class TextWidget extends React.Component<Props, State> {
       <input
         className={className}
         type="text"
-        value={value || ""}
+        value={value ?? ""}
         onChange={e => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
-            this.props.setValue(e.target.value || null);
+            this.props.setValue(e.target.value ?? null);
           }
         }}
         onKeyUp={e => {
@@ -85,7 +85,7 @@ class TextWidget extends React.Component<Props, State> {
           if (e.keyCode === KEYCODE_ESCAPE) {
             target.blur();
           } else if (e.keyCode === KEYCODE_ENTER) {
-            setValue(this.state.value || null);
+            setValue(this.state.value ?? null);
             target.blur();
           }
         }}

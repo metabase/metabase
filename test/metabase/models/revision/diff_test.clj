@@ -1,7 +1,8 @@
 (ns metabase.models.revision.diff-test
-  (:require [clojure.data :as data]
-            [clojure.test :refer :all]
-            [metabase.models.revision.diff :as diff]))
+  (:require
+   [clojure.data :as data]
+   [clojure.test :refer :all]
+   [metabase.models.revision.diff :as diff]))
 
 (deftest rename-test
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "

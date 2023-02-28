@@ -3,8 +3,9 @@
   and have it return an object that implements the `CacheBackend` protocol.
 
   See `metabase.query-processor.middleware.cache-backend.db` for a complete example of how this is done."
-  (:require [buddy.core.codecs :as codecs]
-            [potemkin.types :as p.types]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [potemkin.types :as p.types]))
 
 (p.types/defprotocol+ CacheBackend
   "Protocol that different Metabase cache backends must implement.

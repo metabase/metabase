@@ -1,8 +1,11 @@
 (ns metabase.async.util-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.async.util :as async.u]
-            [metabase.test.util.async :as tu.async]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.async.util :as async.u]
+   [metabase.test.util.async :as tu.async]))
+
+(set! *warn-on-reflection* true)
 
 (deftest promise-chan?-test
   (doseq [[x expected] {(a/promise-chan) true

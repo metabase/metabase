@@ -66,7 +66,7 @@ export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
 
 export type NativeQuery = {
   query: string;
-  "template-tags": TemplateTags;
+  "template-tags"?: TemplateTags;
 };
 
 // "card__4" like syntax meaning a query is using card 4 as a data source
@@ -98,6 +98,7 @@ export type Aggregation =
   | CountAgg
   | CountFieldAgg
   | AvgAgg
+  | MedianAgg
   | CumSumAgg
   | DistinctAgg
   | StdDevAgg
@@ -120,6 +121,7 @@ type CountAgg = ["count"];
 
 type CountFieldAgg = ["count", ConcreteField];
 type AvgAgg = ["avg", ConcreteField];
+type MedianAgg = ["median", ConcreteField];
 type CumSumAgg = ["cum-sum", ConcreteField];
 type DistinctAgg = ["distinct", ConcreteField];
 type StdDevAgg = ["stddev", ConcreteField];

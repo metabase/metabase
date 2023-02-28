@@ -27,14 +27,45 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 ## `GET /api/card/`
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index.
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
+  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  option. :card_index.
 
 ### PARAMS:
 
-*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `bookmarked`, `database`, `mine`, `popular`, `recent`, `table`.
+*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `bookmarked`, `database`, `mine`, `popular`, `recent`, `table`, `using_model`.
 
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+## `GET /api/card/:card-id/params/:param-key/search/:query`
+
+Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
+
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
+     GET /api/card/1/params/abc/search/Orange
+
+  Currently limited to first 1000 results.
+
+### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
+*  **`param-key`** value must be a non-blank string.
+
+*  **`query`** value must be a non-blank string.
+
+## `GET /api/card/:card-id/params/:param-key/values`
+
+Fetch possible values of the parameter whose ID is `:param-key`.
+
+    ;; fetch values for Card 1 parameter 'abc' that are possible
+    GET /api/card/1/params/abc/values.
+
+### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
+*  **`param-key`** value must be a non-blank string.
 
 ## `GET /api/card/:id`
 
@@ -84,8 +115,6 @@ Create a new `Card`.
 ### PARAMS:
 
 *  **`visualization_settings`** value must be a map.
-
-*  **`is_write`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 

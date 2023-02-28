@@ -1,24 +1,29 @@
 (ns metabase.driver.mongo.parameters
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.driver.common.parameters.values :as params.values]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]])
-  (:import java.time.temporal.Temporal
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
+  (:import
+   (java.time ZoneOffset)
+   (java.time.temporal Temporal)
+   (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
+
+(set! *warn-on-reflection* true)
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -34,10 +39,14 @@
     (sequential? x)
     (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))
 
+    ;; MultipleValues get converted as sequences
+    (instance? MultipleValues x)
+    (recur field (:values x))
+
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
     (instance? Date x)
-    (param-value->str field (u.date/parse (:s x)))
+    (recur field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
          (isa? coercion :Coercion/UNIXSeconds->DateTime))
@@ -53,7 +62,7 @@
 
     ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
     (instance? CommaSeparatedNumbers x)
-    (param-value->str field (:numbers x))
+    (recur field (:numbers x))
 
     ;; for everything else, splice it in as its string representation
     :else
@@ -75,9 +84,13 @@
 (defn- substitute-one-field-filter-date-range [{field :field, {value :value} :value}]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
         start-condition     (when start
-                              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str field (u.date/parse start))))
+                              (format "{%s: {$gte: %s}}"
+                                      (field->name field)
+                                      (param-value->str field (u.date/parse start ZoneOffset/UTC))))
         end-condition       (when end
-                              (format "{%s: {$lt: %s}}" (field->name field) (param-value->str field (u.date/parse end))))]
+                              (format "{%s: {$lt: %s}}"
+                                      (field->name field)
+                                      (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition
@@ -196,7 +209,7 @@
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (params.parse/parse x))
+    (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 

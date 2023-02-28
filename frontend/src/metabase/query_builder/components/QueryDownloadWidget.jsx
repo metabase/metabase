@@ -8,11 +8,15 @@ import querystring from "querystring";
 
 import _ from "underscore";
 import cx from "classnames";
+import { canSavePng } from "metabase/visualizations";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import DownloadButton from "metabase/components/DownloadButton";
-import Tooltip from "metabase/components/Tooltip";
+import {
+  DownloadButton,
+  SaveAsPngButton,
+} from "metabase/components/DownloadButton";
+import Tooltip from "metabase/core/components/Tooltip";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import * as Urls from "metabase/lib/urls";
@@ -39,6 +43,7 @@ const QueryDownloadWidget = ({
   token,
   dashcardId,
   icon,
+  iconSize = 20,
   params,
   visualizationSettings,
 }) => {
@@ -46,7 +51,7 @@ const QueryDownloadWidget = ({
 
   return (
     <PopoverWithTrigger
-      triggerElement={() => renderIcon({ icon, status })}
+      triggerElement={() => renderIcon({ icon, status, iconSize })}
       triggerClasses={cx(className, "text-brand-hover")}
       triggerClassesClose={classNameClose}
       disabled={status === `pending` ? true : null}
@@ -65,78 +70,83 @@ const QueryDownloadWidget = ({
             </WidgetMessage>
           )}
           <div>
-            {EXPORT_FORMATS.map(type => (
-              <WidgetFormat key={type}>
-                {dashcardId && token ? (
-                  <DashboardEmbedQueryButton
-                    key={type}
-                    type={type}
-                    dashcardId={dashcardId}
-                    token={token}
-                    card={card}
-                    params={params}
-                    onDownloadStart={() => {
-                      setStatus("pending");
-                      closePopover();
-                    }}
-                    onDownloadResolved={() => setStatus("resolved")}
-                    onDownloadRejected={() => setStatus("rejected")}
-                  />
-                ) : uuid ? (
-                  <PublicQueryButton
-                    key={type}
-                    type={type}
-                    uuid={uuid}
-                    result={result}
-                    onDownloadStart={() => {
-                      setStatus("pending");
-                      closePopover();
-                    }}
-                    onDownloadResolved={() => setStatus("resolved")}
-                    onDownloadRejected={() => setStatus("rejected")}
-                  />
-                ) : token ? (
-                  <EmbedQueryButton
-                    key={type}
-                    type={type}
-                    token={token}
-                    onDownloadStart={() => {
-                      setStatus("pending");
-                      closePopover();
-                    }}
-                    onDownloadResolved={() => setStatus("resolved")}
-                    onDownloadRejected={() => setStatus("rejected")}
-                  />
-                ) : card && card.id ? (
-                  <SavedQueryButton
-                    key={type}
-                    type={type}
-                    card={card}
-                    result={result}
-                    disabled={status === "pending"}
-                    onDownloadStart={() => {
-                      setStatus("pending");
-                      closePopover();
-                    }}
-                    onDownloadResolved={() => setStatus("resolved")}
-                    onDownloadRejected={() => setStatus("rejected")}
-                  />
-                ) : card && !card.id ? (
-                  <UnsavedQueryButton
-                    key={type}
-                    type={type}
-                    result={result}
-                    visualizationSettings={visualizationSettings}
-                    onDownloadStart={() => {
-                      setStatus("pending");
-                      closePopover();
-                    }}
-                    onDownloadResolved={() => setStatus("resolved")}
-                    onDownloadRejected={() => setStatus("rejected")}
-                  />
-                ) : null}
-              </WidgetFormat>
-            ))}
+            <>
+              {EXPORT_FORMATS.map(type => (
+                <WidgetFormat key={type}>
+                  {dashcardId && token ? (
+                    <DashboardEmbedQueryButton
+                      key={type}
+                      type={type}
+                      dashcardId={dashcardId}
+                      token={token}
+                      card={card}
+                      params={params}
+                      onDownloadStart={() => {
+                        setStatus("pending");
+                        closePopover();
+                      }}
+                      onDownloadResolved={() => setStatus("resolved")}
+                      onDownloadRejected={() => setStatus("rejected")}
+                    />
+                  ) : uuid ? (
+                    <PublicQueryButton
+                      key={type}
+                      type={type}
+                      uuid={uuid}
+                      result={result}
+                      onDownloadStart={() => {
+                        setStatus("pending");
+                        closePopover();
+                      }}
+                      onDownloadResolved={() => setStatus("resolved")}
+                      onDownloadRejected={() => setStatus("rejected")}
+                    />
+                  ) : token ? (
+                    <EmbedQueryButton
+                      key={type}
+                      type={type}
+                      token={token}
+                      onDownloadStart={() => {
+                        setStatus("pending");
+                        closePopover();
+                      }}
+                      onDownloadResolved={() => setStatus("resolved")}
+                      onDownloadRejected={() => setStatus("rejected")}
+                    />
+                  ) : card && card.id ? (
+                    <SavedQueryButton
+                      key={type}
+                      type={type}
+                      card={card}
+                      result={result}
+                      disabled={status === "pending"}
+                      onDownloadStart={() => {
+                        setStatus("pending");
+                        closePopover();
+                      }}
+                      onDownloadResolved={() => setStatus("resolved")}
+                      onDownloadRejected={() => setStatus("rejected")}
+                    />
+                  ) : card && !card.id ? (
+                    <UnsavedQueryButton
+                      key={type}
+                      type={type}
+                      result={result}
+                      visualizationSettings={visualizationSettings}
+                      onDownloadStart={() => {
+                        setStatus("pending");
+                        closePopover();
+                      }}
+                      onDownloadResolved={() => setStatus("resolved")}
+                      onDownloadRejected={() => setStatus("rejected")}
+                    />
+                  ) : null}
+                </WidgetFormat>
+              ))}
+              {canSavePng(card.display) ? (
+                <SaveAsPngButton card={card} onSave={closePopover} />
+              ) : null}
+            </>
           </div>
         </WidgetRoot>
       )}
@@ -260,17 +270,24 @@ const DashboardEmbedQueryButton = ({
   </DownloadButton>
 );
 
-const renderIcon = ({ icon, status }) => {
+const LOADER_SCALE_FACTOR = 0.9;
+
+const renderIcon = ({ icon, status, iconSize }) => {
   if ([`idle`, `resolved`, `rejected`].includes(status)) {
     return (
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={20} />
+        <Icon
+          data-testid="download-button"
+          title={t`Download this data`}
+          name={icon}
+          size={iconSize}
+        />
       </Tooltip>
     );
   } else if (status === "pending") {
     return (
       <Tooltip tooltip={t`Downloading…`}>
-        <LoadingSpinner size={18} />
+        <LoadingSpinner size={iconSize * LOADER_SCALE_FACTOR} />
       </Tooltip>
     );
   } else {
@@ -284,6 +301,9 @@ QueryDownloadWidget.propTypes = {
   uuid: PropTypes.string,
   icon: PropTypes.string,
   params: PropTypes.object,
+  className: PropTypes.string,
+  classNameClose: PropTypes.string,
+  visualizationSettings: PropTypes.object,
 };
 
 QueryDownloadWidget.defaultProps = {

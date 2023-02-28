@@ -4,23 +4,29 @@
   specified by the GTAP is instead used as the source of the query.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.table :as table]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
-(models/defmodel GroupTableAccessPolicy :group_table_access_policy)
+(set! *warn-on-reflection* true)
+
+(models/defmodel GroupTableAccessPolicy :sandboxes)
 
 ;;; only admins can work with GTAPs
 (derive GroupTableAccessPolicy ::mi/read-policy.superuser)
@@ -31,10 +37,10 @@
 (when *compile-files*
   (defonce previous-compilation-trace (atom nil))
   (when @previous-compilation-trace
-    (println "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
-    (println "This compilation trace:")
+    (log/info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
+    (log/info "This compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) (vec (.getStackTrace (Thread/currentThread))))
-    (println "Previous compilation trace:")
+    (log/info "Previous compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) @previous-compilation-trace)
     (throw (ex-info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!" {})))
   (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))
@@ -121,13 +127,33 @@
 (log/trace "Installing additional EE pre-update checks for Card")
 (reset! card/pre-update-check-sandbox-constraints update-card-check-gtaps)
 
+(defenterprise upsert-sandboxes!
+  "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
+  created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
+  if this does not exist, the sandbox will not be created."
+  :feature :sandboxes
+  [sandboxes]
+  (for [sandbox sandboxes]
+    (if-let [id (:id sandbox)]
+      ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+      ;; This allows existing values to be "cleared" by being set to nil
+      (do
+        (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
+          (db/update! GroupTableAccessPolicy
+                      id
+                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+        (db/select-one GroupTableAccessPolicy :id id))
+      (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
+        (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
+          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
+
 (defn- pre-insert [gtap]
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
 (defn- pre-update [{:keys [id], :as updates}]
   (u/prog1 updates
-    (let [original (GroupTableAccessPolicy id)
+    (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
         (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")
@@ -136,10 +162,8 @@
       (when (:card_id updates)
         (check-columns-match-table updated)))))
 
-(u/strict-extend (class GroupTableAccessPolicy)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types      (constantly {:attribute_remappings ::attribute-remappings})
-    :pre-insert pre-insert
-    :pre-update pre-update}))
+(mi/define-methods
+ GroupTableAccessPolicy
+ {:types      (constantly {:attribute_remappings ::attribute-remappings})
+  :pre-insert pre-insert
+  :pre-update pre-update})

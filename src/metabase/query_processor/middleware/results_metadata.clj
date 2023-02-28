@@ -2,12 +2,13 @@
   "Middleware that stores metadata about results column types after running a query for a Card,
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.sync.analyze.query-results :as qr]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.sync.analyze.query-results :as qr]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

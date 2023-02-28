@@ -5,13 +5,16 @@
    [hooks.common :as common]))
 
 (defn route-fn-name
+  "route fn hook"
   [method route]
   (let [route (if (vector? route) (first route) route)]
     (-> (str (name method) route)
         (str/replace #"/" "_")
         symbol)))
 
-(defn defendpoint [{:keys [node]}]
+(defn defendpoint
+  "defendpoint hook"
+  [{:keys [node]}]
   (let [[method route & body] (rest (:children node))]
     {:node
      (hooks/vector-node [;; register usage of compojure core var

@@ -1,8 +1,9 @@
 (ns metabase.db.env-test
-  (:require [clojure.test :refer :all]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.env :as mdb.env]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.env :as mdb.env]
+   [metabase.test :as mt]))
 
 (deftest raw-connection-string->type-test
   (are [s expected] (= expected (#'mdb.env/raw-connection-string->type s))

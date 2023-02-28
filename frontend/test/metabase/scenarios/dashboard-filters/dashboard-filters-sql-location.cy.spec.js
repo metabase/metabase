@@ -13,7 +13,7 @@ import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filte
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
   questionDetails,
-} from "./dashboard-filters-sql-location";
+} from "./shared/dashboard-filters-sql-location";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
@@ -56,10 +56,10 @@ describe("scenarios > dashboard > filters > location", () => {
   });
 
   it(`should work when set as the default filter`, () => {
-    setFilter("Location", "Dropdown");
+    setFilter("Location", "Is");
 
     cy.findByText("Select…").click();
-    popover().contains("Dropdown").click();
+    popover().contains("Is").click();
 
     cy.findByText("Default value").next().click();
 

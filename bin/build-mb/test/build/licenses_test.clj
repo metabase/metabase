@@ -1,14 +1,16 @@
 (ns build.licenses-test
-  (:require [build.licenses :as lic]
-            [clojure.data.xml :as xml]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is run-tests testing]]
-            [clojure.tools.build.api :as b]
-            [metabuild-common.core :as u])
-  (:import (java.io StringReader StringWriter)
-           (java.nio.file Files FileSystems LinkOption Path Paths)))
+  (:require
+   [build.licenses :as lic]
+   [clojure.data.xml :as xml]
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is run-tests testing]]
+   [clojure.tools.build.api :as b]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io StringWriter)
+   (java.nio.file Files FileSystems LinkOption Path Paths)))
 
 (defn- parse [rdr] (xml/parse rdr :skip-whitespace true))
 
@@ -28,8 +30,8 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
-</project>"
-  )
+</project>")
+
 
 (def ^:private clojure-jdbc-xml
   "<?xml version=\"1.0\" encoding=\"utf-8\"?>
@@ -44,8 +46,8 @@
     <artifactId>pom.contrib</artifactId>
     <version>0.2.2</version>
   </parent>
-</project>"
-  )
+</project>")
+
 
 (defn jar->path
   "Return a Path for a jar."
@@ -192,5 +194,4 @@
                                  :backfill {}})))))))
 
 (comment
-  (run-tests)
-  )
+  (run-tests))

@@ -24,8 +24,9 @@
 
   3.  `substitute` (and the related namespace `substitution`) replace optional and param objects with appropriate SQL
       snippets and prepared statement args, and combine the sequence of fragments back into a single SQL string."
-  (:require [clojure.set :as set]
-            [metabase.driver :as driver]))
+  (:require
+   [clojure.set :as set]
+   [metabase.driver :as driver]))
 
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in

@@ -1,59 +1,62 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require
-    [cheshire.core :as json]
-    [clojure.set :as set]
-    [clojure.tools.logging :as log]
-    [compojure.core :refer [DELETE GET POST PUT]]
-    [medley.core :as m]
-    [metabase.actions.execution :as actions.execution]
-    [metabase.analytics.snowplow :as snowplow]
-    [metabase.api.card :as api.card]
-    [metabase.api.common :as api]
-    [metabase.api.common.validation :as validation]
-    [metabase.api.dataset :as api.dataset]
-    [metabase.automagic-dashboards.populate :as populate]
-    [metabase.events :as events]
-    [metabase.mbql.util :as mbql.u]
-    [metabase.models.action :as action]
-    [metabase.models.card :refer [Card]]
-    [metabase.models.collection :as collection]
-    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-    [metabase.models.field :refer [Field]]
-    [metabase.models.interface :as mi]
-    [metabase.models.parameter-card :as parameter-card]
-    [metabase.models.params :as params]
-    [metabase.models.params.chain-filter :as chain-filter]
-    [metabase.models.query :as query :refer [Query]]
-    [metabase.models.query.permissions :as query-perms]
-    [metabase.models.revision :as revision]
-    [metabase.models.revision.last-edit :as last-edit]
-    [metabase.models.table :refer [Table]]
-    [metabase.query-processor.dashboard :as qp.dashboard]
-    [metabase.query-processor.error-type :as qp.error-type]
-    [metabase.query-processor.middleware.constraints :as qp.constraints]
-    [metabase.query-processor.pivot :as qp.pivot]
-    [metabase.query-processor.util :as qp.util]
-    [metabase.related :as related]
-    [metabase.util :as u]
-    [metabase.util.i18n :refer [tru]]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]])
-  (:import java.util.UUID))
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.events :as events]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision :as revision]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.related :as related]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
                                                 :mine [:= :creator_id api/*current-user-id*])
-                                              [:= :archived (= (keyword filter-option) :archived)]]
+                                         [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (filter mi/can-read? <>)))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
   *  `all`      - Return all Dashboards.
@@ -70,17 +73,16 @@
                    dashboard)))
           dashboards)))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
    parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)
-   is_app_page         (s/maybe s/Bool)}
-  (when is_app_page (action/check-data-apps-enabled))
+   collection_position (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -89,8 +91,7 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position
-                        :is_app_page         (boolean is_app_page)}
+                        :collection_position collection_position}
         dash           (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
@@ -213,7 +214,8 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action] :collection_authority_level :can_write :param_fields)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info]
+               :collection_authority_level :can_write :param_fields)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -224,24 +226,23 @@
   card. The `:discard` key is a vector of cards which were not copied due to permissions."
   [ordered-cards]
   (letfn [(split-cards [{:keys [card series] :as db-card}]
-
             (cond
-              (nil? (:card_id db-card)) ;; text card
-              []
+              (nil? (:card_id db-card)) ; text card
+              {}
 
               ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
               (not (mi/model card))
-              [nil (into [card] series)]
+              {:retain nil, :discard (into [card] series)}
 
               (mi/can-read? card)
               (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
                                                                series)]
-                [(into [card] writable) unwritable])
+                {:retain (into [card] writable), :discard unwritable})
               ;; if you can't write the base, we don't have anywhere to put the series
               :else
-              [[] (into [card] series)]))]
+              {:discard (into [card] series)}))]
     (reduce (fn [acc db-card]
-              (let [[retain discard] (split-cards db-card)]
+              (let [{:keys [retain discard]} (split-cards db-card)]
                 (-> acc
                     (update :copy merge (m/index-by :id retain))
                     (update :discard concat discard))))
@@ -310,7 +311,8 @@
                                                series)))))))
           ordered-cards)))
 
-(api/defendpoint POST "/:from-dashboard-id/copy"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [from-dashboard-id :as {{:keys [name description collection_id collection_position
                                   is_deep_copy], :as _dashboard} :body}]
@@ -327,8 +329,7 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position
-                        :is_app_page         (:is_app_page existing-dashboard)}
+                        :collection_position collection_position}
         new-cards      (atom nil)
         dashboard      (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
@@ -358,7 +359,8 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Get Dashboard with ID."
   [id]
   (let [dashboard (get-dashboard id)]
@@ -374,14 +376,15 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update a Dashboard.
 
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl is_app_page]
+                   embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -395,27 +398,22 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)
-   is_app_page             (s/maybe s/Bool)}
-  (when is_app_page (action/check-data-apps-enabled))
+   cache_ttl               (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (api/check-500
-     (db/transaction
-
-       ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-       ;;adjust the collection position of other dashboards in the collection
-       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-
-       (db/update! Dashboard id
-         ;; description, position, collection_id, and collection_position are allowed to be `nil`.
-         ;; Everything else must be non-nil
-         (u/select-keys-when dash-updates
-           :present #{:description :position :collection_id :collection_position :cache_ttl}
-           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived :is_app_page})))))
+    (db/transaction
+      ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+      ;; adjust the collection position of other dashboards in the collection
+      (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+      ;; non-nil
+      (when-let [updates (not-empty (u/select-keys-when dash-updates
+                                      :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                      :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                 :embedding_params :archived}))]
+        (db/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -423,8 +421,11 @@
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
-(api/defendpoint DELETE "/:id"
-  "Delete a Dashboard."
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
+  "Delete a Dashboard.
+
+  This will remove also any questions/models/segments/metrics that use this database."
   [id]
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
@@ -434,7 +435,7 @@
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:card {:dataset_query query}})]
+  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -478,11 +479,17 @@
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
-(api/defendpoint POST "/:id/cards"
-  "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/cards"
+  "Add a `Card` or `Action` to a Dashboard."
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])
+   row                su/IntGreaterThanOrEqualToZero
+   col                su/IntGreaterThanOrEqualToZero
+   size_x             su/IntGreaterThanZero
+   size_y             su/IntGreaterThanZero
+   action_id          (s/maybe su/IntGreaterThanZero)}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -533,10 +540,10 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
-     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
+     :size_x                              su/IntGreaterThanZero
+     :size_y                              su/IntGreaterThanZero
+     :row                                 su/IntGreaterThanOrEqualToZero
+     :col                                 su/IntGreaterThanOrEqualToZero
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
                                                      :target       s/Any
                                                      s/Keyword     s/Any}])
@@ -545,7 +552,8 @@
     "value must be a valid DashboardCard map."))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
-(api/defendpoint PUT "/:id/cards"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
@@ -565,7 +573,8 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
-(api/defendpoint DELETE "/:id/cards"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
@@ -574,13 +583,15 @@
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
-(api/defendpoint GET "/:id/revisions"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
 
-(api/defendpoint POST "/:id/revert"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
@@ -593,7 +604,8 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api/defendpoint POST "/:dashboard-id/public_link"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
@@ -607,7 +619,8 @@
                  :public_uuid       <>
                  :made_public_by_id api/*current-user-id*)))})
 
-(api/defendpoint DELETE "/:dashboard-id/public_link"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (validation/check-has-application-permission :setting)
@@ -618,7 +631,8 @@
     :made_public_by_id nil)
   {:status 204, :body nil})
 
-(api/defendpoint GET "/public"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
@@ -626,7 +640,8 @@
   (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(api/defendpoint GET "/embeddable"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
@@ -634,21 +649,24 @@
   (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
-(api/defendpoint GET "/:id/related"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
-(api/defendpoint POST "/save/collection/:parent-collection-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [parent-collection-id :as {dashboard :body}]
   (collection/check-write-perms-for-collection parent-collection-id)
   (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
        (events/publish-event! :dashboard-create)))
 
-(api/defendpoint POST "/save"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
@@ -667,10 +685,18 @@
 
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
-  (set (for [param parameter-mappings
-             :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
+  (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
+             :let  [field-clause (params/param-target->field-clause target card)]
              :when field-clause
-             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :let  [{:keys [result_metadata]} card
+                    field-id (or
+                              ;; Get the field id from the field-clause if it contains it. This is the common case for
+                              ;; mbql queries.
+                              (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)
+                              ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                              ;; This is the common case for native queries in which mappings from original columns
+                              ;; have been performed using model metadata.
+                              (:id (qp.util/field->field-info field-clause result_metadata)))]
              :when field-id]
          field-id)))
 
@@ -734,14 +760,6 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(defn- static-parameter-values
-  [{source-options :source_options :as _param} query]
-  (when-let [values (:values source-options)]
-    {:values (if query
-               (parameter-card/query-matches query values)
-               values)
-     :has_more_values false}))
-
 (s/defn param-values
   "Fetch values for a parameter.
 
@@ -762,12 +780,10 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:source_type param)
-       "static-list" (static-parameter-values param query)
-       "card"        (parameter-card/values-for-dashboard dashboard param-key query)
-       (chain-filter dashboard param-key constraint-param-key->value query)))))
+     (custom-values/parameter->values param query (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
-(api/defendpoint GET "/:id/params/:param-key/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
   restrict these values by passing query parameters like `other-parameter=value` e.g.
 
@@ -777,7 +793,8 @@
   (let [dashboard (api/read-check Dashboard id)]
     (param-values dashboard param-key query-params)))
 
-(api/defendpoint GET "/:id/params/:param-key/search/:query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
 
@@ -790,7 +807,8 @@
   (let [dashboard (api/read-check Dashboard id)]
     (param-values dashboard param-key query-params query)))
 
-(api/defendpoint GET "/params/valid-filter-fields"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
   `filtered` Field ID return the subset of `filtering` Field IDs that would actually be used in a chain filter query
@@ -837,32 +855,34 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
-  "Fetches the values for filling in execution parameters."
-  [dashboard-id dashcard-id slug]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [dashboard-id dashcard-id parameters]
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
-   slug su/NonBlankString}
-  (action/check-data-apps-enabled)
-  (throw (UnsupportedOperationException. "Not implemented")))
+   parameters su/JSONString}
+  (api/read-check Dashboard dashboard-id)
+  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
-   slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
-  (action/check-data-apps-enabled)
+  (api/read-check Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
@@ -873,7 +893,8 @@
               :card-id      card-id
               :dashcard-id  dashcard-id})))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 
@@ -900,7 +921,8 @@
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
-(api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}

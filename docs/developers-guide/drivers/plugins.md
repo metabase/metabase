@@ -198,10 +198,6 @@ driver:
       - port
       - placeholder: 1433
 
-  # You can also tell Metabase to include SSL tunnel configuration options with
-  # connection-properties-include-tunnel-config (default: false)
-  connection-properties-include-tunnel-config: true
-
 # Steps to take to initialize the plugin. For lazy-load drivers, this
 # is delayed until the driver is initialized the first time we connect
 # to a database with it

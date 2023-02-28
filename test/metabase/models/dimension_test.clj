@@ -1,12 +1,16 @@
 (ns metabase.models.dimension-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest identity-hash-test
   (testing "Dimension hashes are composed of the proper field hash, and the human-readable field hash"

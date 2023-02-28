@@ -8,8 +8,6 @@ import type {
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
-  ParameterSourceType,
-  ParameterSourceOptions,
   Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -41,13 +39,14 @@ export function createParameter(
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
 
-  const parameter = {
+  const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
   };
+
   return setParameterName(parameter, name);
 }
 
@@ -64,26 +63,6 @@ export function setParameterName(
     name: name,
     slug: slug,
   };
-}
-
-export function getSourceType(parameter: Parameter): ParameterSourceType {
-  return parameter.source_type ?? null;
-}
-
-export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
-  return parameter.source_options ?? {};
-}
-
-export function hasValidSourceOptions(
-  sourceType: ParameterSourceType,
-  sourceOptions: ParameterSourceOptions,
-): boolean {
-  switch (sourceType) {
-    case "static-list":
-      return sourceOptions.values != null && sourceOptions.values.length > 0;
-    default:
-      return true;
-  }
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {
@@ -138,7 +117,7 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards);
+  const mappings = getMappings(ordered_cards as DashboardOrderedCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -221,7 +200,9 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.ordered_cards);
+  const mappings = getMappings(
+    dashboard.ordered_cards as DashboardOrderedCard[],
+  );
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
@@ -248,26 +229,4 @@ export function getFilteringParameterValuesMap(
   );
 
   return filteringParameterValues;
-}
-
-export function getParameterValuesSearchKey({
-  dashboardId,
-  parameterId,
-  query = null,
-  filteringParameterValues = {},
-}: {
-  dashboardId: number;
-  parameterId: string;
-  query: string | null;
-  filteringParameterValues: { [parameterId: string]: unknown };
-}) {
-  const BY_PARAMETER_ID = "0";
-  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
-  const sortedParameterValues = _.sortBy(
-    Object.entries(filteringParameterValues),
-    BY_PARAMETER_ID,
-  );
-  const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
-
-  return `dashboardId: ${dashboardId}, parameterId: ${parameterId}, query: ${query}, filteringParameterValues: ${stringifiedParameterValues}`;
 }

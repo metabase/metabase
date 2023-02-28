@@ -1,8 +1,8 @@
 (ns metabuild-common.output
-  (:require [clojure
-             [pprint :as pprint]
-             [string :as str]]
-            [colorize.core :as colorize]))
+  (:require
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [colorize.core :as colorize]))
 
 (def ^:dynamic *steps* [])
 

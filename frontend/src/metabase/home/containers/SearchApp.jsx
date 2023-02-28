@@ -64,11 +64,6 @@ const SEARCH_FILTERS = [
     icon: "bar",
   },
   {
-    name: t`Pages`,
-    filter: "page",
-    icon: "document",
-  },
-  {
     name: t`Pulses`,
     filter: "pulse",
     icon: "pulse",

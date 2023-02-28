@@ -27,7 +27,7 @@ describe("scenarios > question > settings", () => {
       cy.viewport(1600, 800);
 
       openOrdersTable();
-      cy.contains("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
@@ -95,7 +95,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByText("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       getSidebarColumns()
         .eq("12")
@@ -172,8 +172,8 @@ describe("scenarios > question > settings", () => {
         },
       });
 
-      cy.findByText("Settings").click(); // open settings sidebar
-      cy.findByText("Table options"); // confirm it's open
+      cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      cy.findByText("Conditional Formatting"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
@@ -215,7 +215,7 @@ describe("scenarios > question > settings", () => {
 
     it("should respect symbol settings for all currencies", () => {
       openOrdersTable();
-      cy.contains("Settings").click();
+      cy.findByTestId("viz-settings-button").click();
 
       getSidebarColumns()
         .eq("4")

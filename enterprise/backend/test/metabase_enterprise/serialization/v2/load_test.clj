@@ -1,17 +1,34 @@
-(ns metabase-enterprise.serialization.v2.load-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as serdes.extract]
-            [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric
-                                     NativeQuerySnippet Segment Table Timeline TimelineEvent User]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.time.OffsetDateTime))
+(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.models
+    :refer [Action
+            Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Segment
+            Table
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.action :as action]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.time OffsetDateTime)))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -185,7 +202,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
 
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
@@ -925,3 +941,39 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest load-action-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "extraction succeeds"
+        (ts/with-source-db
+          (let [db       (ts/create! Database :name "my-db")
+                card     (ts/create! Card
+                                     :name "the query"
+                                     :query_type :native
+                                     :dataset true
+                                     :database_id (:id db)
+                                     :dataset_query {:database (:id db)
+                                                     :native {:type   :native
+                                                              :native {:query "wow"}}})
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
+                                                     (and (= model "Action") (= id eid)))
+                                                   @serialized))]
+              (is (some? action-serialized))
+              (testing ":type should be a string"
+                (is (string? (:type action-serialized))))))))
+      (testing "loading succeeds"
+        (ts/with-dest-db
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (let [action (db/select-one Action :entity_id eid)]
+            (is (some? action))
+            (testing ":type should be a keyword again"
+              (is (keyword? (:type action))))))))))

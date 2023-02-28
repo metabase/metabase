@@ -2,7 +2,7 @@ import {
   version,
   setupLanguage,
   setupInstance,
-} from "./cross-version-source-helpers";
+} from "./helpers/cross-version-source-helpers";
 
 describe(`setup on ${version}`, () => {
   it("should set up metabase", () => {

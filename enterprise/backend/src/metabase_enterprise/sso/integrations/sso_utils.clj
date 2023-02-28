@@ -1,18 +1,22 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
-  (:require [clojure.tools.logging :as log]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.api.common :as api]
-            [metabase.email.messages :as messages]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [java.net MalformedURLException URL URLDecoder]
-           java.util.UUID))
+  (:require
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase.api.common :as api]
+   [metabase.email.messages :as messages]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.net MalformedURLException URL URLDecoder)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private UserAttributes
   {:first_name       (s/maybe su/NonBlankString)
@@ -59,5 +63,5 @@
                       (.getHost (new URL decoded-url))
                       (catch MalformedURLException _ ""))
         our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-  (api/check (or no-host (= host our-host))
-    [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
+   (api/check (or no-host (= host our-host))
+     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))

@@ -1,17 +1,21 @@
 (ns metabase.automagic-dashboards.rules
   "Validation, transformation to cannonical form, and loading of heuristics."
-  (:require [clojure.string :as str]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
-            [metabase.util.schema :as su]
-            [metabase.util.yaml :as yaml]
-            [schema.coerce :as sc]
-            [schema.core :as s]
-            [schema.spec.core :as spec])
-  (:import [java.nio.file Files Path]))
+  (:require
+   [clojure.string :as str]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+   [metabase.util.schema :as su]
+   [metabase.util.yaml :as yaml]
+   [schema.coerce :as sc]
+   [schema.core :as s]
+   [schema.spec.core :as spec])
+  (:import
+   (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."

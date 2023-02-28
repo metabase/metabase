@@ -1,7 +1,8 @@
 (ns metabase.db.spec-test
-  (:require [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.db.spec :as mdb.spec]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.db.spec :as mdb.spec]))
 
 (defn- default-pg-spec [db]
   {:classname                     "org.postgresql.Driver"

@@ -1,16 +1,19 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
-  (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.math.numeric-tower :refer [ceil expt floor]]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 

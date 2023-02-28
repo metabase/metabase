@@ -1,10 +1,15 @@
 import React from "react";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
+
+import { createMockUser } from "metabase-types/api/mocks";
+import { createMockQueryBuilderState } from "metabase-types/store/mocks";
+
 import Question from "metabase-lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
@@ -65,15 +70,15 @@ function getUnverifiedDataset() {
 }
 
 function setup({ question } = {}) {
-  const qbState = {
-    card: getVerifiedDataset(),
+  const card = getVerifiedDataset();
+  const state = {
+    currentUser: createMockUser({ is_superuser: true }),
+    qb: createMockQueryBuilderState({ card }),
   };
 
   return renderWithProviders(<QuestionModerationButton question={question} />, {
     withSampleDatabase: true,
-    initialState: {
-      qb: qbState,
-    },
+    storeInitialState: state,
   });
 }
 
@@ -81,14 +86,14 @@ describe("ModerationReviewButton", () => {
   describe("It should render correct text based on review status", () => {
     it("verified", () => {
       setup({ question: getVerifiedDataset() });
-      expect(screen.getByText("Remove verification")).toBeTruthy();
-      expect(screen.getByLabelText(CLOSE_ICON_LABEL)).toBeTruthy();
+      expect(screen.getByText("Remove verification")).toBeInTheDocument();
+      expect(screen.getByLabelText(CLOSE_ICON_LABEL)).toBeInTheDocument();
     });
 
     it("not verified", () => {
       setup({ question: getUnverifiedDataset() });
-      expect(screen.getByText("Verify this model")).toBeTruthy();
-      expect(screen.getByLabelText(VERIFIED_ICON_LABEL)).toBeTruthy();
+      expect(screen.getByText("Verify this model")).toBeInTheDocument();
+      expect(screen.getByLabelText(VERIFIED_ICON_LABEL)).toBeInTheDocument();
     });
   });
 });

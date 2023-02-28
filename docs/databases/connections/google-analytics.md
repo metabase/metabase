@@ -31,6 +31,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 1. From your [Google Cloud Platform console][google-cloud-platform-console], go to **IAM & Admin** > **Service accounts**.
 
 2. Click **+ CREATE SERVICE ACCOUNT** and fill out your service account details.
+
    - Name the service account.
    - Add a description (the service account ID will populate once you add a name).
 
@@ -38,12 +39,13 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 4. Click **Done** to create your service account.
 
-4. From the **...** menu, go to **Manage keys** > **Add key**.
+5. From the **...** menu, go to **Manage keys** > **Add key**.
+
    - Select **JSON** for the **key type**.
    - Click **Create** to download the JSON file to your computer. **You can only download the key once**.
    - If you delete the key, you'll need to create another service account with the same roles.
 
-5. [**Add the service account**][google-analytics-add-user] to your Google Analytics account.
+6. [**Add the service account**][google-analytics-add-user] to your Google Analytics account.
 
    - Find the service account email by clicking into your service account name from **IAM & Admin** > **Service accounts**.
    - The service account email will like:
@@ -52,7 +54,7 @@ To create the service account JSON file, follow Google's documentation on [setti
      ```
    - Only Read and Analyze permissions are needed for Metabase.
 
-6. Enable the Google Analytics API from the [API overview][google-api-overview].
+7. Enable the Google Analytics API from the [API overview][google-api-overview].
    - Check that you're in the correct project before you click **Enable**.
    - For further documentation please refer to [Enable and disable APIs][google-enable-disable-apis].
 

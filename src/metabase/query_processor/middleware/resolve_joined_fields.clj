@@ -1,15 +1,16 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.data :as data]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private InnerQuery
   (s/constrained su/Map (every-pred (some-fn :source-table :source-query :joins)

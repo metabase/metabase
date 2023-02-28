@@ -1,12 +1,13 @@
 (ns metabase.test.util-test
   "Tests for the test utils!"
-  (:require [clojure.test :refer :all]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest with-temp-vals-in-db-test
   (testing "let's make sure this acutally works right!"

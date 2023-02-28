@@ -16,11 +16,13 @@ export function showDashboardCardActions(index = 0) {
 
 export function editDashboard() {
   cy.icon("pencil").click();
+  cy.findByText("You're editing this dashboard.");
 }
 
 export function saveDashboard() {
   cy.findByText("Save").click();
   cy.findByText("You're editing this dashboard.").should("not.exist");
+  cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
 export function checkFilterLabelAndValue(label, value) {

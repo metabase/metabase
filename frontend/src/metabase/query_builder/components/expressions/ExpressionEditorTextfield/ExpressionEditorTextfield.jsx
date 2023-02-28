@@ -330,10 +330,11 @@ class ExpressionEditorTextfield extends React.Component {
   handleCursorChange(selection) {
     const cursor = selection.getCursor();
 
-    const { query, startRule } = this.props;
+    const { query, reportTimezone, startRule } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
       query,
+      reportTimezone,
       startRule,
       source,
       targetOffset: cursor.column,

@@ -1,16 +1,17 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
-  (:require [metabase-enterprise.sandbox.api.table :as table]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
-            [metabase.api.common :as api]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Field PermissionsGroupMembership]]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [metabase-enterprise.sandbox.api.table :as table]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase.api.common :as api]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Field PermissionsGroupMembership]]
+   [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
 
@@ -40,7 +41,8 @@
 
   The gtap-attributes is a list with 2 elements:
   1. card-id - for GTAP that use a saved question
-  2. a map:
+  2. the timestamp when the saved question was last updated
+  3. a map:
     if query is mbql query:
       - with key is the user-attribute that applied to the table that `field` is in
       - value is the user-attribute of current user corresponding to the key
@@ -60,6 +62,7 @@
           attribute_remappings (:attribute_remappings gtap)
           field-ids            (db/select-field :id Field :table_id table_id)]
       [(:card_id gtap)
+       (-> gtap :card :updated_at)
        (if (= :native (get-in gtap [:card :query_type]))
          ;; For sandbox that uses native query, we can't narrow down to the exact attribute
          ;; that affect the current table. So we just hash the whole login-attributes of users.
