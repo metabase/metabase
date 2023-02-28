@@ -30,15 +30,28 @@
   :visibility :internal
   :setter     :none)
 
+(def min-retention-days
+  "Minimum allowed value for `audit-max-retention-days`."
+  30)
+
+(defn log-minimum-value-warning
+  "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overriden."
+  [env-var-value]
+  (log/warn (trs "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
+                 env-var-value
+                 min-retention-days)))
+
 (define-multi-setting-impl audit-max-retention-days :oss
   :getter (fn []
             (if-not (premium-features/is-hosted?)
               ##Inf
               (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
-                  (cond
-                    ((some-fn nil? zero?) env-var-value)  ##Inf
-                    (< env-var-value 30)                  30
-                    :else                                 env-var-value)))))
+                (cond
+                  ((some-fn nil? zero?) env-var-value) ##Inf
+                  (< env-var-value min-retention-days) (do
+                                                         (log-minimum-value-warning env-var-value)
+                                                         min-retention-days)
+                  :else                                env-var-value)))))
 
 (defn- query-execution-cleanup!
   "Delete QueryExecution rows older than the configured threshold."
@@ -64,6 +77,7 @@
 
 (def ^:private truncate-audit-log-job-key "metabase.task.truncate-audit-log.job")
 (def ^:private truncate-audit-log-trigger-key "metabase.task.truncate-audit-log.trigger")
+(def ^:private truncate-audit-log-cron "0 0 */12 * * ? *")
 
 (defmethod task/init! ::TruncateAuditLog [_]
   (let [job     (jobs/build
@@ -75,6 +89,6 @@
                  (triggers/with-schedule
                    (cron/schedule
                     ;; run every 12 hours
-                    (cron/cron-schedule "0 0 */12 * * ? *")
+                    (cron/cron-schedule truncate-audit-log-cron)
                     (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

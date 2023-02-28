@@ -8,9 +8,13 @@
 
 (define-multi-setting-impl task.truncate-audit-log/audit-max-retention-days :ee
   :getter (fn []
-            (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
+            (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
+                  min-retention-days task.truncate-audit-log/min-retention-days]
               (cond
-                (nil? env-var-value)  ##Inf
-                (zero? env-var-value) ##Inf
-                (< env-var-value 30)  30
-                :else                 env-var-value))))
+                (nil? env-var-value)    ##Inf
+                (zero? env-var-value)   ##Inf
+                (< env-var-value
+                   min-retention-days)  (do
+                                          (task.truncate-audit-log/log-minimum-value-warning min-retention-days)
+                                          min-retention-days)
+                :else                   env-var-value))))
