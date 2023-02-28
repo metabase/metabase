@@ -548,6 +548,16 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
+
+  it("should properly render previews (metabase#28726)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByTestId("step-data-0-0").within(() => {
+      cy.icon("play").click();
+      cy.findByTextEnsureVisible("Subtotal");
+      cy.findByTextEnsureVisible("Tax");
+      cy.findByTextEnsureVisible("Total");
+    });
+  });
 });
 
 function addSimpleCustomColumn(name) {

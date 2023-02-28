@@ -71,8 +71,9 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(defn- v2-load
-  [path _args]
+(defn v2-load
+  "SerDes v2 load entry point"
+  [path]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -80,13 +81,6 @@
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
-
-(defn load
-  "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [path args]
-  (if (:v2 args)
-    (v2-load path args)
-    (v1-load path args)))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -140,9 +134,12 @@
            (into base-collections))))))
 
 
-(defn- v1-dump
-  [path state user opts]
+(defn v1-dump
+  "Legacy Metabase app data dump"
+  [path {:keys [state user] :or {state :active} :as opts}]
   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
+  (mdb/setup-db!)
+  (db/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
                       (let [user (db/select-one User
                                                 :email        user
@@ -191,26 +188,19 @@
       (v2.extract/extract-subtrees opts)
       (v2.extract/extract-metabase opts))))
 
-(defn- v2-dump [path opts]
+(defn v2-dump
+  "Exports Metabase app data to directory at path"
+  [path opts]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
+  (mdb/setup-db!)
+  (db/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (-> (v2-extract opts)
       (v2.storage/store! path))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
-
-(defn dump
-  "Serializes Metabase instance into directory `path`."
-  [path {:keys [state user v2]
-         :or {state :active}
-         :as opts}]
-  (mdb/setup-db!)
-  (db/select User) ;; TODO -- why???
-  (if v2
-    (v2-dump path opts)
-    (v1-dump path state user opts)))
 
 (defn seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them.
 
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
-  [options]
-  (v2.seed-entity-ids/seed-entity-ids! options))
+  []
+  (v2.seed-entity-ids/seed-entity-ids!))
