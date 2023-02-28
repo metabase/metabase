@@ -328,7 +328,7 @@ const FieldGeneralPane = ({
     )}
     <Section>
       <SectionHeader
-        title={t`Enable JSON unfolding`}
+        title={t`Unfold JSON`}
         description={t`Unfold JSON into component fields, where each JSON key becomes a column.`}
       />
       <Select
