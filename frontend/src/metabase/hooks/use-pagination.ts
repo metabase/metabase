@@ -12,10 +12,16 @@ export const usePagination = (initialPage = 0) => {
     [setPage],
   );
 
+  const resetPage = useCallback(
+    () => setPage(initialPage),
+    [setPage, initialPage],
+  );
+
   return {
     handleNextPage,
     handlePreviousPage,
     setPage,
     page,
+    resetPage,
   };
 };

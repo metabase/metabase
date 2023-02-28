@@ -459,9 +459,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     getNotebookStep("summarize")
-      .findByTestId("aggregate-step")
-      .findAllByTestId("notebook-cell-item")
-      .last()
+      .findByText("Pick the metric you want to see")
       .click();
 
     popover().within(() => {
