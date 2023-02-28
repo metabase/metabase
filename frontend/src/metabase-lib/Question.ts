@@ -476,12 +476,7 @@ class QuestionInner {
 
   supportsImplicitActions(): boolean {
     const query = this.query();
-
-    return (
-      this.isDataset() &&
-      query instanceof StructuredQuery &&
-      !query.hasAnyClauses()
-    );
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
   }
 
   canAutoRun(): boolean {

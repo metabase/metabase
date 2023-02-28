@@ -3,11 +3,8 @@ import type { DatabaseId } from "./database";
 import type { FieldId } from "./field";
 import type { TableId } from "./table";
 
-export type LimitClause = number;
-
 export interface StructuredQuery {
   "source-table"?: TableId;
-  limit?: LimitClause;
 }
 
 export interface NativeQuery {

@@ -848,21 +848,6 @@ describe("ModelDetailPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("doesn't allow to create basic actions for a non-raw models", async () => {
-      const model = getStructuredModel({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: createMockStructuredQuery({
-            "source-table": 1,
-            limit: 10,
-          }),
-        }),
-      });
-
-      await setup({ model });
-
-      expect(screen.queryByLabelText("Action menu")).not.toBeInTheDocument();
-    });
-
     describe("no data permissions", () => {
       it("shows limited model info", async () => {
         await setup({ model, hasDataPermissions: false });
