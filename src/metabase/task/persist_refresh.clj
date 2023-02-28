@@ -23,8 +23,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p]
@@ -162,21 +160,20 @@
   persisted info records pointing to cards that are no longer models and archived cards/models."
   []
   (t2/select PersistedInfo
-             (binding [hx/*honey-sql-version* 2]
-               {:select    [:p.*]
-                :from      [[:persisted_info :p]]
-                :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-                :where     [:or
-                            [:and
-                             [:in :state prunable-states]
-                             ;; Buffer deletions for an hour if the
-                             ;; prune job happens soon after setting state.
-                             ;; 1. so that people have a chance to change their mind.
-                             ;; 2. if a query is running against the cache, it doesn't get ripped out.
-                             [:< :state_change_at
-                              (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                            [:= :c.dataset false]
-                            [:= :c.archived true]]})))
+             {:select    [:p.*]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:or
+                          [:and
+                           [:in :state prunable-states]
+                           ;; Buffer deletions for an hour if the
+                           ;; prune job happens soon after setting state.
+                           ;; 1. so that people have a chance to change their mind.
+                           ;; 2. if a query is running against the cache, it doesn't get ripped out.
+                           [:< :state_change_at
+                            (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                          [:= :c.dataset false]
+                          [:= :c.archived true]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
@@ -329,7 +326,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database cron-spec]
+(defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))

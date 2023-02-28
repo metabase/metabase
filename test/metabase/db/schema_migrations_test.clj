@@ -20,13 +20,15 @@
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             Collection
             Dashboard
             Database
             Dimension
             Field
             Permissions
+            PermissionsGroup
             Pulse
             Setting
             Table
@@ -38,7 +40,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.execute :as t2.execute])
   (:import
    (java.sql Connection)
    (java.util UUID)))
@@ -864,3 +867,99 @@
           ;; Only the sandbox with a corresponding `Permissions` row is present, and the table is renamed to `sandboxes`
           (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                  (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+(deftest able-to-delete-db-with-actions-test
+  (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
+           fix the bug of unable to delete database with actions"
+    (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
+      (let [user-id  (db/simple-insert! User {:first_name  "Howard"
+                                              :last_name   "Hughes"
+                                              :email       "howard@aircraft.com"
+                                              :password    "superstrong"
+                                              :date_joined :%now})
+            db-id    (db/simple-insert! Database {:name       "db"
+                                                  :engine     "postgres"
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :settings    "{\"database-enable-actions\":true}"
+                                                  :details    "{}"})
+            table-id (db/simple-insert! Table {:db_id      db-id
+                                               :name       "Table"
+                                               :created_at :%now
+                                               :updated_at :%now
+                                               :active     true})
+            model-id (db/simple-insert! Card {:name                   "My Saved Question"
+                                              :created_at             :%now
+                                              :updated_at             :%now
+                                              :creator_id             user-id
+                                              :table_id               table-id
+                                              :display                "table"
+                                              :dataset_query          "{}"
+                                              :visualization_settings "{}"
+                                              :database_id            db-id
+                                              :collection_id          nil})
+            _        (db/simple-insert! Action {:name       "Update user name"
+                                                :type       "implicit"
+                                                :model_id   model-id
+                                                :archived   false
+                                                :created_at :%now
+                                                :updated_at :%now})]
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (db/delete! Database :id db-id)))
+        (migrate!)
+        (is (db/delete! Database :id db-id))))))
+
+(deftest split-data-permission-test
+  (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
+    (impl/test-migrations ["v46.00-080"] [migrate!]
+      (let [[group-1-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 1"})
+            [group-2-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 2"})
+            v1-paths-and-groups [["/db/1/"                                       group-1-id]
+                                 ["/db/2/schema/"                                group-1-id]
+                                 ["/db/3/native/"                                group-1-id]
+                                 ["/db/4/schema/PUBLIC/"                         group-1-id]
+                                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
+                                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
+                                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                                 ["/db/1/"                                       group-2-id]
+                                 ["invalid-path"                                 group-2-id]]
+            _                   (t2.execute/query-one {:insert-into :permissions
+                                                       :columns     [:object :group_id]
+                                                       :values      v1-paths-and-groups})
+            _                   (migrate!)
+            new-paths-set       (t2/select-fn-set (juxt :object :group_id)
+                                                  :models/permissions
+                                                  {:where [:in :group_id [group-1-id group-2-id]]})]
+        ;; Check that the full permission set for group-1 and group-2 is what we expect post-migration.
+        ;; Each v1-path from above is listed here, immediately followed by the two resulting v2 paths.
+        (is (= #{["/db/1/"                                       group-1-id]
+                 ["/data/db/1/"                                  group-1-id]
+                 ["/query/db/1/"                                 group-1-id]
+                 ["/db/2/schema/"                                group-1-id]
+                 ["/data/db/2/"                                  group-1-id]
+                 ["/query/db/2/schema/"                          group-1-id]
+                 ["/db/3/native/"                                group-1-id]
+                 ["/data/db/3/"                                  group-1-id]
+                 ["/query/db/3/"                                 group-1-id]
+                 ["/db/4/schema/PUBLIC/"                         group-1-id]
+                 ["/data/db/4/schema/PUBLIC/"                    group-1-id]
+                 ["/query/db/4/schema/PUBLIC/"                   group-1-id]
+                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
+                 ["/data/db/5/schema/my\\\\schema/"              group-1-id]
+                 ["/query/db/5/schema/my\\\\schema/"             group-1-id]
+                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
+                 ["/data/db/6/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/6/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                 ["/data/db/7/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/7/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
+                 ["/data/db/8/schema/PUBLIC/table/1/"            group-1-id]
+                 ["/query/db/8/schema/PUBLIC/table/1/"           group-1-id]
+                 ["/db/1/"                                       group-2-id]
+                 ["/data/db/1/"                                  group-2-id]
+                 ["/query/db/1/"                                 group-2-id]
+                 ;; Invalid path is not touched but also doesn't fail the migration
+                 ["invalid-path"                                 group-2-id]}
+               new-paths-set))))))

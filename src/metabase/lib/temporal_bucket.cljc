@@ -1,7 +1,6 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.interface :as lib.interface]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli :as mu]))
 
@@ -22,4 +21,4 @@
 
     [:field 1 {:temporal-unit :day}]"
   [x unit :- ::temporal-bucketing/unit]
-  (temporal-bucket* (lib.interface/->mbql x) unit))
+  (temporal-bucket* x unit))

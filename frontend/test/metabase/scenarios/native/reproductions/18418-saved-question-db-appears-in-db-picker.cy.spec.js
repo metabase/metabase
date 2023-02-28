@@ -32,7 +32,6 @@ describe("issue 18418", () => {
 
     // Clicking native question's database picker usually opens a popover with a list of databases
     // As default Cypress environment has only the sample database available, we expect no popup to appear
-    cy.findByTextEnsureVisible("Sample Database").click();
     cy.get(POPOVER_ELEMENT).should("not.exist");
   });
 });

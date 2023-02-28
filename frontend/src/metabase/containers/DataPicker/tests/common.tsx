@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -15,7 +15,6 @@ import {
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import { Collection } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -167,8 +166,6 @@ export async function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  const scope = nock(location.origin);
-
   if (hasDataAccess) {
     const databases = [SAMPLE_DATABASE];
 
@@ -180,36 +177,38 @@ export async function setup({
       databases.push(EMPTY_DATABASE);
     }
 
-    setupDatabasesEndpoints(scope, databases, { hasSavedQuestions });
+    setupDatabasesEndpoints(databases, { hasSavedQuestions });
   } else {
-    setupDatabasesEndpoints(scope, [], { hasSavedQuestions: false });
+    setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  scope
-    .get("/api/search?models=dataset&limit=1")
-    .reply(200, { data: hasModels ? [SAMPLE_MODEL] : [] });
-
-  setupCollectionsEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
-
-  setupCollectionVirtualSchemaEndpoints(
-    scope,
-    ROOT_COLLECTION as unknown as Collection,
-    [
-      SAMPLE_QUESTION,
-      SAMPLE_QUESTION_2,
-      SAMPLE_QUESTION_3,
-      SAMPLE_MODEL,
-      SAMPLE_MODEL_2,
-      SAMPLE_MODEL_3,
-    ],
+  fetchMock.get(
+    {
+      url: "path:/api/search",
+      query: { models: "dataset", limit: 1 },
+    },
+    {
+      data: hasModels ? [SAMPLE_MODEL] : [],
+    },
   );
 
-  setupCollectionVirtualSchemaEndpoints(scope, SAMPLE_COLLECTION, [
+  setupCollectionsEndpoints([SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+
+  setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
+    SAMPLE_QUESTION,
+    SAMPLE_QUESTION_2,
+    SAMPLE_QUESTION_3,
+    SAMPLE_MODEL,
+    SAMPLE_MODEL_2,
+    SAMPLE_MODEL_3,
+  ]);
+
+  setupCollectionVirtualSchemaEndpoints(SAMPLE_COLLECTION, [
     SAMPLE_QUESTION,
     SAMPLE_MODEL,
   ]);
 
-  setupCollectionVirtualSchemaEndpoints(scope, EMPTY_COLLECTION, []);
+  setupCollectionVirtualSchemaEndpoints(EMPTY_COLLECTION, []);
 
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,

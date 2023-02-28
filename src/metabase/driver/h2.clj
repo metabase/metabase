@@ -19,6 +19,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
@@ -111,10 +112,15 @@
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
-  [obj field]
-  (.get (doto (.getDeclaredField (class obj) field)
-          (.setAccessible true))
-        obj))
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
+          or-else))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
@@ -127,28 +133,86 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(defn- contains-ddl?
+(mu/defn ^:private classify-query :- [:maybe
+                                      [:map
+                                       [:command-types [:vector pos-int?]]
+                                       [:remaining-sql [:maybe :string]]]]
+  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+   More info on command types here:
+   https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+
+  If the h2 parser cannot be built, returns `nil`.
+
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
+  - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
+    Usually if `remaining-sql` exists we will deny the query."
   [database query]
   (when-let [h2-parser (make-h2-parser database)]
     (try
-      (let [command      (.prepareCommand h2-parser query)
-            command-type (.getCommandType command)]
-        ;; TODO: do we need to handle CommandList?
-        ;; Command types are organized with all DDL commands listed first
-        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-        (< command-type CommandInterface/ALTER_SEQUENCE))
-      ;; if the query is invalid, then it isn't DDL
-      (catch Throwable _ false))))
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
+        {:command-types command-types
+         ;; when there is no remaining sql: return nil for remaining-sql
+         :remaining-sql (get-field command "remaining" nil)})
+      ;; only valid queries can be classified.
+      (catch org.h2.message.DbException _
+        {:command-types [] :remaining-sql nil}))))
 
-(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when (and query (contains-ddl? database query))
-    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
+(defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+     ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+     (and (every? #{CommandInterface/INSERT
+                    CommandInterface/MERGE
+                    CommandInterface/TRUNCATE_TABLE
+                    CommandInterface/UPDATE
+                    CommandInterface/DELETE
+                    ;; Read-only commands might not make sense for actions, but they are allowed
+                    CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
+(defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
+  (when query
+    (when-let [query-classification (classify-query database query)]
+      (when-not (every-command-allowed-for-actions? query-classification)
+        (throw (ex-info "DDL commands are not allowed to be used with H2."
+                        {:classification query-classification}))))))
+
+(defn- read-only-statements? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (and (every? #{CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
+(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+  (when query
+    (let [query-classification (classify-query database query)]
+      (when-not (read-only-statements? query-classification)
+        (throw (ex-info "Only SELECT statements are allowed in a native query."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
+
+(defmethod driver/execute-write-query! :h2
+  [driver query]
+  (check-native-query-not-using-default-user query)
+  (check-action-commands-allowed query)
+  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
@@ -365,8 +429,7 @@
   (db-type->base-type database-type))
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
+;; options users might try to put in their connection string, like INIT=...
 
 (defn- file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
@@ -385,8 +448,7 @@
                                                 ;; http://h2database.com/html/features.html#execute_sql_on_connection
                                                 (remove (fn [[k _]] (= (u/lower-case-en k) "init")))
                                                 (into {}))
-                                           {"IFEXISTS"         "TRUE"
-                                            "ACCESS_MODE_DATA" "r"}))))
+                                           {"IFEXISTS" "TRUE"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]

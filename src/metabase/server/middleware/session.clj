@@ -22,8 +22,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [ring.util.response :as response]
@@ -238,8 +236,10 @@
                 :where     [:and
                             [:= :user.is_active true]
                             [:= :session.id [:raw "?"]]
-                            (let [oldest-allowed [:inline (binding [hx/*honey-sql-version* 2]
-                                                            (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute))]]
+                            (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
+                                                                                             :%now
+                                                                                             (- max-age-minutes)
+                                                                                             :minute)]]
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type
                                                            :normal         nil

@@ -1,13 +1,14 @@
 (ns metabase.lib.metadata
-  "TODO -- should this just be part of [[metabase.lib.interface]]?"
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(def ^:private FieldMetadata
+(def FieldMetadata
+  "Malli schema for a valid map of Field metadata."
   [:map
    [:lib/type [:= :metadata/field]]
    [:id {:optional true} ::lib.schema.id/field]
@@ -29,8 +30,7 @@
    [:id ::lib.schema.id/database]
    [:tables [:sequential TableMetadata]]])
 
-;;; or should this be called ResultsMetadata?
-(def SourceQueryMetadata
+(def StageMetadata
   "Malli schema for the results metadata (`[:data :results_metadata]`) that is included in query results, and saved as
   `result_metadata` for a Saved Question.
 
@@ -41,6 +41,19 @@
   [:map
    [:lib/type [:= :metadata/results]]
    [:columns [:sequential FieldMetadata]]])
+
+(defmulti ^:private database-metadata*
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value)
+
+(defmethod database-metadata* :mbql/query
+  [query]
+  (:lib/metadata query))
+
+(mu/defn database-metadata :- [:maybe DatabaseMetadata]
+  "Fetch Database metadata from something, e.g. an 'outer' MBQL query. Returns `nil` if not metadata is available."
+  [x]
+  (database-metadata* x))
 
 (defmulti ^:private table-metadata*
   "Implementation for [[table-metadata]]."
@@ -64,18 +77,22 @@
   (table-metadata* (:lib/metadata query) table-name-or-id))
 
 (mu/defn table-metadata :- TableMetadata
-  "Get metadata for a specific Table from some `metadata` source (probably Database metadata)."
-  [metadata         :- [:map
-                        [:lib/type [:keyword]]]
-   table-name-or-id :- [:or
-                        ::lib.schema.id/table
-                        ::lib.schema.common/non-blank-string]]
-  (table-metadata* metadata table-name-or-id))
+  "Get metadata for a specific Table from some `metadata` source (probably Database metadata).
+
+  Returns `nil` if no matching Metadata could be found."
+  [metadata table]
+  (or (table-metadata* metadata table)
+      (throw (ex-info (i18n/tru "Could not resolve Table {0}" (pr-str table))
+                      {:metadata metadata
+                       :table    table}))))
+
+;;; TODO -- consider whether this should dispatch on Field type as well so it's easier to write different
+;;; implementations for Field IDs vs String names vs Keywords etc
 
 (defmulti ^:private field-metadata*
   "Implementation for [[field-metadata]]."
-  {:arglists '([metadata table-name-or-id-or-nil field-name-or-id])}
-  (fn [metadata _table-name-or-id-or-nil _field-name-or-id]
+  {:arglists '([metadata table field])}
+  (fn [metadata _table _field]
     (lib.dispatch/dispatch-value metadata)))
 
 ;; NOCOMMIT
@@ -89,59 +106,71 @@
                   {:table table, :field field, :metadata metadata})))
 
 (defmethod field-metadata* :metadata/database
-  [database-metadata table-name-or-id field-name-or-id]
+  [database-metadata table-name-or-id field]
   (assert (some? table-name-or-id)
           (i18n/tru "Table name or ID is required to fetch a Field from Database metadata"))
-  (field-metadata* (table-metadata database-metadata table-name-or-id) nil field-name-or-id))
+  (field-metadata* (table-metadata database-metadata table-name-or-id) nil field))
 
 (defmethod field-metadata* :metadata/table
-  [table-metadata _table field-name-or-id]
-  (or (some (if (integer? field-name-or-id)
+  [table-metadata _table field-id-or-name]
+  (or (some (if (integer? field-id-or-name)
               (fn [field]
-                (when (= (:id field) field-name-or-id)
+                (when (= (:id field) field-id-or-name)
                   field))
               (fn [field]
-                (when (= (:name field) field-name-or-id)
+                (when (= (:name field) field-id-or-name)
                   field)))
             (:fields table-metadata))
+      ;;; TODO -- not sure it makes sense this that would throw an error while [[field-metadata]] is currently allowed
+      ;;; to return `nil`, and while the other implementations of this do not
       (throw (ex-info (i18n/tru "Could not find Field {0} in Table {1}"
-                                (pr-str field-name-or-id)
+                                (pr-str field-id-or-name)
                                 (pr-str (:name table-metadata)))
                       {:metadata table-metadata
-                       :field    field-name-or-id}))))
+                       :field    field-id-or-name}))))
 
+;;; TODO -- should this throw an error?
 (defmethod field-metadata* :metadata/results
-  [results-metadata _table field-name-or-id]
-  (or (some (if (integer? field-name-or-id)
-              (fn [field]
-                (when (= (:id field) field-name-or-id)
-                  field))
-              (fn [field]
-                (when (= (:name field) field-name-or-id)
-                  field)))
-            (:columns results-metadata))
-      (throw (ex-info (i18n/tru "Could not find Field {0} in results metadata"
-                                (pr-str field-name-or-id))
-                      {:metadata results-metadata
-                       :field    field-name-or-id}))))
+  [results-metadata _table field-id-or-name]
+  (some (if (integer? field-id-or-name)
+          (fn [field]
+            (when (= (:id field) field-id-or-name)
+              field))
+          (fn [field]
+            (when (= (:name field) field-id-or-name)
+              field)))
+        (:columns results-metadata)))
 
 (defmethod field-metadata* :mbql/query
-  [query table-name-or-id-or-nil field-name-or-id]
-  (field-metadata* (:lib/metadata query) table-name-or-id-or-nil field-name-or-id))
+  [query table field]
+  (field-metadata* (:lib/metadata query) table field))
 
-;; TODO -- what about nested Fields??
-(mu/defn field-metadata :- FieldMetadata
+;;; TODO -- a little weird that this can return `nil` but [[table-metadata]] can't... but we have real cases where it
+;;; makes sense that this might return `nil`, unlike for Tables
+
+;;; TODO -- what about nested Fields??
+(mu/defn field-metadata :- [:maybe FieldMetadata]
   "Get metadata for a specific Field from some `metadata` source, which might be Database metadata, Table metadata, or
-  source query/results metadata. `table-name-or-id-or-nil` is optional; if you specify it and pass Database metadata,
+  source query/results metadata. `table` is optional; if you specify it and pass Database metadata,
   this will first find the appropriate [[table-metadata]] for that Table, then find the Field metadata in that Table
-  metadata."
-  ([metadata         :- [:map
-                         [:lib/type [:keyword]]]
-    field-name-or-id :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
-   (field-metadata metadata nil field-name-or-id))
+  metadata.
 
-  ([metadata                :- [:map
-                                [:lib/type [:keyword]]]
-    table-name-or-id-or-nil :- [:maybe [:or ::lib.schema.common/non-blank-string ::lib.schema.id/table]]
-    field-name-or-id        :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
-   (field-metadata* metadata table-name-or-id-or-nil field-name-or-id)))
+  Returns `nil` if no matching metadata could be found."
+  ([metadata :- [:map
+                 [:lib/type [:keyword]]]
+    field    :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
+   (field-metadata metadata nil field))
+
+  ([metadata  :- [:map
+                  [:lib/type [:keyword]]]
+    table     :- [:maybe [:or ::lib.schema.common/non-blank-string ::lib.schema.id/table]]
+    field     :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
+   (field-metadata* metadata table field)))
+
+;;; TODO -- this should probably be guaranteed to never return `nil`
+(mu/defn stage-metadata :- [:maybe StageMetadata]
+  "Fetch the stage metadata for a specific `stage-number` of a `query`."
+  [query stage-number :- :int]
+  ;; TODO -- is there any situation where we'd want to do something different? i.e. should we have a `stage-metadata*`
+  ;; method
+  (:lib/stage-metadata (lib.util/query-stage query stage-number)))

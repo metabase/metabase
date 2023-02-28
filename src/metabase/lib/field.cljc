@@ -1,78 +1,60 @@
 (ns metabase.lib.field
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.interface :as lib.interface]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
+   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defmulti ^:private ->field
-  "Implementation for [[field]]. Convert something that represents a Field somehow (such as a string Field name, or
-  Field metadata) to a `:field` clause, or a `:field/unresolved` if we don't have enough information yet."
-  {:arglists '([table-name-or-id-or-join-alias-or-nil x])}
-  (fn [_table-name-or-id-or-join-alias-or-nil x]
-    (lib.dispatch/dispatch-value x)))
-
-(defmethod ->field :type/string
-  [table-name-or-join-alias field-name]
-  [:field/unresolved
-   (cond-> {:field-name field-name}
-     (string? table-name-or-join-alias) (assoc :table-name table-name-or-join-alias))])
+  {:arglists '([query stage-number field])}
+  (fn [_query _stage-number field]
+    (lib.dispatch/dispatch-value field)))
 
 (defmethod ->field :metadata/field
-  [_ field-metadata]
+  [_query _stage-number field-metadata]
   (lib.options/ensure-uuid
    (or (:field_ref field-metadata)
        (when-let [id (:id field-metadata)]
          [:field id nil])
        [:field (:name field-metadata) {:base-type (:base_type field-metadata)}])))
 
-(defn field
-  "Convert something that in some universe represents a Field or column returned by the previous stage of the query to
-  an appropriate MBQL clause, e.g. a `:field` clause. If we have enough information, this can return a `:field` clause
-  right away. If we don't have enough info, this will return a placeholder clause, `:field/unresolved`, that
-  we'll replace with a `:field` clause later.
+(defn- resolve-field [query stage-number table-or-nil id-or-name]
+  (let [metadata (letfn [(field-metadata [metadata]
+                           (when metadata
+                             (lib.metadata/field-metadata metadata table-or-nil id-or-name)))]
+                   ;;; TODO -- I think maybe this logic should actually be part of [[metabase.lib.metadata]]
+                   ;;; -- [[metabase.lib.field-metadata]] should be the one doing this nonsense
+                   (or
+                    ;; resolve field from the current stage
+                    (field-metadata (lib.metadata/stage-metadata query stage-number))
+                    ;; resolve field from the previous stage (if one exists)
+                    (when (lib.util/has-stage? query (dec stage-number))
+                      (field-metadata (lib.metadata/stage-metadata query (dec stage-number))))
+                    ;; resolve field from Database metadata
+                    (field-metadata (lib.metadata/database-metadata query))))]
+    (when-not (= (:lib/type metadata) :metadata/field)
+      (throw (ex-info (i18n/tru "Could not resolve Field {0}" (pr-str id-or-name))
+                      {:query        query
+                       :stage-number stage-number
+                       :field        id-or-name})))
+    (->field query stage-number metadata)))
 
-  Why placeholders? We would like to be able to support usages like this:
+(defmethod ->field :type/string
+  [query stage field-name]
+  (resolve-field query stage nil field-name))
 
-    (-> (lib/query my-table)
-        (lib/order-by (lib/field \"ID\"))
+(defmethod ->field :type/integer
+  [query stage field-id]
+  (resolve-field query stage nil field-id))
 
-  In this case when `lib/field` is called, we don't have the metadata that we'd need to take \"ID\" and convert it to
-  something like
-
-    [:field 100 nil]
-
-  So instead we'll create something like
-
-    [:field/unresolved {:field-name \"ID\"}]
-
-  And replace it with a `:field` clause once it gets [[metabase.lib.append/append]]ed to a query with metadata.
-
-  A little goofy, but it lets us use this library in a natural way from the REPL and in backend tests without having
-  to thread metadata thru to every single function call."
-  ([x]
-   (->field nil x))
-  ([table-name-or-id-or-join-alias-or-nil x]
-   (->field table-name-or-id-or-join-alias-or-nil x)))
-
-(defmethod lib.interface/resolve :field/unresolved
-  [[_clause {:keys [field-name table-name], :as options}] metadata]
-  (let [field-metadata (lib.metadata/field-metadata metadata table-name field-name)
-        options        (not-empty (dissoc options :field-name :table-name))]
-    (-> (if (:id field-metadata)
-          [:field (:id field-metadata) options]
-          (let [options (assoc options :base-type (:base_type field-metadata))]
-            [:field (:name field-metadata) options]))
-        lib.options/ensure-uuid)))
-
-(defmethod lib.interface/->mbql :metadata/field
-  [x]
-  (field x))
-
-(defmethod lib.interface/resolve :metadata/field
-  [field-metadata _metadata]
-  (->field nil field-metadata))
+;;; Pass in a function that takes `query` and `stage` to support ad-hoc usage in tests etc
+(defmethod ->field :type/fn
+  [query stage f]
+  (f query stage))
 
 (defmethod lib.options/options :field
   [clause]
@@ -89,3 +71,20 @@
 (defmethod lib.temporal-bucket/temporal-bucket* :field/unresolved
   [[_placeholder options] unit]
   [:field/unresolved (assoc options :temporal-unit unit)])
+
+(mu/defn field :- [:or
+                   [:fn fn?]
+                   ::lib.schema.ref/field]
+  "Create a `:field` clause. With one or two args: return a function with the signature
+
+    (f query stage-number)
+
+  that can be called later to resolve to a `:field` clause. With three args: return a `:field` clause right away."
+  ([x]
+   (fn [query stage-number]
+     (->field query stage-number x)))
+  ([table x]
+   (fn [query stage-number]
+     (resolve-field query stage-number table x)))
+  ([query stage-number x]
+   (->field query stage-number x)))

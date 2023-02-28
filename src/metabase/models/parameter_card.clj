@@ -1,8 +1,6 @@
 (ns metabase.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -76,18 +74,3 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
-
-;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-;; ParameterCard are not serialized as their own, separate entities. They are inlined onto their parent ParameterizedObjects
-
-(defmethod serdes.base/load-xform "ParameterCard"
-  [parameter-card]
-  (let [parameterized-model (case (:parameterized_object_type parameter-card)
-                              "dashboard" 'Dashboard
-                              "card"      'Card)]
-    (-> parameter-card
-        (dissoc :serdes/meta)
-        (update :card_id                 serdes.util/import-fk 'Card)
-        (update :parameterized_object_id serdes.util/import-fk parameterized-model)
-        (update :parameter_mappings      serdes.util/import-parameter-mappings)
-        (update :visualization_settings  serdes.util/import-visualization-settings))))

@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
@@ -23,23 +23,19 @@ const setup = ({
   shouldMockQuestions?: boolean;
   policy?: GroupTableAccessPolicy;
 } = {}) => {
-  nock(location.origin).post("/api/mt/gtap/validate").reply(204);
+  fetchMock.post("path:/api/mt/gtap/validate", 204);
 
   if (shouldMockQuestions) {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
-    nock(location.origin)
-      .get("/api/collection/root/items")
-      .reply(200, {
-        data: [{ id: 1, name: "sandbox question", model: "card" }],
-      });
+    fetchMock.get("path:/api/collection", [
+      {
+        id: "root",
+        name: "Our analytics",
+        can_write: true,
+      },
+    ]);
+    fetchMock.get("path:/api/collection/root/items", {
+      data: [{ id: 1, name: "sandbox question", model: "card" }],
+    });
   }
 
   const onSave = jest.fn();
@@ -63,7 +59,6 @@ const setup = ({
 describe("EditSandboxingModal", () => {
   afterEach(() => {
     jest.clearAllMocks();
-    nock.cleanAll();
   });
 
   describe("EditSandboxingModal", () => {

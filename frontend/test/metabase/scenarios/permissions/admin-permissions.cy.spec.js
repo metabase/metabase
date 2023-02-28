@@ -624,7 +624,7 @@ describeEE("scenarios > admin > permissions", () => {
     visitQuestion(1);
 
     cy.findByText("There was a problem with your question");
-    cy.findByText("Settings").should("not.exist");
+    cy.findByTestId("viz-settings-button").should("not.exist");
     cy.findByText("Visualization").should("not.exist");
   });
 
