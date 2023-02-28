@@ -550,6 +550,18 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
+
+  it("should render previews of questions (#28726)", () => {
+    startNewQuestion();
+    cy.findByText("Sample Database").click();
+    cy.findByText("Orders").click();
+    cy.findByTestId("step-data-0-0").within(() => {
+      cy.icon("play").click();
+      cy.findByTextEnsureVisible("Subtotal");
+      cy.findByTextEnsureVisible("Tax");
+      cy.findByTextEnsureVisible("Total");
+    });
+  });
 });
 
 function addSimpleCustomColumn(name) {
