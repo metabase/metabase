@@ -7,8 +7,7 @@
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
    [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])
-   [metabase.driver.druid.js :as js]))
+   #?@(:clj [[metabase.test :as mt]])))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
