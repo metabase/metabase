@@ -11,10 +11,10 @@
             (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
                   min-retention-days truncate-audit-log.i/min-retention-days]
               (cond
-                (nil? env-var-value)    ##Inf
-                (zero? env-var-value)   ##Inf
+                (nil? env-var-value)   ##Inf
+                (zero? env-var-value)  ##Inf
                 (< env-var-value
-                   min-retention-days)  (do
-                                          (truncate-audit-log.i/log-minimum-value-warning env-var-value)
-                                          min-retention-days)
-                :else                   env-var-value))))
+                   min-retention-days) (do
+                                         (truncate-audit-log.i/log-minimum-value-warning env-var-value)
+                                         min-retention-days)
+                :else                  env-var-value))))
