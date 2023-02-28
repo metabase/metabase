@@ -7,7 +7,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -104,7 +104,9 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
-    (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
+    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+      (actions/check-actions-enabled-for-database!
+       (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (action/select-action :id action-id)
