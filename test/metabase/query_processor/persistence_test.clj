@@ -68,7 +68,8 @@
       (mt/dataset sample-dataset
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
-                                              {:query "select * from products"})]]]
+                                              (mt/compile
+                                               (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled [persist-models!]
             (mt/with-temp* [Card [model {:dataset true
                                          :database_id (mt/id)
