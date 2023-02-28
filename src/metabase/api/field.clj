@@ -96,8 +96,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
-  true)
+      (db/delete! Dimension :id old-dim-id))))
 
 (defn- clear-nested-fields!
   "Removes nested fields if JSON unfolding is disabled"
@@ -110,7 +109,7 @@
                                           (:name old-field)))))]
 
       (doseq [field nested-fields]
-        (db/delete! Field :id (:id field))))))
+        (db/update! Field (:id field) :active false)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
@@ -154,16 +153,17 @@
         (if removed-fk?
           (clear-dimension-on-fk-change! field)
           true)
-        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (clear-nested-fields! field nfc_enabled)
+        (do (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+            (clear-nested-fields! field nfc_enabled)
+            true)
         (db/update! Field id
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
                                      :coercion_strategy coercion-strategy)
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                       :coercion_strategy :effective_type :has_field_values :nfc_path :nfc_enabled}
-            :non-nil #{:display_name :settings})))))
+                              :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                         :coercion_strategy :effective_type :has_field_values :nfc_path :nfc_enabled}
+                              :non-nil #{:display_name :settings}))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
