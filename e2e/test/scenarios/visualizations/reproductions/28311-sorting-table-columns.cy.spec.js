@@ -2,7 +2,6 @@ import {
   restore,
   visitQuestionAdhoc,
   getDraggableElements,
-  moveColumnUp,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -65,3 +64,11 @@ describe("issue 25250", () => {
     getDraggableElements().eq(0).should("contain", "Product ID");
   });
 });
+
+function moveColumnUp(column, distance) {
+  column
+    .trigger("mousedown", 0, 0, { force: true })
+    .trigger("mousemove", 5, -5, { force: true })
+    .trigger("mousemove", 0, distance * -50, { force: true })
+    .trigger("mouseup", 0, distance * -50, { force: true });
+}

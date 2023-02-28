@@ -1,7 +1,6 @@
 import {
   restore,
   visitQuestionAdhoc,
-  leftSidebar,
   getDraggableElements,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -73,3 +72,7 @@ describe("issue 28304", () => {
     getDraggableElements().should("have.length", 2);
   });
 });
+
+function leftSidebar() {
+  return cy.findAllByTestId("sidebar-left");
+}
