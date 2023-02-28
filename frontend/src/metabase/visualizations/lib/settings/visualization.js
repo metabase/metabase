@@ -67,13 +67,13 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
-export function getComputedSettingsForSeries(series, extra = {}) {
+export function getComputedSettingsForSeries(series) {
   if (!series) {
     return {};
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  return getComputedSettings(settingsDefs, series, storedSettings, extra);
+  return getComputedSettings(settingsDefs, series, storedSettings);
 }
 
 export function getPersistableDefaultSettingsForSeries(series) {
@@ -88,11 +88,10 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
-  extra = {},
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  const computedSettings = getComputedSettingsForSeries(series, extra);
+  const computedSettings = getComputedSettingsForSeries(series);
 
   return getSettingsWidgets(
     settingsDefs,
@@ -100,7 +99,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
-    { isDashboard, ...extra },
+    { isDashboard },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

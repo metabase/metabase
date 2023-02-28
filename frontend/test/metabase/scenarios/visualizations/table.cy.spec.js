@@ -7,7 +7,6 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-  openNotebook,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -190,63 +189,6 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
-    });
-  });
-
-  it("should compute default 'table.columns' when adding new columns", () => {
-    openOrdersTable();
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByText("Add or remove columns").click();
-    cy.findByText("Deselect All").click();
-    cy.findByTestId("Orders-columns").within(() => {
-      cy.findByText("ID").click();
-      cy.findByText("User ID").click();
-      cy.findByText("Product ID").click();
-    });
-    cy.get(".RunButton").first().click();
-    cy.wait("@dataset");
-    cy.findByTestId("loading-spinner").should("not.exist");
-
-    openNotebook();
-
-    // Add aggregates
-    cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click();
-    cy.findByTestId("aggregate-step").within(() => {
-      cy.icon("add").click();
-    });
-    cy.findByText("Average of ...").click();
-    cy.findByText("Total").click();
-
-    // Add Breakouts
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText("ID").click();
-    });
-    cy.findByTestId("breakout-step").within(() => {
-      cy.icon("add").click();
-    });
-    popover().within(() => {
-      cy.findByText("User ID").click();
-    });
-    cy.findByTestId("breakout-step").within(() => {
-      cy.icon("add").click();
-    });
-    popover().within(() => {
-      cy.findByText("Product ID").click();
-    });
-
-    visualize();
-
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByText("Add or remove columns").click();
-
-    cy.findByTestId("Orders-columns").within(() => {
-      cy.findByLabelText("Count").should("be.checked");
-      cy.findByLabelText("Average of Total").should("be.checked");
-      cy.findByLabelText("ID").should("be.checked");
-      cy.findByLabelText("User ID").should("be.checked");
-      cy.findByLabelText("Product ID").should("be.checked");
     });
   });
 
