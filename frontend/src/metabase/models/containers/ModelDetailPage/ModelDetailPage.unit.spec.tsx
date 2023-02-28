@@ -529,7 +529,7 @@ describe("ModelDetailPage", () => {
         it("allows to create a new query action from the empty state", async () => {
           await setupActions({ model: getModel(), actions: [] });
           userEvent.click(screen.getByRole("link", { name: "New action" }));
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("lists existing query actions", async () => {
@@ -583,7 +583,7 @@ describe("ModelDetailPage", () => {
 
           userEvent.click(screen.getByRole("link", { name: "New action" }));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to edit a query action via link", async () => {
@@ -593,7 +593,7 @@ describe("ModelDetailPage", () => {
 
           userEvent.click(screen.getByRole("link", { name: action.name }));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to edit a query action via menu", async () => {
@@ -604,7 +604,7 @@ describe("ModelDetailPage", () => {
           openActionMenu(action);
           userEvent.click(screen.getByText("Edit"));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to create implicit actions", async () => {
