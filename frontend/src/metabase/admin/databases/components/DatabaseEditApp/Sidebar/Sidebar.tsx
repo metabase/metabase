@@ -28,11 +28,14 @@ interface DatabaseEditAppSidebarProps {
   updateDatabase: (
     database: { id: DatabaseId } & Partial<IDatabase>,
   ) => Promise<void>;
-  syncDatabaseSchema: (databaseId: DatabaseId) => void;
-  dismissSyncSpinner: (databaseId: DatabaseId) => void;
-  rescanDatabaseFields: (databaseId: DatabaseId) => void;
-  discardSavedFieldValues: (databaseId: DatabaseId) => void;
-  deleteDatabase: (databaseId: DatabaseId, isDetailView: boolean) => void;
+  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
+  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
+  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
+  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
+  deleteDatabase: (
+    databaseId: DatabaseId,
+    isDetailView: boolean,
+  ) => Promise<void>;
 }
 
 const DatabaseEditAppSidebar = ({
