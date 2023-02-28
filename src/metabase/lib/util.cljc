@@ -8,7 +8,10 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defn- native-query->pipeline [query]
+(defn- native-query->pipeline
+  "Convert a `:type` `:native` QP MBQL query to a `:type` `:pipeline` pMBQL query. See docstring
+  for [[mbql-query->pipeline]] for an explanation of what this means."
+  [query]
   (merge {:lib/type :mbql/query
           :type     :pipeline
           ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
@@ -31,14 +34,22 @@
                           (dissoc inner-query :source-query))]
     (conj stages this-stage)))
 
-(defn- mbql-query->pipeline [query]
+(defn- mbql-query->pipeline
+  "Convert a `:type` `:query` QP MBQL (i.e., MBQL as currently understood by the Query Processor, or the JS MLv1) to a
+  `:type` `:pipeline` 'pMBQL' query. The key difference is that instead of having a `:query` with a `:source-query`
+  with a `:source-query` and so forth, you have a vector of `:stages` where each stage serves as the source query for
+  the next stage. Initially this was an implementation detail of a few functions, but it's easier to visualize and
+  manipulate, so now all of MLv2 deals with pMBQL. See this Slack thread
+  https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
+  more information."
+  [query]
   (merge {:lib/type :mbql/query
           :type     :pipeline
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
 (mu/defn pipeline :- ::lib.schema/query
-  "Take a 'traditional' MBQL query and convert it to a `:pipeline` query."
+  "Ensure that a `query` is a pMBQL `:pipeline` query."
   [query :- [:map [:type [:keyword]]]]
   (condp = (:type query)
     :pipeline query
@@ -53,14 +64,15 @@
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
                         stage-number)]
-    (when (or (> stage-number' (dec (count stages)))
+    (when (or (>= stage-number' (count stages))
               (neg? stage-number'))
       (throw (ex-info (i18n/tru "Stage {0} does not exist" stage-number)
-                      {})))
+                      {:num-stages (count stages)})))
     stage-number'))
 
 (defn has-stage?
-  "Whether the query has a stage with `stage-number` (can be zero-indexed)."
+  "Whether the query has a stage with `stage-number`. Like everything else here, this handles negative indices as well,
+  e.g. `-1` is the last stage of the query, `-2` is the penultimate stage, etc."
   [{:keys [stages], :as _query} stage-number]
   ;; TODO -- this is a little bit duplicated from the logic above... find a way to consolidate?
   (let [stage-number (if (neg? stage-number)
@@ -70,12 +82,12 @@
          (< stage-number (count stages)))))
 
 (mu/defn query-stage :- ::lib.schema/stage
-  "Fetch a specific `stage` of a query. This handles negative indecies as well, e.g. `-1` will return the last stage of
+  "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
   [query        :- [:map [:type [:keyword]]]
    stage-number :- :int]
   (let [{:keys [stages]} (pipeline query)]
-    (nth (vec stages) (non-negative-stage-index stages stage-number))))
+    (get (vec stages) (non-negative-stage-index stages stage-number))))
 
 (mu/defn update-query-stage :- ::lib.schema/query
   "Update a specific `stage-number` of a `query` by doing

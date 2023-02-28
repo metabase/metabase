@@ -52,18 +52,27 @@
     x]
    (->query metadata x)))
 
+;;; TODO -- the stuff below will probably change in the near future, please don't read too much in to it.
 (mu/defn native-query :- ::lib.schema/query
-  "Create a new native query."
+  "Create a new native query.
+
+  Native in this sense means a pMBQL `:pipeline` query with a first stage that is a native query."
   ([database-metadata :- lib.metadata/DatabaseMetadata ; or results metadata?
     query]
-   {:database     (:id database-metadata)
-    :type         :native
-    :native       {:query query}
-    :lib/type     :mbql/query
-    :lib/metadata database-metadata})
+   ;; TODO -- shouldn't this be outputting a pipeline query right away? I think this is wrong
+   {:lib/type     :mbql/query
+    :lib/metadata database-metadata
+    :database     (:id database-metadata)
+    :type         :pipeline
+    :stages       [(-> {:lib/type :mbql.stage/native
+                        :native   query}
+                       lib.options/ensure-uuid)]})
+
   ([database-metadata :- lib.metadata/DatabaseMetadata
     results-metadata  :- lib.metadata/StageMetadata
     query]
+   ;; TODO -- in #28717 we will probably change this so `:lib/metadata` is always DatabaseMetadata and the
+   ;; `results-metadata` is `:lib/stage-metadata` attached to the first stage
    {:lib/type     :mbql/query
     :lib/metadata results-metadata
     :database     (:id database-metadata)

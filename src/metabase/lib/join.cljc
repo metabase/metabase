@@ -1,6 +1,5 @@
 (ns metabase.lib.join
   (:require
-   [clojure.spec.alpha :as s]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -34,13 +33,6 @@
   [query stage-number f]
   (->join-clause query stage-number (f query stage-number)))
 
-(s/def ::join-args
-  (s/cat
-   :query        map?
-   :stage-number (s/? integer?)
-   :x            any?
-   :condition    any?))
-
 (defmulti ^:private ->join-condition
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
@@ -55,7 +47,7 @@
   (->join-condition query stage-number (f query stage-number)))
 
 (mu/defn join-condition :- [:or
-                            [:fn fn?]
+                            fn?
                             ::lib.schema.expression/boolean]
   "Create a MBQL condition expression to include as the `:condition` in a join map.
 
@@ -72,14 +64,17 @@
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([x]
    (fn [query stage-number]
-     (join-clause x query stage-number)))
+     (join-clause query stage-number x)))
+
   ([x condition]
    (fn [query stage-number]
-     (join-clause x query stage-number condition)))
+     (join-clause query stage-number x condition)))
+
   ([query stage-number x]
-   (->join-clause x query stage-number))
+   (->join-clause query stage-number x))
+
   ([query stage-number x condition]
-   (cond-> (join-clause x query stage-number)
+   (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
 
 (mu/defn join :- ::lib.schema/query
@@ -88,15 +83,15 @@
   `condition` is currently required, but in the future I think we should make this smarter and try to infer a sensible
   default condition for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
   B, join via that relationship. Not yet implemented!"
-  {:arglists '([query stage? x condition])}
-  [& args]
-  (s/assert* ::join-args args)
-  (let [{:keys [query stage-number x condition]} (s/conform ::join-args args)
-        stage-number                             (or stage-number -1)
-        join                                     (cond-> (->join-clause query stage-number x)
-                                                   condition (assoc :condition (join-condition query stage-number condition)))]
-    (lib.util/update-query-stage query stage-number update :joins (fn [joins]
-                                                                    (conj (vec joins) join)))))
+  ([query x condition]
+   (join query -1 x condition))
+
+  ([query stage-number x condition]
+   (let [stage-number (or stage-number -1)
+         join         (cond-> (->join-clause query stage-number x)
+                        condition (assoc :condition (join-condition query stage-number condition)))]
+     (lib.util/update-query-stage query stage-number update :joins (fn [joins]
+                                                                     (conj (vec joins) join))))))
 
 (mu/defn joins :- ::lib.schema.join/joins
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the

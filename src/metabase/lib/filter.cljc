@@ -25,7 +25,7 @@
   (->filter-arg query stage-number (f query stage-number)))
 
 (mu/defn = :- [:or
-               [:fn fn?]
+               fn?
                ::lib.schema.filter/=]
   "Create an `=` filter clause."
   ([x y]

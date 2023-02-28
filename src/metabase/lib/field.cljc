@@ -35,6 +35,12 @@
                     (when (lib.util/has-stage? query (dec stage-number))
                       (field-metadata (lib.metadata/stage-metadata query (dec stage-number))))
                     ;; resolve field from Database metadata
+                    ;;
+                    ;; note that this might not actually make sense, because the Field in question might not actually
+                    ;; be visible from the current stage of the query. But on the other hand it might not be visible
+                    ;; but still legal to add, e.g. an implicitly joined Field from another Tables. We need to noodle
+                    ;; on this a bit more and figure out how to do this in a way that errors on invalid usage. I'm
+                    ;; iterating on this a bit in #28717 but there is still more work to do
                     (field-metadata (lib.metadata/database-metadata query))))]
     (when-not (= (:lib/type metadata) :metadata/field)
       (throw (ex-info (i18n/tru "Could not resolve Field {0}" (pr-str id-or-name))
@@ -73,7 +79,7 @@
   [:field/unresolved (assoc options :temporal-unit unit)])
 
 (mu/defn field :- [:or
-                   [:fn fn?]
+                   fn?
                    ::lib.schema.ref/field]
   "Create a `:field` clause. With one or two args: return a function with the signature
 

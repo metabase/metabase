@@ -7,8 +7,19 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(def FieldMetadata
-  "Malli schema for a valid map of Field metadata."
+(def ColumnMetadata
+  "Malli schema for a valid map of column metadata, which can mean one of two things:
+
+  1. Metadata about a particular Field in the application database. This will always have an `:id`
+
+  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor
+     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns
+     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`
+     and thus will not have an `:id`.
+
+  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
+  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
+  to differentiate between the two versions."
   [:map
    [:lib/type [:= :metadata/field]]
    [:id {:optional true} ::lib.schema.id/field]
@@ -19,8 +30,8 @@
    [:lib/type [:= :metadata/table]]
    [:id ::lib.schema.id/table]
    [:name ::lib.schema.common/non-blank-string]
-   [:schema ::lib.schema.common/non-blank-string]
-   [:fields [:sequential FieldMetadata]]])
+   [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:fields [:sequential ColumnMetadata]]])
 
 (def DatabaseMetadata
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
@@ -30,9 +41,37 @@
    [:id ::lib.schema.id/database]
    [:tables [:sequential TableMetadata]]])
 
+{:database 1
+ :type     :pipeline
+ :stages   [{:lib/type :mbql.stage/mbql
+             :native   "SELECT id, name FROM VENUES;"}]}
+
+{:columns [{:name "id", :base-type :type/Integer}
+           {:name "name", :base-type :type/Text}]}
+
 (def StageMetadata
-  "Malli schema for the results metadata (`[:data :results_metadata]`) that is included in query results, and saved as
-  `result_metadata` for a Saved Question.
+  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
+  like
+
+    {:database 1
+     :type     :pipeline
+     :stages   [{:lib/type :mbql.stage/mbql
+                 :native   \"SELECT id, name FROM VENUES;\"}]}
+
+  might have stage metadata like
+
+    {:columns [{:name \"id\", :base-type :type/Integer}
+               {:name \"name\", :base-type :type/Text}]}
+
+  associated with the query's lone stage.
+
+  At some point in the near future we will hopefully attach this metadata directly to each stage in a query, so a
+  multi-stage query will have `:lib/stage-metadata` for each stage. The main goal is to facilitate things like
+  returning lists of visible or filterable columns for a given stage of a query. This is TBD, see #28717 for a WIP
+  implementation of this idea.
+
+  This is the same format as the results metadata returned with QP results in `data.results_metadata`. The `:columns`
+  portion of this (`data.results_metadata.columns`) is also saved as `Card.result_metadata` for Saved Questions.
 
   Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like the
   Frontend actually *merges* these together -- see `applyMetadataDiff` in
@@ -40,7 +79,7 @@
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
    [:lib/type [:= :metadata/results]]
-   [:columns [:sequential FieldMetadata]]])
+   [:columns [:sequential ColumnMetadata]]])
 
 (defmulti ^:private database-metadata*
   {:arglists '([x])}
@@ -139,7 +178,7 @@
 ;;; makes sense that this might return `nil`, unlike for Tables
 
 ;;; TODO -- what about nested Fields??
-(mu/defn field-metadata :- [:maybe FieldMetadata]
+(mu/defn field-metadata :- [:maybe ColumnMetadata]
   "Get metadata for a specific Field from some `metadata` source, which might be Database metadata, Table metadata, or
   source query/results metadata. `table` is optional; if you specify it and pass Database metadata,
   this will first find the appropriate [[table-metadata]] for that Table, then find the Field metadata in that Table

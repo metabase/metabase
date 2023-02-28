@@ -1,6 +1,5 @@
 (ns metabase.lib.order-by
   (:require
-   [clojure.spec.alpha :as s]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
    [metabase.lib.options :as lib.options]
@@ -42,28 +41,27 @@
    direction :- ::lib.schema.order-by/direction]
   (assoc (vec clause) 0 direction))
 
-(s/def ::order-by-args
-  (s/cat
-   :query        map?
-   :stage-number (s/? integer?)
-   :x            any?
-   :direction    (s/? #{:asc :desc})))
-
-(defn order-by
+(mu/defn order-by
   "Create an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
   Field, or `:field` clause, or expression of some sort, etc.
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
   underlying [[->order-by]] multimethod."
-  {:arglists '([query stage-number? x direction?])}
-  [& args]
-  (s/assert* ::order-by-args args)
-  (let [{:keys [query stage-number x direction]} (s/conform ::order-by-args args)
-        stage-number                             (or stage-number -1)
-        order-by                                 (cond-> (->order-by-clause query stage-number x)
-                                                   direction (with-direction direction))]
-    (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                       (conj (vec order-bys) order-by)))))
+  ([query x]
+   (order-by query -1 x nil))
+
+  ([query x direction]
+   (order-by query -1 x direction))
+
+  ([query
+    stage-number :- [:maybe :int]
+    x
+    direction    :- [:maybe [:enum :asc :desc]]]
+   (let [stage-number (or stage-number -1)
+         order-by     (cond-> (->order-by-clause query stage-number x)
+                        direction (with-direction direction))]
+     (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
+                                                                        (conj (vec order-bys) order-by))))))
 
 (mu/defn order-bys :- [:sequential ::lib.schema.order-by/order-by]
   "Get the order-by clauses in a query."

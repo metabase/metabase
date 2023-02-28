@@ -29,8 +29,8 @@
     [:order-by {:optional true} ::order-by/order-bys]
     [:joins {:optional true} ::join/joins]
     [:filter {:optional true} ::expression/boolean]]
-   ;; `:source-query` is not allowed in `:pipeline` queries!
-   [:fn (complement :source-query)]])
+   ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
+   [:fn (complement #(contains? % :source-query))]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.with-source
@@ -39,11 +39,11 @@
    [:map
     [:source-table ::id/table]]])
 
-;;; Schema for an MBQL stage that DOES NOT include `:source-table` or `:source-query`.
+;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
    ::stage.mbql
-   [:fn (complement :source-table)]])
+   [:fn (complement #(contains? % :source-table))]])
 
 (mr/def ::stage
   [:or

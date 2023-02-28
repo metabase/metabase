@@ -83,7 +83,7 @@
   "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
   you can test things that should consume Field metadata.
 
-  Metadata returned by this method matches the [[metabase.lib.metadata/FieldMetadata]] schema."
+  Metadata returned by this method matches the [[metabase.lib.metadata/ColumMetadata]] schema."
   {:arglists '([table-name field-name])}
   (fn [table-name field-name]
     [(keyword table-name) (keyword field-name)]))

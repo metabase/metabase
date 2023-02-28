@@ -1,12 +1,12 @@
 (ns metabase.lib.util-test
   (:require
-   [clojure.test :as t]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.util :as lib.util])
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
-(t/deftest ^:parallel pipeline-test
-  (t/are [query expected] (=? expected
-                              (lib.util/pipeline query))
+(deftest ^:parallel pipeline-test
+  (are [query expected] (=? expected
+                            (lib.util/pipeline query))
     ;; MBQL query
     {:database 1
      :type     :query
@@ -48,69 +48,69 @@
      :stages   [{:lib/type :mbql.stage/native
                  :native   "SELECT * FROM VENUES;"}]}))
 
-(t/deftest ^:parallel query-stage-test
-  (t/is (=? {:lib/type     :mbql.stage/mbql
-             :source-table 1}
-            (lib.util/query-stage {:database 1
-                                   :type     :query
-                                   :query    {:source-table 1}}
-                                  0)))
-  (t/are [index expected] (=? expected
+(deftest ^:parallel query-stage-test
+  (is (=? {:lib/type     :mbql.stage/mbql
+           :source-table 1}
+          (lib.util/query-stage {:database 1
+                                 :type     :query
+                                 :query    {:source-table 1}}
+                                0)))
+  (are [index expected] (=? expected
+                            (lib.util/query-stage {:database 1
+                                                   :type     :query
+                                                   :query    {:source-query {:source-table 1}}}
+                                                  index))
+    0 {:lib/type     :mbql.stage/mbql
+       :source-table 1}
+    1 {:lib/type :mbql.stage/mbql})
+  (testing "negative index"
+    (are [index expected] (=? expected
                               (lib.util/query-stage {:database 1
                                                      :type     :query
                                                      :query    {:source-query {:source-table 1}}}
                                                     index))
-    0 {:lib/type     :mbql.stage/mbql
-       :source-table 1}
-    1 {:lib/type :mbql.stage/mbql})
-  (t/testing "negative index"
-    (t/are [index expected] (=? expected
-                                (lib.util/query-stage {:database 1
-                                                       :type     :query
-                                                       :query    {:source-query {:source-table 1}}}
-                                                      index))
       -1 {:lib/type :mbql.stage/mbql}
       -2 {:lib/type     :mbql.stage/mbql
           :source-table 1}))
-  (t/testing "Out of bounds"
-    (t/is (thrown-with-msg?
-           #?(:clj Throwable :cljs js/Error)
-           #"Stage 2 does not exist"
-           (lib.util/query-stage {:database 1
-                                  :type     :query
-                                  :query    {:source-query {:source-table 1}}}
-                                 2)))
-    (t/is (thrown-with-msg?
-           #?(:clj Throwable :cljs js/Error)
-           #"Stage -3 does not exist"
-           (lib.util/query-stage {:database 1
-                                  :type     :query
-                                  :query    {:source-query {:source-table 1}}}
-                                 -3)))))
+  (testing "Out of bounds"
+    (is (thrown-with-msg?
+         #?(:clj Throwable :cljs js/Error)
+         #"Stage 2 does not exist"
+         (lib.util/query-stage {:database 1
+                                :type     :query
+                                :query    {:source-query {:source-table 1}}}
+                               2)))
+    (is (thrown-with-msg?
+         #?(:clj Throwable :cljs js/Error)
+         #"Stage -3 does not exist"
+         (lib.util/query-stage {:database 1
+                                :type     :query
+                                :query    {:source-query {:source-table 1}}}
+                               -3)))))
 
-(t/deftest ^:parallel update-query-stage-test
-  (t/is (=? {:database 1
-             :type     :pipeline
-             :stages   [{:lib/type     :mbql.stage/mbql
-                         :source-table 1
-                         :aggregation  [[:count]]}]}
-            (lib.util/update-query-stage {:database 1
-                                          :type     :query
-                                          :query    {:source-table 1}}
-                                         0
-                                         update
-                                         :aggregation
-                                         conj
-                                         [:count])))
-  (t/are [stage expected] (=? expected
-                              (lib.util/update-query-stage {:database 1
-                                                            :type     :query
-                                                            :query    {:source-query {:source-table 1}}}
-                                                           stage
-                                                           update
-                                                           :aggregation
-                                                           conj
-                                                           [:count]))
+(deftest ^:parallel update-query-stage-test
+  (is (=? {:database 1
+           :type     :pipeline
+           :stages   [{:lib/type     :mbql.stage/mbql
+                       :source-table 1
+                       :aggregation  [[:count]]}]}
+          (lib.util/update-query-stage {:database 1
+                                        :type     :query
+                                        :query    {:source-table 1}}
+                                       0
+                                       update
+                                       :aggregation
+                                       conj
+                                       [:count])))
+  (are [stage expected] (=? expected
+                            (lib.util/update-query-stage {:database 1
+                                                          :type     :query
+                                                          :query    {:source-query {:source-table 1}}}
+                                                         stage
+                                                         update
+                                                         :aggregation
+                                                         conj
+                                                         [:count]))
     0 {:database 1
        :type     :pipeline
        :stages   [{:lib/type     :mbql.stage/mbql
@@ -129,32 +129,32 @@
                     :source-table 1}
                    {:lib/type    :mbql.stage/mbql
                     :aggregation [[:count]]}]})
-  (t/testing "out of bounds"
-    (t/is (thrown-with-msg?
-           #?(:clj Throwable :cljs js/Error)
-           #"Stage 2 does not exist"
-           (lib.util/update-query-stage {:database 1
-                                         :type     :query
-                                         :query    {:source-query {:source-table 1}}}
-                                        2
-                                        update
-                                        :aggregation
-                                        conj
-                                        [:count])))))
+  (testing "out of bounds"
+    (is (thrown-with-msg?
+         #?(:clj Throwable :cljs js/Error)
+         #"Stage 2 does not exist"
+         (lib.util/update-query-stage {:database 1
+                                       :type     :query
+                                       :query    {:source-query {:source-table 1}}}
+                                      2
+                                      update
+                                      :aggregation
+                                      conj
+                                      [:count])))))
 
-(t/deftest ^:parallel ensure-mbql-final-stage-test
-  (t/is (=? {:database 1
-             :type     :pipeline
-             :stages   [{:lib/type     :mbql.stage/mbql
-                         :source-table 2}]}
-            (lib.util/ensure-mbql-final-stage {:database 1
-                                               :type     :query
-                                               :query    {:source-table 2}})))
-  (t/is (=? {:database 1
-             :type     :pipeline
-             :stages   [{:lib/type :mbql.stage/native
-                         :native   "SELECT * FROM venues;"}
-                        {:lib/type :mbql.stage/mbql}]}
-            (lib.util/ensure-mbql-final-stage {:database 1
-                                               :type     :native
-                                               :native   {:query "SELECT * FROM venues;"}}))))
+(deftest ^:parallel ensure-mbql-final-stage-test
+  (is (=? {:database 1
+           :type     :pipeline
+           :stages   [{:lib/type     :mbql.stage/mbql
+                       :source-table 2}]}
+          (lib.util/ensure-mbql-final-stage {:database 1
+                                             :type     :query
+                                             :query    {:source-table 2}})))
+  (is (=? {:database 1
+           :type     :pipeline
+           :stages   [{:lib/type :mbql.stage/native
+                       :native   "SELECT * FROM venues;"}
+                      {:lib/type :mbql.stage/mbql}]}
+          (lib.util/ensure-mbql-final-stage {:database 1
+                                             :type     :native
+                                             :native   {:query "SELECT * FROM venues;"}}))))
