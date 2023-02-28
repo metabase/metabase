@@ -4,17 +4,15 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  initializeSettings,
-  updateSetting,
-  reloadSettings,
-} from "metabase/admin/settings/settings";
+import { updateSetting } from "metabase/admin/settings/settings";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Group from "metabase/entities/groups";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { getSetting } from "metabase/selectors/settings";
+
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -28,10 +26,14 @@ import {
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
 
+const mapStateToProps = (state, props) => {
+  return {
+    mappings: getSetting(state, props.mappingSetting),
+  };
+};
+
 const mapDispatchToProps = {
-  initializeSettings,
   updateSetting,
-  reloadSettings,
   deleteGroup: Group.actions.delete,
   clearGroupMember: Group.actions.clearMember,
 };
@@ -43,18 +45,15 @@ function GroupMappingsWidget({
   groupPlaceholder,
   groups: allGroups = [],
   mappingSetting,
-  settingValues,
   deleteGroup,
   clearGroupMember,
   updateSetting,
-  onChangeSetting,
+  mappings,
   ...props
 }) {
-  console.log("🚀", "In GroupMappingsWidget", settingValues[mappingSetting]);
   const [showAddRow, setShowAddRow] = useState(false);
   const [saveError, setSaveError] = useState({});
 
-  const mappings = settingValues?.[mappingSetting] || {};
   const groups = allGroups.filter(groupIsMappable);
 
   const handleShowAddRow = () => {
@@ -90,9 +89,6 @@ function GroupMappingsWidget({
 
     try {
       await updateSetting({ key: mappingSetting, value: updatedMappings });
-
-      // TODO: Try removing line below and checking with LDAP, SAML and JWT
-      // onChangeSetting(mappingSetting, updatedMappings);
       setSaveError(null);
     } catch (error) {
       setSaveError(error);
@@ -188,6 +184,7 @@ function GroupMappingsWidget({
   );
 }
 
-export default _.compose(connect(null, mapDispatchToProps))(
-  GroupMappingsWidget,
-);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(GroupMappingsWidget);
