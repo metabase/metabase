@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -228,7 +229,7 @@
 
 (defn- log-and-extract-one
   [model opts instance]
-  (log/info "Extracting" model (:id instance))
+  (log/info (trs "Extracting {0} {1}" model (:id instance)))
   (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]

@@ -192,10 +192,10 @@
       (v2.extract/extract-metabase opts))))
 
 (defn- v2-dump [path opts]
-  (log/info "Exporting Metabase to" path (u/emoji "🏭 🚛💨"))
+  (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (-> (v2-extract opts)
       (v2.storage/store! path))
-  (log/info "Export to" path "complete!" (u/emoji "🚛💨 📦")))
+  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 
 (defn dump
   "Serializes Metabase instance into directory `path`."
