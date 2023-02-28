@@ -87,7 +87,7 @@
     (compare (:col dashcard-1) (:col dashcard-2))))
 
 (defn virtual-card-of-type?
-  "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, eles returns `nil`.
+  "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
   There are currently 3 types of virtual card: \"text\", \"action\", \"link\"."
   [dashcard ttype]

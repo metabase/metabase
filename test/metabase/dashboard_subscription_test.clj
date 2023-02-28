@@ -647,13 +647,12 @@
                                                               dashboard-id]}]
        (let [site-url (public-settings/site-url)]
          (testing "should returns all link cards and name are newly fetched"
-           (doseq [[model id]
-                   [[Card card-id]
-                    [Table table-id]
-                    [Database database-id]
-                    [Dashboard dashboard-id]
-                    [Collection collection-id]
-                    [Card model-id]]]
+           (doseq [[model id] [[Card card-id]
+                               [Table table-id]
+                               [Database database-id]
+                               [Dashboard dashboard-id]
+                               [Collection collection-id]
+                               [Card model-id]]]
              (t2/update! model id {:name (format "New %s name" (name model))}))
            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}

@@ -215,18 +215,20 @@
         (with-meta (meta body)))))
 
 (defn let-second
-  "Helper for macros that have a shape like, where the let is for second arg.
+  "Helper for macros that have a shape like
 
-    (my-macro x y
+    (my-macro x [y]
     ...)
+
+    where the let is for second arg.
 
     =>
 
     (let [y nil]
     ...)"
   [{:keys [node]}]
-  (let [[_ db-ref binding+opts & body] (:children node)]
-    {:node (let-second-inner body [db-ref binding+opts])}))
+  (let [[_ first-arg-ref binding+opts & body] (:children node)]
+    {:node (let-second-inner body [first-arg-ref binding+opts])}))
 
 (defn let-with-optional-value-for-last-binding
   "This is exactly like [[clojure.core/let]] but the right-hand side of the *last* binding, `value`, is optional.
