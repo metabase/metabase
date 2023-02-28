@@ -13,7 +13,6 @@
               [malli.experimental :as mx]
               [malli.instrument :as minst]
               [metabase.util.i18n :as i18n]
-              [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
   #?(:cljs (:require-macros [metabase.util.malli])))
 
@@ -62,6 +61,18 @@
               (and data link) (assoc :link link))))))
 
 #?(:clj
+   (defn- instrument! [id]
+     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
+                         :report  explain-fn-fail!}))
+
+   ;; No-op for Cljs; instrumentation currently only works in Clojure AFAIK. [[malli.instrument]] is a Clj-only
+   ;; namespace
+
+   :cljs
+   #_{:clj-kondo/ignore [:unused-private-var]}
+   (defn- instrument! [_id]))
+
+#?(:clj
    (core/defn- -defn [schema args]
      (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
@@ -74,13 +85,13 @@
            raw-arglists (map :raw-arglist parglists)
            schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
            annotated-doc (str/trim
-                          (str "Inputs: " (if single
-                                            (pr-str (first (mapv :raw-arglist parglists)))
-                                            (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-                               "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
-                                                           "\n"
-                                                           (str "\n          "))
-                               (when (not-empty doc) (str "\n\n  " doc))))
+                           (str "Inputs: " (if single
+                                             (pr-str (first (mapv :raw-arglist parglists)))
+                                             (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
+                                "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
+                                                            "\n"
+                                                            (str "\n          "))
+                                (when (not-empty doc) (str "\n\n  " doc))))
            id (str (gensym "id"))]
        `(let [defn# (core/defn
                       ~name
@@ -92,10 +103,8 @@
                       ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                       ~@(when-not single (some->> arities val :meta vector)))]
           (mc/=> ~name ~schema)
-          (macros/case
-            :clj (minst/instrument! { ;; instrument the defn we just registered, via ~id
-                                     :filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
-                                     :report  explain-fn-fail!}))
+          ;; instrument the defn we just registered, via ~id
+          (instrument! ~id)
           defn#))))
 
 #?(:clj
@@ -117,22 +126,21 @@
      :cljs string?))
 
 ;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
-#?(:clj
-   (metabase.util.malli/defn with-api-error-message
-     "Update a malli schema to have a :description (used by umd/describe, which is used by api docs),
+(metabase.util.malli/defn with-api-error-message
+  "Update a malli schema to have a :description (used by umd/describe, which is used by api docs),
   and a :error/fn (used by me/humanize, which is used by defendpoint).
   They don't have to be the same, but usually are.
 
   (with-api-error-message
     [:string {:min 1}]
     (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
-     ([mschema :- Schema error-message :- localized-string-schema]
-      (with-api-error-message mschema error-message error-message))
-     ([mschema                :- :any
-       description-message    :- localized-string-schema
-       specific-error-message :- localized-string-schema]
-      (mut/update-properties (mc/schema mschema) assoc
-                             ;; override generic description in api docs and :errors key in API's response
-                             :description description-message
-                             ;; override generic description in :specific-errors key in API's response
-                             :error/fn    (fn [_ _] specific-error-message)))))
+  ([mschema :- Schema error-message :- localized-string-schema]
+   (with-api-error-message mschema error-message error-message))
+  ([mschema                :- :any
+    description-message    :- localized-string-schema
+    specific-error-message :- localized-string-schema]
+   (mut/update-properties (mc/schema mschema) assoc
+                          ;; override generic description in api docs and :errors key in API's response
+                          :description description-message
+                          ;; override generic description in :specific-errors key in API's response
+                          :error/fn    (fn [_ _] specific-error-message))))

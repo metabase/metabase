@@ -8,11 +8,12 @@
 (defonce ^:private registry*
   (atom (mc/default-schemas)))
 
-(defonce registry (mr/mutable-registry registry*))
+(defonce ^:private registry (mr/mutable-registry registry*))
 
 (mr/set-default-registry! registry)
 
 (defn register!
+  "Register a spec with our Malli spec "
   [type schema]
   (swap! registry* assoc type schema)
   nil)
