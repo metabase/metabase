@@ -99,6 +99,19 @@
       (db/delete! Dimension :id old-dim-id)))
   true)
 
+(defn- clear-nested-fields!
+  "Removes nested fields if JSON unfolding is disabled"
+  [old-field nfc_enabled]
+  (when (and (false? nfc_enabled)
+             (true? (:nfc_enabled old-field)))
+    (let [nested-fields (->> (db/select 'Field :table_id (:table_id old-field) :nfc_path [:not= nil])
+                             (filter (fn [field]
+                                       (= (first (:nfc_path field))
+                                          (:name old-field)))))]
+
+      (doseq [field nested-fields]
+        (db/delete! Field :id (:id field))))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
@@ -142,6 +155,7 @@
           (clear-dimension-on-fk-change! field)
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+        (clear-nested-fields! field nfc_enabled)
         (db/update! Field id
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
