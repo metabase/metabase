@@ -609,7 +609,6 @@ export const getSettingValues = createSelector(getSettings, settings => {
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;
   }
-  console.log("🚀", { settingValues });
   return settingValues;
 });
 
@@ -622,11 +621,6 @@ export const getSections = createSelector(
   getDerivedSettingValues,
   getUserIsAdmin,
   (settings, derivedSettingValues, isAdmin) => {
-    // console.log("🚀", "In getSections", {
-    // settings,
-    // derivedSettingValues,
-    // isAdmin,
-    // });
     if (!settings || _.isEmpty(settings)) {
       return {};
     }
@@ -634,7 +628,6 @@ export const getSections = createSelector(
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
     for (const [slug, section] of Object.entries(SECTIONS)) {
-      // console.log("🚀", { slug, section });
       if (section.adminOnly && !isAdmin) {
         continue;
       }

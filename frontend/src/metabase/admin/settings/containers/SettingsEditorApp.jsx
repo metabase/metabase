@@ -157,7 +157,6 @@ class SettingsEditorApp extends Component {
         />
       );
     } else {
-      console.log("🚀", "activeSection.settings", activeSection.settings);
       return (
         <ul>
           {activeSection.settings
