@@ -335,7 +335,6 @@ const FieldGeneralPane = ({
         className="inline-block"
         value={field.nfc_enabled}
         onChange={({ target: { value } }) => {
-          console.log(value);
           return onUpdateFieldProperties({
             nfc_enabled: value,
           });
