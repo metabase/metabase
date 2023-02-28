@@ -135,7 +135,8 @@
    ::database  "1-0-0"
    ::instance  "1-1-0"
    ::timeline  "1-0-0"
-   ::task      "1-0-0"})
+   ::task      "1-0-0"
+   ::action    "1-0-0"})
 
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
@@ -175,7 +176,8 @@
        ;; Make sure keywords in payload are converted to strings in snake-case
        (m/map-kv
         (fn [k v] [(normalize-kw k) (if (keyword? v) (normalize-kw v) v)])
-        (assoc data :event event-kw))))
+        (merge {:event event-kw}
+               data))))
 
 (defn- track-event-impl!
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
@@ -193,7 +195,11 @@
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
-   ::new-task-history               ::task})
+   ::new-task-history               ::task
+   ::new-action                     ::action
+   ::update-action                  ::action
+   ::delete-action                  ::action
+   ::execute-action                 ::action})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

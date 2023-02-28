@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -586,6 +587,10 @@
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
             ;; Undo middleware string->keyword coercion
+            (snowplow/track-event! ::snowplow/execute-action api/*current-user-id* {:event     :execute
+                                                                                    :source    :dashboard
+                                                                                    :type      (:type action)
+                                                                                    :action_id (:id action)})
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 
 
