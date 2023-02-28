@@ -25,12 +25,13 @@
       (mt/with-temp* [QueryExecution [qe-a (merge query-execution-defaults
                                                   {:executor_id user-id
                                                    :started_at  (t/minus now (t/days 2))})]
-                      QueryExecution [_qe-b (merge query-execution-defaults
+                      QueryExecution [qe-b (merge query-execution-defaults
                                                    {:executor_id user-id
                                                     :started_at  (t/minus now (t/days 32))})]]
         (premium-features.test/with-premium-features #{:advanced-config}
           (is (= [(select-keys qe-a [:started_at :id])]
                  (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/30")
                       (filter #(#{user-id} (:executor_id %)))
+                      (filter #((set (map :id [qe-a qe-b])) (:id %)))
                       (map #(select-keys % [:started_at :id]))))
               "Only Query Executions within `:days` are returned."))))))
