@@ -108,8 +108,18 @@ describe(
     });
 
     describe("Group Mappings Widget", () => {
+      beforeEach(() => {
+        cy.intercept("GET", "/api/setting").as("getSettings");
+        cy.intercept("GET", "/api/session/properties").as(
+          "getSessionProperties",
+        );
+      });
+
       it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
         cy.visit("/admin/settings/authentication/ldap");
+
+        cy.wait("@getSettings");
+        cy.wait("@getSessionProperties");
 
         // Create mapping, then delete it along with its groups
         createMapping("cn=People1");
