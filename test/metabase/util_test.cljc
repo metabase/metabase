@@ -324,20 +324,20 @@
 (deftest ^:parallel dispatch-type-test
   (are [x expected] (= expected
                        (u/dispatch-type-keyword x))
-    nil                                  :dispatch-type/nil
-    "x"                                  :dispatch-type/string
-    :x                                   :dispatch-type/keyword
-    1                                    :dispatch-type/integer
-    1.1                                  :dispatch-type/number
-    {:a 1}                               :dispatch-type/map
-    [1]                                  :dispatch-type/sequence
-    #{:a}                                :dispatch-type/set
-    'str                                 :dispatch-type/symbol
-    #"\d+"                               :dispatch-type/regex
-    str                                  :dispatch-type/fn
-    #?(:clj (Object.) :cljs (js/Object)) :dispatch-type/*)
-    (are [x] (isa? (u/dispatch-type-keyword x) :dispatch-type/*)
+    nil                                   :dispatch-type/nil
+    "x"                                   :dispatch-type/string
+    :x                                    :dispatch-type/keyword
+    1                                     :dispatch-type/integer
+    1.1                                   :dispatch-type/number
+    {:a 1}                                :dispatch-type/map
+    [1]                                   :dispatch-type/sequence
+    #{:a}                                 :dispatch-type/set
+    'str                                  :dispatch-type/symbol
+    #"\d+"                                :dispatch-type/regex
+    str                                   :dispatch-type/fn
+    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*)
   (testing "All type keywords should derive from :dispatch-type/*"
+    (are [x] (isa? (u/dispatch-type-keyword x) :dispatch-type/*)
       :dispatch-type/nil
       :dispatch-type/string
       :dispatch-type/keyword
