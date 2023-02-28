@@ -13,7 +13,7 @@ interface StateProps {
 type EmbeddingCustomizationInfoProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  upgradeUrl: getUpgradeUrl(state, { utm_media: "embed_premium" }),
+  upgradeUrl: getUpgradeUrl(state, { utm_media: "embed_standalone" }),
 });
 
 const EmbeddingCustomizationInfo = ({
