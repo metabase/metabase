@@ -1,6 +1,12 @@
 (ns metabase.lib.schema.common
   (:require
+   [metabase.types]
    [metabase.util.malli.registry :as mr]))
+
+(comment metabase.types/keep-me)
+
+(mr/def ::base-type
+  [:fn #(isa? % :types/*)])
 
 ;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string

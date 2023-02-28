@@ -10,15 +10,16 @@
   cljc-friendly way. e.g. I don't know what `(type \"x\") is in Cljs."
   [x]
   (cond
-    (map? x)     (or (:lib/type x)
-                     :type/map)
-    (nil? x)     :type/nil
-    (string? x)  :type/string
-    (integer? x) :type/integer
-    (number? x)  :type/number
-    (fn? x)      :type/fn
+    (map? x)        (or (:lib/type x)
+                        :type/map)
+    (nil? x)        :type/nil
+    (string? x)     :type/string
+    (sequential? x) :type/sequence
+    (integer? x)    :type/integer
+    (number? x)     :type/number
+    (fn? x)         :type/fn
     ;; we should add more mappings here as needed
-    :else        (type x)))
+    :else           (type x)))
 
 (defn dispatch-value
   "Dispatch value for a clause, map, or other object. Dispatch rules are as follows:

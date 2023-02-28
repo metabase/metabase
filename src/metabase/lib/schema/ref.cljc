@@ -29,21 +29,16 @@
               (and (string? id-or-name)
                    (isa? (:base-type options) :type/*))))]])
 
-;; this is a placeholder that will be resolved later once we have metadata and `append` it to the query. Used to
-;; implement [[metabase.lib.field/field]] so you don't have to pass metadata to it directly.
-(mr/def ::field.unresolved
-  [:catn
-   [:clause [:= :field/unresolved]]
-   [:info [:fn map?]]])
-
 (mr/def ::expression
   [:catn
    [:clause [:= :expression]]
+   [:options ::field.options]
    [:name ::common/non-blank-string]])
 
 (mr/def ::aggregation
   [:catn
    [:clause [:= :aggregation]]
+   [:options ::field.options]
    [:index ::common/int-greater-than-or-equal-to-zero]])
 
 (mr/def ::ref
@@ -52,7 +47,6 @@
     [:clause [:keyword]]
     [:args   [:* any?]]]
    [:multi {:dispatch #(keyword (first %))}
-    [:field/unresolved ::field.unresolved]
     [:field ::field]
     [:aggregation ::aggregation]
     [:expression ::expression]]])

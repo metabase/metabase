@@ -39,13 +39,13 @@
                                          :lib/options {:lib/uuid string?}
                                          :stages      [{:lib/type     :mbql.stage/mbql
                                                         :lib/options  {:lib/uuid string?}
-                                                        :source-table (meta/id :venues)}]
+                                                        :source-table #"^card__\d+$"}]
                                          :condition   [:=
                                                        {:lib/uuid string?}
                                                        [:field (meta/id :venues :category-id) {:lib/uuid string?}]
                                                        [:field (meta/id :categories :id) {:lib/uuid string?}]]}]}]}
             (-> (lib/query meta/metadata "CATEGORIES")
-                (lib/join (lib/saved-question-query meta/saved-question)
+                (lib/join (lib/saved-question-query meta/metadata meta/saved-question)
                           (lib/= (lib/field "VENUES" "CATEGORY_ID")
                                  (lib/field "CATEGORIES" "ID")))
                 (dissoc :lib/metadata)))))
@@ -53,7 +53,7 @@
 (t/deftest ^:parallel join-condition-field-metadata-test
   (t/testing "Should be able to use raw Field metadatas in the join condition"
     (let [q1                          (lib/query meta/metadata "CATEGORIES")
-          q2                          (lib/saved-question-query meta/saved-question)
+          q2                          (lib/saved-question-query meta/metadata meta/saved-question)
           venues-category-id-metadata (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
           categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
       (t/testing "lib/join-clause: return a function that can be resolved later"
@@ -63,7 +63,7 @@
                      :lib/options {:lib/uuid string?}
                      :stages      [{:lib/type     :mbql.stage/mbql
                                     :lib/options  {:lib/uuid string?}
-                                    :source-table (meta/id :venues)}]
+                                    :source-table #"^card__\d+$"}]
                      :condition   [:=
                                    {:lib/uuid string?}
                                    [:field (meta/id :venues :category-id) {:lib/uuid string?}]
@@ -73,7 +73,7 @@
                  :stages   [{:source-table (meta/id :categories)
                              :joins        [{:lib/type    :mbql/join
                                              :lib/options {:lib/uuid string?}
-                                             :stages      [{:source-table (meta/id :venues)}]
+                                             :stages      [{:source-table #"^card__\d+$"}]
                                              :condition   [:=
                                                            {:lib/uuid string?}
                                                            [:field (meta/id :venues :category-id) {:lib/uuid string?}]

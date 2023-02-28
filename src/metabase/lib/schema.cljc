@@ -19,7 +19,7 @@
    [:lib/type [:= :mbql.stage/native]]
    [:lib/options ::common/options]
    [:native any?]
-   [:args {:optional true} [:sequential any?]]])
+   [:args {:optional true} [:maybe [:sequential any?]]]])
 
 (mr/def ::stage.mbql
   [:and
@@ -37,7 +37,9 @@
   [:and
    ::stage.mbql
    [:map
-    [:source-table ::id/table]]])
+    [:source-table [:or
+                    [:re #"^card__\d+$"]
+                    ::id/table]]]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.without-source
@@ -46,14 +48,20 @@
    [:fn (complement :source-table)]])
 
 (mr/def ::stage
-  [:or
-   ::stage.native
-   ::stage.mbql])
+  [:and
+   [:map
+    [:lib/type [:enum :mbql.stage/native :mbql.stage/mbql]]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql]]])
 
 (mr/def ::stage.initial
-  [:or
-   ::stage.native
-   ::stage.mbql.with-source])
+  [:and
+   [:map
+    [:lib/type [:enum :mbql.stage/native :mbql.stage/mbql]]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql.with-source]]])
 
 (mr/def ::stage.additional
   ::stage.mbql.without-source)

@@ -5,7 +5,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -22,25 +21,16 @@
          [:field id nil])
        [:field (:name field-metadata) {:base-type (:base_type field-metadata)}])))
 
-(defn- resolve-field [query stage-number table-or-nil id-or-name]
-  (let [metadata (letfn [(field-metadata [metadata]
-                           (when metadata
-                             (lib.metadata/field-metadata metadata table-or-nil id-or-name)))]
-                   ;;; TODO -- I think maybe this logic should actually be part of [[metabase.lib.metadata]]
-                   ;;; -- [[metabase.lib.field-metadata]] should be the one doing this nonsense
-                   (or
-                    ;; resolve field from the current stage
-                    (field-metadata (lib.metadata/stage-metadata query stage-number))
-                    ;; resolve field from the previous stage (if one exists)
-                    (when (lib.util/has-stage? query (dec stage-number))
-                      (field-metadata (lib.metadata/stage-metadata query (dec stage-number))))
-                    ;; resolve field from Database metadata
-                    (field-metadata (lib.metadata/database-metadata query))))]
-    (when-not (= (:lib/type metadata) :metadata/field)
-      (throw (ex-info (i18n/tru "Could not resolve Field {0}" (pr-str id-or-name))
-                      {:query        query
-                       :stage-number stage-number
-                       :field        id-or-name})))
+(mu/defn ^:private resolve-field :- ::lib.schema.ref/ref
+  [query        :- [:map [:type [:= :pipeline]]]
+   stage-number :- :int
+   table-or-nil
+   id-or-name   :- [:fn some?]]
+  (let [metadata (or (lib.metadata/field-metadata query stage-number table-or-nil id-or-name)
+                     (throw (ex-info (i18n/tru "Could not resolve Field {0}" (pr-str id-or-name))
+                                     {:query        query
+                                      :stage-number stage-number
+                                      :field        id-or-name})))]
     (->field query stage-number metadata)))
 
 (defmethod ->field :type/string

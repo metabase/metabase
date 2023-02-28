@@ -37,9 +37,9 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(mu/defn pipeline :- ::lib.schema/query
+(defn pipeline
   "Take a 'traditional' MBQL query and convert it to a `:pipeline` query."
-  [query :- [:map [:type [:keyword]]]]
+  [query]
   (condp = (:type query)
     :pipeline query
     :native   (native-query->pipeline query)
@@ -59,15 +59,14 @@
                       {})))
     stage-number'))
 
-(defn has-stage?
-  "Whether the query has a stage with `stage-number` (can be zero-indexed)."
+(defn previous-stage-number
+  "The index of the previous stage, if there is one."
   [{:keys [stages], :as _query} stage-number]
-  ;; TODO -- this is a little bit duplicated from the logic above... find a way to consolidate?
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
-    (and (not (neg? stage-number))
-         (< stage-number (count stages)))))
+    (when (pos? stage-number)
+      (dec stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indecies as well, e.g. `-1` will return the last stage of

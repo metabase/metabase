@@ -8,7 +8,7 @@
 
 (t/deftest ^:parallel equals-test
   (let [q1                          (lib/query meta/metadata "CATEGORIES")
-        q2                          (lib/saved-question-query meta/saved-question)
+        q2                          (lib/saved-question-query meta/metadata meta/saved-question)
         venues-category-id-metadata (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
         categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
     (t/testing "without query/stage-number, return a function for later resolution"
