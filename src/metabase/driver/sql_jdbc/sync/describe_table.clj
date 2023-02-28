@@ -16,7 +16,8 @@
    [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan.db :as db])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -392,27 +393,37 @@
 (defn describe-nested-field-columns
   "Default implementation of [[metabase.driver.sql-jdbc.sync.interface/describe-nested-field-columns]] for SQL JDBC
   drivers. Goes and queries the table if there are JSON columns for the nested contents."
-  [driver spec table]
+  [driver spec table fields]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
           table-fields          (describe-table-fields driver conn table nil)
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-          (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-                table-identifier (apply hx/identifier :table table-identifier-info)
-                sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                                 :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                                 :limit  metadata-queries/nested-field-sample-limit})
-                query            (jdbc/reducible-query spec sql-args {:identifiers identity})
-                field-types      (transduce describe-json-xform describe-json-rf query)
-                fields           (field-types->fields field-types)]
-            (if (> (count fields) max-nested-field-columns)
-              (do
-                (log/warn
-                 (format
-                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                  max-nested-field-columns))
-                (set (take max-nested-field-columns fields)))
-              fields)))))))
+        (let [unfolding-disabled-field-names (->> (db/select 'Field :table_id (u/the-id table))
+                                                  (filter #(= (:nfc_enabled %) false))
+                                                  (map :name)
+                                                  set)
+              unfolding-json-fields          (filter (fn [field]
+                                                       (not (contains? unfolding-disabled-field-names (:name field))))
+                                                     json-fields)]
+          (if (empty? unfolding-json-fields)
+            #{}
+            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+              (sc.api/spy)
+              (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+                    table-identifier (apply hx/identifier :table table-identifier-info)
+                    sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                                     :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                                     :limit  metadata-queries/nested-field-sample-limit})
+                    query            (jdbc/reducible-query spec sql-args {:identifiers identity})
+                    field-types      (transduce describe-json-xform describe-json-rf query)
+                    fields           (field-types->fields field-types)]
+                (if (> (count fields) max-nested-field-columns)
+                  (do
+                    (log/warn
+                     (format
+                      "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                      max-nested-field-columns))
+                    (set (take max-nested-field-columns fields)))
+                  fields)))))))))
