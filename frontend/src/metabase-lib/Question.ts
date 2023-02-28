@@ -474,6 +474,16 @@ class QuestionInner {
     return this.canWrite() && hasActionsEnabled;
   }
 
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+
+    return (
+      this.isDataset() &&
+      query instanceof StructuredQuery &&
+      !query.hasAnyClauses()
+    );
+  }
+
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;

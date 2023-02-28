@@ -72,6 +72,7 @@ function ModelActionDetails({
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
+  const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -106,7 +107,7 @@ function ModelActionDetails({
         icon: "bolt",
         action: onDeleteImplicitActions,
       });
-    } else {
+    } else if (supportsImplicitActions) {
       items.push({
         title: t`Create basic actions`,
         icon: "bolt",
@@ -115,7 +116,12 @@ function ModelActionDetails({
     }
 
     return items;
-  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitActions]);
+  }, [
+    implicitActions,
+    supportsImplicitActions,
+    onEnableImplicitActions,
+    onDeleteImplicitActions,
+  ]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
