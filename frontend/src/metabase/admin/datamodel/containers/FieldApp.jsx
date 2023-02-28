@@ -328,6 +328,26 @@ const FieldGeneralPane = ({
     )}
     <Section>
       <SectionHeader
+        title={t`Enable JSON unfolding`}
+        description={t`Unfold JSON into component fields, where each JSON key becomes a column.`}
+      />
+      <Select
+        className="inline-block"
+        value={field.nfc_enabled}
+        onChange={({ target: { value } }) => {
+          console.log(value);
+          return onUpdateFieldProperties({
+            nfc_enabled: value,
+          });
+        }}
+        options={[
+          { name: t`Yes`, value: true },
+          { name: t`No`, value: false },
+        ]}
+      />
+    </Section>
+    <Section>
+      <SectionHeader
         title={t`Filtering on this field`}
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
