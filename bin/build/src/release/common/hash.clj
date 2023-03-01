@@ -5,6 +5,8 @@
   (:import
    (org.apache.commons.codec.digest DigestUtils)))
 
+(set! *warn-on-reflection* true)
+
 (defn sha-256-sum [filename]
   (with-open [is (io/input-stream (u/assert-file-exists filename))]
     (DigestUtils/sha256Hex is)))

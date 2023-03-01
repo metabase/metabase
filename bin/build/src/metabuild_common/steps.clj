@@ -5,6 +5,8 @@
    [metabuild-common.input :as in]
    [metabuild-common.output :as out]))
 
+(set! *warn-on-reflection* true)
+
 (declare do-step)
 
 (defn- step-failure-repl-read [step-ns message thunk result]
@@ -42,7 +44,7 @@
                :read (step-failure-repl-read step-ns message thunk result))
     @result))
 
-(defn handle-step-failure-interactive
+(defn- handle-step-failure-interactive
   [step-ns message thunk ^Throwable e]
   (out/pretty-print-exception e)
   (out/error "Step %s failed with error %s" (pr-str message) (pr-str (.getMessage e)))

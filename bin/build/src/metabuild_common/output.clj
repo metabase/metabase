@@ -4,7 +4,12 @@
    [clojure.string :as str]
    [colorize.core :as colorize]))
 
-(def ^:dynamic *steps* [])
+(set! *warn-on-reflection* true)
+
+(def ^:dynamic *steps*
+  "Vector of all the parent steps/substeps we're currently in the process of working on. (See [[metabuild-common.steps]]
+  for more info."
+  [])
 
 (def ^:private step-indent (str/join (repeat 2 \space)))
 
@@ -35,7 +40,9 @@
   ([format-string & args]
    (error (apply format format-string args))))
 
-(defn pretty-print-exception [^Throwable e]
+(defn pretty-print-exception
+  "Pretty print an Exception when a step fails to stdout."
+  [^Throwable e]
   (let [e-map (Throwable->map e)]
     (println (colorize/red (str "Step failed: " (.getMessage e))))
     (binding [pprint/*print-right-margin* 120]

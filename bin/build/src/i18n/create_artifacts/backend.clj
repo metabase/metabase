@@ -8,6 +8,8 @@
    (java.io FileOutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (defn- backend-message? [{:keys [source-references]}]
   (boolean
    (let [paths (eduction
@@ -44,6 +46,7 @@
    messages))
 
 (def target-directory
+  "Target directory for backend i18n resources."
   (u/filename u/project-root-directory "resources" "i18n"))
 
 (defn- target-filename [locale]
@@ -74,7 +77,9 @@
       (.write w "}\n")
       (.write w "}\n"))))
 
-(defn create-artifact-for-locale! [locale]
+(defn create-artifact-for-locale!
+  "Create an artifact with translated strings for `locale` for backend (Clojure) usage."
+  [locale]
   (let [target-file (target-filename locale)]
     (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
       (u/create-directory-unless-exists! target-directory)

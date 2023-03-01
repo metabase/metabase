@@ -28,6 +28,7 @@
 (defn- do-steps! [steps]
   (slack/post-message! "%s started building %s `v%s` from branch `%s`..."
                        (env/env :user)
+                       #_{:clj-kondo/ignore [:discouraged-var]}
                        (str/upper-case (name (c/edition)))
                        (c/version)
                        (c/branch))
@@ -40,7 +41,9 @@
     (slack/post-message! "Finished `%s` :partyparrot:" step-name))
   (u/announce "Success."))
 
-(defn release [{:keys [steps]}]
+(defn release
+  "Build and release a new version of Metabase®."
+  [{:keys [steps]}]
   (u/exit-when-finished-nonzero-on-exception
     (check-prereqs/check-prereqs)
     (set-build-options/prompt-and-set-build-options!)

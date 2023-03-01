@@ -165,8 +165,8 @@
               "This software contains the following license and notice below:\n\n\n"
               "license text\n\n\n----------\n\n")
          (let [os (StringWriter.)]
-           (lic/write-license os ['a/a {:coords  {:group "a" :artifact "a" :version "1.0"}
-                                        :license "license text"}])
+           (#'lic/write-license os ['a/a {:coords  {:group "a" :artifact "a" :version "1.0"}
+                                          :license "license text"}])
            (str os)))))
 
 (defn- loop-until-success [f max step-name]

@@ -474,7 +474,9 @@
     org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
 
    :jvm-opts
-   ["-Dclojure.main.report=stderr"
+   ["-Dfile.encoding=UTF-8"
+    "-Duser.language=en"
+    "-Dclojure.main.report=stderr"
     "-XX:-OmitStackTraceInFastThrow"
     "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
@@ -517,7 +519,7 @@
   ;;    clojure -X:build:drivers:build/drivers
   ;;    clojure -X:build:drivers:build/drivers :edition :ee
   :build/drivers
-  {:exec-fn build-drivers/build-drivers}
+  {:exec-fn build-drivers/build-drivers-cli}
 
   ;; Verify that a driver JAR looks correct.
   ;;

@@ -97,6 +97,8 @@ jobs:
         /work/modules/drivers/sqlserver/test
         /work/modules/drivers/presto-jdbc/src
         /work/modules/drivers/presto-jdbc/test
+        /work/bin/build/src
+        /work/bin/build/test
 
   be-linter-eastwood:
     needs: files-changed

@@ -25,11 +25,11 @@
 
 (def ^:private eb-extensions-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".ebextensions")))
+  (u/assert-file-exists (u/filename u/project-root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".ebextensions")))
 
 (def ^:private eb-platform-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".platform")))
+  (u/assert-file-exists (u/filename u/project-root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".platform")))
 
 (def ^:private archive-temp-dir
   "Path where we'll put the contents of the ZIP file before we create it."
@@ -88,7 +88,7 @@
       (u/assert-file-exists archive-path))))
 
 (def ^:private launch-template-filename
-  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" "launch-aws-eb.html.template")))
+  (u/assert-file-exists (u/filename u/project-root-directory "bin" "build" "src" "release" "elastic_beanstalk" "launch-aws-eb.html.template")))
 
 (defn- create-html-file! []
   (u/step (format "Create launch-aws-eb.html for Docker image %s" (c/docker-tag))

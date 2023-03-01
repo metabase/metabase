@@ -10,7 +10,7 @@
 
 (defn build-uberjar! []
   (u/step "Build uberjar"
-    (u/delete-file-if-exists! (str c/root-directory "/target"))
+    (u/delete-file-if-exists! (str u/project-root-directory "/target"))
     (build/build! {:version (str \v (c/version))
                    :edition (c/edition)})
     (u/step "Verify uberjar exists"

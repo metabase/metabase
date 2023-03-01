@@ -12,6 +12,8 @@
    (java.util.function BiPredicate)
    (org.apache.commons.io FileUtils)))
 
+(set! *warn-on-reflection* true)
+
 (defn file-exists?
   "Does a file or directory with `filename` exist?"
   [^String filename]
@@ -25,7 +27,9 @@
     (throw (ex-info (format "File %s does not exist. %s" (pr-str filename) (or message "")) {:filename filename})))
   (str filename))
 
-(defn create-directory-unless-exists! [^String dir]
+(defn create-directory-unless-exists!
+  "Create a directory if it does not already exist. Returns `dir`."
+  ^String [^String dir]
   (steps/step (format "Create directory %s if it does not exist" dir)
     (if (file-exists? dir)
       (out/announce "%s already exists." dir)
@@ -49,17 +53,10 @@
   ([file & more]
    (dorun (map delete-file-if-exists! (cons file more)))))
 
-(defn ^:deprecated delete-file!
-  "Alias for `delete-file-if-exists!`. Here for backwards compatibility. Prefer `delete-file-if-exists!` going
-  forward."
-  [& args]
-  (apply delete-file-if-exists! args))
-
 (defn copy-file!
   "Copy a `source` file (or directory, recursively) to `dest`."
   [^String source ^String dest]
-  (let [source-file (File. (assert-file-exists source))
-        dest-file   (File. dest)]
+  (let [source-file (File. (assert-file-exists source))]
     ;; Use native `cp` rather than FileUtils or the like because codesigning is broken when you use those because they
     ;; don't preserve symlinks or something like that.
     (if (.isDirectory source-file)
