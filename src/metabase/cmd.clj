@@ -127,11 +127,31 @@
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
-(defn- cmd-args->map
-  [args]
+(defn- parse-args
+  "Returns map parsed from command line arg strings and spec, which is a map of keys to parsers.
+
+   Keys match arguments prefixed with `--`. A parser may be the keyword :flag
+   to return true when the flag is present instead of parsing a value. Parser functions
+   parse the next value in the arg list."
+  [args spec]
+  ;; Note: this doesn't scale well, but we're parsing single-digit numbers of args
   (into {}
-        (for [[k v] (partition 2 args)]
-          [(mbql.u/normalize-token (subs k 2)) v])))
+        (filter second
+                (for [[arg-kw parser] spec
+                      :let [arg-str (str "--" (name arg-kw))]]
+                  [arg-kw
+                   (if (= :flag parser)
+                     (boolean (some #{arg-str} args))
+                     (loop [[arg & [maybe-val :as more]] args]
+                       (if (= arg-str arg)
+                         (parser maybe-val)
+                         (when arg (recur more)))))]))))
+
+(def ^:private v1-arg-spec {:mode     keyword
+                            :on-error keyword})
+
+(def ^:private v1-defaults {:mode     :skip
+                            :on-error :continue})
 
 (defn- call-enterprise
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
@@ -153,15 +173,17 @@
   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
   [path & options]
   (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
-  (let [opts (merge {:mode     :skip
-                     :on-error :continue}
-                    (m/map-vals mbql.u/normalize-token (cmd-args->map options)))]
+  (let [opts (merge v1-defaults (parse-args options v1-arg-spec))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
 (defn ^:command import
-  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
-  [path]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
+  "Load serialized Metabase instance as created by the [[export]] command from directory `path`.
+
+   Options:
+    --abort-on-error - flag, override default behavior and don't try to continue on import errors"
+  [path & args]
+  (let [opts (parse-args args {:abort-on-error :flag})]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
 
 (defn ^:command ^:deprecated dump
   "Deprecated: prefer [[export]] instead.
@@ -170,23 +192,18 @@
   `active` (default), `all`. With `active` option, do not dump archived entities."
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
-  (let [options (merge {:mode     :skip
-                        :on-error :continue}
-                       (cmd-args->map options))]
+  (let [options (merge v1-defaults (parse-args options v1-arg-spec))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path options)))
-
-(defn- parse-int-list
-  [s]
-  (when-not (str/blank? s)
-    (map #(Integer/parseInt %) (str/split s #","))))
 
 (defn ^:command export
   "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
 
-  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
-  archived entities."
-  [path & options]
-  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
+  Options:
+   --collections [id-list] - specify a comma-separated list of collections to export
+   --abort-on-error        - flag, override default behavior and don't try to continue on export errors"
+  [path & args]
+  (let [opts (parse-args args {:collections    #(for [s (str/split % #",")] (Integer/parseInt s))
+                               :abort-on-error :flag})]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids

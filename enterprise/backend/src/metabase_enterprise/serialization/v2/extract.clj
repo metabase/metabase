@@ -2,6 +2,7 @@
   "Extraction is the first step in serializing a Metabase appdb so it can be eg. written to disk.
 
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization.base]]."
+  (:refer-clojure :exclude [descendants])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -56,16 +57,16 @@
                     (serdes.base/extract-all model opts)))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [_opts targets]
-  (loop [to-chase (set targets)
-         chased   #{}]
-    (let [[m i :as item] (first to-chase)
-          desc           (serdes.base/serdes-descendants m i)
-          chased         (conj chased item)
-          to-chase       (set/union (disj to-chase item) (set/difference desc chased))]
-      (if (empty? to-chase)
-        chased
-        (recur to-chase chased)))))
+(defn- descendants [targets]
+  (loop [to-find (set targets)
+         found   #{}]
+    (let [[[m i :as item]] to-find
+          desc             (serdes.base/serdes-descendants m i)
+          found            (conj found item)
+          to-find          (set/union (disj to-find item) (set/difference desc found))]
+      (if (empty? to-find)
+        found
+        (recur to-find found)))))
 
 (defn- escape-analysis
   "Given a seq of collection IDs, explore the contents of these collections looking for \"leaks\". For example, a
@@ -134,23 +135,23 @@
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (log/info "Dashboard cards outside the collection")
-    (log/info "======================================")
+    (log/warn "Dashboard cards outside the collection")
+    (log/warn "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
-      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
+      (log/warnf "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
               :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
-        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
-        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
+        (log/warnf "          \tCard %d: %s\n"    card_id (:name card))
+        (log/warnf "        from collection %s\n" (collection-label (:collection_id card))))))
 
   (when-not (empty? escaped-questions)
-    (log/info "Questions based on outside questions")
-    (log/info "====================================")
+    (log/warn "Questions based on outside questions")
+    (log/warn "====================================")
     (doseq [[curated-id alien-id] escaped-questions
             :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
                   alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
-      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
+      (log/warnf "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
                  curated-id (:name curated-card) (collection-label (:collection_id curated-card))
                  alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
 
@@ -160,11 +161,10 @@
   The targeted entities are specified as a list of `[\"SomeModel\" database-id]` pairs.
 
   [[serdes.base/serdes-descendants]] is recursively called on these entities and all their descendants, until the
-  complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
-  entities are then extracted the same way as [[extract-metabase]].
-Eg. if Dashboard B includes a Card A that is derived from a
-  Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
-  serialized output."
+  set of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which are then extracted.
+
+  Eg. if Dashboard B includes a Card A that is derived from a Card C that's in an alien collection, warnings will
+  be emitted for C, A and B, and all three will be excluded from the serialized output."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
   (serdes.backfill/backfill-ids)
@@ -172,8 +172,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
       ;; If that is non-nil, emit the report.
     (escape-report analysis)
       ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure  (descendants-closure opts targets)
-          by-model (->> closure
+    (let [by-model (->> (descendants targets)
                         (group-by first)
                         (m/map-vals #(set (map second %))))]
       (eduction cat (for [[model ids] by-model]

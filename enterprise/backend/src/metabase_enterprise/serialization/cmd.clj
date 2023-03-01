@@ -71,15 +71,16 @@
         (throw e)))))
 
 (defn v2-load
-  "SerDes v2 load entry point"
-  [path]
+  "SerDes v2 load entry point
+   opts map is passed to load-metabase"
+  [path & {:as opts}]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
-  (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
+  (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -195,7 +196,7 @@
   (mdb/setup-db!)
   (db/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (-> (v2-extract opts)
-      (v2.storage/store! path))
+      (v2.storage/store! path opts))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 
 (defn seed-entity-ids

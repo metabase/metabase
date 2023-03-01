@@ -1,57 +1,38 @@
 (ns metabase-enterprise.serialization.v2.storage.yaml
   (:require
    [clojure.java.io :as io]
-   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.dump :as v1]
    [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [yaml.core :as yaml]
-   [yaml.writer :as y.writer])
-  (:import
-   (java.time.temporal Temporal)))
+   [yaml.writer :as y.writer]) 
+  (:import [java.time.temporal Temporal]))
 
 (extend-type Temporal y.writer/YAMLWriter
-  (encode [data]
-    (u.date/format data)))
-
-(defn- generate-yaml [obj]
-  (yaml/generate-string (into (sorted-map) obj)
-                        :dumper-options {:flow-style  :block
-                                         :split-lines false}))
-
-(defn- spit-yaml
-  [file obj]
-  (io/make-parents file)
-  (spit (io/file file) (generate-yaml obj)))
-
-(defn- store-entity! [opts entity]
-  (log/info (trs "Storing {0}" (u.yaml/log-path-str (:serdes/meta entity))))
-  (spit-yaml (u.yaml/hierarchy->file opts entity)
-             (dissoc entity :serdes/meta)))
-
-(defn- store-settings! [{:keys [root-dir]} settings]
-  (let [as-map (into (sorted-map)
-                     (for [{:keys [key value]} settings]
-                       [key value]))]
-    (spit-yaml (io/file root-dir "settings.yaml") as-map)))
-
-(defmethod storage/store-all! :yaml [stream opts]
-  (when-not (or (string? (:root-dir opts))
-                (instance? java.io.File (:root-dir opts)))
-    (throw (ex-info ":yaml storage requires the :root-dir option to be a string or File"
-                    {:opts opts})))
-  (let [settings (atom [])
-        opts     (merge opts (serdes.base/storage-base-context))]
-    (doseq [entity stream]
-      (if (-> entity :serdes/meta last :model (= "Setting"))
-        (swap! settings conj entity)
-        (store-entity! opts entity)))
-    (store-settings! opts @settings)))
+             (encode [data]
+               (u.date/format data)))
 
 (defn store!
-  "Helper for storing a serialized database to a tree of YAML files."
-  [stream root-dir]
-  (storage/store-all! stream {:storage/target :yaml
-                              :root-dir       root-dir}))
+  "Serializes stream of entities to directory as YAML."
+  [stream root-dir & {:keys [abort-on-error]}]
+  ;; settings are saved after processing all other entities
+  (let [settings (atom [])
+        ctx      (serdes.base/storage-base-context)]
+    (doseq [{hierarchy :serdes/meta :as entity} stream
+            :let [log-path-str (u.yaml/log-path-str hierarchy)]]
+      (try
+        (if (-> hierarchy last :model (= "Setting"))
+          (swap! settings conj entity)
+          (let [components   (map u.yaml/escape-segment (serdes.base/storage-path entity ctx))
+                base         (apply io/file root-dir components)
+                storage-path (str base ".yaml")]
+            (log/info (trs "Storing {0}" log-path-str))
+            (v1/spit-yaml storage-path (dissoc entity :serdes/meta))))
+        (catch Exception e
+          (if abort-on-error
+            (throw e)
+            (log/error e (trs "Error encountered while exporting {0}" log-path-str))))))
+    (v1/spit-yaml (io/file root-dir "settings.yaml")
+                  (into (sorted-map) (map (juxt :key :value) @settings)))))

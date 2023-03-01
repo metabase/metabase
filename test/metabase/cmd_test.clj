@@ -19,12 +19,15 @@
         (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue})
                (cmd/load "/path/"))))
       (testing "with options"
-        (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue :num-cans :2})
-               (cmd/load "/path/" "--num-cans" "2")))))
+        (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :abort})
+               (cmd/load "/path/" "--on-error" "abort")))))
     (testing "import (v2)"
       (testing "with no options"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/")
-               (cmd/import "/path/")))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {})
+               (cmd/import "/path/"))))
+      (testing "with options"
+        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error true})
+               (cmd/import "/path/" "--abort-on-error")))))))
 
 (deftest export-test
   (with-redefs [cmd/call-enterprise list]
@@ -33,12 +36,15 @@
         (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:mode :skip, :on-error :continue})
                (cmd/dump "/path/"))))
       (testing "with options"
-        (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:mode :skip, :on-error :continue, :num-cans "2"})
-               (cmd/dump "/path/" "--num-cans" "2")))))
+        (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:mode :skip, :on-error :abort})
+               (cmd/dump "/path/" "--on-error" "abort")))))
     (testing "export (v2)"
       (testing "with no options"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil})
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {})
                (cmd/export "/path/"))))
       (testing "with --collections list"
         (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3]})
-               (cmd/export "/path/" "--collections" "1,2,3")))))))
+               (cmd/export "/path/" "--collections" "1,2,3"))))
+      (testing "with collections and error handling override"
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3] :abort-on-error true})
+               (cmd/export "/path/" "--abort-on-error" "--collections" "1,2,3")))))))
