@@ -58,7 +58,7 @@
     :ttl/threshold (u/minutes->ms 5)))
 
 (defsetting active-users-count
-  (deferred-tru "Cached number of active users. This nubmer is cached and refresh every 5 minutes.")
+  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
   :default    0
