@@ -228,7 +228,7 @@ function RequiredInput({
         <Toggle
           id="is-required"
           value={!!isRequired}
-          onChange={required => onChange({ required, defaultValue })}
+          onChange={required => onChange({ required, defaultValue: undefined })}
         />
       </ToggleContainer>
       {isRequired && (

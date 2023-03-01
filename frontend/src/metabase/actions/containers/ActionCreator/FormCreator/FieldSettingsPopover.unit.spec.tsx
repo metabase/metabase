@@ -129,5 +129,12 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       required: true,
       defaultValue: 5,
     });
+
+    userEvent.click(screen.getByLabelText("Required"));
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      required: false,
+      defaultValue: undefined,
+    });
   });
 });
