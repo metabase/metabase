@@ -20,7 +20,7 @@ jobs:
         m2-cache-key: 'build-scripts'
 
     - name: Run build and release script tests
-      run: clojure -X:dev:drivers:build:build-dev:build-test
+      run: clojure -X:dev:drivers:build:build-dev:build-test:ci
       timeout-minutes: 15
     - name: Run Liquibase migrations linter tests
       run: clojure -M:test
