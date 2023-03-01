@@ -32,7 +32,7 @@
     },
     "action_id": {
       "description": "Unique identifier for an action within the Metabase instance",
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 0,
       "maximum": 2147483647
     },
@@ -47,7 +47,10 @@
     },
     "context": {
       "description": "The context that an action was executed in.",
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+        ],
       "enum": [
         "model_detail",
         "dashboard",

@@ -40,27 +40,27 @@
 
 (defn all-actions-default
   [card-id]
-  [{:name "Get example"
-    :description "A dummy HTTP action"
-    :type "http"
-    :model_id card-id
-    :template {:method "GET"
-               :url "https://example.com/{{x}}"}
-    :parameters [{:id "x" :type "text"}]
+  [{:name            "Get example"
+    :description     "A dummy HTTP action"
+    :type            "http"
+    :model_id        card-id
+    :template        {:method "GET"
+                      :url    "https://example.com/{{x}}"}
+    :parameters      [{:id "x" :type "text"}]
     :response_handle ".body"
-    :error_handle ".status >= 400"}
-   {:name "Query example"
-    :description "A simple update query action"
-    :type "query"
-    :model_id card-id
+    :error_handle    ".status >= 400"}
+   {:name          "Query example"
+    :description   "A simple update query action"
+    :type          "query"
+    :model_id      card-id
     :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
                            :type name)
-    :database_id (t2/select-one-fn :database_id Card :id card-id)
-    :parameters [{:id "x" :type "type/biginteger"}]}
-   {:name "Implicit example"
-    :type "implicit"
-    :model_id card-id
-    :kind "row/create"
+    :database_id   (t2/select-one-fn :database_id Card :id card-id)
+    :parameters    [{:id "x" :type "type/biginteger"}]}
+   {:name       "Implicit example"
+    :type       "implicit"
+    :model_id   card-id
+    :kind       "row/create"
     :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
 
 (deftest list-actions-test
