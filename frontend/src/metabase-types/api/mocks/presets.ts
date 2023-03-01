@@ -7,8 +7,27 @@ export const createSampleDatabase = (opts?: Partial<Database>): Database =>
   createMockDatabase({
     id: 1,
     name: "Sample Database",
-    tables: [createPeopleTable()],
+    tables: [createOrdersTable(), createPeopleTable(), createProductTable()],
     is_sample: true,
+    ...opts,
+  });
+
+export const createOrdersTable = (opts?: Partial<Table>): Table =>
+  createMockTable({
+    id: 1,
+    db_id: 1,
+    name: "ORDERS",
+    display_name: "Orders",
+    schema: "PUBLIC",
+    fields: [
+      createOrderCreatedAtField(),
+      createOrderIdField(),
+      createOrderProductIdField(),
+      createOrderSubtotalField(),
+      createOrderTaxField(),
+      createOrderTotalField(),
+      createOrderUserIdField(),
+    ],
     ...opts,
   });
 
@@ -19,7 +38,59 @@ export const createPeopleTable = (opts?: Partial<Table>): Table =>
     name: "PEOPLE",
     display_name: "People",
     schema: "PUBLIC",
-    fields: [createPeopleAddressField(), createPeopleBirthDateField()],
+    fields: [
+      createPeopleAddressField(),
+      createPeopleBirthDateField(),
+      createPeopleCityField(),
+      createPeopleCreatedAtField(),
+      createPeopleEmailField(),
+      createPeopleIdField(),
+      createPeopleLatitudeField(),
+      createPeopleLongitudeField(),
+      createPeopleNameField(),
+      createPeoplePasswordField(),
+      createPeopleSourceField(),
+      createPeopleStateField(),
+      createPeopleZipField(),
+    ],
+    ...opts,
+  });
+
+export const createProductTable = (opts?: Partial<Table>): Table =>
+  createMockTable({
+    id: 3,
+    db_id: 1,
+    name: "PRODUCTS",
+    display_name: "Products",
+    schema: "PUBLIC",
+    fields: [
+      createProductCategoryField(),
+      createProductCreatedAtField(),
+      createProductEanField(),
+      createProductIdField(),
+      createProductPriceField(),
+      createProductRatingField(),
+      createProductTitleField(),
+      createProductVendorField(),
+    ],
+    ...opts,
+  });
+
+export const createReviewsTable = (opts?: Partial<Table>): Table =>
+  createMockTable({
+    id: 4,
+    db_id: 1,
+    name: "REVIEWS",
+    display_name: "Reviews",
+    schema: "PUBLIC",
+    fields: [
+      createReviewBodyField(),
+      createReviewCreatedAtField(),
+      createReviewIdField(),
+      createReviewProductIdField(),
+      createReviewRatingField(),
+      createReviewReviewerField(),
+    ],
     ...opts,
   });
 
