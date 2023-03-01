@@ -7,9 +7,10 @@ import { space } from "metabase/styled-components/theme";
 
 export const UndoList = styled.ul`
   position: fixed;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 0;
-  margin: ${space(2)};
+  margin-bottom: ${space(2)};
   z-index: 999;
 `;
 
