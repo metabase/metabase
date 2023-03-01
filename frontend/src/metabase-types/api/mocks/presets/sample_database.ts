@@ -1,7 +1,9 @@
 import { Database, Field, Table } from "metabase-types/api";
-import { createMockDatabase } from "./database";
-import { createMockField } from "./field";
-import { createMockTable } from "./table";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockField,
+} from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
 export const ORDERS_ID = 2;
