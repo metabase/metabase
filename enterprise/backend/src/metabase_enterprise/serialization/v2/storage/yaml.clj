@@ -7,7 +7,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [yaml.writer :as y.writer]) 
+   [yaml.writer :as y.writer])
   (:import [java.time.temporal Temporal]))
 
 (extend-type Temporal y.writer/YAMLWriter
