@@ -4,7 +4,7 @@
    [clojure.test.check.generators :as gen]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard
+   [metabase.models :refer [Action ActivityLog Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
@@ -210,15 +210,15 @@
    :implicit-action              {:prefix    :implicit-action
                                   :spec      ::implicit-action
                                   :insert!   {:model ImplicitAction}
-                                  :relations {:action_id   [:action :id]}}
+                                  :relations {:action_id [:action :id]}}
    :http-action                  {:prefix    :http-action
                                   :spec      ::http-action
                                   :insert!   {:model HTTPAction}
-                                  :relations {:action_id   [:action :id]}}
-   :activity                     {:prefix    :ac
+                                  :relations {:action_id [:action :id]}}
+   :activity-log                 {:prefix    :ac
                                   :spec      ::activity
                                   :relations {:user_id [:core-user :id]}
-                                  :insert!   {:model Activity}}
+                                  :insert!   {:model ActivityLog}}
    :database                     {:prefix  :db
                                   :spec    ::database
                                   :insert! {:model Database}}
@@ -251,15 +251,15 @@
    :dashboard-card-series        {:prefix  :dcs
                                   :spec    ::dashboard_card_series
                                   :insert! {:model DashboardCardSeries}}
-   :dimension                    {:prefix  :dim
-                                  :spec    ::dimension
-                                  :insert! {:model Dimension}
+   :dimension                    {:prefix    :dim
+                                  :spec      ::dimension
+                                  :insert!   {:model Dimension}
                                   :relations {:field_id                [:field :id]
                                               :human_readable_field_id [:field :id]}}
-   :field                        {:prefix      :field
-                                  :spec        ::field
-                                  :insert!     {:model Field}
-                                  :relations   {:table_id [:table :id]}}
+   :field                        {:prefix    :field
+                                  :spec      ::field
+                                  :insert!   {:model Field}
+                                  :relations {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
                                   :insert!   {:model Metric}
@@ -277,8 +277,8 @@
    :pulse-card                   {:prefix    :pulse-card
                                   :spec      ::pulse-card
                                   :insert!   {:model PulseCard}
-                                  :relations {:pulse_id [:pulse :id]
-                                              :card_id  [:card :id]
+                                  :relations {:pulse_id          [:pulse :id]
+                                              :card_id           [:card :id]
                                               :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
