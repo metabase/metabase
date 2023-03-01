@@ -1,18 +1,19 @@
-(ns build
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.build.api :as b]
-            [clojure.tools.build.util.zip :as build.zip]
-            [clojure.tools.namespace.dependency :as ns.deps]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.tools.namespace.parse :as ns.parse]
-            [hf.depstar.api :as depstar]
-            [metabuild-common.core :as u])
-  (:import java.io.OutputStream
-           java.net.URI
-           [java.nio.file Files FileSystems OpenOption StandardOpenOption]
-           java.util.Collections
-           java.util.jar.Manifest))
+(ns build.uberjar
+  (:require
+   [clojure.java.io :as io]
+   [clojure.tools.build.api :as b]
+   [clojure.tools.build.util.zip :as build.zip]
+   [clojure.tools.namespace.dependency :as ns.deps]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.namespace.parse :as ns.parse]
+   [hf.depstar.api :as depstar]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io OutputStream)
+   (java.net URI)
+   (java.nio.file Files FileSystems OpenOption StandardOpenOption)
+   (java.util Collections)
+   (java.util.jar Manifest)))
 
 (def class-dir "target/classes")
 (def uberjar-filename "target/uberjar/metabase.jar")
@@ -127,8 +128,13 @@
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
           (write-manifest! os))))))
 
-;; clojure -T:build uberjar :edition <edition>
-(defn uberjar [{:keys [edition], :or {edition :oss}}]
+
+(defn uberjar
+  "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:
+
+    clojure -X:build:build/uberjar
+    clojure -X:build:build/uberjar :edition :ee"
+  [{:keys [edition], :or {edition :oss}}]
   (u/step (format "Build %s uberjar" edition)
     (with-duration-ms [duration-ms]
       (clean!)
@@ -139,6 +145,3 @@
         (update-manifest!))
       (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
                   (/ duration-ms 1000.0)))))
-
-;; TODO -- add `jar` and `install` commands to install Metabase to the local Maven repo (?) could make it easier to
-;; build 3rd-party drivers the old way
