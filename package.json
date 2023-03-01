@@ -204,7 +204,7 @@
     "arg": "^5.0.0",
     "babel-eslint": "10.1.0",
     "babel-jest": "^29.3.1",
-    "babel-loader": "9.1.0",
+    "babel-loader": "^9.1.2",
     "babel-plugin-ttag": "^1.7.26",
     "chromatic": "^6.3.3",
     "concurrently": "^7.6.0",
@@ -319,17 +319,17 @@
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn test",
     "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",
-    "test-cypress-run": "node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-cypress-run": "node ./e2e/runner/run_cypress_tests.js",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-run --e2e --open",
     "test-cypress-open-qa": "yarn test-qa-dbs:up && QA_DB_ENABLED=true yarn test-cypress-open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-run --e2e --open",
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-run",
-    "test-qa-dbs:up": "docker-compose -f ./frontend/test/metabase/scenarios/docker-compose.yml up -d",
-    "test-qa-dbs:down": "docker-compose -f ./frontend/test/metabase/scenarios/docker-compose.yml down",
-    "validate-e2e-filenames": "node frontend/test/validate-e2e-test-files.js",
+    "test-qa-dbs:up": "docker-compose -f ./e2e/test/scenarios/docker-compose.yml up -d",
+    "test-qa-dbs:down": "docker-compose -f ./e2e/test/scenarios/docker-compose.yml down",
+    "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "clean-cypress-artifacts": "rm -R -f cypress/",
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
-    "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
+    "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./e2e/test/visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open",
     "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-run",
     "prepare": "husky install",
@@ -347,8 +347,8 @@
       "prettier --write",
       "node ./bin/verify-doc-links"
     ],
-    "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
-      "node frontend/test/validate-e2e-test-files.js"
+    "e2e/test/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
+      "node e2e/validate-e2e-test-files.js"
     ]
   },
   "browserslist": [
