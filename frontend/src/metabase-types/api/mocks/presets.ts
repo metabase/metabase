@@ -19,22 +19,26 @@ export const createSampleDatabase = (opts?: Partial<Database>): Database =>
 
 export const createOrdersTable = (opts?: Partial<Table>): Table =>
   createMockTable({
-    id: 1,
+    id: 2,
     db_id: 1,
     name: "ORDERS",
     display_name: "Orders",
     schema: "PUBLIC",
     fields: [
-      createOrderCreatedAtField(),
       createOrderIdField(),
+      createOrderUserIdField(),
       createOrderProductIdField(),
       createOrderSubtotalField(),
       createOrderTaxField(),
       createOrderTotalField(),
-      createOrderUserIdField(),
+      createOrderDiscountField(),
+      createOrderCreatedAtField(),
+      createOrderQuantityField(),
     ],
     ...opts,
   });
+
+/////
 
 export const createPeopleTable = (opts?: Partial<Table>): Table =>
   createMockTable({
@@ -99,21 +103,10 @@ export const createReviewsTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-export const createOrderCreatedAtField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: 1,
-    table_id: 1,
-    name: "CREATED_AT",
-    display_name: "Created At",
-    base_type: "type/DateTime",
-    semantic_type: "type/DateTime",
-    ...opts,
-  });
-
 export const createOrderIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 2,
-    table_id: 1,
+    id: 11,
+    table_id: 2,
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
@@ -121,10 +114,21 @@ export const createOrderIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
+export const createOrderUserIdField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 15,
+    table_id: 2,
+    name: "USER_ID",
+    display_name: "User Id",
+    base_type: "type/Integer",
+    semantic_type: "type/FK",
+    ...opts,
+  });
+
 export const createOrderProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 3,
-    table_id: 1,
+    id: 9,
+    table_id: 2,
     name: "PRODUCT_ID",
     display_name: "Product ID",
     base_type: "type/Integer",
@@ -134,47 +138,71 @@ export const createOrderProductIdField = (opts?: Partial<Field>): Field =>
 
 export const createOrderSubtotalField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 4,
-    table_id: 1,
+    id: 16,
+    table_id: 2,
     name: "SUBTOTAL",
     display_name: "Subtotal",
     base_type: "type/Float",
-    semantic_type: "type/Float",
+    semantic_type: null,
     ...opts,
   });
 
 export const createOrderTaxField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 5,
-    table_id: 1,
+    id: 10,
+    table_id: 2,
     name: "TAX",
     display_name: "Tax",
     base_type: "type/Float",
-    semantic_type: "type/Float",
+    semantic_type: null,
     ...opts,
   });
 
 export const createOrderTotalField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 6,
-    table_id: 1,
+    id: 13,
+    table_id: 2,
     name: "TOTAL",
     display_name: "Total",
     base_type: "type/Float",
-    semantic_type: "type/Currency",
+    semantic_type: null,
     ...opts,
   });
 
-export const createOrderUserIdField = (opts?: Partial<Field>): Field =>
+export const createOrderDiscountField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 7,
-    table_id: 1,
-    name: "USER_ID",
-    display_name: "User Id",
-    base_type: "type/Integer",
-    semantic_type: "type/FK",
+    id: 17,
+    table_id: 2,
+    name: "DISCOUNT",
+    display_name: "Discount",
+    base_type: "type/Float",
+    semantic_type: null,
     ...opts,
   });
+
+export const createOrderCreatedAtField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 14,
+    table_id: 2,
+    name: "CREATED_AT",
+    display_name: "Created At",
+    base_type: "type/DateTime",
+    semantic_type: "type/CreationTimestamp",
+    ...opts,
+  });
+
+export const createOrderQuantityField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 12,
+    table_id: 2,
+    name: "QUANTITY",
+    display_name: "Quantity",
+    base_type: "type/Integer",
+    semantic_type: "type/Quantity",
+    ...opts,
+  });
+
+/////
 
 export const createPeopleAddressField = (opts?: Partial<Field>): Field =>
   createMockField({
