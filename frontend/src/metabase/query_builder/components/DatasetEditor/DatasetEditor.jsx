@@ -306,7 +306,7 @@ function DatasetEditor(props) {
     if (canBeDataset && isBrandNewDataset) {
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(dataset.card());
+      await onSave(dataset);
       setQueryBuilderMode("view");
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
