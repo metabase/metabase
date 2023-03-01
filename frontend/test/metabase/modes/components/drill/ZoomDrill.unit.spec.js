@@ -25,8 +25,8 @@ describe("ZoomDrill", () => {
       },
     });
     expect(actions).toHaveLength(1);
-    const newCard = actions[0].question().card();
-    expect(newCard.dataset_query.query).toEqual({
+    const question = actions[0].question();
+    expect(question.datasetQuery().query).toEqual({
       "source-table": ORDERS.id,
       aggregation: [["count"]],
       filter: [
@@ -36,6 +36,6 @@ describe("ZoomDrill", () => {
       ],
       breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "week" }]],
     });
-    expect(newCard.display).toEqual("line");
+    expect(question.display()).toEqual("line");
   });
 });

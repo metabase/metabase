@@ -275,10 +275,11 @@ describe("Dimension", () => {
             card: () => {},
           };
 
-          const question = ORDERS.question().setResultsMetadata({
-            columns: [ORDERS.TOTAL],
-          });
-          question.card().id = 1;
+          const question = ORDERS.question()
+            .setId(1)
+            .setResultsMetadata({
+              columns: [ORDERS.TOTAL],
+            });
 
           const query = new StructuredQuery(question, {
             type: "query",

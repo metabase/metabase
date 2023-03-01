@@ -426,7 +426,6 @@ class View extends React.Component {
     const {
       question,
       query,
-      card,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -439,8 +438,8 @@ class View extends React.Component {
       updateQuestion,
     } = this.props;
 
-    // if we don't have a card at all or no databases then we are initializing, so keep it simple
-    if (!card || !databases) {
+    // if we don't have a question at all or no databases then we are initializing, so keep it simple
+    if (!question || !databases) {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
@@ -459,7 +458,7 @@ class View extends React.Component {
       );
     }
 
-    if (card.dataset && queryBuilderMode === "dataset") {
+    if (question.isDataset() && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />

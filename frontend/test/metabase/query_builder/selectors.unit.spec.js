@@ -1,3 +1,4 @@
+import { assoc, assocIn } from "icepick";
 import {
   getQuestion,
   getIsResultDirty,
@@ -52,7 +53,7 @@ describe("getQuestion", () => {
     const question = getQuestion(getBaseState({ card }));
 
     expect(question).toBeInstanceOf(Question);
-    expect(question.card()).toEqual(card);
+    expect(question._doNotCallSerializableCard()).toEqual(card);
   });
 
   it("should return composed dataset when dataset is open", () => {
@@ -70,15 +71,9 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(question.card()).toEqual({
-      ...card,
-      dataset_query: {
-        ...card.dataset_query,
-        query: {
-          "source-table": "card__5",
-        },
-      },
-    });
+    expect(question.card()).toEqual(
+      assocIn(card, ["dataset_query", "query", "source-table"], "card__5"),
+    );
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
@@ -103,10 +98,7 @@ describe("getQuestion", () => {
       }),
     );
 
-    expect(question.card()).toEqual({
-      ...card,
-      displayIsLocked: true,
-    });
+    expect(question.card()).toEqual(assoc(card, "displayIsLocked", true));
   });
 });
 
