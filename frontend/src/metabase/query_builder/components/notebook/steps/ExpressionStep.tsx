@@ -1,29 +1,34 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { NotebookStepUiComponentProps } from "metabase/query_builder/components/notebook/lib/steps.types";
 import ClauseStep from "./ClauseStep";
 
-export default function ExpressionStep({
+type ExpressionStepProps = NotebookStepUiComponentProps;
+
+const ExpressionStep = ({
   color,
   query,
   updateQuery,
   isLastOpened,
   reportTimezone,
-  ...props
-}) {
+}: ExpressionStepProps): JSX.Element => {
+  const items = Object.entries(query.expressions()).map(
+    ([name, expression]) => ({ name, expression }),
+  );
+
   return (
     <ClauseStep
       color={color}
-      items={Object.entries(query.expressions())}
-      renderName={([name]) => name}
-      renderPopover={([name, expression] = [], onClose) => (
+      items={items}
+      renderName={({ name }) => name}
+      renderPopover={item => (
         <ExpressionWidget
           query={query}
-          name={name}
-          expression={expression}
+          name={item?.name}
+          expression={item?.expression}
           onChangeExpression={(newName, newExpression) =>
-            expression
+            item?.expression
               ? updateQuery(
                   query.updateExpression(newName, newExpression, name),
                 )
@@ -33,9 +38,9 @@ export default function ExpressionStep({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={([name, expression]) =>
-        updateQuery(query.removeExpression(name))
-      }
+      onRemove={({ name }) => updateQuery(query.removeExpression(name))}
     />
   );
-}
+};
+
+export default ExpressionStep;
