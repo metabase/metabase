@@ -6,7 +6,7 @@ title: Basic actions
 
 Basic actions are premade [actions](./introduction.md) that do things that people typically want to do when interacting with a database.
 
-Basic actions auto-track the schema of primary source table backing the model. By auto-track the schema, we mean that Metabase will create forms for people to fill out that include all of the fields in the model from the primary source table that underlies that model, and the action will update whenever you change the model. Basic actions are only be available for models that include a single primary key.
+Basic actions auto-track the schema of primary source table backing the model. By auto-track the schema, we mean that Metabase will create forms for people to fill out that include all of the fields in the model from the primary source table that underlies that model, and the action will update whenever you change the model. Basic actions are only available for models that include a single primary key.
 
 Custom columns are also excluded because they are computed columns; if you want to change a custom column's values, you should update the values in the columns used to compute that column.
 
