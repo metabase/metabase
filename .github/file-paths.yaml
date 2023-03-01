@@ -25,7 +25,7 @@ frontend_sources: &frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
-  - "frontend/test/!(__support__|__runner__)/**"
+  - "frontend/test/**"
   - "frontend/**/*.unit.*"
   - "jest.unit.conf.json"
   - "jest.tz.unit.conf.json"
@@ -70,8 +70,9 @@ sources: &sources
 
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
-  - "frontend/test/__support__/e2e/**"
-  - "frontend/test/__runner__/*cypress*"
+  - "e2e/runner/**"
+  - "e2e/support/**"
+  - "e2e/snapshot*/**"
 
 e2e_all:
   - *default
