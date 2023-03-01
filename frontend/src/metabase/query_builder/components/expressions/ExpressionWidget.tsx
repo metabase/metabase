@@ -3,19 +3,21 @@ import cx from "classnames";
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import { ExpressionWidgetWrapper } from "metabase/query_builder/components/expressions/ExpressionWidget.styled";
-import { ExpressionValue } from "metabase/query_builder/components/expressions/expressions.types";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
+import { Expression } from "metabase-types/types/Query";
 import { isExpression } from "metabase-lib/expressions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
 interface ExpressionWidgetProps {
   query: StructuredQuery;
-  expression: ExpressionValue | undefined;
+  expression: Expression | undefined;
   name: string | undefined;
 
   reportTimezone: string;
 
-  onChangeExpression: (name: string, expression: ExpressionValue) => void;
+  onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 }
@@ -32,7 +34,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   } = props;
 
   const [name, setName] = useState(initialName || "");
-  const [expression, setExpression] = useState<ExpressionValue | null>(
+  const [expression, setExpression] = useState<Expression | null>(
     initialExpression || null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -59,12 +61,23 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             name={name}
             query={query}
             reportTimezone={reportTimezone}
-            onChange={(parsedExpression: ExpressionValue) => {
+            onChange={(parsedExpression: Expression) => {
               setExpression(parsedExpression);
               setError(null);
             }}
             onError={(errorMessage: string) => setError(errorMessage)}
           />
+          <p className="h5 text-medium">
+            {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
+            &nbsp;
+            <ExternalLink
+              className="link"
+              target="_blank"
+              href={MetabaseSettings.docsUrl(
+                "questions/query-builder/expressions",
+              )}
+            >{t`Learn more`}</ExternalLink>
+          </p>
         </div>
 
         <div className="mt3 h5 text-uppercase text-light text-bold">{t`Name`}</div>

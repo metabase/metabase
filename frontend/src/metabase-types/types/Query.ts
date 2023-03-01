@@ -302,14 +302,23 @@ export type ExpressionClause = {
   [key: ExpressionName]: Expression;
 };
 
-export type Expression = [
-  ExpressionOperator,
-  ExpressionOperand,
-  ExpressionOperand,
-];
+export type Expression =
+  | number
+  | [ExpressionOperator, ExpressionOperand]
+  | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
+  | [
+      ExpressionOperator,
+      ExpressionOperand,
+      ExpressionOperand,
+      ExpressionOperand,
+    ];
 
-export type ExpressionOperator = "+" | "-" | "*" | "/";
-export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+export type ExpressionOperator = string;
+export type ExpressionOperand =
+  | ConcreteField
+  | NumericLiteral
+  | StringLiteral
+  | Expression;
 
 export type FieldsClause = ConcreteField[];
 
