@@ -23,7 +23,7 @@
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
                          Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
         (let [export          (into [] (extract/extract-metabase nil))
@@ -57,7 +57,7 @@
 
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection  [grandparent {:name     "Grandparent Collection"
                                                    :location "/"}]
                          Collection  [parent      {:name     "Parent Collection"
@@ -87,7 +87,7 @@
 
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection         [grandparent {:name      "Grandparent Collection"
                                                           :namespace :snippets
                                                           :location  "/"}]
@@ -121,7 +121,7 @@
 
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Database    [db      {:name "My Company Data"}]
                          Table       [table   {:name "Customers" :db_id (:id db)}]
                          Field       [website {:name "Company/organization website" :table_id (:id table)}]

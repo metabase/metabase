@@ -780,7 +780,7 @@
           field3d    (atom nil)]
 
       (testing "serializing the original database, table, field and fieldvalues"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           (reset! db1s     (ts/create! Database :name "my-db"))
           (reset! table1s  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! Field :name "STATE" :table_id (:id @table1s)))
@@ -817,7 +817,7 @@
                           set)))))))
 
       (testing "deserializing finds existing FieldValues properly"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           ;; A different database and tables, so the IDs don't match.
           (reset! db2d    (ts/create! Database :name "other-db"))
           (reset! table2d (ts/create! Table    :name "ORDERS" :db_id (:id @db2d)))
@@ -864,7 +864,7 @@
         table1s    (atom nil)]
 
     (testing "loading a bare card"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s    (ts/create! Database :name "my-db"))
         (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! Field :name "STATE" :table_id (:id @table1s))
@@ -909,7 +909,7 @@
         card1s     (atom nil)
         extracted  (atom nil)]
     (testing "snippets referenced by native cards must be deserialized"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s      (ts/create! Database :name "my-db"))
         (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
