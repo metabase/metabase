@@ -168,7 +168,7 @@
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
       (when (not= effective-type (:effective_type field))
-        (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
+        (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>))))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
