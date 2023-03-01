@@ -72,23 +72,39 @@ describe("issues 15119 and 16112", () => {
           ],
         });
 
+        // Actually need to setup the linked filter:
+        visitDashboard(dashboard_id);
+        cy.get('[data-metabase-event="Dashboard;Edit"]').click();
+        cy.findByText("Rating Filter").click();
+        cy.findByText("Linked filters").click();
+        // cy.findByText("Reviewer Filter").click();
+        cy.findByText("Limit this filter's choices")
+          .parent()
+          .within(() => {
+            // turn on the toggle
+            cy.get("input").click();
+          });
+        cy.findByText("Save").click();
+
         cy.signIn("nodata");
         visitDashboard(dashboard_id);
       },
     );
 
-    cy.findByText(ratingFilter.name).click();
-    popover().contains("3").click();
-    cy.button("Add filter").click();
-
-    cy.get(".DashCard").should("contain", "maia").and("contain", "daryl");
-    cy.location("search").should("eq", "?rating=3");
-
     cy.findByText(reviewerFilter.name).click();
-    cy.findByPlaceholderText("Enter some text").type("maia{enter}").blur();
+    popover().contains("adam").click();
     cy.button("Add filter").click();
 
-    cy.get(".DashCard").should("contain", "maia").and("not.contain", "daryl");
-    cy.location("search").should("eq", "?reviewer=maia&rating=3");
+    cy.get(".DashCard").should("contain", "adam");
+    cy.location("search").should("eq", "?reviewer=adam");
+
+    cy.findByText(ratingFilter.name).click();
+
+    popover().contains("5").click();
+    cy.button("Add filter").click();
+
+    cy.get(".DashCard").should("contain", "adam");
+    cy.get(".DashCard").should("contain", "5");
+    cy.location("search").should("eq", "?reviewer=adam&rating=5");
   });
 });
