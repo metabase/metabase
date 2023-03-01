@@ -86,7 +86,7 @@ describe("Collections BaseItemsTable", () => {
     const onSelectAll = jest.fn();
     setup({ hasUnselected: true, onSelectAll });
 
-    userEvent.click(screen.queryByLabelText("Select all items"));
+    userEvent.click(screen.getByLabelText("Select all items"));
 
     expect(onSelectAll).toHaveBeenCalled();
   });
@@ -95,7 +95,7 @@ describe("Collections BaseItemsTable", () => {
     const onSelectNone = jest.fn();
     setup({ hasUnselected: false, onSelectNone });
 
-    userEvent.click(screen.queryByLabelText("Select all items"));
+    userEvent.click(screen.getByLabelText("Select all items"));
 
     expect(onSelectNone).toHaveBeenCalled();
   });
