@@ -7,6 +7,8 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [yaml.core :as yaml]
    [yaml.reader :as y.reader])
   (:import
@@ -95,6 +97,7 @@
     (when-not @cache
       (reset! cache (ingest-all root-dir)))
     (let [{:keys [model id]} (first abs-path)]
+      (log/info (trs "Loading {0}" (u.yaml/log-path-str abs-path)))
       (if (and (= (count abs-path) 1)
                (= model "Setting"))
         {:serdes/meta abs-path :key (keyword id) :value (get settings (keyword id))}
