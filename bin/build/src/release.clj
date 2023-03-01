@@ -40,7 +40,7 @@
     (slack/post-message! "Finished `%s` :partyparrot:" step-name))
   (u/announce "Success."))
 
-(defn -main [& steps]
+(defn release [{:keys [steps]}]
   (u/exit-when-finished-nonzero-on-exception
     (check-prereqs/check-prereqs)
     (set-build-options/prompt-and-set-build-options!)

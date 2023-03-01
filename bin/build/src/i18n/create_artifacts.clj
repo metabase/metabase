@@ -31,11 +31,12 @@
   (doseq [locale (i18n/locales)]
     (create-artifacts-for-locale! locale)))
 
-(defn create-all-artifacts! []
-  (u/step "Create i18n artifacts"
-    (generate-locales-dot-edn!)
-    (create-artifacts-for-all-locales!)
-    (u/announce "Translation resources built successfully.")))
+(defn create-all-artifacts!
+  ([]
+   (create-all-artifacts! nil))
 
-(defn -main []
-  (create-all-artifacts!))
+  ([_options]
+   (u/step "Create i18n artifacts"
+     (generate-locales-dot-edn!)
+     (create-artifacts-for-all-locales!)
+     (u/announce "Translation resources built successfully."))))

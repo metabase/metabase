@@ -12,5 +12,4 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
-cd bin/build-mb
-clojure -M -m build $@
+clojure -X:drivers:build:build/all $@

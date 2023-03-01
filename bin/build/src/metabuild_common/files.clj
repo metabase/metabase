@@ -103,10 +103,10 @@
   source file."
   (.. (Paths/get (.toURI (io/resource "metabuild_common/files.clj")))
       toFile
-      getParentFile   ; /home/cam/metabase/bin/common/src/metabuild_common
-      getParentFile   ; /home/cam/metabase/bin/common/src/
-      getParentFile   ; /home/cam/metabase/bin/common/
-      getParentFile   ; /home/cam/metabase/bin/
+      getParentFile   ; /home/cam/metabase/bin/build/src/metabuild_common/
+      getParentFile   ; /home/cam/metabase/bin/build/src/
+      getParentFile   ; /home/cam/metabase/bin/build/
+      getParentFile   ; /home/cam/metabase/
       getParentFile   ; /home/cam/metabase/
       getCanonicalPath))
 

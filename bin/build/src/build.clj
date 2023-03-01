@@ -2,6 +2,7 @@
   (:require
    [build-drivers :as build-drivers]
    [build.licenses :as license]
+   [build.uberjar :as uberjar]
    [build.version-info :as version-info]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -79,9 +80,7 @@
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    ;; TODO -- we (probably) don't need to shell out in order to do this anymore, we should be able to do all this
-    ;; stuff directly in Clojure land by including this other `build` namespace directly (once we dedupe the names)
-    (u/sh {:dir u/project-root-directory} "clojure" "-T:build" "uberjar" :edition edition)
+    (uberjar/uberjar {:edition edition})
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
@@ -101,11 +100,12 @@
                    (build-uberjar! edition))))
 
 (defn build!
+  "Programmatic entrypoint."
   ([]
    (build! nil))
 
   ([{:keys [version edition steps]
-     :or   {edition :oss
+     :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
    (let [version (or version
                      (version-info/current-snapshot-version edition))]
@@ -123,21 +123,25 @@
          (step-fn {:version version, :edition edition}))
        (u/announce "All build steps finished.")))))
 
-(defn -main [& steps]
+(defn build-cli
+  "CLI entrypoint. This is just a slim wrapper around [[build!]] that exists with a nonzero status if an exception is
+  thrown."
+  [options]
   (u/exit-when-finished-nonzero-on-exception
-    (build! (merge {:edition (edition-from-env-var)}
-                   (when-let [steps (not-empty steps)]
-                     {:steps steps})))))
+    (build! options)))
 
-;; useful to call from command line `cd bin/build-mb && clojure -X build/list-without-license`
-(defn list-without-license [{:keys []}]
-  (let [[classpath]        (u/sh {:dir    u/project-root-directory
-                                           :quiet? true}
-                                 "clojure" "-A:ee" "-Spath")
-        classpath-entries (license/jar-entries classpath)
+(defn list-without-license
+  "From the command line:
+
+    clojure -X:build:build/list-without-license"
+  [_options]
+  (let [[classpath]               (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "clojure" "-A:ee" "-Spath")
+        classpath-entries         (license/jar-entries classpath)
         {:keys [without-license]} (license/process*
                                    {:classpath-entries classpath-entries
-                                    :backfill        (edn/read-string
+                                    :backfill          (edn/read-string
                                                         (slurp (io/resource "overrides.edn")))})]
     (if (seq without-license)
       (run! (comp (partial u/error "Missing License: %s") first)

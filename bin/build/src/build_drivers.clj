@@ -27,6 +27,8 @@
         (build-driver/build-driver! driver edition))
       (u/announce "Successfully built all drivers."))))
 
-(defn -main [& [edition]]
+(defn build-drivers
+  "CLI entrypoint."
+  [{:keys [edition]}]
   (u/exit-when-finished-nonzero-on-exception
     (build-drivers! (u/parse-as-keyword edition))))

@@ -67,7 +67,7 @@ The if-you're-interested reason is that Java's JDBC `DriverManager` won't use JD
 
 ## Building the driver
 
-To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers).
+To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers.md).
 
 Place the JAR you built in your Metabase's `/plugins` directory, and you're off to the races.
 
