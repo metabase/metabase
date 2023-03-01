@@ -551,12 +551,8 @@
   :build-dev
   {:extra-paths ["bin/build/test"]
 
-   ;; some of these are here just for to have jars on the classpath for testing the licenses
-   ;; stuff (see [[build.licenses-test]])
    :extra-deps
-   {org.apache.commons/commons-math3        {:mvn/version "3.6.1"}
-    org.clojure/data.json                   {:mvn/version "2.0.2"}
-    net.redhogs.cronparser/cron-parser-core {:mvn/version "3.5"}}}
+   {org.clojure/data.json {:mvn/version "2.0.2"}}}
 
   ;;; Run tests for the build scripts:
   ;;;
