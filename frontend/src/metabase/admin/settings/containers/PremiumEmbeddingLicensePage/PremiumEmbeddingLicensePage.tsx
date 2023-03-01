@@ -32,7 +32,7 @@ const getDescription = (
     return (
       <>
         {jt`Your Premium Embedding license isn’t valid anymore. ${(
-          <ExternalLink href={upgradeUrl}>
+          <ExternalLink key="link" href={upgradeUrl}>
             {t`Explore our paid plans.`}
           </ExternalLink>
         )}`}
