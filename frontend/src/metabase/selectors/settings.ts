@@ -1,6 +1,6 @@
 import { createSelector } from "reselect";
 
-import type { Settings, SettingKey } from "metabase-types/api";
+import type { Settings, SettingKey, TokenFeatures } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const getSettings = createSelector(
@@ -18,20 +18,22 @@ interface UpgradeUrlOpts {
 }
 
 export const getUpgradeUrl = createSelector(
-  (state: State) => getUtmSource(state),
+  (state: State) => getUtmSource(getSetting(state, "token-features")),
+  (state: State) => getSetting(state, "active-users-count"),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
-  (source, media) => {
+  (source, count, media) => {
     const url = new URL("https://www.metabase.com/upgrade");
     url.searchParams.append("utm_media", media);
     url.searchParams.append("utm_source", source);
+    if (count != null) {
+      url.searchParams.append("utm_users", String(count));
+    }
 
     return url.toString();
   },
 );
 
-const getUtmSource = (state: State) => {
-  const features = getSetting(state, "token-features");
-
+const getUtmSource = (features: TokenFeatures) => {
   if (features.sso) {
     return features.hosting ? "pro-cloud" : "pro-self-hosted";
   } else {
