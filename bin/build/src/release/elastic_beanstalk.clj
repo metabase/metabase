@@ -94,9 +94,9 @@
   (u/step (format "Create launch-aws-eb.html for Docker image %s" (c/docker-tag))
     (u/delete-file-if-exists! html-file-path)
     (spit html-file-path
-          (stencil/render-file launch-template-filename
-                               {:url (java.net.URLEncoder/encode (c/artifact-download-url "metabase-aws-eb.zip")
-                                                                 "UTF-8")}))
+          (stencil/render (slurp launch-template-filename)
+                          {:url (java.net.URLEncoder/encode (c/artifact-download-url "metabase-aws-eb.zip")
+                                                            "UTF-8")}))
     (u/assert-file-exists html-file-path)))
 
 (defn- upload-artifacts! []
