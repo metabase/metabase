@@ -303,7 +303,7 @@ export type ExpressionClause = {
 };
 
 export type Expression =
-  | number
+  | NumericLiteral
   | [ExpressionOperator, ExpressionOperand]
   | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
   | [
