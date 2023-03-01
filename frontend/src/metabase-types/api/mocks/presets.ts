@@ -83,22 +83,20 @@ export const createProductTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-/////
-
 export const createReviewsTable = (opts?: Partial<Table>): Table =>
   createMockTable({
-    id: 4,
+    id: 8,
     db_id: 1,
     name: "REVIEWS",
     display_name: "Reviews",
     schema: "PUBLIC",
     fields: [
-      createReviewBodyField(),
-      createReviewCreatedAtField(),
       createReviewIdField(),
       createReviewProductIdField(),
-      createReviewRatingField(),
       createReviewReviewerField(),
+      createReviewRatingField(),
+      createReviewBodyField(),
+      createReviewCreatedAtField(),
     ],
     ...opts,
   });
@@ -433,34 +431,10 @@ export const createProductCreatedAtField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-/////
-
-export const createReviewBodyField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: 29,
-    table_id: 4,
-    name: "BODY",
-    display_name: "Body",
-    base_type: "type/Text",
-    semantic_type: "type/Description",
-    ...opts,
-  });
-
-export const createReviewCreatedAtField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: 30,
-    table_id: 4,
-    name: "CREATED_AT",
-    display_name: "Created At",
-    base_type: "type/DateTime",
-    semantic_type: "type/DateTime",
-    ...opts,
-  });
-
 export const createReviewIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 31,
-    table_id: 4,
+    id: 67,
+    table_id: 8,
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
@@ -470,8 +444,8 @@ export const createReviewIdField = (opts?: Partial<Field>): Field =>
 
 export const createReviewProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 32,
-    table_id: 4,
+    id: 68,
+    table_id: 8,
     name: "PRODUCT_ID",
     display_name: "Product ID",
     base_type: "type/Integer",
@@ -479,24 +453,46 @@ export const createReviewProductIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewRatingField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: 33,
-    table_id: 4,
-    name: "RATING",
-    display_name: "Rating",
-    base_type: "type/Integer",
-    semantic_type: "type/Category",
-    ...opts,
-  });
-
 export const createReviewReviewerField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: 34,
-    table_id: 4,
+    id: 69,
+    table_id: 8,
     name: "REVIEWER",
     display_name: "Reviewer",
     base_type: "type/Text",
-    semantic_type: "type/Text",
+    semantic_type: null,
+    ...opts,
+  });
+
+export const createReviewRatingField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 66,
+    table_id: 8,
+    name: "RATING",
+    display_name: "Rating",
+    base_type: "type/Integer",
+    semantic_type: "type/Score",
+    ...opts,
+  });
+
+export const createReviewBodyField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 70,
+    table_id: 8,
+    name: "BODY",
+    display_name: "Body",
+    base_type: "type/Text",
+    semantic_type: "type/Description",
+    ...opts,
+  });
+
+export const createReviewCreatedAtField = (opts?: Partial<Field>): Field =>
+  createMockField({
+    id: 71,
+    table_id: 8,
+    name: "CREATED_AT",
+    display_name: "Created At",
+    base_type: "type/DateTime",
+    semantic_type: "type/CreationTimestamp",
     ...opts,
   });
