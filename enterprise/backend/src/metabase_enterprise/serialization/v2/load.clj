@@ -97,4 +97,5 @@
     (when-let [errors (seq (:errors result))]
       (log/error (trs "Errors were encountered during import. Individual errors:"))
       (doseq [e errors]
-        (log/error e)))))
+        (log/error e)))
+    result))
