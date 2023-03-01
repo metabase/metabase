@@ -304,6 +304,8 @@ export type ExpressionClause = {
 
 export type Expression =
   | NumericLiteral
+  | StringLiteral
+  | boolean
   | [ExpressionOperator, ExpressionOperand]
   | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
   | [
