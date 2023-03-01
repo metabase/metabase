@@ -50,6 +50,7 @@
   (eval . (put-clojure-indent 'mbql.match/match-one 1))
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mbql.u/replace 1))
   (eval . (put-clojure-indent 'mi/define-methods '(:form)))
   (eval . (put-clojure-indent 'mt/dataset 1))
   (eval . (put-clojure-indent 'mt/format-rows-by 1))
@@ -81,14 +82,14 @@
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (clojure-docstring-fill-column . 118)
-  (cider-preferred-build-tool . clojure-cli))
+  (cider-preferred-build-tool . clojure-cli)
+  (cider-default-cljs-repl . shadow-select)
+  (cider-shadow-default-options . "node-repl"))
 
  ("shared"
   (clojure-mode
-   (cider-default-cljs-repl . shadow-select)
-   (cider-shadow-default-options . "node-repl")
    (cider-preferred-build-tool . shadow-cljs)))
 
  ("bin"
   (clojure-mode
-   (cider-clojure-cli-aliases . "dev"))))
+   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))

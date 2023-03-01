@@ -37,6 +37,7 @@
                                :highlight_row true}
                               {:columns       ["c"]
                                :type          "range"
+                               :operator      "="
                                :min_type      "custom"
                                :min_value     3
                                :max_type      "custom"

@@ -175,14 +175,13 @@ class DashboardGrid extends Component {
     const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
-      // We want to keep the heights for all visualizations equal not to break the visual rhythm
-      // Exceptions are text cards (can take too much vertical space)
-      // and scalar value cards (basically a number and some text on a big card)
+      defaultCardHeight: 6,
       heightByDisplayType: {
+        action: 1,
+        link: 1,
         text: 2,
         scalar: 4,
       },
-      defaultCardHeight: 6,
     });
     return { desktop, mobile };
   }

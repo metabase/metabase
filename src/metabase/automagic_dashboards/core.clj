@@ -252,7 +252,7 @@
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
     ;; This is a non-native question with no ancestors (It is a query on a table).
-    (:dataset card) card
+    (:dataset card) (assoc card :entity_type :entity/GenericTable)
     :else (->> card table-id (db/select-one Table :id))))
 
 (defmethod ->root Card
@@ -765,19 +765,16 @@
                  (map #(assoc % :engine engine))
                  (group-by :table_id))
             u/the-id)
-      ;; Why source and not entity itself? This seems super weird.
-      ;; It will also give us too many fields if the entity itself
-      ;; is using on a selection of fields.
-      (->> source
-           :result_metadata
-           (map (fn [field]
-                  (as-> field field
-                    (update field :base_type keyword)
-                    (update field :semantic_type keyword)
-                    (mi/instance Field field)
-                    (classify/run-classifiers field {})
-                    (assoc field :engine engine))))
-           constantly))))
+      (let [source-fields (->> source
+                               :result_metadata
+                               (map (fn [field]
+                                      (as-> field field
+                                        (update field :base_type keyword)
+                                        (update field :semantic_type keyword)
+                                        (mi/instance Field field)
+                                        (classify/run-classifiers field {})
+                                        (assoc field :engine engine)))))]
+        (constantly source-fields)))))
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters."
@@ -1007,7 +1004,7 @@
 
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
-   root type individually via `related-selectors`. That recepie is then filled round-robin style."
+   root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [{:keys [root] :as context}, rule :- (s/maybe rules/Rule)]
   (->> (merge (indepth root rule)
               (drilldown-fields context)
