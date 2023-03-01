@@ -7,7 +7,12 @@ export const createSampleDatabase = (opts?: Partial<Database>): Database =>
   createMockDatabase({
     id: 1,
     name: "Sample Database",
-    tables: [createOrdersTable(), createPeopleTable(), createProductTable()],
+    tables: [
+      createOrdersTable(),
+      createPeopleTable(),
+      createProductTable(),
+      createReviewsTable(),
+    ],
     is_sample: true,
     ...opts,
   });
