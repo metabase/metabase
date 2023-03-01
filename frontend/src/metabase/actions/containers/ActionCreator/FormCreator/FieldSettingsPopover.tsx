@@ -241,7 +241,6 @@ function RequiredInput({
             onChange={e =>
               onChange({ required: false, defaultValue: e.target.value })
             }
-            data-testid="placeholder-input"
           />
         </>
       )}
