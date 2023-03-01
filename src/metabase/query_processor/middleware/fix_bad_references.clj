@@ -25,6 +25,10 @@
     (qp.store/fetch-and-store-tables! #{table-id})
     (qp.store/table table-id)))
 
+(def ^:dynamic *bad-field-reference-fn*
+  "A function to be called on each bad field found by this middleware. Not used except for in tests."
+  (fn bad-field-no-op [_field]))
+
 (defn- fix-bad-references*
   ([inner-query]
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
@@ -63,6 +67,7 @@
                                           (if join-alias
                                             (trs "Guessing join {0}" (pr-str join-alias))
                                             (trs "Unable to infer an appropriate join. Query may not work as expected.")))))
+       (*bad-field-reference-fn* &match)
        (if join-alias
          [:field id (assoc opts :join-alias join-alias)]
          &match)))))

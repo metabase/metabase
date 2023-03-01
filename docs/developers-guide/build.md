@@ -8,7 +8,7 @@ This doc will show you how you can build and run Metabase on your own computer s
 
 ## Install the prerequisites
 
-If you're using macOS, you'll want to install Xcode Command Line Tools first, by running: 
+If you're using macOS, you'll want to install Xcode Command Line Tools first, by running:
 
 ```
 xcode-select --install
@@ -23,7 +23,7 @@ To complete any build of the Metabase code, you'll need to install the following
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 
 4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
- 
+
 ```
 npm install --global yarn
 ```
@@ -34,11 +34,11 @@ On a most recent stable Ubuntu/Debian, all the tools above, with the exception o
 sudo apt install openjdk-11-jdk nodejs && sudo npm install --global yarn
 ```
 
-If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with: 
+If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with:
 
 ```
 sudo update-alternatives --config java
-``` 
+```
 
 Then select Java 11 in the menu.
 
@@ -70,7 +70,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 
 1. Create a `workspace` folder (you can name it that or whatever you want), which will store the Metabase code files.
 
-2. Open up your terminal app, and navigate to your workspace folder with: 
+2. Open up your terminal app, and navigate to your workspace folder with:
 
 ```
 cd ~/workspace
@@ -85,20 +85,20 @@ git clone https://github.com/metabase/metabase
 
 ## Choose the branch you want to run, and run it
 
-This is the part that you’ll use over and over. 
+This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
 {:start="4"}
 4. Open up your terminal app
 
-5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
-   
+5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command:
+
    ```
    cd ~/workspace/metabase
    ```
 
-6. "Pull” down the latest code by running: 
+6. "Pull” down the latest code by running:
 
    ```
    git pull
@@ -114,15 +114,15 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    git checkout <branch-name>
    ```
-    
+
    If we wanted to switch to the branch in the previous step, we'd run:
 
    ```
    git checkout fix-native-dataset-drill-popover
    ```
-    
-   When you want to switch back to `master`, run: 
-    
+
+   When you want to switch back to `master`, run:
+
    ```
    git checkout master
    ```
@@ -135,21 +135,21 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    clojure -M:run
    ```
-   
+
    When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
 
-10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command: 
+10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command:
 
    ```
    yarn build-hot
    ```
-   
+
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
 {:start="11"}
 11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
-     
-   This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
+
+   This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.
 
 To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 6, 7, and 8. If Metabase wasn’t already running, you'll need to complete steps 9 and 10 again too. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
 
@@ -161,7 +161,7 @@ If you want to make Metabase stop running, you can either quit your terminal pro
 
 The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM. There is a script which will execute all steps in the process and output the final artifact for you. You can pass the environment variable MB_EDITION before running the build script to choose the version that you want to build. If you don't provide a value, the default is `oss` which will build the Community Edition.
 
-    ./bin/build
+    ./bin/build.sh
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 

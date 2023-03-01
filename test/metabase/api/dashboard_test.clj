@@ -31,6 +31,7 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -39,6 +40,7 @@
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
@@ -1098,6 +1100,7 @@
 
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"
+
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
       (is (= ordered-cards
@@ -1941,6 +1944,24 @@
                          query)
                     query-params))
 
+(deftest dashboard-chain-filter-permissions-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
+              (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
+                     (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
+
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil]
+              (is (= {:values ["Japanese" "Steakhouse"], :has_more_values false}
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
+
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -1983,19 +2004,33 @@
                                                        (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                           (:id dashboard)
-                                                                                           (:category-name param-keys)))))))))
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))
+
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+            (is (= {:values ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 200)
+                        (chain-filter-test/take-n-values 3))))))))
+
+    (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
