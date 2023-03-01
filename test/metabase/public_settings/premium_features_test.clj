@@ -260,7 +260,7 @@
 
 (deftest active-users-count-setting-test
   (t2.with-temp/with-temp
-    [User _ {:archived true}]
+    [User _ {:is_active false}]
     ;; premium-features/active-users-count is cached so it could be make the test flaky
     ;; rebinding to avoid caching
     (testing "returns the number of active users"
