@@ -16,7 +16,7 @@ export const createSampleDatabase = (opts?: Partial<Database>): Database =>
     tables: [
       createOrdersTable(),
       createPeopleTable(),
-      createProductTable(),
+      createProductsTable(),
       createReviewsTable(),
     ],
     is_sample: true,
@@ -31,15 +31,15 @@ export const createOrdersTable = (opts?: Partial<Table>): Table =>
     display_name: "Orders",
     schema: "PUBLIC",
     fields: [
-      createOrderIdField(),
-      createOrderUserIdField(),
-      createOrderProductIdField(),
-      createOrderSubtotalField(),
-      createOrderTaxField(),
-      createOrderTotalField(),
-      createOrderDiscountField(),
-      createOrderCreatedAtField(),
-      createOrderQuantityField(),
+      createOrdersIdField(),
+      createOrdersUserIdField(),
+      createOrdersProductIdField(),
+      createOrdersSubtotalField(),
+      createOrdersTaxField(),
+      createOrdersTotalField(),
+      createOrdersDiscountField(),
+      createOrdersCreatedAtField(),
+      createOrdersQuantityField(),
     ],
     ...opts,
   });
@@ -69,7 +69,7 @@ export const createPeopleTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-export const createProductTable = (opts?: Partial<Table>): Table =>
+export const createProductsTable = (opts?: Partial<Table>): Table =>
   createMockTable({
     id: PRODUCTS_ID,
     db_id: SAMPLE_DB_ID,
@@ -77,14 +77,14 @@ export const createProductTable = (opts?: Partial<Table>): Table =>
     display_name: "Products",
     schema: "PUBLIC",
     fields: [
-      createProductIdField(),
-      createProductEanField(),
-      createProductTitleField(),
-      createProductCategoryField(),
-      createProductVendorField(),
-      createProductPriceField(),
-      createProductRatingField(),
-      createProductCreatedAtField(),
+      createProductsIdField(),
+      createProductsEanField(),
+      createProductsTitleField(),
+      createProductsCategoryField(),
+      createProductsVendorField(),
+      createProductsPriceField(),
+      createProductsRatingField(),
+      createProductsCreatedAtField(),
     ],
     ...opts,
   });
@@ -97,17 +97,17 @@ export const createReviewsTable = (opts?: Partial<Table>): Table =>
     display_name: "Reviews",
     schema: "PUBLIC",
     fields: [
-      createReviewIdField(),
-      createReviewProductIdField(),
-      createReviewReviewerField(),
-      createReviewRatingField(),
-      createReviewBodyField(),
-      createReviewCreatedAtField(),
+      createReviewsIdField(),
+      createReviewsProductIdField(),
+      createReviewsReviewerField(),
+      createReviewsRatingField(),
+      createReviewsBodyField(),
+      createReviewsCreatedAtField(),
     ],
     ...opts,
   });
 
-export const createOrderIdField = (opts?: Partial<Field>): Field =>
+export const createOrdersIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 11,
     table_id: ORDERS_ID,
@@ -118,7 +118,7 @@ export const createOrderIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderUserIdField = (opts?: Partial<Field>): Field =>
+export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 15,
     table_id: ORDERS_ID,
@@ -129,7 +129,7 @@ export const createOrderUserIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderProductIdField = (opts?: Partial<Field>): Field =>
+export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 9,
     table_id: ORDERS_ID,
@@ -140,7 +140,7 @@ export const createOrderProductIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderSubtotalField = (opts?: Partial<Field>): Field =>
+export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 16,
     table_id: ORDERS_ID,
@@ -151,7 +151,7 @@ export const createOrderSubtotalField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderTaxField = (opts?: Partial<Field>): Field =>
+export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 10,
     table_id: ORDERS_ID,
@@ -162,7 +162,7 @@ export const createOrderTaxField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderTotalField = (opts?: Partial<Field>): Field =>
+export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 13,
     table_id: ORDERS_ID,
@@ -173,7 +173,7 @@ export const createOrderTotalField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderDiscountField = (opts?: Partial<Field>): Field =>
+export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 17,
     table_id: ORDERS_ID,
@@ -184,7 +184,7 @@ export const createOrderDiscountField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderCreatedAtField = (opts?: Partial<Field>): Field =>
+export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 14,
     table_id: ORDERS_ID,
@@ -195,7 +195,7 @@ export const createOrderCreatedAtField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createOrderQuantityField = (opts?: Partial<Field>): Field =>
+export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 12,
     table_id: ORDERS_ID,
@@ -349,7 +349,7 @@ export const createPeopleCreatedAtField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductIdField = (opts?: Partial<Field>): Field =>
+export const createProductsIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 3,
     table_id: PRODUCTS_ID,
@@ -360,7 +360,7 @@ export const createProductIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductEanField = (opts?: Partial<Field>): Field =>
+export const createProductsEanField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 5,
     table_id: PRODUCTS_ID,
@@ -371,7 +371,7 @@ export const createProductEanField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductTitleField = (opts?: Partial<Field>): Field =>
+export const createProductsTitleField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 8,
     table_id: PRODUCTS_ID,
@@ -382,7 +382,7 @@ export const createProductTitleField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductCategoryField = (opts?: Partial<Field>): Field =>
+export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 1,
     table_id: PRODUCTS_ID,
@@ -393,7 +393,7 @@ export const createProductCategoryField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductVendorField = (opts?: Partial<Field>): Field =>
+export const createProductsVendorField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 4,
     table_id: PRODUCTS_ID,
@@ -404,7 +404,7 @@ export const createProductVendorField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductPriceField = (opts?: Partial<Field>): Field =>
+export const createProductsPriceField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 7,
     table_id: PRODUCTS_ID,
@@ -415,7 +415,7 @@ export const createProductPriceField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductRatingField = (opts?: Partial<Field>): Field =>
+export const createProductsRatingField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 2,
     table_id: PRODUCTS_ID,
@@ -426,7 +426,7 @@ export const createProductRatingField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createProductCreatedAtField = (opts?: Partial<Field>): Field =>
+export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 6,
     table_id: PRODUCTS_ID,
@@ -437,7 +437,7 @@ export const createProductCreatedAtField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewIdField = (opts?: Partial<Field>): Field =>
+export const createReviewsIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 67,
     table_id: REVIEWS_ID,
@@ -448,7 +448,7 @@ export const createReviewIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewProductIdField = (opts?: Partial<Field>): Field =>
+export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 68,
     table_id: REVIEWS_ID,
@@ -459,7 +459,7 @@ export const createReviewProductIdField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewReviewerField = (opts?: Partial<Field>): Field =>
+export const createReviewsReviewerField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 69,
     table_id: REVIEWS_ID,
@@ -470,7 +470,7 @@ export const createReviewReviewerField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewRatingField = (opts?: Partial<Field>): Field =>
+export const createReviewsRatingField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 66,
     table_id: REVIEWS_ID,
@@ -481,7 +481,7 @@ export const createReviewRatingField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewBodyField = (opts?: Partial<Field>): Field =>
+export const createReviewsBodyField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 70,
     table_id: REVIEWS_ID,
@@ -492,7 +492,7 @@ export const createReviewBodyField = (opts?: Partial<Field>): Field =>
     ...opts,
   });
 
-export const createReviewCreatedAtField = (opts?: Partial<Field>): Field =>
+export const createReviewsCreatedAtField = (opts?: Partial<Field>): Field =>
   createMockField({
     id: 71,
     table_id: REVIEWS_ID,
