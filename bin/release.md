@@ -49,9 +49,7 @@
 *or*
 
 ```bash
-# Run from the same directory as this README file
-cd /path/to/metabase/bin/release
-clojure -M -m release
+clojure -X:drivers:build:build/release
 ```
 
 1. Debugging

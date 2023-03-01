@@ -10,8 +10,11 @@ There are three main entrypoints. Shell script wrappers are provided for conveni
 Builds *all* drivers as needed.
 
 ```
-cd bin/build-drivers
-clojure -M -m build-drivers
+clojure -X:build:drivers:build/drivers
+
+# or
+
+clojure -X:build:drivers:build/drivers :edition :ee
 
 # or
 
@@ -22,9 +25,12 @@ clojure -M -m build-drivers
 
 Build a single driver as needed. Builds parent drivers if needed first.
 
-```
-cd bin/build-driver redshift
-clojure -M -m build-driver redshift
+```sh
+clojure -X:build:drivers:build/driver :driver :sqlserver
+
+# or
+
+clojure -X:build:drivers:build/driver :driver :sqlserver :edition :oss
 
 # or
 
@@ -36,10 +42,5 @@ clojure -M -m build-driver redshift
 Verify that a built driver looks correctly built.
 
 ```
-cd bin/verify-driver redshift
-clojure -M -m verify-driver redshift
-
-# or
-
-./bin/verify-driver redshift
+clojure -X:build:build/verify-driver :driver :mongo
 ```

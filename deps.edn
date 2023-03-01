@@ -231,7 +231,9 @@
                  ;; locally -- prefer debuggability over performance for local dev work.
                  "-XX:-OmitStackTraceInFastThrow"
                  ;; prevent Java icon from randomly popping up in macOS dock
-                 "-Djava.awt.headless=true"]}
+                 "-Djava.awt.headless=true"
+                 ;; include more details for debugging NPEs
+                 "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -469,7 +471,12 @@
     io.github.borkdude/grasp          {:mvn/version "0.0.3"}
     io.github.clojure/tools.build     {:git/tag "v0.9.3" :git/sha "e537cd1"}
     org.clojure/tools.deps.alpha      {:mvn/version "0.12.985"}
-    org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}}
+    org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
+
+   :jvm-opts
+   ["-Dclojure.main.report=stderr"
+    "-XX:-OmitStackTraceInFastThrow"
+    "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
   ;; Build everything:
   ;;
@@ -511,6 +518,12 @@
   ;;    clojure -X:build:drivers:build/drivers :edition :ee
   :build/drivers
   {:exec-fn build-drivers/build-drivers}
+
+  ;; Verify that a driver JAR looks correct.
+  ;;
+  ;;    clojure -X:build:build/verify-driver :driver :mongo
+  :build/verify-driver
+  {:exec-fn verify-driver/verify-driver}
 
   ;; Build i18n artifacts.
   ;;
