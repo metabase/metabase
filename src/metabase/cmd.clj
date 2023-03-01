@@ -160,8 +160,9 @@
 
 (defn ^:command import
   "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
-  [path]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
+  [path & options]
+  (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
 
 (defn ^:command ^:deprecated dump
   "Deprecated: prefer [[export]] instead.
