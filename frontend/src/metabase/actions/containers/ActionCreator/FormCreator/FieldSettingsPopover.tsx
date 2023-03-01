@@ -194,12 +194,12 @@ function PlaceholderInput({
 }) {
   return (
     <div>
-      <SectionLabel>{t`Placeholder text`}</SectionLabel>
+      <SectionLabel htmlFor="placeholder">{t`Placeholder text`}</SectionLabel>
       <Input
+        id="placeholder"
         fullWidth
         value={value}
         onChange={e => onChange(e.target.value)}
-        data-testid="placeholder-input"
       />
     </div>
   );

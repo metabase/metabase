@@ -92,7 +92,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       await screen.findByTestId("field-settings-popover"),
     ).toBeInTheDocument();
 
-    await userEvent.type(screen.getByTestId("placeholder-input"), "$");
+    await userEvent.type(screen.getByLabelText("Placeholder text"), "$");
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
