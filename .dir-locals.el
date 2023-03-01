@@ -50,6 +50,7 @@
   (eval . (put-clojure-indent 'mbql.match/match-one 1))
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mbql.u/replace 1))
   (eval . (put-clojure-indent 'mi/define-methods '(:form)))
   (eval . (put-clojure-indent 'mt/dataset 1))
   (eval . (put-clojure-indent 'mt/format-rows-by 1))

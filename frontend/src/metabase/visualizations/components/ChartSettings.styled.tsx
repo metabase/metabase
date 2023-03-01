@@ -81,16 +81,3 @@ export const ChartSettingsFooterRoot = styled.div`
     margin-left: 1rem;
   }
 `;
-
-export const TitleButton = styled(Button)`
-  margin: 2rem 2rem 0;
-  ${Button.Content} {
-    justify-content: start;
-    color: ${color("text-dark")};
-    &:hover {
-      color: ${color("brand")};
-    }
-
-    font-size: 1rem;
-  }
-`;

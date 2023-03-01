@@ -99,11 +99,9 @@
   "Create entity IDs for any instances of models that support them but do not have them, i.e. find instances of models
   that have an `entity_id` column whose `entity_id` is `nil` and populate that column.
 
-  `options` are currently ignored but this may change in the future.
-
   Returns truthy if all missing entity IDs were created successfully, and falsey if there were any errors."
-  [options]
-  (log/infof "Seeding Entity IDs with options %s" (pr-str options))
+  []
+  (log/info "Seeding Entity IDs")
   (mdb/setup-db!)
   (let [{:keys [error-count]} (transduce
                                (map seed-entity-ids-for-model!)
