@@ -407,7 +407,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByLabelText("Select all items").click();
 
           cy.icon("check").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/items selected/).should("not.be.visible");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -421,7 +421,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("1 item selected").should("be.visible");
 
           cy.findByText("Our analytics").click();
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/items selected/).should("not.be.visible");
         });
 
         it("should not be possible to archive or move a personal collection via bulk actions", () => {
@@ -443,10 +443,12 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Archive").click();
+          cy.findByText(/items selected/)
+            .button("Archive")
+            .click();
 
           cy.findByText("Orders").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/items selected/).should("not.be.visible");
         });
       });
 
@@ -455,7 +457,9 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Move").click();
+          cy.findByText(/items selected/)
+            .button("Move")
+            .click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
@@ -463,7 +467,7 @@ describe("scenarios > collection defaults", () => {
           });
 
           cy.findByText("Orders").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/items selected/).should("not.be.visible");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
