@@ -333,10 +333,10 @@ const FieldGeneralPane = ({
       />
       <Select
         className="inline-block"
-        value={field.nfc_enabled}
+        value={field.json_unfolding}
         onChange={({ target: { value } }) => {
           return onUpdateFieldProperties({
-            nfc_enabled: value,
+            json_unfolding: value,
           });
         }}
         options={[

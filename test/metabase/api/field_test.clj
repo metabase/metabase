@@ -733,7 +733,7 @@
             field (db/select-one Field :id (mt/id :json :json_bit))
             enable-json-unfolding! (fn [v]
                                      (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                           (assoc field :nfc_enabled v)))
+                                                           (assoc field :json_unfolding v)))
             sync!                  (fn []
                                      (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)) {}))
             nested-fields          (fn []
