@@ -247,8 +247,7 @@
        :field_id field-id})))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/values"
+(api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
