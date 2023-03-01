@@ -2,7 +2,7 @@ import type { DatasetQuery } from "metabase-types/types/Card";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
 
-export type QuestionStepType =
+export type NotebookStepType =
   | "data"
   | "join"
   | "expression"
@@ -13,9 +13,9 @@ export type QuestionStepType =
   | "sort"
   | "limit";
 
-export interface QuestionStep {
+export interface NotebookStep {
   id: string;
-  type: QuestionStepType;
+  type: NotebookStepType;
   stageIndex: number;
   itemIndex: number;
   query: StructuredQuery;
@@ -25,14 +25,14 @@ export interface QuestionStep {
   revert: ((query: StructuredQuery) => StructuredQuery | null) | null;
   clean: (query: StructuredQuery) => StructuredQuery;
   update: (datasetQuery: DatasetQuery) => StructuredQuery;
-  actions: QuestionStepAction[];
+  actions: NotebookStepAction[];
   previewQuery: StructuredQuery | null;
-  next: QuestionStep | null;
-  previous: QuestionStep | null;
+  next: NotebookStep | null;
+  previous: NotebookStep | null;
 }
 
-export interface QuestionStepAction {
-  type: QuestionStepType;
+export interface NotebookStepAction {
+  type: NotebookStepType;
   action: (args: {
     query?: StructuredQuery;
     openStep: (id: string) => void;
@@ -41,7 +41,7 @@ export interface QuestionStepAction {
 
 export interface NotebookStepUiComponentProps {
   color: string;
-  step: QuestionStep;
+  step: NotebookStep;
   query: StructuredQuery;
   sourceQuestion: Question | undefined;
   updateQuery: (query: StructuredQuery) => Promise<void>;

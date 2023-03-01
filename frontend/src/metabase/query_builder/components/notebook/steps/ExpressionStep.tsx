@@ -2,7 +2,6 @@ import React from "react";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { NotebookStepUiComponentProps } from "metabase/query_builder/components/notebook/lib/steps.types";
-import { Expression } from "metabase-types/types/Query";
 import ClauseStep from "./ClauseStep";
 
 type ExpressionStepProps = NotebookStepUiComponentProps;
@@ -19,10 +18,7 @@ const ExpressionStep = ({
   );
 
   return (
-    <ClauseStep<{
-      name: string;
-      expression: Expression;
-    }>
+    <ClauseStep
       color={color}
       items={items}
       renderName={({ name }) => name}

@@ -14,6 +14,7 @@ import {
   LimitClause,
   OrderBy,
   DependentMetadataItem,
+  ExpressionClause,
 } from "metabase-types/types/Query";
 import {
   DatasetQuery,
@@ -1079,7 +1080,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // EXPRESSIONS
-  expressions(): Record<string, any> {
+  expressions(): ExpressionClause {
     return Q.getExpressions(this.query());
   }
 
