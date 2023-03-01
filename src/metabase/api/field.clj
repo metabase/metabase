@@ -102,9 +102,9 @@
 
 (defn- clear-nested-fields!
   "Removes nested fields if JSON unfolding is disabled"
-  [old-field nfc_enabled]
-  (when (and (false? nfc_enabled)
-             (true? (:nfc_enabled old-field)))
+  [old-field json_unfolding]
+  (when (and (false? json_unfolding)
+             (true? (:json_unfolding old-field)))
     (let [nested-fields (->> (db/select Field :table_id (:table_id old-field) :nfc_path [:not= nil] :active true)
                              (filter (fn [field]
                                        (= (first (:nfc_path field))
@@ -117,7 +117,7 @@
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   coercion_strategy visibility_type has_field_values settings nfc_path nfc_enabled]
+                   coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -130,7 +130,7 @@
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)
    nfc_path           (s/maybe [su/NonBlankString])
-   nfc_enabled        (s/maybe s/Bool)}
+   json_unfolding        (s/maybe s/Bool)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -156,7 +156,7 @@
           (clear-dimension-on-fk-change! field)
           true)
         (do (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-            (clear-nested-fields! field nfc_enabled)
+            (clear-nested-fields! field json_unfolding)
             true)
         (t2/update! Field id
           (u/select-keys-when (assoc body
@@ -164,7 +164,7 @@
                                      :effective_type effective-type
                                      :coercion_strategy coercion-strategy)
                               :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                         :coercion_strategy :effective_type :has_field_values :nfc_path :nfc_enabled}
+                                         :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
                               :non-nil #{:display_name :settings}))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page

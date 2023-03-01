@@ -14303,14 +14303,13 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-086
       author: calherries
-      comment: Added 0.46.0 - Add nfc_enabled column to metabase_field
-      validCheckSum: ANY
+      comment: Added 0.46.0 - Add json_unfolding column to metabase_field
       changes:
         - addColumn:
             columns:
             - column:
-                remarks: Nested field column enabled/disabled
-                name: nfc_enabled
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
                 type: boolean
                 constraints:
                   nullable: true
