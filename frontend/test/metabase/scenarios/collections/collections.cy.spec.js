@@ -399,12 +399,13 @@ describe("scenarios > collection defaults", () => {
           cy.icon("check").should("exist");
 
           // Select all
-          cy.findByTestId("bulk-select").click();
+          cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
           cy.findByText("6 items selected");
 
           // Deselect all
-          cy.findByTestId("bulk-select").click();
+          cy.findByLabelText("Select all items").click();
+
           cy.icon("check").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
@@ -511,10 +512,7 @@ function openEllipsisMenuFor(item) {
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
     .closest("tr")
-    .within(() => {
-      cy.icon(icon).trigger("mouseover");
-      cy.findByRole("checkbox").click();
-    });
+    .within(() => cy.findByRole("checkbox").click());
 }
 
 function visitRootCollection() {

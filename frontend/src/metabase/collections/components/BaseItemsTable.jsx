@@ -154,7 +154,7 @@ function BaseItemsTable({
                   checked={selectedItems.length > 0}
                   indeterminate={selectedItems.length > 0 && hasUnselected}
                   onChange={hasUnselected ? onSelectAll : onSelectNone}
-                  data-testid="bulk-select"
+                  aria-label={t`Select all items`}
                 />
               </BulkSelectWrapper>
             </ColumnHeader>
