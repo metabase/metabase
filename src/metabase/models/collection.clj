@@ -555,21 +555,24 @@
   *  A, because you are taking something out of it (by archiving it)
   *  B, because you are archiving it
   *  C, because by archiving its parent, you are archiving it as well"
-  [collection :- CollectionWithLocationAndIDOrRoot]
+  ([collection :- CollectionWithLocationAndIDOrRoot]
+   (perms-for-archiving collection true))
+
+  ([collection :- CollectionWithLocationAndIDOrRoot, archiving? :- s/Bool]
   ;; Make sure we're not trying to archive the Root Collection...
-  (when (collection.root/is-root-collection? collection)
-    (throw (Exception. (tru "You cannot archive the Root Collection."))))
-  ;; also make sure we're not trying to archive a PERSONAL Collection of an active user
-  (when-let [owner-id (db/select-one-field :personal_owner_id Collection :id (u/the-id collection))]
-    (when-not (false? (:is_active ('User owner-id)))
-      (throw (Exception. (tru "You cannot archive an active user's Personal Collection.")))))
-  (set
-   (for [collection-or-id (cons
-                           (parent collection)
-                           (cons
-                            collection
-                            (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
-     (perms/collection-readwrite-path collection-or-id))))
+   (when (collection.root/is-root-collection? collection)
+      (throw (Exception. (tru "You cannot archive the Root Collection."))))
+   ;; Also make sure we're not trying to archive a PERSONAL Collection of an active user.
+   ;; Personal collections of archived users may be unarchived.
+   (when-let [owner-id (db/select-one-field :personal_owner_id Collection :id (u/the-id collection))]
+     (when (and archiving? (:is_active ('User owner-id)))
+       (throw (Exception. (tru "You cannot archive an active user's Personal Collection.")))))
+   (set (for [collection-or-id (cons
+                                (parent collection)
+                                (cons
+                                 collection
+                                 (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
+          (perms/collection-readwrite-path collection-or-id)))))
 
 (s/defn perms-for-moving :- #{perms/PathSchema}
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require

@@ -889,7 +889,7 @@
     ;; Check that we have approprate perms
     (api/check-403
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-       (collection/perms-for-archiving collection-before-update)))))
+       (collection/perms-for-archiving collection-before-update (:archived collection-updates))))))
 
 (defn- maybe-send-archived-notificaitons!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
