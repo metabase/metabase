@@ -32,7 +32,6 @@ const ColumnItem = ({
   onColorChange,
   draggable,
   className = "",
-  isHidden,
 }) => {
   return (
     <ColumnItemRoot
@@ -40,7 +39,6 @@ const ColumnItem = ({
       onClick={onClick}
       isDraggable={draggable}
       data-testid={`draggable-item-${title}`}
-      isHidden={isHidden}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}

@@ -43,10 +43,13 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn make-nestable-sql
+  "For embedding native sql queries, wraps [sql] in parens and removes any semicolons"
+  [sql]
+  (str "(" (str/replace sql #";[\s;]*$" "") ")"))
+
 (defn- format-sql-source-query [_fn [sql params]]
-  ;; wrap `sql` string in parens and strip off any trailing semicolons.
-  (let [sql (str "(" (str/replace sql #";+\s*$" "") ")")]
-    (into [sql] params)))
+  (into [(make-nestable-sql sql)] params))
 
 (sql/register-fn! ::sql-source-query #'format-sql-source-query)
 
@@ -580,12 +583,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
@@ -752,7 +755,9 @@
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (case (long hx/*honey-sql-version*)
+                                               1 0.0
+                                               2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1298,7 +1303,7 @@
     (binding [sql/*dialect*      (sql/get-dialect dialect)
               sql/*quoted*       true
               sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form))))
+      (sql/format-expr honeysql-form {:nested true}))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
@@ -1367,10 +1372,18 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native params], :as source-query} :source-query}]
+  [driver honeysql-form {{:keys [native params],
+                          persisted :persisted-info/native
+                          :as source-query} :source-query}]
   (assoc honeysql-form
-         :from [[(if native
+         :from [[(cond
+                   persisted
+                   (sql-source-query persisted nil)
+
+                   native
                    (sql-source-query native params)
+
+                   :else
                    (apply-clauses driver {} source-query))
                  (let [table-alias (->honeysql driver (hx/identifier :table-alias source-query-alias))]
                    (case (long hx/*honey-sql-version*)
@@ -1406,6 +1419,8 @@
   [driver {inner-query :query}]
   (binding [driver/*driver*        driver
             hx/*honey-sql-version* (honey-sql-version driver)]
+    (when (= hx/*honey-sql-version* 1)
+      (sql.qp.deprecated/log-deprecation-warning driver "Honey SQL 1" "0.46.0"))
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)

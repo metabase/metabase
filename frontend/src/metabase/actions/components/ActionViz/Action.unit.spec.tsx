@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
@@ -25,14 +25,12 @@ const defaultProps = {
       database_id: 2,
       parameters: [
         createMockActionParameter({
-          id: "1",
-          name: "Parameter 1",
+          id: "parameter_1",
           type: "type/Text",
           target: ["variable", ["template-tag", "1"]],
         }),
         createMockActionParameter({
-          id: "2",
-          name: "Parameter 2",
+          id: "parameter_2",
           type: "type/Text",
           target: ["variable", ["template-tag", "2"]],
         }),
@@ -60,6 +58,14 @@ const defaultProps = {
   parameterValues: {},
 } as unknown as ActionProps;
 
+const databases: Record<number, any> = {
+  1: createMockDatabase({ id: 1 }),
+  2: createMockDatabase({
+    id: 2,
+    settings: { "database-enable-actions": true },
+  }),
+};
+
 async function setup(options?: Partial<ActionProps>) {
   return renderWithProviders(
     <ActionComponent {...defaultProps} {...options} />,
@@ -67,35 +73,27 @@ async function setup(options?: Partial<ActionProps>) {
 }
 
 async function setupActionWrapper(options?: Partial<ActionProps>) {
+  const dbId = options?.dashcard?.action?.database_id ?? 0;
+
+  fetchMock.get(`path:/api/database/${dbId}`, databases[dbId] ?? null);
+
   return renderWithProviders(<Action {...defaultProps} {...options} />, {
     withSampleDatabase: true,
     storeInitialState: {
       entities: {
-        databases: {
-          1: createMockDatabase({ id: 1 }),
-          2: createMockDatabase({
-            id: 2,
-            settings: { "database-enable-actions": true },
-          }),
-        },
+        databases,
       },
     },
   });
 }
 
-function setupExecutionEndpoint(expectedBody: any) {
-  const scope = nock(location.origin)
-    .post("/api/dashboard/123/dashcard/456/execute", expectedBody)
-    .reply(200, { "rows-updated": [1] });
-
-  return scope;
+function setupExecutionEndpoint() {
+  fetchMock.post("path:/api/dashboard/123/dashcard/456/execute", {
+    "rows-updated": [1],
+  });
 }
 
 describe("Actions > ActionViz > ActionComponent", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   // button actions are just a modal trigger around forms
   describe("Button actions", () => {
     it("should render an empty state for a button with no action", async () => {
@@ -120,10 +118,10 @@ describe("Actions > ActionViz > ActionComponent", () => {
           }),
         },
       });
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
+      expect(await screen.findByLabelText("bolt icon")).toBeInTheDocument();
+      expect(await screen.findByRole("button")).toBeDisabled();
       expect(
-        screen.getByLabelText(/actions are not enabled/i),
+        await screen.findByLabelText(/actions are not enabled/i),
       ).toBeInTheDocument();
     });
 
@@ -137,7 +135,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           }),
         },
       });
-      expect(screen.getByRole("button")).toBeEnabled();
+      expect(await screen.findByRole("button")).toBeEnabled();
     });
 
     it("should render a button with default text", async () => {
@@ -219,12 +217,12 @@ describe("Actions > ActionViz > ActionComponent", () => {
       const expectedBody = {
         modelId: 777,
         parameters: {
-          "1": "foo",
-          "2": "bar",
+          parameter_1: "foo",
+          parameter_2: "bar",
         },
       };
 
-      const scope = setupExecutionEndpoint(expectedBody);
+      setupExecutionEndpoint();
 
       await setup({ settings: formSettings });
 
@@ -240,19 +238,24 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
-      await waitFor(() => expect(scope.isDone()).toBe(true));
+      await waitFor(async () => {
+        const call = fetchMock.lastCall(
+          "path:/api/dashboard/123/dashcard/456/execute",
+        );
+        expect(await call?.request?.json()).toEqual(expectedBody);
+      });
     });
 
     it("should combine data from dashboard parameters and form input when submitting for execution", async () => {
       const expectedBody = {
         modelId: 777,
         parameters: {
-          "1": "foo",
-          "2": "baz",
+          parameter_1: "foo",
+          parameter_2: "baz",
         },
       };
 
-      const scope = setupExecutionEndpoint(expectedBody);
+      setupExecutionEndpoint();
 
       await setup({
         settings: formSettings,
@@ -266,7 +269,12 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
-      await waitFor(() => expect(scope.isDone()).toBe(true));
+      await waitFor(async () => {
+        const call = fetchMock.lastCall(
+          "path:/api/dashboard/123/dashcard/456/execute",
+        );
+        expect(await call?.request?.json()).toEqual(expectedBody);
+      });
     });
   });
 

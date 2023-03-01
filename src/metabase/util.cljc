@@ -559,9 +559,9 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (when x
-     (with-out-str
-       (pprint/pprint x))))
+   (with-out-str
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (pprint/pprint x)))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))

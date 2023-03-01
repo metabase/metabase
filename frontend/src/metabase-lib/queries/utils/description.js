@@ -77,6 +77,11 @@ export function getAggregationDescription(tableMetadata, query, options) {
             t`Average of `,
             getFieldName(tableMetadata, aggregation[1], options),
           ];
+        case "median":
+          return [
+            t`Median of `,
+            getFieldName(tableMetadata, aggregation[1], options),
+          ];
         case "distinct":
           return [
             t`Distinct values of `,
@@ -264,6 +269,8 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
           return [t`Cumulative count`];
         case "avg":
           return [t`Average of `, agg["arg"]];
+        case "median":
+          return [t`Median of `, agg["arg"]];
         case "distinct":
           return [t`Distinct values of `, agg["arg"]];
         case "stddev":
@@ -276,6 +283,13 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
           return [t`Maximum of `, agg["arg"]];
         case "min":
           return [t`Minimum of `, agg["arg"]];
+        default: {
+          console.warn(
+            "Unexpected aggregation type in formatAggregationDescription: ",
+            agg["type"],
+          );
+          return null;
+        }
       }
     }),
   );

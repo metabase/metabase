@@ -103,6 +103,7 @@ interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  isPublic?: boolean;
 
   headerIcon?: IconProps;
 
@@ -132,6 +133,7 @@ function DashCard({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
+  isPublic = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
@@ -285,12 +287,12 @@ function DashCard({
             hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
-            metadata={metadata}
           />
         </DashboardCardActionsPanel>
       );
@@ -308,14 +310,15 @@ function DashCard({
     onAddSeries,
     onRemove,
     onReplaceAllVisualizationSettings,
+    onUpdateVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
-    metadata,
   ]);
 
   return (
     <ErrorBoundary>
       <DashCardRoot
+        data-testid="dashcard"
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         isNightMode={isNightMode}
@@ -349,6 +352,7 @@ function DashCard({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
+          isPublic={isPublic}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={changeCardAndRunHandler}

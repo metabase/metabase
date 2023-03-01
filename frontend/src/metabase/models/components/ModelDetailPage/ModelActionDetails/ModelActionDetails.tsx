@@ -9,6 +9,7 @@ import Link from "metabase/core/components/Link";
 import Actions from "metabase/entities/actions";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -31,11 +32,13 @@ import {
 
 interface OwnProps {
   model: Question;
+  canRunActions: boolean;
 }
 
 interface DispatchProps {
   onEnableImplicitActions: () => void;
   onArchiveAction: (action: WritebackAction) => void;
+  onDeleteAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -50,34 +53,75 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
     onArchiveAction: (action: WritebackAction) =>
       dispatch(Actions.objectActions.setArchived(action, true)),
+    onDeleteAction: (action: WritebackAction) =>
+      dispatch(Actions.actions.delete({ id: action.id })),
   };
 }
 
 function ModelActionDetails({
   model,
   actions,
+  canRunActions,
   onEnableImplicitActions,
   onArchiveAction,
+  onDeleteAction,
 }: Props) {
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
+
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
-  const hasImplicitActions = actions.some(action => action.type === "implicit");
+  const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
     [actions],
   );
 
+  const implicitActions = useMemo(
+    () => actions.filter(action => action.type === "implicit"),
+    [actions],
+  );
+
+  const onDeleteImplicitActions = useCallback(() => {
+    askConfirmation({
+      title: t`Disable basic actions?`,
+      message: t`Disabling basic actions will also remove any buttons that use these actions. Are you sure you want to continue?`,
+      confirmButtonText: t`Disable`,
+      onConfirm: () => {
+        implicitActions.forEach(action => {
+          onDeleteAction(action);
+        });
+      },
+    });
+  }, [implicitActions, askConfirmation, onDeleteAction]);
+
   const menuItems = useMemo(() => {
-    return [
-      {
+    const items = [];
+    const hasImplicitActions = implicitActions.length > 0;
+
+    if (hasImplicitActions) {
+      items.push({
+        title: t`Disable basic actions`,
+        icon: "bolt",
+        action: onDeleteImplicitActions,
+      });
+    } else if (supportsImplicitActions) {
+      items.push({
         title: t`Create basic actions`,
         icon: "bolt",
         action: onEnableImplicitActions,
-      },
-    ];
-  }, [onEnableImplicitActions]);
+      });
+    }
+
+    return items;
+  }, [
+    implicitActions,
+    supportsImplicitActions,
+    onEnableImplicitActions,
+    onDeleteImplicitActions,
+  ]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -89,12 +133,13 @@ function ModelActionDetails({
             action={action}
             actionUrl={actionUrl}
             canWrite={canWrite}
+            canRun={canRunActions}
             onArchive={onArchiveAction}
           />
         </li>
       );
     },
-    [model, canWrite, onArchiveAction],
+    [model, canWrite, canRunActions, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
@@ -104,11 +149,11 @@ function ModelActionDetails({
       {canWrite && (
         <ActionsHeader>
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          {!hasImplicitActions && (
+          {menuItems.length > 0 && (
             <ActionMenu
               triggerIcon="ellipsis"
               items={menuItems}
-              triggerProps={ACTION_MENU_TRIGGER_PROPS}
+              triggerProps={{ "aria-label": t`Actions menu` }}
             />
           )}
         </ActionsHeader>
@@ -124,10 +169,11 @@ function ModelActionDetails({
         </ActionList>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite}
+          hasCreateButton={canWrite && supportsImplicitActions}
           onCreateClick={onEnableImplicitActions}
         />
       )}
+      {confirmationModal}
     </Root>
   );
 }
@@ -159,10 +205,6 @@ function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
   return -createdAt.unix();
 }
-
-const ACTION_MENU_TRIGGER_PROPS = {
-  "data-testid": "new-action-menu",
-};
 
 export default _.compose(
   Actions.loadList({

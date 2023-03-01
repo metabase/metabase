@@ -37,6 +37,7 @@
                                :highlight_row true}
                               {:columns       ["c"]
                                :type          "range"
+                               :operator      "="
                                :min_type      "custom"
                                :min_value     3
                                :max_type      "custom"
@@ -401,7 +402,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- node-attrs->map
-  [attrs]
+  [^org.w3c.dom.NamedNodeMap attrs]
   (when attrs
     (into {} (map (fn [i]
                     (let [item (bean (.item attrs i))]
@@ -423,7 +424,7 @@
   [^SVGOMDocument document]
   (letfn [(tree [^Node node]
             (if (instance? org.apache.batik.dom.GenericText node)
-              (.getWholeText node)
+              (.getWholeText ^org.apache.batik.dom.GenericText node)
               (into [(keyword (.getNodeName node)) (node-attrs->map (.getAttributes node))]
                     (map tree
                          (when (instance? Element node)

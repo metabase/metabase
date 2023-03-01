@@ -45,17 +45,36 @@
 
 (declare root-collection)
 
+(defn- remove-other-users-personal-collections
+  [user-id collections]
+  (let [personal-ids (into #{} (comp (filter :personal_owner_id)
+                                     (remove (comp #{user-id} :personal_owner_id))
+                                     (map :id))
+                           collections)
+        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
+        personal?    (fn [{^String location :location id :id}]
+                       (or (personal-ids id)
+                           (prefixes (re-find #"^/\d+/" location))))]
+    (if (seq prefixes)
+      (remove personal? collections)
+      collections)))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
-  `?archived=true`."
-  [archived namespace]
-  {archived  (s/maybe su/BooleanString)
+  `?archived=true`.
+
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`."
+  [archived exclude-other-user-collections namespace]
+  {archived                       (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
-  (let [archived? (Boolean/parseBoolean archived)]
+  (let [archived? (Boolean/parseBoolean archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
@@ -64,7 +83,11 @@
                          :id
                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
              :order-by [[:%lower.name :asc]]}) collections
-      ;; include Root Collection at beginning or results if archived isn't `true`
+          ;; Remove other users' personal collections
+          (if exclude-other-user-collections?
+            (remove-other-users-personal-collections api/*current-user-id* collections)
+            collections)
+          ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
         (let [root (root-collection namespace)]
@@ -101,26 +124,59 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived namespace]
+  [exclude-archived exclude-other-user-collections namespace]
   {exclude-archived (s/maybe su/BooleanString)
+   exclude-other-user-collections (s/maybe su/BooleanString)
    namespace        (s/maybe su/NonBlankString)}
-  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
+        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
                                :card    #{}}
                               (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
-        colls         (db/select Collection
-                        {:where [:and
-                                 (when exclude-archived
-                                   [:= :archived false])
-                                 [:= :namespace namespace]
-                                 (collection/visible-collection-ids->honeysql-filter-clause
-                                  :id
-                                  (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-        colls         (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls)))
+        colls (cond->>
+                (db/select Collection
+                  {:where [:and
+                           (when exclude-archived?
+                             [:= :archived false])
+                           [:= :namespace namespace]
+                           (collection/visible-collection-ids->honeysql-filter-clause
+                            :id
+                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                exclude-other-user-collections?
+                (remove-other-users-personal-collections api/*current-user-id*))
+        colls-with-details (map collection/personal-collection-with-ui-details colls)]
+    (collection/collections->tree coll-type-ids colls-with-details)))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 1]
+    (time
+     (let [exclude-archived?               false
+           exclude-other-user-collections? true
+           coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                                     (update acc (if dataset :dataset :card) conj collection_id))
+                                                   {:dataset #{}
+                                                    :card    #{}}
+                                                   (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                               :from            [:report_card]
+                                                                               :where           [:= :archived false]}))
+           colls                           (cond->>
+                                             (db/select Collection
+                                               {:where [:and
+                                                        (when exclude-archived?
+                                                          [:= :archived false])
+                                                        [:= :namespace nil]
+                                                        (collection/visible-collection-ids->honeysql-filter-clause
+                                                         :id
+                                                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                                             exclude-other-user-collections?
+                                             (remove-other-users-personal-collections api/*current-user-id*))
+           colls-with-details              (map collection/personal-collection-with-ui-details colls)]
+       (collection/collections->tree coll-type-ids colls-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 

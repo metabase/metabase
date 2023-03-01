@@ -15,7 +15,8 @@
         "./frontend/test/*",
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
-      ]
+      ],
+      "e2e/*": ["./e2e/*"]
     },
     "allowJs": true,
     "esModuleInterop": true,

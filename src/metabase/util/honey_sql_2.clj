@@ -32,7 +32,7 @@
   (sqlize [this]
     (let [numerator   (.numerator ^clojure.lang.Ratio this)
           denominator (.denominator ^clojure.lang.Ratio this)]
-      (clojure.core/format "(%d / %d)" numerator denominator))))
+      (clojure.core/format "(%d.0 / %d.0)" numerator denominator))))
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`

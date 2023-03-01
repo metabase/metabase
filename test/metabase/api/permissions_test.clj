@@ -15,7 +15,9 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -101,6 +103,33 @@
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
+
+(deftest create-group-test
+  (testing "POST /permissions/group"
+    (testing "happy path"
+      (mt/with-model-cleanup [PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
+        (is (some? (t2/select PermissionsGroup :name "Test Group")))))
+
+   (testing "requires superuser"
+     (is (= "You don't have permissions to do that."
+          (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
+
+   (testing "group name is required"
+     (is (= {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
+
+(deftest delete-group-test
+  (testing "DELETE /permissions/group/:id"
+    (testing "happy path"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+        (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
+        (is (= 0 (t2/count PermissionsGroup :name "Test group")))))
+
+    (testing "requires superuser"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+         (is (= "You don't have permissions to do that."
+                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
 ;;; +---------------------------------------------- permissions graph apis -----------------------------------------------------------+
 

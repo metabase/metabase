@@ -17,7 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { slugify } from "metabase/lib/formatting";
+import { slugify, humanize } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
@@ -141,7 +141,14 @@ export const generateFieldSettingsFromParameters = (
   params.forEach((param, index) => {
     const field = fieldMetadataMap[param.id]
       ? new Field(fieldMetadataMap[param.id])
-      : undefined;
+      : new Field({
+          id: param.id,
+          name: param.id,
+          slug: param.id,
+          display_name: humanize(param.id),
+          base_type: param.type,
+          semantic_type: param.type,
+        });
 
     const name = param["display-name"] ?? param.name ?? param.id;
     const displayName = field?.displayName?.() ?? name;
@@ -156,7 +163,6 @@ export const generateFieldSettingsFromParameters = (
       description: field?.description ?? "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
-      field: field ?? undefined,
     });
   });
   return fieldSettings;

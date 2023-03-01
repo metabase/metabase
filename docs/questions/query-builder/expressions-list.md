@@ -524,7 +524,7 @@ Returns a portion of the supplied text, specified by a starting position and a l
 
 Syntax: `substring(text, position, length)`
 
-Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
+Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
 Related: [regexextract](#regexextract), [replace](#replace).
 
