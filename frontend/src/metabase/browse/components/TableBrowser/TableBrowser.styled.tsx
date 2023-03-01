@@ -4,6 +4,7 @@ import {
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
+import { color } from "metabase/lib/colors";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import { GridItem } from "metabase/components/Grid";
@@ -45,4 +46,31 @@ export const TableCard = styled(Card)`
   &:hover ${TableActionLink} {
     visibility: visible;
   }
+`;
+
+export const AddTableButton = styled.label<{ isLoading?: boolean }>`
+  display: flex;
+  gap: ${space(1)};
+  align-items: center;
+  padding: 1.5rem ${space(2)};
+  color: ${color("text-dark")};
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: ${props => (props.isLoading ? "progress" : "pointer")};
+
+  &:hover {
+    color: ${props => (props.isLoading ? "inherit" : color("brand"))};
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+`;
+
+export const LoadingStateContainer = styled.div`
+  display: flex;
+  transform: translateY(8px);
+  align-items: center;
+  height: 16px;
+  color: ${color("brand")};
 `;

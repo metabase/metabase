@@ -15,6 +15,7 @@ import {
 
 import { ANALYTICS_CONTEXT } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
+import { AddTable } from "./AddTable";
 import {
   TableActionLink,
   TableCard,
@@ -74,6 +75,7 @@ const TableBrowser = ({
             </TableCard>
           </TableGridItem>
         ))}
+        <AddTable database={database} />
       </Grid>
     </div>
   );

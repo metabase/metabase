@@ -59,6 +59,7 @@
     "mysql2": "^3.1.0",
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
+    "papaparse": "^5.3.2",
     "password-generator": "^2.0.1",
     "prop-types": "^15.5.7",
     "re-reselect": "^3.4.0",

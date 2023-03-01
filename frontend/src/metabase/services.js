@@ -246,6 +246,7 @@ export const MetabaseApi = {
   db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
   db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
+  db_table_create: POST("/api/database/:dbId/create_table"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
