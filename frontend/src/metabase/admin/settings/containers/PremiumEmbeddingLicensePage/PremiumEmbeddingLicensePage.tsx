@@ -5,6 +5,7 @@ import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
+import { SettingDefinition } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { LicenseInput } from "../../components/LicenseInput";
 import { initializeSettings } from "../../settings";
@@ -57,11 +58,11 @@ const mapDispatchToProps = {
 
 interface PremiumEmbeddingLicensePage {
   initializeSettings: () => void;
-  settings: any[];
+  settings: SettingDefinition[];
   upgradeUrl: string;
 }
 
-export const PremiumEmbeddingLicensePage = ({
+const PremiumEmbeddingLicensePage = ({
   settings,
   initializeSettings,
   upgradeUrl,
@@ -92,7 +93,7 @@ export const PremiumEmbeddingLicensePage = ({
 
   const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
 
-  const placeholder = tokenSetting.is_env_setting
+  const placeholder = tokenSetting?.is_env_setting
     ? t`Using ${tokenSetting.env_name}`
     : undefined;
 
@@ -109,10 +110,10 @@ export const PremiumEmbeddingLicensePage = ({
           </LicenseInputTitle>
         )}
         <LicenseInput
-          disabled={tokenSetting.is_env_setting}
+          disabled={tokenSetting?.is_env_setting}
           error={error}
           loading={isUpdating}
-          token={token}
+          token={token ? String(token) : undefined}
           onUpdate={updateToken}
           invalid={isInvalid}
           placeholder={placeholder}
