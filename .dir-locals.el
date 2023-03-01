@@ -92,4 +92,4 @@
 
  ("bin"
   (clojure-mode
-   (cider-clojure-cli-aliases . "dev"))))
+   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))
