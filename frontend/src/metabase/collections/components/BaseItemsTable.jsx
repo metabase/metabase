@@ -151,8 +151,10 @@ function BaseItemsTable({
             <ColumnHeader>
               <BulkSelectWrapper>
                 <CheckBox
-                  checked={selectedItems.length > 0}
-                  indeterminate={selectedItems.length > 0 && hasUnselected}
+                  checked={selectedItems?.length > 0 || false}
+                  indeterminate={
+                    (selectedItems?.length > 0 && hasUnselected) || false
+                  }
                   onChange={hasUnselected ? onSelectAll : onSelectNone}
                   aria-label={t`Select all items`}
                 />

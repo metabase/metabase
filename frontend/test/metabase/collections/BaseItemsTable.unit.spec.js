@@ -82,6 +82,24 @@ describe("Collections BaseItemsTable", () => {
     expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
   });
 
+  it("allows user to select all items", () => {
+    const onSelectAll = jest.fn();
+    setup({ hasUnselected: true, onSelectAll });
+
+    userEvent.click(screen.queryByLabelText("Select all items"));
+
+    expect(onSelectAll).toHaveBeenCalled();
+  });
+
+  it("allows user to deselect all items", () => {
+    const onSelectNone = jest.fn();
+    setup({ hasUnselected: false, onSelectNone });
+
+    userEvent.click(screen.queryByLabelText("Select all items"));
+
+    expect(onSelectNone).toHaveBeenCalled();
+  });
+
   describe("models", () => {
     const model = getCollectionItem({
       id: 1,
