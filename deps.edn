@@ -571,7 +571,7 @@
   ;; Profile Metabase start time with clojure -M:profile
   :profile
   {:main-opts ["-m" "metabase.core" "profile"]
-   :jvm-opts  ["-XX:+CITime"                                                    ; print time spent in JIT compiler
+   :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-XX:+PrintGC"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
