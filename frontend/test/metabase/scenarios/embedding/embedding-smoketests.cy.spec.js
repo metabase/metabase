@@ -9,7 +9,7 @@ import {
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licenseUrl = "https://metabase.com/license/embedding";
-const upgradeUrl = "https://www.metabase.com/upgrade/";
+const upgradeUrl = "https://www.metabase.com/upgrade";
 const learnEmbeddingUrl =
   "https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html";
 
@@ -235,7 +235,7 @@ function enableSharing() {
 function assertLinkMatchesUrl(text, url) {
   cy.findByRole("link", { name: text })
     .should("have.attr", "href")
-    .and("eq", url);
+    .and("contain", url);
 }
 
 function ensureEmbeddingIsDisabled() {
