@@ -16,6 +16,8 @@ import {
   LoadingStateContainer,
 } from "./TableBrowser.styled";
 
+import { detectSchema, formatInsertData } from "./utils";
+
 export function AddTable({ database }: { database: Database }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
@@ -35,19 +37,32 @@ export function AddTable({ database }: { database: Database }) {
       Papa.parse(file, {
         header: true,
         dynamicTyping: true,
-        complete: function (results: any) {
-          MetabaseApi.db_table_create({
-            dbId: database.id,
+        complete: async function (results: any) {
+          const schema = detectSchema(results.data);
+          const { columns, rows } = formatInsertData(results.data);
+
+          const createResponse = await MetabaseApi.db_table_create({
+            db_id: database.id,
             name: name,
-            data: results.data,
-          }).finally(() => {
-            setTimeout(() => {
-              // this is just for show ;-)
-              setTableName(name);
-              setIsLoading(false);
-              setIsUploaded(true);
-            }, 2000);
-          });
+            schema,
+          }).catch(() => ({ table_id: "oops" }));
+
+          console.log({ createResponse });
+
+          const insertResponse = await MetabaseApi.db_table_insert({
+            tableId: createResponse.table_id,
+            columns,
+            values: rows,
+          }).catch(() => ({ table_id: "oops" }));
+
+          console.log({ insertResponse });
+
+          setTimeout(() => {
+            // this is just for show ;-)
+            setTableName(name);
+            setIsLoading(false);
+            setIsUploaded(true);
+          }, 2000);
         },
       });
     }
