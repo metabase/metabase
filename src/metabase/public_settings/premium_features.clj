@@ -39,17 +39,26 @@
   "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
   "https://store.metabase.com")
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (declare premium-embedding-token)
 
-(defn- active-user-count []
+(defn- active-user-count* []
   {:post [(integer? %)]}
+  "Returns the number of active users."
   (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
   (t2/count :core_user :is_active true))
+
+(defsetting active-user-count
+  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+  :visibility :admin
+  :type       :integer
+  :default    0
+  :getter     (memoize/ttl
+                active-user-count*
+                :ttl/threshold (u/minutes->ms 5)))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -70,7 +79,7 @@
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (active-user-count)
+          (http/get {:query-params {:users     (active-user-count*)
                                     :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
           :body
           (json/parse-string keyword)))
@@ -127,7 +136,7 @@
                 ;; tests to fail because a timed-out token check would get cached as a result.
                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
                 (u/with-timeout (u/seconds->ms 5)
-                  (active-user-count))
+                  (active-user-count*))
                 (fetch-token-status* token))
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
