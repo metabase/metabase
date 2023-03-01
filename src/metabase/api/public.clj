@@ -588,7 +588,7 @@
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
             ;; Undo middleware string->keyword coercion
             (snowplow/track-event! ::snowplow/execute-action api/*current-user-id* {:event     :execute
-                                                                                    :source    :dashboard
+                                                                                    :source    :public_form
                                                                                     :type      (:type action)
                                                                                     :action_id (:id action)})
             (actions.execution/execute-action! action (update-keys parameters name))))))))

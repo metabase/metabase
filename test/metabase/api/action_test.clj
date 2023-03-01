@@ -9,7 +9,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -36,6 +37,31 @@
    :creator_id             su/IntGreaterThanZero
    :creator                user/DefaultUser
    s/Keyword               s/Any})
+
+(defn all-actions-default
+  [card-id]
+  [{:name "Get example"
+    :description "A dummy HTTP action"
+    :type "http"
+    :model_id card-id
+    :template {:method "GET"
+               :url "https://example.com/{{x}}"}
+    :parameters [{:id "x" :type "text"}]
+    :response_handle ".body"
+    :error_handle ".status >= 400"}
+   {:name "Query example"
+    :description "A simple update query action"
+    :type "query"
+    :model_id card-id
+    :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
+                           :type name)
+    :database_id (t2/select-one-fn :database_id Card :id card-id)
+    :parameters [{:id "x" :type "type/biginteger"}]}
+   {:name "Implicit example"
+    :type "implicit"
+    :model_id card-id
+    :kind "row/create"
+    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
 
 (deftest list-actions-test
   (mt/with-actions-enabled
@@ -106,28 +132,7 @@
       (mt/with-actions-test-data-tables #{"users" "categories"}
         (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
                           {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
-          (doseq [initial-action [{:name "Get example"
-                                   :description "A dummy HTTP action"
-                                   :type "http"
-                                   :model_id card-id
-                                   :template {:method "GET"
-                                              :url "https://example.com/{{x}}"}
-                                   :parameters [{:id "x" :type "text"}]
-                                   :response_handle ".body"
-                                   :error_handle ".status >= 400"}
-                                  {:name "Query example"
-                                   :description "A simple update query action"
-                                   :type "query"
-                                   :model_id card-id
-                                   :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
-                                                          :type name)
-                                   :database_id (mt/id)
-                                   :parameters [{:id "x" :type "type/biginteger"}]}
-                                  {:name "Implicit example"
-                                   :type "implicit"
-                                   :model_id card-id
-                                   :kind "row/create"
-                                   :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}]]
+          (doseq [initial-action (all-actions-default card-id)]
             (let [update-fn      (fn [m]
                                    (cond-> (assoc m :name "New name")
                                      (= (:type initial-action) "implicit")
@@ -209,29 +214,7 @@
     (mt/with-actions-enabled
       (testing "Should track when"
         (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
-          (doseq [{:keys [type parameters] :as action}
-                  [{:name "Get example"
-                    :description "A dummy HTTP action"
-                    :type "http"
-                    :model_id card-id
-                    :template {:method "GET"
-                               :url "https://example.com/{{x}}"}
-                    :parameters [{:id "x" :type "text"}]
-                    :response_handle ".body"
-                    :error_handle ".status >= 400"}
-                   {:name "Query example"
-                    :description "A simple update query action"
-                    :type "query"
-                    :model_id card-id
-                    :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
-                                           :type name)
-                    :database_id (mt/id)
-                    :parameters [{:id "x" :type "type/biginteger"}]}
-                   {:name "Implicit example"
-                    :type "implicit"
-                    :model_id card-id
-                    :kind "row/create"
-                    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}]]
+          (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
               (testing (format "add an action of type %s" type)
                 (is (=? {:user-id (str (mt/user->id :crowberto))

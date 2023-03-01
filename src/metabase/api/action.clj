@@ -78,7 +78,7 @@
   [action-id]
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/delete-action api/*current-user-id* {:event     :delete
-                                                                           :type       (:type action)
+                                                                           :type      (:type action)
                                                                            :action_id action-id}))
   (db/delete! Action :id action-id)
   api/generic-204-no-content)

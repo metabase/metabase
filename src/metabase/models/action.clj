@@ -22,16 +22,14 @@
 (models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
 
-(def ^:private type->model
+(defn type->model
   "Returns the model from an action type.
    `action-type` can be a string or a keyword."
-  {:http     HTTPAction
-   :implicit ImplicitAction
-   :query    QueryAction})
-
-(def action-types
-  "A set of all valid action types."
-  (set (keys type->model)))
+  [action-type]
+  (case action-type
+    :http     HTTPAction
+    :implicit ImplicitAction
+    :query    QueryAction))
 
 ;;; You can read/write an Action if you can read/write its model (Card)
 (doto Action

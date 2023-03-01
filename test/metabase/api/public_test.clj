@@ -1405,7 +1405,7 @@
                   {:parameters {:id 1 :name "European"}})
                 (is (= {:data   {"action_id" (db/select-one-id 'Action :public_uuid public_uuid)
                                  "event"     "execute"
-                                 "source"    "dashboard"
+                                 "source"    "public_form"
                                  "type"      "query"}
                         :user-id nil}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
