@@ -24,6 +24,7 @@
             User]]
    [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan.db :as db])

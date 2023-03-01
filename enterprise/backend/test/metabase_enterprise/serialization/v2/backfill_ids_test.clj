@@ -4,6 +4,7 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.models :refer [Collection]]
+   [metabase.test :as mt]
    [toucan.db :as db]))
 
 (deftest backfill-needed-test

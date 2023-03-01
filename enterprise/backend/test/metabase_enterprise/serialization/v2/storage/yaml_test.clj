@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
    [metabase.models :refer [Card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [toucan.db :as db]
    [yaml.core :as yaml]))
