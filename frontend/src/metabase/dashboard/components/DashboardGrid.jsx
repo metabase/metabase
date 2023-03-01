@@ -180,6 +180,7 @@ class DashboardGrid extends Component {
       // and scalar value cards (basically a number and some text on a big card)
       heightByDisplayType: {
         action: 1,
+        link: 1,
         text: 2,
         scalar: 4,
       },
