@@ -44,7 +44,7 @@ jobs:
     - name: Collect the test coverage
       run: clojure -X:dev:ee:ee-dev:test:cloverage
     - name: Upload coverage to codecov.io
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: ./target/coverage/codecov.json
         flags: back-end
