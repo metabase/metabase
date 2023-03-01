@@ -202,11 +202,12 @@ describe("binning related reproductions", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByTestId("viz-settings-button").click();
-
+    // Open settings through viz type picker to ensure "Table ptions" is in the sidebar.
+    cy.findByTestId("viz-type-button").click();
     cy.findByTestId("sidebar-left").within(() => {
-      cy.findByText("Add or remove columns").click();
-      cy.findByText("Created At").click();
+      cy.findByTestId("Table-button").click();
+      cy.findByTextEnsureVisible("Table options");
+      cy.findByText("Created At").siblings(".Icon-eye_outline").click();
       cy.button("Done").click();
     });
 

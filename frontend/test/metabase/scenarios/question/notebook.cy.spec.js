@@ -459,9 +459,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     getNotebookStep("summarize")
-      .findByTestId("aggregate-step")
-      .findAllByTestId("notebook-cell-item")
-      .last()
+      .findByText("Pick the metric you want to see")
       .click();
 
     popover().within(() => {
@@ -548,6 +546,16 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => {
         cy.findByText("Median of ...").should("be.visible");
       });
+    });
+  });
+
+  it("should properly render previews (metabase#28726)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByTestId("step-data-0-0").within(() => {
+      cy.icon("play").click();
+      cy.findByTextEnsureVisible("Subtotal");
+      cy.findByTextEnsureVisible("Tax");
+      cy.findByTextEnsureVisible("Total");
     });
   });
 });

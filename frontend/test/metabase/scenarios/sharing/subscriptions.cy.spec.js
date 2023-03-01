@@ -102,6 +102,16 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         popover().isRenderedWithinViewport();
       });
+
+      it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
+        openDashboardSubscriptions();
+        assignRecipient();
+
+        cy.findByLabelText("Attach results").should("not.be.checked");
+        sendEmailAndAssert(
+          ({ attachments }) => expect(attachments).to.be.empty,
+        );
+      });
     });
 
     describe("with existing subscriptions", () => {
