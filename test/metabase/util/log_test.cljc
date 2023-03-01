@@ -32,7 +32,10 @@
               [:info  nil "info"]
               [:debug nil "debug"]
               [:trace nil "trace"]]]
-    (are [prefix level] (= (take prefix logs) (tlog/with-log-messages-for-level level (spam)))
+    (are [prefix level] (= (take prefix logs)
+                           (tlog/with-log-messages-for-level ['metabase.util.log-test
+                                                              level]
+                             (spam)))
          ;0 :off - this doesn't work in CLJ and perhaps should?
          1 :fatal
          2 :error
