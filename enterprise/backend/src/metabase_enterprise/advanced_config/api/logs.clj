@@ -14,7 +14,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.select :as select]))
+   [toucan2.core :as t2]))
 
 (mu/defn query-execution-logs
   "Query to fetch the rows within the specified `month` of `year` from the `query_execution` table."
@@ -24,11 +24,11 @@
                     (if (= (mdb.connection/db-type) :postgres)
                       [:= [:date_part [:inline (name part-key)] :started_at] [:inline part-value]]
                       [:= [part-key :started_at] [:inline part-value]]))
-        results   (select/select :query_execution
-                                 {:order-by [[:started_at :desc]]
-                                  :where    [:and
-                                             (date-part :year year)
-                                             (date-part :month month)]})]
+        results   (t2/select :query_execution
+                             {:order-by [[:started_at :desc]]
+                              :where    [:and
+                                         (date-part :year year)
+                                         (date-part :month month)]})]
     results))
 
 (api/defendpoint GET "/query_execution/:yyyy-mm"
