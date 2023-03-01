@@ -8,7 +8,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
-(def ^:private now (t/offset-date-time))
+(def ^:private now #t "2023-02-28T10:10:10.101010Z")
 
 (def ^:private query-execution-defaults
   {:hash         (qp.util/query-hash {})
@@ -19,7 +19,7 @@
    :context      :ad-hoc})
 
 (deftest fetch-logs-test
-  (testing "GET /api/logs/query_execution/:days"
+  (testing "GET /api/logs/query_execution/:yyyy-mm"
     (let [test-user :crowberto
           user-id   (mt/user->id test-user)]
       (mt/with-temp* [QueryExecution [qe-a (merge query-execution-defaults
@@ -30,7 +30,7 @@
                                                     :started_at  (t/minus now (t/days 32))})]]
         (premium-features.test/with-premium-features #{:advanced-config}
           (is (= [(select-keys qe-a [:started_at :id])]
-                 (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/30")
+                 (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/2023-02")
                       (filter #(#{user-id} (:executor_id %)))
                       (filter #((set (map :id [qe-a qe-b])) (:id %)))
                       (map #(select-keys % [:started_at :id]))))
