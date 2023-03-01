@@ -2,7 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import React, { Component, forwardRef } from "react";
 import styled from "@emotion/styled";
-import { color, hover, space } from "styled-system";
+import { color, hover, space, SpaceProps } from "styled-system";
 import Tooltip from "metabase/core/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
@@ -64,9 +64,20 @@ export const iconPropTypes = {
   style: PropTypes.object,
 };
 
-export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
+export type IconProps = {
+  name: string;
+  color?: string;
+  size?: string | number;
+  width?: string | number;
+  height?: string | number;
+  scale?: string | number;
+  tooltip?: string | null;
+  onClick?: (event: React.MouseEvent<HTMLImageElement | SVGElement>) => void;
+
+  style?: React.CSSProperties;
+  className?: string;
   forwardedRef?: any;
-};
+} & SpaceProps;
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
@@ -161,7 +172,7 @@ const StyledIcon = styled(BaseIconWithRef)`
 const Icon = forwardRef(function Icon(
   { tooltip, ...props }: IconProps,
   ref?: React.Ref<any>,
-) {
+): JSX.Element {
   return tooltip ? (
     <Tooltip tooltip={tooltip}>
       <StyledIcon {...props} />
