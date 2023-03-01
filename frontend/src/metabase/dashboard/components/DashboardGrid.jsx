@@ -175,13 +175,13 @@ class DashboardGrid extends Component {
     const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
+      defaultCardHeight: 6,
       heightByDisplayType: {
         action: 1,
         link: 1,
         text: 2,
         scalar: 4,
       },
-      defaultCardHeight: 6,
     });
     return { desktop, mobile };
   }
