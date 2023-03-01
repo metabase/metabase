@@ -49,14 +49,12 @@
 *or*
 
 ```bash
-# Run from the same directory as this README file
-cd /path/to/metabase/bin/release
-clojure -M -m release
+clojure -X:drivers:build:build/release
 ```
 
 1. Debugging
 
-If you're running into issues running the release script, it's helpful to first check that you can run `./bin/build`
+If you're running into issues running the release script, it's helpful to first check that you can run `./bin/build.sh`
 -- this is the real meat and potatoes of the release process and more likely to be the cause of your issues. If you
 can run that but still need help, talk to Cam.
 

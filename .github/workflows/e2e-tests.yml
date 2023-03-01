@@ -48,8 +48,8 @@ jobs:
         with:
           m2-cache-key: e2e-tests
 
-      - name: Build uberjar with ./bin/build
-        run: ./bin/build version translations frontend licenses drivers uberjar
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact

@@ -178,14 +178,14 @@
      :entry-count  (count grouped)
      :bad-forms    bad-forms}))
 
-(defn -main
+(defn enumerate
   "Entrypoint for creating a backend pot file. Exits with 0 if all forms were processed correctly, exits with 1 if one
   or more forms were found that it could not process."
-  [& [filename]]
+  [{:keys [filename]}]
   (when (str/blank? filename)
     (println "Please provide a filename argument. Eg: ")
-    (println "  clj -M -m i18n.enumerate \"$POT_BACKEND_NAME\"")
-    (println "  clj -M -m i18n.enumerate metabase.pot")
+    (println "  clj -X:build i18n.enumerate/enumerate :filename \"\\\"$POT_BACKEND_NAME\\\"\"")
+    (println "  clj -X:build i18n.enumerate/enumerate :filename '\"metabase.pot\"'")
     (System/exit 1))
   (let [{:keys [valid-usages entry-count bad-forms]} (create-pot-file! roots filename)]
     (println (format "Found %d forms for translations" valid-usages))

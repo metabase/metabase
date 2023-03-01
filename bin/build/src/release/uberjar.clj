@@ -9,7 +9,7 @@
    [release.common.upload :as upload]))
 
 (defn build-uberjar! []
-  (u/step "Run bin/build to build uberjar"
+  (u/step "Build uberjar"
     (u/delete-file-if-exists! (str c/root-directory "/target"))
     (build/build! {:version (str \v (c/version))
                    :edition (c/edition)})

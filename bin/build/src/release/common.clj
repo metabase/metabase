@@ -1,19 +1,13 @@
 (ns release.common
   (:require
    [clojure.string :as str]
-   [environ.core :as env]
-   [metabuild-common.core :as u])
-  (:import
-   (java.io File)))
-
-(assert (str/ends-with? (env/env :user-dir) "/bin/release")
-        "Please run release.clj from the `release` directory e.g. `cd bin/release; clojure -m release`")
+   [metabuild-common.core :as u]))
 
 (def cloudfront-distribution-id "E35CJLWZIZVG7K")
 
 (def ^String root-directory
   "e.g. /Users/cam/metabase"
-  (.. (File. ^String (env/env :user-dir)) getParentFile getParent))
+  u/project-root-directory)
 
 (def ^String uberjar-path
   (u/filename root-directory "target" "uberjar" "metabase.jar"))

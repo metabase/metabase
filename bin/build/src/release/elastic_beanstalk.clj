@@ -3,13 +3,14 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.cache :as cache]
-   [clojure.java.io :as io]
    [metabuild-common.core :as u]
    [release.common :as c]
    [release.common.http :as common.http]
    [release.common.upload :as upload]
    [stencil.core :as stencil]
    [stencil.loader]))
+
+(set! *warn-on-reflection* true)
 
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))
@@ -24,11 +25,11 @@
 
 (def ^:private eb-extensions-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" ".ebextensions")))
+  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".ebextensions")))
 
 (def ^:private eb-platform-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" ".platform")))
+  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" ".platform")))
 
 (def ^:private archive-temp-dir
   "Path where we'll put the contents of the ZIP file before we create it."
@@ -87,9 +88,7 @@
       (u/assert-file-exists archive-path))))
 
 (def ^:private launch-template-filename
-  "release/elastic_beanstalk/launch-aws-eb.html.template")
-
-(u/assert-file-exists (.getPath (io/resource launch-template-filename)))
+  (u/assert-file-exists (u/filename c/root-directory "bin" "build" "src" "release" "elastic_beanstalk" "launch-aws-eb.html.template")))
 
 (defn- create-html-file! []
   (u/step (format "Create launch-aws-eb.html for Docker image %s" (c/docker-tag))
