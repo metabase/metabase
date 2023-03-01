@@ -205,32 +205,33 @@ function PlaceholderInput({
   );
 }
 
+type DefaultValue = string | number;
+
+interface RequiredInputProps {
+  value: boolean;
+  defaultValue?: DefaultValue;
+  onChange: (values: {
+    required: boolean;
+    defaultValue?: DefaultValue;
+  }) => void;
+}
+
 function RequiredInput({
-  value,
+  value: isRequired,
   defaultValue,
   onChange,
-}: {
-  value: boolean;
-  defaultValue?: string | number;
-  onChange: ({
-    required,
-    defaultValue,
-  }: {
-    required: boolean;
-    defaultValue?: string | number;
-  }) => void;
-}) {
+}: RequiredInputProps) {
   return (
     <div>
       <ToggleContainer>
         <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
         <Toggle
           id="is-required"
-          value={!!value}
+          value={!!isRequired}
           onChange={required => onChange({ required, defaultValue })}
         />
       </ToggleContainer>
-      {!value && (
+      {!isRequired && (
         <>
           <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
           <Input
