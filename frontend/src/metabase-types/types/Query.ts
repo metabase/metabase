@@ -318,6 +318,7 @@ export type ExpressionOperand =
   | ConcreteField
   | NumericLiteral
   | StringLiteral
+  | boolean
   | Expression;
 
 export type FieldsClause = ConcreteField[];
