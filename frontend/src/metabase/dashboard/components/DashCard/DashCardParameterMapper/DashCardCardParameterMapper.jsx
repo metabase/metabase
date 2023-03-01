@@ -79,7 +79,7 @@ DashCardCardParameterMapper.propTypes = {
   isMobile: PropTypes.bool,
 };
 
-function DashCardCardParameterMapper({
+export function DashCardCardParameterMapper({
   card,
   dashcard,
   editingParameter,
@@ -196,7 +196,7 @@ function DashCardCardParameterMapper({
             {mappingInfoText}
           </TextCardDefault>
         ) : (
-          <TextCardDefault>
+          <TextCardDefault aria-label={mappingInfoText}>
             <Icon
               name="info"
               size={16}
