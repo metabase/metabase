@@ -453,4 +453,25 @@
   {field_order [su/IntGreaterThanZero]}
   (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
+;;; ------------------------------------- POST /api/table/ ---------------------------------------
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
+  "Create `Table` with given schema."
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+                   show_in_getting_started field_order name db_id schema], :as body} :body}]
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
+   show_in_getting_started (s/maybe s/Bool)
+   field_order             (s/maybe FieldOrder)
+   name                    s/Str
+   db_id                   su/IntGreaterThanZero
+   schema                  {s/Str s/Str}}
+  (db/insert! Table (dissoc body :schema))
+  (table/create-sql-table! db_id name schema))
+
 (api/define-routes)
