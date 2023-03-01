@@ -726,3 +726,35 @@
                                     [2 "Small Marble Shoes"]
                                     [3 "Synergistic Granite Chair"]]}
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
+
+(deftest enable-json-unfolding-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset json
+      (let [db    (db/select-one Database :id (mt/id))
+            table (db/select-one Table :db_id (mt/id) :name "json")
+            field (db/select-one Field :id (mt/id :json :json_bit))
+            enable-json-unfolding! (fn [v]
+                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                           (assoc field :nfc_enabled v)))
+            sync!                  (fn []
+                                     (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)) {}))
+            nested-fields          (fn []
+                                     (->> (db/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                          (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
+        (testing "nested fields are present when json unfolding is enabled"
+          (enable-json-unfolding! true)
+          (sync!)
+          (Thread/sleep 500)
+          (is (seq (nested-fields))))
+
+        (testing "nested fields are removed when json unfolding is disabled"
+          (enable-json-unfolding! false)
+          (sync!)
+          (Thread/sleep 500)
+          (is (empty? (nested-fields))))
+
+        (testing "nested fields are added when json unfolding is enabled again"
+          (enable-json-unfolding! true)
+          (sync!)
+          (Thread/sleep 500)
+          (is (seq (nested-fields))))))))
