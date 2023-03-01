@@ -6,16 +6,16 @@
 
 (deftest basic-logp-test
   (is (= [[:warn nil "a message"]]
-         (tlog/with-log-messages-for-level :warn
+         (tlog/with-log-messages-for-level [metabase.util.log-test :warn]
            (log/info "not this one")
            (log/warn "a message"))))
   (is (= [[:info nil "here's one"]
           [:warn nil "a message"]]
-         (tlog/with-log-messages-for-level :info
+         (tlog/with-log-messages-for-level [metabase.util.log-test :info]
            (log/info "here's one")
            (log/warn "a message"))))
   (is (= [[:info nil ":keyword 78"]]
-         (tlog/with-log-messages-for-level :info
+         (tlog/with-log-messages-for-level [metabase.util.log-test :info]
            (log/info :keyword 78)))))
 
 (deftest logp-levels-test
@@ -33,7 +33,7 @@
               [:debug nil "debug"]
               [:trace nil "trace"]]]
     (are [prefix level] (= (take prefix logs)
-                           (tlog/with-log-messages-for-level ['metabase.util.log-test
+                           (tlog/with-log-messages-for-level [metabase.util.log-test
                                                               level]
                              (spam)))
          ;0 :off - this doesn't work in CLJ and perhaps should?
@@ -46,5 +46,5 @@
 
 (deftest logf-formatting-test
   (is (= [[:info nil "input: 8, 3; output: ignored"]]
-         (tlog/with-log-messages-for-level :info
+         (tlog/with-log-messages-for-level [metabase.util.log-test :info]
            (log/infof "input: %d, %d; %s: ignored" 8 3 "output")))))
