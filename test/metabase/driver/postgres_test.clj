@@ -347,14 +347,6 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
-(deftest ^:parallel json-query-support-test
-  (testing "JSON database support options behave as they're supposed to"
-    (are [details expected] (= expected
-                               (driver/database-supports? :postgres :nested-field-columns {:details details}))
-      {}                      true
-      {:json-unfolding true}  true
-      {:json-unfolding false} false)))
-
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"

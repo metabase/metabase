@@ -177,7 +177,13 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (handle-secrets-changes database)
+      (u/prog1  (-> database
+                    (cond->
+                      ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                      (and (some? (:details database))
+                           (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                      (update :details dissoc :json_unfolding))
+                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
         (when (or new-metadata-schedule new-fieldvalues-schedule)
@@ -344,3 +350,15 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
+
+(serdes.base/register-ingestion-path!
+  "Database"
+  ;; ["databases" "my-db" "my-db"]
+  (fn [[a b c :as path]]
+    (when (and (= (count path) 3)
+               (= a "databases")
+               (= b c))
+      [{:model "Database" :id c}])))
+
+(defn json-unfolding? [database]
+  (get-in database [:details :json-unfolding] true))

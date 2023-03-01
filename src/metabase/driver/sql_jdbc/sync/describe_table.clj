@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.models.database :as database]
    [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
@@ -163,12 +164,10 @@
                      :database-position i}
                     (when semantic-type
                       {:semantic-type semantic-type})
-                    (when (and
-                           (isa? base-type :type/JSON)
-                           (driver/database-supports?
-                            driver
-                            :nested-field-columns
-                            (table/database table)))
+                    (when (isa? base-type :type/JSON)
+                      {:json-unfolding (database/json-unfolding-default (table/database table))})
+                    (when (and (isa? base-type :type/JSON)
+                               (database/json-unfolding-default (table/database table)))
                       {:visibility-type :details-only}))))))
 
 (defmulti describe-table-fields
@@ -396,13 +395,14 @@
 (defn describe-nested-field-columns
   "Default implementation of [[metabase.driver.sql-jdbc.sync.interface/describe-nested-field-columns]] for SQL JDBC
   drivers. Goes and queries the table if there are JSON columns for the nested contents."
-  [driver spec table]
+  [driver spec database table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
           table-fields          (describe-table-fields driver conn table nil)
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
+        ;; unfolding is disabled if the field has json_unfolding set to false, or if json-unfolding is disabled for the database.
         (let [unfolding-disabled-field-names (set (db/select-field :name 'Field :table_id (u/the-id table) :json_unfolding false))
               unfolding-json-fields          (filter (fn [field]
                                                        (not (contains? unfolding-disabled-field-names (:name field))))
