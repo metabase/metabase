@@ -518,6 +518,22 @@
   :build/i18n
   {:exec-fn i18n.create-artifacts/create-all-artifacts!}
 
+  ;; Build everything, and run the release steps.
+  ;;
+  ;;    clojure -X:drivers:build:build/release
+  ;;    clojure -X:drivers:build:build/release :steps '[:build-uberjar :upload-uberjar]'
+  ;;
+  ;; Available steps:
+  ;;
+  ;;    :build-uberjar
+  ;;    :upload-uberjar
+  ;;    :push-git-tags
+  ;;    :publish-draft-release
+  ;;    :publish-elastic-beanstalk-artifacts
+  ;;    :update-version-info
+  :build/release
+  {:exec-fn release/release}
+
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev
   {:extra-paths ["bin/build/test"]
