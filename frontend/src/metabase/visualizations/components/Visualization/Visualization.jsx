@@ -484,7 +484,7 @@ class Visualization extends React.PureComponent {
           ) : (
             <div
               data-card-key={getCardKey(series[0].card)}
-              className="flex flex-column full-height"
+              className="flex flex-column flex-full"
             >
               <CardVisualization
                 {...this.props}

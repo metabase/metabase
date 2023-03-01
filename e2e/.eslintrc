@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "import/no-commonjs": 0,
+    "no-color-literals": 0
+  },
+  "env": {
+    "cypress/globals": true,
+    "node": true
+  },
+  "plugins": ["cypress"]
+}
