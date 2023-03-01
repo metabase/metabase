@@ -73,7 +73,7 @@ jobs:
   be-tests-druid-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -609,7 +609,7 @@ jobs:
   be-tests-sparksql-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: 'true'
