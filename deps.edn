@@ -232,7 +232,9 @@
                  "-XX:-OmitStackTraceInFastThrow"
                  ;; prevent Java icon from randomly popping up in macOS dock
                  "-Djava.awt.headless=true"
-                 ;; include more details for debugging NPEs
+                 ;; ignore options that aren't present in older versions of Java, like the one below:
+                 "-XX:+IgnoreUnrecognizedVMOptions"
+                 ;; include more details for debugging NPEs (Java 14+)
                  "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
@@ -477,6 +479,7 @@
    :jvm-opts
    ["-Dclojure.main.report=stderr"
     "-XX:-OmitStackTraceInFastThrow"
+    "-XX:+IgnoreUnrecognizedVMOptions"
     "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
   ;; Build everything:
