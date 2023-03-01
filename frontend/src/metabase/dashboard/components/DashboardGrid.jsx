@@ -179,6 +179,7 @@ class DashboardGrid extends Component {
       // Exceptions are text cards (can take too much vertical space)
       // and scalar value cards (basically a number and some text on a big card)
       heightByDisplayType: {
+        action: 1,
         text: 2,
         scalar: 4,
       },
