@@ -2,17 +2,16 @@ import type { DatasetQuery } from "metabase-types/types/Card";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
 
-export enum QuestionStepType {
-  Data = "data",
-  Join = "join",
-  Expression = "expression",
-  Filter = "filter",
-  Summarize = "summarize",
-  Aggregate = "aggregate",
-  Breakout = "breakout",
-  Sort = "sort",
-  Limit = "limit",
-}
+export type QuestionStepType =
+  | "data"
+  | "join"
+  | "expression"
+  | "filter"
+  | "summarize"
+  | "aggregate"
+  | "breakout"
+  | "sort"
+  | "limit";
 
 export interface QuestionStep {
   id: string;

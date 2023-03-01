@@ -1,22 +1,21 @@
 import React, { useRef, useState } from "react";
 import cx from "classnames";
 import { t } from "ttag";
-import styled from "@emotion/styled";
-import { isDef } from "metabase/lib/language";
+import { isNotNull } from "metabase/core/utils/types";
+import { ExpressionWidgetWrapper } from "metabase/query_builder/components/expressions/ExpressionWidget.styled";
+import { ExpressionValue } from "metabase/query_builder/components/expressions/expressions.types";
 import { isExpression } from "metabase-lib/expressions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
-type Expression = number | string | Array<any>;
-
 interface ExpressionWidgetProps {
   query: StructuredQuery;
-  expression: Expression | undefined;
+  expression: ExpressionValue | undefined;
   name: string | undefined;
 
   reportTimezone: string;
 
-  onChangeExpression: (name: string, expression: Expression) => void;
+  onChangeExpression: (name: string, expression: ExpressionValue) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 }
@@ -33,7 +32,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   } = props;
 
   const [name, setName] = useState(initialName || "");
-  const [expression, setExpression] = useState<Expression | null>(
+  const [expression, setExpression] = useState<ExpressionValue | null>(
     initialExpression || null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -43,14 +42,14 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const isValid = !!name && !error && isExpression(expression);
 
   const handleCommit = () => {
-    if (isValid && isDef(expression)) {
+    if (isValid && isNotNull(expression)) {
       onChangeExpression(name, expression);
       onClose && onClose();
     }
   };
 
   return (
-    <Wrapper>
+    <ExpressionWidgetWrapper>
       <div className="p2">
         <div className="h5 text-uppercase text-light text-bold">{t`Expression`}</div>
         <div ref={helpTextTargetRef}>
@@ -60,7 +59,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             name={name}
             query={query}
             reportTimezone={reportTimezone}
-            onChange={(parsedExpression: Expression) => {
+            onChange={(parsedExpression: ExpressionValue) => {
               setExpression(parsedExpression);
               setError(null);
             }}
@@ -113,12 +112,8 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           ) : null}
         </div>
       </div>
-    </Wrapper>
+    </ExpressionWidgetWrapper>
   );
 };
-
-const Wrapper = styled.div`
-  width: 445px;
-`;
 
 export default ExpressionWidget;

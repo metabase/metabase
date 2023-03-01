@@ -2,10 +2,10 @@ import React from "react";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { NotebookStepUiComponentProps } from "metabase/query_builder/components/notebook/lib/steps.types";
+import { ExpressionValue } from "metabase/query_builder/components/expressions/expressions.types";
 import ClauseStep from "./ClauseStep";
 
 type ExpressionStepProps = NotebookStepUiComponentProps;
-type Expression = any;
 
 const ExpressionStep = ({
   color,
@@ -21,7 +21,7 @@ const ExpressionStep = ({
   return (
     <ClauseStep<{
       name: string;
-      expression: Expression;
+      expression: ExpressionValue;
     }>
       color={color}
       items={items}
@@ -31,7 +31,10 @@ const ExpressionStep = ({
           query={query}
           name={item?.name}
           expression={item?.expression}
-          onChangeExpression={(newName: string, newExpression: Expression) =>
+          onChangeExpression={(
+            newName: string,
+            newExpression: ExpressionValue,
+          ) =>
             item?.expression
               ? updateQuery(
                   query.updateExpression(newName, newExpression, name),
