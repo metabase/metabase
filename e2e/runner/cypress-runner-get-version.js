@@ -11,11 +11,11 @@ const getVersion = async () => {
     printCyan(version);
 
     printBold(
-      "If that version seems too old, please run `./bin/build version uberjar`.",
+      "If that version seems too old, please run `./bin/build.sh :steps '[:version :uberjar]'`.",
     );
   } catch (e) {
     printBold(
-      "No version file found. Please run `./bin/build version uberjar`.",
+      "No version file found. Please run `./bin/build.sh :steps '[:version :uberjar]'`.",
     );
 
     process.exit(1);

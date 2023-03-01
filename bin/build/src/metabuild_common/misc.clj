@@ -19,6 +19,7 @@
      (which is super confusing, because it's an _unnamespaced_ keyword whose the _name_ is `:driver`)"
   [s]
   (cond
+    (symbol? s)          (parse-as-keyword (name s))
     (keyword? s)         s
     (not (str/blank? s)) (keyword (cond-> s
                                     (str/starts-with? s ":") (.substring 1)))))
