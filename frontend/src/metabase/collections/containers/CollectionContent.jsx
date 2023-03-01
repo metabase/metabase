@@ -264,11 +264,14 @@ function CollectionContent({
                           handleUnpinnedItemsSortingChange
                         }
                         selectedItems={selected}
+                        hasUnselected={hasUnselected}
                         getIsSelected={getIsSelected}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
                         onMove={handleMove}
                         onCopy={handleCopy}
+                        onSelectAll={handleSelectAll}
+                        onSelectNone={clear}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (

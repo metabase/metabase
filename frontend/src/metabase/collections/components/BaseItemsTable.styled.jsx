@@ -10,11 +10,13 @@ import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-const LAST_EDITED_BY_INDEX = 3;
-const LAST_EDITED_AT_INDEX = 4;
+const LAST_EDITED_BY_INDEX = 4;
+const LAST_EDITED_AT_INDEX = 5;
 
 export const Table = styled.table`
+  background-color: ${color("white")};
   table-layout: fixed;
   border-collapse: unset;
 
@@ -28,6 +30,22 @@ export const Table = styled.table`
       display: none;
     }
   }
+
+  thead {
+    th {
+      border-top: 1px solid ${color("border")};
+
+      &:first-of-type {
+        border-top-left-radius: 8px;
+        border-left: 1px solid ${color("border")};
+      }
+
+      &:last-child {
+        border-top-right-radius: 8px;
+        border-right: 1px solid ${color("border")};
+      }
+    }
+  }
 `;
 
 Table.defaultProps = { className: "ContentTable" };
@@ -36,6 +54,12 @@ export const ColumnHeader = styled.th`
   padding: 1em 1em 0.75em !important;
   font-weight: bold;
   color: ${color("text-medium")};
+`;
+
+export const BulkSelectWrapper = styled(IconButtonWrapper)`
+  padding-left: 12px;
+  padding-right: 12px;
+  width: 3em;
 `;
 
 export const LastEditedByCol = styled.col`
@@ -124,8 +148,6 @@ export const TableItemSecondaryField = styled.span`
 `;
 
 export const TBody = styled.tbody`
-  background-color: ${color("white")};
-
   td {
     border: none;
     background-color: transparent;
@@ -143,16 +165,6 @@ export const TBody = styled.tbody`
 
   tr {
     background-color: transparent;
-  }
-
-  tr:first-of-type {
-    td:first-of-type {
-      border-top-left-radius: 8px;
-    }
-
-    td:last-child {
-      border-top-right-radius: 8px;
-    }
   }
 
   tr:last-child {

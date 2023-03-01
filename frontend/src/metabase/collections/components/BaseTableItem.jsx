@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment-timezone";
 
@@ -59,8 +59,6 @@ export function BaseTableItem({
   onDrop,
   onToggleSelected,
 }) {
-  const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
-
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
   }, [item, onToggleSelected]);
@@ -93,28 +91,27 @@ export function BaseTableItem({
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
     return (
-      <tr
-        onMouseEnter={() => {
-          setIsHoveringOverRow(true);
-        }}
-        onMouseLeave={() => {
-          setIsHoveringOverRow(false);
-        }}
-        key={item.id}
-        data-testid={testId}
-        style={trStyles}
-      >
+      <tr key={item.id} data-testid={testId} style={trStyles}>
+        <ItemCell data-testid={`${testId}-check`}>
+          <EntityIconCheckBox
+            item={item}
+            variant="list"
+            icon={icon}
+            pinned={isPinned}
+            disabled={!canSelect}
+            selected={isSelected}
+            onToggleSelected={handleSelectionToggled}
+            selectable
+            showCheckbox
+          />
+        </ItemCell>
         <ItemCell data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
             variant="list"
             icon={icon}
             pinned={isPinned}
-            selectable={canSelect}
-            selected={isSelected}
             disabled={!canSelect}
-            onToggleSelected={handleSelectionToggled}
-            showCheckbox={isHoveringOverRow}
           />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
@@ -168,7 +165,6 @@ export function BaseTableItem({
     isPinned,
     isSelected,
     handleSelectionToggled,
-    isHoveringOverRow,
     linkProps,
     collection,
     onCopy,
