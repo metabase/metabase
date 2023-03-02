@@ -360,5 +360,7 @@
                (= b c))
       [{:model "Database" :id c}])))
 
-(defn json-unfolding? [database]
+(defn json-unfolding-default
+  "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
+  [database]
   (get-in database [:details :json-unfolding] true))
