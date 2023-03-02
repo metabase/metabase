@@ -51,7 +51,7 @@ function BulkActions(props) {
       <Motion
         defaultStyle={{
           opacity: 0,
-          translateY: 0,
+          translateY: 100,
         }}
         style={{
           opacity: showing ? spring(1) : spring(0),
