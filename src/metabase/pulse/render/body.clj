@@ -564,7 +564,7 @@
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
-        (/ overlap-width max-width))
+        (/ (double overlap-width) (double max-width)))
       0)))
 
 (defn- overlap2
@@ -584,7 +584,7 @@
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
-        (/ overlap-width max-width))
+        (/ (double overlap-width) (double max-width)))
       0)))
 
 (defn- group-axes
@@ -678,14 +678,14 @@
       starting-positions)
     (if (contains? positions nil)
       (let [grouping-fn #(if (= (count (first %)) 1)
-                           (fn [row] (first (first row)))
-                           (fn [row] (second (first row))))
+                           (first (first %))
+                           (second (first %)))
             joined-rows-map    (-> (group-by grouping-fn joined-rows)
                                    (update-vals #(mapcat last %)))
             overlaps           (-> joined-rows-map
-                                   (update-vals (fn [vals]
+                                   (update-vals (fn [vs]
                                                   (into {} (map (fn [k]
-                                                                  [k (overlap2 (get joined-rows-map k) vals)])
+                                                                  [k (overlap2 (get joined-rows-map k) vs)])
                                                                 (keys joined-rows-map))))))
             lefts              (or (:left positions) [(first (get positions nil))])
             rights             (or (:right positions) [])
