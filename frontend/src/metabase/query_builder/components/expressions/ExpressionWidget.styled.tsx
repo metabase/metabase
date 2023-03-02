@@ -43,7 +43,7 @@ export const StyledFieldTitleIcon = styled(Icon)`
 export const Divider = styled.div`
   width: 100%;
   height: 1px;
-  background-color: #eeecec;
+  background-color: ${color("border")};
   margin-top: 0.5rem;
 `;
 

@@ -51,16 +51,21 @@ const createMockQueryForExpressions = () => {
   return query;
 };
 
-const onChangeExpressionMock = jest.fn();
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
+  const mocks = {
+    onChangeExpression: jest.fn(),
+  };
+
   const props = {
     expression: undefined,
     name: undefined,
     query: createMockQueryForExpressions(),
     reportTimezone: "UTC",
-    onChangeExpression: onChangeExpressionMock,
+    ...mocks,
     ...additionalProps,
   };
 
   render(<ExpressionWidget {...props} />);
+
+  return mocks;
 }
