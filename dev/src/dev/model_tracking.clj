@@ -19,7 +19,9 @@
    [toucan2.model :as t2.model]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
-   [toucan2.tools.before-update :as t2.before-update]))
+   [toucan2.tools.before-update :as t2.before-update]
+   [toucan2.util :as t2.util]))
+
 
 (def changes*
   "An atom to store all the changes of models that we currently track."
@@ -79,14 +81,18 @@
 (def ^:private hook-and-actions
   "A list of toucan hooks that we will subscribed to when tracking a model."
   [;; will be better if we could use after-insert to get the inserted id, but toucan2 doesn't define a multimethod for after-insert
-   [#'t2.before-insert/before-insert :after :insert]
-   [#'t2.before-update/before-update :after :update]
+   [#'t2.before-insert/before-insert :after :insert ::t2.before-insert/before-insert]
+   [#'t2.before-update/before-update :after :update ::t2.before-update/before-update]
    ;; we do :before aux-method instead of :after for delete bacause the after method has input is number of affected rows
-   [#'t2.before-delete/before-delete :before :delete]])
+   [#'t2.before-delete/before-delete :before :delete ::t2.before-delete/before-delete]])
 
 (defn- track-one!
   [model]
-  (doseq [[hook aux-method action] hook-and-actions]
+  (doseq [[hook aux-method action deriveable] hook-and-actions]
+    #_(when-not (m/primary-method @hook model)
+        ;; aux-method will not be triggered if there isn't a primary method
+        (t2.util/maybe-derive model deriveable)
+        (m/add-primary-method! hook model (fn [_ _model row] row)))
     (m/add-aux-method-with-unique-key! hook aux-method model (new-change-thunk model action) ::tracking)))
 
 (defn track!
