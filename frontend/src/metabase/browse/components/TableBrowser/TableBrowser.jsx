@@ -75,7 +75,7 @@ const TableBrowser = ({
             </TableCard>
           </TableGridItem>
         ))}
-        <AddTable database={database} />
+        <AddTable database={database} schemaName={schemaName} />
       </Grid>
     </div>
   );

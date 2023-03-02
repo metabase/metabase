@@ -1,9 +1,15 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { t } from "ttag";
 import Papa from "papaparse";
 
+import {
+  syncDatabaseSchema,
+  rescanDatabaseFields,
+} from "metabase/admin/databases/database";
 import type { Database } from "metabase-types/api";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -18,10 +24,19 @@ import {
 
 import { detectSchema, formatInsertData } from "./utils";
 
-export function AddTable({ database }: { database: Database }) {
+export function AddTable({
+  database,
+  schemaName,
+}: {
+  database: Database;
+  schemaName: string;
+}) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploaded, setIsUploaded] = useState(false);
-  const [tableName, setTableName] = useState("");
+  const [isUploaded] = useState(false);
+  const [tableName] = useState("");
+  const [tableId] = useState(0);
+
+  const dispatch = useDispatch();
 
   // TODO: get from settings for white-labeled instances
   const loadingMessage = t`Doing Science ...`;
@@ -47,22 +62,21 @@ export function AddTable({ database }: { database: Database }) {
             schema,
           }).catch(() => ({ id: "oops" }));
 
-          console.log({ createResponse });
-
-          const insertResponse = await MetabaseApi.db_table_insert({
+          await MetabaseApi.db_table_insert({
             tableId: createResponse.id,
             columns,
             values: rows,
           }).catch(() => ({ table_id: "oops" }));
 
-          console.log({ insertResponse });
+          // 🤫
+          await syncDatabaseSchema(database.id)(dispatch);
+          await rescanDatabaseFields(database.id)(dispatch);
 
           setTimeout(() => {
-            // this is just for show ;-)
-            setTableName(name);
-            setIsLoading(false);
-            setIsUploaded(true);
-          }, 2000);
+            // there's not currently a way to refresh the fields for a table
+            // without reloading the page
+            window.location.reload();
+          }, 1000);
         },
       });
     }
@@ -72,10 +86,12 @@ export function AddTable({ database }: { database: Database }) {
     return (
       <TableGridItem>
         <TableCard>
-          <AddTableButton isLoading={false}>
-            <Icon name="check" size={18} color={color("accent1")} />
-            <span> {tableName} </span>
-          </AddTableButton>
+          <Link to={`/question#?db=${database.id}&table=${tableId}`}>
+            <AddTableButton isLoading={false}>
+              <Icon name="check" size={18} color={color("accent1")} />
+              <span> {tableName} </span>
+            </AddTableButton>
+          </Link>
         </TableCard>
       </TableGridItem>
     );
