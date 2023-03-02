@@ -1,14 +1,14 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  createOrdersTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
-import { createEntitiesState } from "__support__/store";
 import { getIcon } from "__support__/ui";
-import { getMetadata } from "metabase/selectors/metadata";
 import { createMockState } from "metabase-types/store/mocks";
+import { createEntitiesState } from "__support__/store";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/selectors/metadata";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
@@ -38,18 +38,15 @@ describe("ExpressionWidget", () => {
   });
 });
 
-const createMockQueryFoxExpressions = () => {
-  const TABLE_ID = 1;
-
+const createMockQueryForExpressions = () => {
   const state = createMockState({
     entities: createEntitiesState({
       databases: [createSampleDatabase()],
-      tables: [createOrdersTable()],
     }),
   });
 
   const metadata = getMetadata(state);
-  const query = metadata.table(TABLE_ID)?.query();
+  const query = metadata.table(ORDERS_ID)?.query();
 
   return query;
 };
@@ -59,7 +56,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const props = {
     expression: undefined,
     name: undefined,
-    query: createMockQueryFoxExpressions(),
+    query: createMockQueryForExpressions(),
     reportTimezone: "UTC",
     onChangeExpression: onChangeExpressionMock,
     ...additionalProps,
