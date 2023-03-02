@@ -14,7 +14,7 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
@@ -165,7 +165,7 @@
                                          {:group-by [(db/qualify QueryExecution :card_id) :context]
                                           :where    [:and
                                                      (when-not all-users? [:= :executor_id api/*current-user-id*])
-                                                     [:= :context (hx/literal :question)]
+                                                     [:= :context (h2x/literal :question)]
                                                      [:= :bm.id nil]]
                                           :order-by [[:max_ts :desc]]
                                           :limit    card-runs-limit
