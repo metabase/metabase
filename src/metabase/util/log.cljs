@@ -8,12 +8,6 @@
   (:require-macros
    [metabase.util.log]))
 
-;; if capture stuff is available, make sure it's loaded, because the macros in the Clojure version of this namespace
-;; refer to it
-(try
-  (require 'metabase.util.log.capture)
-  (catch js/Error _))
-
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 (comment gstring.format/keep-me)
 
