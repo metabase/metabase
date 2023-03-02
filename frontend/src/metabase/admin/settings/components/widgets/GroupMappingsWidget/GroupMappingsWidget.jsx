@@ -1,17 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
-import { connect } from "react-redux";
-import { t } from "ttag";
 import _ from "underscore";
+import { t } from "ttag";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import Group from "metabase/entities/groups";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import { getSetting } from "metabase/selectors/settings";
 
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
@@ -25,19 +21,6 @@ import {
   AddMappingButton,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
-
-const mapStateToProps = (state, props) => {
-  return {
-    allGroups: Group.selectors.getList(state),
-    mappings: getSetting(state, props.mappingSetting) || {},
-  };
-};
-
-const mapDispatchToProps = {
-  updateSetting,
-  deleteGroup: Group.actions.delete,
-  clearGroupMember: Group.actions.clearMember,
-};
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
@@ -185,7 +168,4 @@ function GroupMappingsWidget({
   );
 }
 
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Group.loadList(),
-)(GroupMappingsWidget);
+export default GroupMappingsWidget;

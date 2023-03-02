@@ -13,7 +13,8 @@ import Form, {
   FormSection,
 } from "metabase/containers/FormikForm";
 import MetabaseSettings from "metabase/lib/settings";
-import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
