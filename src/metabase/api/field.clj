@@ -113,6 +113,10 @@
       (doseq [field nested-fields]
         (db/update! Field (:id field) :active false)))))
 
+(comment
+  (db/select-one 'Field :id 630)
+  )
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
@@ -130,7 +134,7 @@
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)
    nfc_path           (s/maybe [su/NonBlankString])
-   json_unfolding        (s/maybe s/Bool)}
+   json_unfolding     (s/maybe s/Bool)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -165,12 +169,12 @@
                                      :coercion_strategy coercion-strategy)
                               :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                              :non-nil #{:display_name :settings}))))
+                              :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
       (when (not= effective-type (:effective_type field))
-        (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>))))))))
+        (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
