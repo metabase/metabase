@@ -14306,36 +14306,36 @@ databaseChangeLog:
       comment: Added 0.47.0 -- migrate base-type for JSON database types for postgres and mysql
       validCheckSum: ANY
       changes:
-        - sql: 
+        - sql:
             dbms: postgresql
             sql: >-
-              UPDATE metabase_field f 
+              UPDATE metabase_field f
               SET base_type = 'type/JSON'
               FROM metabase_database d
               JOIN metabase_table t ON t.db_id = d.id
-              WHERE f.table_id = t.id 
+              WHERE f.table_id = t.id
                 AND lower(f.database_type) in ('json', 'jsonb');
         - sql:
             dbms: mysql,mariadb
-            sql: >- 
+            sql: >-
               UPDATE metabase_field f
               JOIN metabase_table t ON f.table_id = t.id
               JOIN metabase_database d ON t.db_id = d.id
               SET base_type = 'type/JSON'
               WHERE lower(f.database_type) = 'json';
-      rollback: # TODO
-        - sql: 
+      rollback:
+        - sql:
             dbms: postgresql
             sql: >-
-              UPDATE metabase_field f 
+              UPDATE metabase_field f
               SET base_type = 'type/SerializedJSON'
               FROM metabase_database d
               JOIN metabase_table t ON t.db_id = d.id
-              WHERE f.table_id = t.id 
+              WHERE f.table_id = t.id
                 AND lower(f.database_type) in ('json', 'jsonb');
         - sql:
             dbms: mysql,mariadb
-            sql: >- 
+            sql: >-
               UPDATE metabase_field f
               JOIN metabase_table t ON f.table_id = t.id
               JOIN metabase_database d ON t.db_id = d.id
