@@ -11,7 +11,6 @@ import CollectionCopyEntityModal from "metabase/collections/components/Collectio
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
-import { NAV_SIDEBAR_WIDTH_HALF } from "metabase/nav/constants";
 import {
   BulkActionsToast,
   CardButton,
