@@ -196,9 +196,7 @@
    --collections [collection-id-list] - a comma-separated list of IDs of collection to export
    --include-field-values             - flag, default false, controls export of field values"
   [path & options]
-  (let [opts (-> options
-                 cmd-args->map
-                 (update :collections parse-int-list))]
+  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids
