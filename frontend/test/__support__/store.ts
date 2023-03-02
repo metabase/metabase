@@ -10,21 +10,18 @@ import {
   TableSchema,
   UserSchema,
 } from "metabase/schema";
-
 import {
   Card,
   Collection,
   Dashboard,
+  Database,
+  Field,
   NativeQuerySnippet,
+  Table,
   User,
   WritebackAction,
 } from "metabase-types/api";
-import {
-  EntitiesState,
-  NormalizedDatabase,
-  NormalizedField,
-  NormalizedTable,
-} from "metabase-types/store";
+import { EntitiesState } from "metabase-types/store";
 
 const SCHEMA = {
   actions: [ActionSchema],
@@ -42,9 +39,9 @@ export interface EntitiesStateOpts {
   actions?: WritebackAction[];
   collections?: Collection[];
   dashboards?: Dashboard[];
-  databases?: NormalizedDatabase[];
-  tables?: NormalizedTable[];
-  fields?: NormalizedField[];
+  databases?: Database[];
+  tables?: Table[];
+  fields?: Field[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
