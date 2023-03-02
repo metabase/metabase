@@ -4,14 +4,12 @@ import { useSelector, useDispatch } from "react-redux";
 import { Motion, spring } from "react-motion";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
 
 import { getIsNavbarOpen } from "metabase/redux/app";
-import { NAV_SIDEBAR_WIDTH_HALF } from "metabase/nav/constants";
 import {
   CardContent,
   CardContentSide,
@@ -63,12 +61,8 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         <ToastCard
           dark
           data-testid="toast-undo"
-          style={{
-            ...{ transform: `translateY(${translateY}px)` },
-            ...(undo.toastColor
-              ? { backgroundColor: color(undo.toastColor) }
-              : {}),
-          }}
+          translateY={translateY}
+          color={undo.toastColor}
         >
           <CardContent>
             <CardContentSide>
@@ -94,7 +88,7 @@ function UndoListingInner() {
   const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   return (
-    <UndoList style={{ marginLeft: isNavbarOpen ? NAV_SIDEBAR_WIDTH_HALF : 0 }}>
+    <UndoList isNavbarOpen={isNavbarOpen}>
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}

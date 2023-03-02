@@ -475,7 +475,7 @@ describe("scenarios > collection defaults", () => {
 
           cy.findByText("Undo").click();
           navigationSidebar().findByText("Our analytics").click();
-          cy.findByText("Orders").should("exist");
+          cy.findByText("Orders").should("be.visible");
           cy.findByText("Undo").should("not.exist");
         });
       });
