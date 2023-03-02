@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -13,7 +12,9 @@ import {
 
 const ActionIcon = ({ icon, onClick }) => (
   <ColumnItemIcon
-    name={icon}
+    onlyIcon
+    icon={icon}
+    iconSize={16}
     onClick={e => {
       e.stopPropagation();
       onClick(e.target);
