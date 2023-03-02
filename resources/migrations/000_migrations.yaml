@@ -14300,6 +14300,49 @@ databaseChangeLog:
             constraintName: fk_action_model_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 -- migrate base-type for JSON database types for postgres and mysql
+      validCheckSum: ANY
+      changes:
+        - sql: 
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field f 
+              SET base_type = 'type/JSON'
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id 
+                AND lower(f.database_type) in ('json', 'jsonb');
+        - sql:
+            dbms: mysql,mariadb
+            sql: >- 
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET base_type = 'type/JSON'
+              WHERE lower(f.database_type) = 'json';
+      rollback: # TODO
+        - sql: 
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field f 
+              SET base_type = 'type/SerializedJSON'
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id 
+                AND lower(f.database_type) in ('json', 'jsonb');
+        - sql:
+            dbms: mysql,mariadb
+            sql: >- 
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET base_type = 'type/SerializedJSON'
+              WHERE lower(f.database_type) = 'json';
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
