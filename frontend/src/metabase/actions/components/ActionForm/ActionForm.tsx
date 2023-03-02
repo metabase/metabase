@@ -141,7 +141,6 @@ export const ActionForm = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          isSettings={isSettings}
                         >
                           {isEditable && (
                             <SettingsContainer>

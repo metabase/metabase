@@ -8,24 +8,16 @@ export const ActionFormButtonContainer = styled.div`
   gap: 0.5rem;
 `;
 
-interface FormFieldContainerProps {
-  isSettings?: boolean;
-}
-
-export const FormFieldContainer = styled.div<FormFieldContainerProps>`
-  ${({ isSettings }) =>
-    isSettings &&
-    `
-    position: relative;
-    display: flex;
-    align-items: center;
-    border-radius: ${space(1)};
-    padding: ${space(1)};
-    margin-bottom: ${space(1)};
-    background-color: ${color("bg-white")};
-    border: 1px solid ${color("border")};
-    overflow: hidden;
-  `}
+export const FormFieldContainer = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: ${space(1)};
+  padding: ${space(1)};
+  margin-bottom: ${space(1)};
+  background-color: ${color("bg-white")};
+  border: 1px solid ${color("border")};
+  overflow: hidden;
 `;
 
 export const SettingsContainer = styled.div`
