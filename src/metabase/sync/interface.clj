@@ -33,6 +33,7 @@
    (s/optional-key :pk?)               s/Bool
    (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
    (s/optional-key :nfc-path)          [s/Any]
+   (s/optional-key :json-unfolding)    s/Bool
    (s/optional-key :custom)            {s/Any s/Any}
    (s/optional-key :database-required) s/Bool
    ;; for future backwards compatability, when adding things

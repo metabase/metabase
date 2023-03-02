@@ -314,10 +314,10 @@
         (is (partial= {:details {}}
                       db))))))
 
-(deftest ^:parallel json-unfolding-test
+(deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
     (are [details expected] (= expected
-                               (database/json-unfolding? {:details details}))
+                               (database/json-unfolding-default {:details details}))
       {}                      true
       {:json-unfolding true}  true
       {:json-unfolding false} false)))

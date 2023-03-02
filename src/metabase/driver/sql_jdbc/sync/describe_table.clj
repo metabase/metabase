@@ -395,7 +395,7 @@
 (defn describe-nested-field-columns
   "Default implementation of [[metabase.driver.sql-jdbc.sync.interface/describe-nested-field-columns]] for SQL JDBC
   drivers. Goes and queries the table if there are JSON columns for the nested contents."
-  [driver spec database table]
+  [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
           table-fields          (describe-table-fields driver conn table nil)
