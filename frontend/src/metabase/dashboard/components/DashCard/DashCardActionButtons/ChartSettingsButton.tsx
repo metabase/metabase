@@ -11,8 +11,6 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
 
 import DashCardActionButton from "./DashCardActionButton";
 
@@ -21,7 +19,6 @@ interface Props {
   dashboard: Dashboard;
   dashcard?: DashboardOrderedCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
-  metadata: Metadata;
 }
 
 function ChartSettingsButton({
@@ -29,10 +26,7 @@ function ChartSettingsButton({
   dashboard,
   dashcard,
   onReplaceAllVisualizationSettings,
-  metadata,
 }: Props) {
-  const question = new Question(series[0].card, metadata);
-
   return (
     <ModalWithTrigger
       wide
@@ -51,8 +45,6 @@ function ChartSettingsButton({
         isDashboard
         dashboard={dashboard}
         dashcard={dashcard}
-        metadata={metadata}
-        question={question}
       />
     </ModalWithTrigger>
   );

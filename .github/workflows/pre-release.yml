@@ -38,7 +38,7 @@ jobs:
       with:
         m2-cache-key: pre-release-build
     - name: Build
-      run: ./bin/build
+      run: ./bin/build.sh
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 

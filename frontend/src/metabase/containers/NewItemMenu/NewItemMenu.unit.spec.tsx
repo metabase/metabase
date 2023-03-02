@@ -7,6 +7,7 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 
 import type { Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import NewItemMenu from "./NewItemMenu";
 
@@ -26,14 +27,7 @@ type SetupOpts = {
   hasModels?: boolean;
 };
 
-const SAMPLE_DATABASE = createMockDatabase({
-  id: 1,
-  engine: "postgres",
-  name: "Sample Database",
-  native_permissions: "write",
-  is_sample: true,
-  settings: null,
-});
+const SAMPLE_DATABASE = createSampleDatabase();
 
 const DB_WITH_ACTIONS = createMockDatabase({
   id: 2,
