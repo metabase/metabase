@@ -178,7 +178,7 @@
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
-                   (str "This enables unfolding JSON columns into component fields by default."
+                   (str "This enables unfolding JSON columns into component fields by default. "
                         "You can turn this off if performance is slow, and you can override this setting on each field."))
    :default      true})
 
