@@ -27,13 +27,13 @@
 
 (def ^:private tracked-models (atom #{}))
 
-(defn ^:dynamcic do-to-change
+(defn ^:dynamcic on-change
   "When a change occurred, execute this function.
 
   Currently it just prints the console out to the console.
   But if you prefer other method of debugging (i.e: tap), you can redef this function
 
-    (alter-var-root #'model-tracking/do-to-change (fn [path change] (tap> [path change])))
+    (alter-var-root #'model-tracking/on-change (fn [path change] (tap> [path change])))
 
 
   - path: is a element vector [model, action]
@@ -67,7 +67,7 @@
                         clean-change)
         path       [(t2/table-name model) action]]
     ;; ideally this should be debug, but for some reasons this doesn't get logged
-    (do-to-change path change-info)
+    (on-change path change-info)
     (swap! changes* update-in path concat [change-info])))
 
 (defn- new-change-thunk
