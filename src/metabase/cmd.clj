@@ -128,7 +128,7 @@
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
 (defn- cmd-args->map
-  "Returns a map of keywords parsed from command-line argument flags and values. Handles 
+  "Returns a map of keywords parsed from command-line argument flags and values. Handles
    boolean flags as well as explicit values."
   [args]
   (m/map-keys #(keyword (str/replace-first % "--" ""))
