@@ -402,15 +402,16 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        ;; unfolding is enabled if the field has json_unfolding=true,
-        ;; or if that field doesn't exist, if json unfolding is enabled for the database
         (let [existing-fields-by-name (m/index-by :name (t2/select 'Field :table_id (u/the-id table)))
-              unfolding-json-fields   (filter (fn [field]
+              unfold-json-fields      (filter (fn [field]
+                                                ;; unfold json if the field has json_unfolding=true,
+                                                ;; or if that field doesn't exist already and json unfolding is
+                                                ;; enabled for the database by default
                                                 (if-let [existing-field (existing-fields-by-name (:name field))]
                                                   (:json_unfolding existing-field)
                                                   (database/json-unfolding-default (table/database table))))
                                               json-fields)]
-          (if (empty? unfolding-json-fields)
+          (if (empty? unfold-json-fields)
             #{}
             (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
               (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
