@@ -1,5 +1,5 @@
-(ns dev.db-tracking
-  "A set of utility function to track database changes.
+(ns dev.model-tracking
+  "A set of utility function to track model changes.
   Use this when you want to observe changes of database models when doing stuffs on UI.
 
   How to use this?
@@ -21,42 +21,59 @@
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]))
 
-(def ^:private tracking (atom {}))
+(def changes*
+  "An atom to store all the changes of models that we currently track."
+  (atom {}))
 
 (def ^:private tracked-models (atom #{}))
 
-(defn- clean-tracking
-  [tracking]
-  (dissoc tracking :updated_at :created_at))
+(defn ^:dynamcic do-to-change
+  "When a change occurred, execute this function.
 
-(defn- new-tracking
-  "Add a tracking to the [[tracking]] atom.
+  Currently it just prints the console out to the console.
+  But if you prefer other method of debugging (i.e: tap), you can redef this function
 
-    > (new-tracking :models/Card :insert {:name \"new card\"})
+    (alter-var-root #'model-tracking/do-to-change (fn [path change] (tap> [path change])))
+
+
+  - path: is a element vector [model, action]
+  - change-info: is a map of the change for a model
+  "
+  [path change-info]
+  (println (u/colorize :magenta :new-change) (u/colorize :magenta path))
+  (pprint/pprint change-info))
+
+(defn- clean-change
+  [change]
+  (dissoc change :updated_at :created_at))
+
+(defn- new-change
+  "Add a change to the [[changes]] atom.
+
+    > (new-change :models/Card :insert {:name \"new card\"})
     instance
 
-    > @tracking
-    {:insert {:report_card [{:name \"new card\"}]}]}.
+    > @changes*
+    {:report_card {:insert [{:name \"new card\"}]}]}.
 
   For insert, track the instance as a map.
   For update, only track the changes."
   [model action row-or-instance]
-  (let [model      (t2/resolve-model model)
-        track-item (->> (case action
-                          :update
-                          (into {} (t2/changes row-or-instance))
-                          (into {} row-or-instance))
-                       clean-tracking)
+  (let [model       (t2/resolve-model model)
+        change-info (->> (case action
+                           :update
+                           (into {} (t2/changes row-or-instance))
+                           (into {} row-or-instance))
+                        clean-change)
         path       [(t2/table-name model) action]]
     ;; ideally this should be debug, but for some reasons this doesn't get logged
-    (println (u/colorize :magenta :new-tracking) (u/colorize :magenta path))
-    (pprint/pprint track-item)
-    (swap! tracking update-in path concat [track-item])))
+    (do-to-change path change-info)
+    (swap! changes* update-in path concat [change-info])))
 
-(defn- new-tracking-thunk
+(defn- new-change-thunk
   [model action]
   (fn [_model row]
-    (new-tracking model action row)
+    (new-change model action row)
     row))
 
 (def ^:private hook-and-actions
@@ -70,7 +87,7 @@
 (defn- track-one!
   [model]
   (doseq [[hook aux-method action] hook-and-actions]
-    (m/add-aux-method-with-unique-key! hook aux-method model (new-tracking-thunk model action) ::tracking)))
+    (m/add-aux-method-with-unique-key! hook aux-method model (new-change-thunk model action) ::tracking)))
 
 (defn track!
   "Start tracking a list of models.
@@ -98,7 +115,7 @@
 (defn reset-changes!
   "Empty all the recorded changes."
   []
-  (reset! tracking {}))
+  (reset! changes* {}))
 
 (defn untrack-all!
   "Quickly untrack all the tracked models."
@@ -110,15 +127,4 @@
 (defn changes
   "Return all changes that were recorded."
   []
-  @tracking)
-
-(track! 'Collection)
-
-(comment
-  (require '[metabase.models :as models])
-  (track! models/Dashboard models/Card models/DashboardCard)
-
-  (reset-changes!)
-
-  (untrack! models/Dashboard models/Card models/DashboardCard)
-  (untrack-all!))
+  @changes*)

@@ -2,7 +2,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
-   [dev.db-tracking :as db-tracking]
+   [dev.model-tracking :as model-tracking]
    [dev.debug-qp :as debug-qp]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
@@ -34,15 +34,16 @@
 
 (comment
   debug-qp/keep-me
-  db-tracking/keep-me)
+  model-tracking/keep-me)
 
 (defn tap>-spy [x]
   (doto x tap>))
 
 (p/import-vars
  [debug-qp process-query-debug]
- [db-tracking
+ [model-tracking
   track!
+  untrack!
   untrack-all!
   reset-changes!
   changes])
