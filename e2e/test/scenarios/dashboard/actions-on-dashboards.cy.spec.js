@@ -146,7 +146,6 @@ const MODEL_NAME = "Test Action Model";
               model_id: id,
             });
           });
-        });
 
           createDashboardWithActionButton({
             actionName,
@@ -557,89 +556,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
       });
-    },
-  );
-
-  describe(
-    `Actions Data Types (${dialect})`,
-    { tags: ["@external", "@actions"] },
-    () => {
-      beforeEach(() => {
-        cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-          "getCardAssociations",
-        );
-        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
-
-        cy.intercept(
-          "GET",
-          "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("executePrefetch");
-
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-          "executeAPI",
-        );
-
-        resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
-        restore(`${dialect}-writable`);
-        cy.signInAsAdmin();
-        resyncDatabase(WRITABLE_DB_ID);
-        cy.wait(300);
-      });
-
-      it("can update various data types via implicit actions", () => {
-        createModelFromTable(TEST_COLUMNS_TABLE);
-        cy.get("@modelId").then(id => {
-          createImplicitAction({
-            kind: "update",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName: "Update",
-          idFilter: true,
-        });
-
-        filterWidget().click();
-        addWidgetStringFilter("1");
-
-        clickHelper("Update");
-
-        cy.wait("@executePrefetch");
-
-        const oldRow = many_data_types_data[0];
-
-        modal().within(() => {
-          changeValue({
-            fieldName: "Uuid",
-            fieldType: "text",
-            oldValue: oldRow.uuid,
-            newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Create",
-            idFilter: true,
-          });
-
-          clickHelper("Create");
-
-          modal().within(() => {
-            cy.findByPlaceholderText("Uuid").should("be.visible");
-            cy.findByPlaceholderText("Json").should("not.exist");
-            cy.findByPlaceholderText("Jsonb").should("not.exist");
-            cy.findByPlaceholderText("Binary").should("not.exist");
-
-            if (dialect === "mysql") {
-              // we only have enums in postgres as of Feb 2023
-              cy.findByPlaceholderText("Enum").should("not.exist");
-            }
-          });
-        });
-      });
-    },
-  );
+    });
 });
 
 const createModelFromTable = tableName => {
