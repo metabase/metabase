@@ -45,12 +45,12 @@ export function AddTable({ database }: { database: Database }) {
             db_id: database.id,
             name: name,
             schema,
-          }).catch(() => ({ table_id: "oops" }));
+          }).catch(() => ({ id: "oops" }));
 
           console.log({ createResponse });
 
           const insertResponse = await MetabaseApi.db_table_insert({
-            tableId: createResponse.table_id,
+            tableId: createResponse.id,
             columns,
             values: rows,
           }).catch(() => ({ table_id: "oops" }));

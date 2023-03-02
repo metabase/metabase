@@ -43,9 +43,9 @@
   "Add the given rows (a map of two arrays: `:columns` and `:values`) to the table."
   [{:keys [name db_id] :as _table}
    {:keys [columns values]}]
-  (let [[sql & params] (sql/format {:insert-into name
-                                      :columns columns
-                                      :values values})
+  (let [[sql & params] (sql/format {:insert-into (databasify name)
+                                    :columns     columns
+                                    :values      values})
         query          {:type :native
                         :database db_id
                         :native {:query sql

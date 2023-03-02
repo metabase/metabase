@@ -479,13 +479,13 @@
     new-table))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rows"
+(api/defendpoint-schema PUT "/:id/rows"
   "Add the given rows to the table"
-  [id :as {{:keys [cols-and-values]} :body}]
+  [id :as {{:keys [columns] :as body} :body}]
   {id   su/IntGreaterThanZero
-   cols-and-values {:columns [s/Str]
-                    :values  [s/Any]}}
+   body s/Any #_{:columns [s/Str]
+                 :values  [s/Any]}}
   (let [table (api/check-404 (db/select-one Table :id id))]
-    (csv-upload/add-rows! table cols-and-values)))
+    (csv-upload/add-rows! table body)))
 
 (api/define-routes)
