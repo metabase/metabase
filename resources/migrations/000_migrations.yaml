@@ -14301,9 +14301,9 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v46.00-086
+      id: v47.00-001
       author: calherries
-      comment: Added 0.46.0 - Add json_unfolding column to metabase_field
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
       changes:
         - addColumn:
             columns:
@@ -14314,6 +14314,30 @@ databaseChangeLog:
                 constraints:
                   nullable: true
             tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on database details
+      validCheckSum: ANY
+      changes:
+        - sql:
+          dbms: postgres
+          sql: >-
+            UPDATE metabase_field f
+            SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding')::boolean, true)
+            FROM metabase_database d
+            JOIN metabase_table t ON t.db_id = d.id
+            WHERE f.table_id = t.id AND f.semantic_type = 'type/SerializedJSON'
+        - sql:
+          dbms: mysql
+          sql: >-
+            UPDATE metabase_field f
+            JOIN metabase_table t ON f.table_id = t.id
+            JOIN metabase_database d ON t.db_id = d.id
+            SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$.json-unfolding'))::boolean, true)
+            WHERE f.semantic_type = 'type/SerializedJSON'
+      rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:
       id: v47.00-003
