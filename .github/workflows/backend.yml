@@ -146,6 +146,7 @@ jobs:
         reporter: java-junit
         list-suites: failed
         list-tests: failed
+        fail-on-error: false
 
   be-tests:
     needs: files-changed
@@ -183,6 +184,7 @@ jobs:
         reporter: java-junit
         list-suites: failed
         list-tests: failed
+        fail-on-error: false
 
   be-tests-stub:
     needs: files-changed
