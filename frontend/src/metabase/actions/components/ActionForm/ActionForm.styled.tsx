@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
 
 export const ActionFormButtonContainer = styled.div`
   display: flex;
@@ -11,30 +10,4 @@ export const ActionFormButtonContainer = styled.div`
 export const FormFieldEditorDragContainer = styled.div`
   margin-bottom: ${space(1)};
   overflow: hidden;
-`;
-
-export const FormFieldContainer = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: ${space(1)};
-
-  background-color: ${color("bg-white")};
-
-  border: 1px solid ${color("border")};
-  border-radius: ${space(1)};
-`;
-
-export const SettingsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  color: ${color("text-medium")};
-  margin-right: ${space(1)};
-`;
-
-export const InputContainer = styled.div`
-  flex-grow: 1;
-  flex-basis: 1;
-  flex-shrink: 0;
 `;
