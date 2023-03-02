@@ -30,6 +30,7 @@ import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
   ActionFormButtonContainer,
+  FormFieldEditorDragContainer,
   FormFieldContainer,
   SettingsContainer,
   InputContainer,
@@ -137,29 +138,31 @@ export const ActionForm = ({
                       index={index}
                     >
                       {(provided: DraggableProvided) => (
-                        <FormFieldContainer
+                        <FormFieldEditorDragContainer
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
                         >
-                          {isEditable && (
-                            <SettingsContainer>
-                              <Icon name="grabber2" size={14} />
-                            </SettingsContainer>
-                          )}
-                          <InputContainer>
-                            <FormFieldWidget
-                              key={field.name}
-                              formField={field}
-                            />
-                          </InputContainer>
-                          {isEditable && (
-                            <FieldSettingsButtons
-                              fieldSettings={fieldSettings[field.name]}
-                              onChange={handleChangeFieldSettings}
-                            />
-                          )}
-                        </FormFieldContainer>
+                          <FormFieldContainer>
+                            {isEditable && (
+                              <SettingsContainer>
+                                <Icon name="grabber2" size={14} />
+                              </SettingsContainer>
+                            )}
+                            <InputContainer>
+                              <FormFieldWidget
+                                key={field.name}
+                                formField={field}
+                              />
+                            </InputContainer>
+                            {isEditable && (
+                              <FieldSettingsButtons
+                                fieldSettings={fieldSettings[field.name]}
+                                onChange={handleChangeFieldSettings}
+                              />
+                            )}
+                          </FormFieldContainer>
+                        </FormFieldEditorDragContainer>
                       )}
                     </Draggable>
                   ))}

@@ -8,16 +8,21 @@ export const ActionFormButtonContainer = styled.div`
   gap: 0.5rem;
 `;
 
+export const FormFieldEditorDragContainer = styled.div`
+  margin-bottom: ${space(1)};
+  overflow: hidden;
+`;
+
 export const FormFieldContainer = styled.div`
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: ${space(1)};
   padding: ${space(1)};
-  margin-bottom: ${space(1)};
+
   background-color: ${color("bg-white")};
+
   border: 1px solid ${color("border")};
-  overflow: hidden;
+  border-radius: ${space(1)};
 `;
 
 export const SettingsContainer = styled.div`
