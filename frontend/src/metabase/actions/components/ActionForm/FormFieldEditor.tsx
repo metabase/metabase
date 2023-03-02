@@ -1,17 +1,28 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-
-import type { FieldSettings } from "metabase-types/api";
+import Radio from "metabase/core/components/Radio";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
+import type { FieldSettings, FieldType } from "metabase-types/api";
 
 import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
+import {
+  getFieldTypes,
+  getInputTypes,
+} from "../../containers/ActionCreator/FormCreator/constants";
+
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
+  Column,
+  DragHandle,
+  EditorContainer,
   FormFieldContainer,
-  SettingsContainer,
+  Header,
   InputContainer,
+  Title,
+  Subtitle,
+  PreviewContainer,
 } from "./FormFieldEditor.styled";
 
 interface FormFieldEditorProps {
@@ -27,22 +38,55 @@ function FormFieldEditor({
   isEditable,
   onChange,
 }: FormFieldEditorProps) {
+  const fieldTypes = useMemo(getFieldTypes, []);
+  const inputTypes = useMemo(getInputTypes, []);
+
+  const handleChangeFieldType = (nextFieldType: FieldType) => {
+    const [defaultInputType] = inputTypes[nextFieldType];
+    onChange({
+      ...fieldSettings,
+      fieldType: nextFieldType,
+      inputType: defaultInputType.value,
+    });
+  };
+
   return (
     <FormFieldContainer>
-      {isEditable && (
-        <SettingsContainer>
-          <Icon name="grabber2" size={14} />
-        </SettingsContainer>
-      )}
-      <InputContainer>
-        <FormFieldWidget key={field.name} formField={field} />
-      </InputContainer>
-      {isEditable && (
-        <FieldSettingsButtons
-          fieldSettings={fieldSettings}
-          onChange={onChange}
-        />
-      )}
+      <EditorContainer>
+        <Column>{isEditable && <DragHandle name="grabber2" />}</Column>
+        <Column full>
+          <Header>
+            <Title>{field.title}</Title>
+            {isEditable && (
+              <FieldSettingsButtons
+                fieldSettings={fieldSettings}
+                onChange={onChange}
+              />
+            )}
+          </Header>
+          {isEditable && (
+            <>
+              <Subtitle>{t`Field type`}</Subtitle>
+              <Radio
+                value={fieldSettings.fieldType}
+                options={fieldTypes}
+                aria-label={t`Field type`}
+                variant="bubble"
+                onChange={handleChangeFieldType}
+              />
+            </>
+          )}
+          <Subtitle>{t`Appearance`}</Subtitle>
+        </Column>
+      </EditorContainer>
+      <PreviewContainer>
+        <Column />
+        <Column full>
+          <InputContainer>
+            <FormFieldWidget key={field.name} formField={field} />
+          </InputContainer>
+        </Column>
+      </PreviewContainer>
     </FormFieldContainer>
   );
 }
