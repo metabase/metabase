@@ -300,6 +300,32 @@ const FieldGeneralPane = ({
       />
     </Section>
 
+    {isa(field.semantic_type, TYPE.SerializedJSON) &&
+      database.hasFeature("nested-field-columns") && (
+        <Section>
+          <SectionHeader
+            title={t`Unfold JSON`}
+            description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
+          />
+          <Select
+            className="inline-block"
+            value={
+              field.json_unfolding ||
+              (database.details["json-unfolding"] ?? true)
+            }
+            onChange={({ target: { value } }) => {
+              return onUpdateFieldProperties({
+                json_unfolding: value,
+              });
+            }}
+            options={[
+              { name: t`Yes`, value: true },
+              { name: t`No`, value: false },
+            ]}
+          />
+        </Section>
+      )}
+
     {!isTypeFK(field.semantic_type) && is_coerceable(field.base_type) && (
       <Section>
         <SectionHeader title={t`Cast to a specific data type`} />
@@ -329,31 +355,7 @@ const FieldGeneralPane = ({
         />
       </Section>
     )}
-    {isa(field.semantic_type, TYPE.SerializedJSON) &&
-      database.hasFeature("nested-field-columns") && (
-        <Section>
-          <SectionHeader
-            title={t`Unfold JSON`}
-            description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
-          />
-          <Select
-            className="inline-block"
-            value={
-              field.json_unfolding ||
-              (database.details["json-unfolding"] ?? true)
-            }
-            onChange={({ target: { value } }) => {
-              return onUpdateFieldProperties({
-                json_unfolding: value,
-              });
-            }}
-            options={[
-              { name: t`Yes`, value: true },
-              { name: t`No`, value: false },
-            ]}
-          />
-        </Section>
-      )}
+
     <Section>
       <SectionHeader
         title={t`Filtering on this field`}
