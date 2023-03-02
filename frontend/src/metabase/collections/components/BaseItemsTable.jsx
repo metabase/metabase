@@ -131,10 +131,12 @@ function BaseItemsTable({
       onToggleSelected,
     });
 
+  const canSelect = collection.can_write || false;
+
   return (
     <Table {...props}>
       <colgroup>
-        <col style={{ width: "70px" }} />
+        {canSelect && <col style={{ width: "70px" }} />}
         <col style={{ width: "70px" }} />
         <col />
         <LastEditedByCol />
@@ -148,18 +150,20 @@ function BaseItemsTable({
           }
         >
           <tr>
-            <ColumnHeader>
-              <BulkSelectWrapper>
-                <CheckBox
-                  checked={selectedItems?.length > 0 || false}
-                  indeterminate={
-                    (selectedItems?.length > 0 && hasUnselected) || false
-                  }
-                  onChange={hasUnselected ? onSelectAll : onSelectNone}
-                  aria-label={t`Select all items`}
-                />
-              </BulkSelectWrapper>
-            </ColumnHeader>
+            {canSelect && (
+              <ColumnHeader>
+                <BulkSelectWrapper>
+                  <CheckBox
+                    checked={selectedItems?.length > 0 || false}
+                    indeterminate={
+                      (selectedItems?.length > 0 && hasUnselected) || false
+                    }
+                    onChange={hasUnselected ? onSelectAll : onSelectNone}
+                    aria-label={t`Select all items`}
+                  />
+                </BulkSelectWrapper>
+              </ColumnHeader>
+            )}
             <SortableColumnHeader
               name="model"
               sortingOptions={sortingOptions}

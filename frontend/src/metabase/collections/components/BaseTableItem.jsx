@@ -92,26 +92,26 @@ export function BaseTableItem({
     // So styled-components can't be used here
     return (
       <tr key={item.id} data-testid={testId} style={trStyles}>
-        <ItemCell data-testid={`${testId}-check`}>
-          <EntityIconCheckBox
-            item={item}
-            variant="list"
-            icon={icon}
-            pinned={isPinned}
-            disabled={!canSelect}
-            selected={isSelected}
-            onToggleSelected={handleSelectionToggled}
-            selectable
-            showCheckbox
-          />
-        </ItemCell>
+        {canSelect && (
+          <ItemCell data-testid={`${testId}-check`}>
+            <EntityIconCheckBox
+              item={item}
+              variant="list"
+              icon={icon}
+              pinned={isPinned}
+              selected={isSelected}
+              onToggleSelected={handleSelectionToggled}
+              selectable
+              showCheckbox
+            />
+          </ItemCell>
+        )}
         <ItemCell data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
             variant="list"
             icon={icon}
             pinned={isPinned}
-            disabled={!canSelect}
           />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
