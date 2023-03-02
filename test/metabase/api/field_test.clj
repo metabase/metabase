@@ -755,7 +755,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
       (let [database (t2/select-one Database :id (mt/id))]
-        ;; Create a new database with the same details as the json dataset, with json_unfolding disabled
+        ;; Create a new database with the same details as the json dataset, with json unfolding disabled by default
         (mt/with-temp* [Database [database {:engine :postgres, :details (assoc (:details database) :json-unfolding false)}]]
           (mt/with-db database
             ;; Sync the new database
