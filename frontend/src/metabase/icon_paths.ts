@@ -3,6 +3,10 @@
     -----
 
     These paths represent the current canonical icon set for Metabase.
+
+
+    Some of these icons are used in BE to render subscriptions and defined in src/metabase/pulse/render/js_svg.clj
+    so if you update icons here please make sure you update icons there as well.
 */
 export const ICON_PATHS: Record<string, any> = {
   add: "M12.4285714,12.4285714 L12.4285714,0 L19.5714286,0 L19.5714286,12.4285714 L32,12.4285714 L32,19.5714286 L19.5714286,19.5714286 L19.5714286,32 L12.4285714,32 L12.4285714,19.5714286 L0,19.5714286 L0,12.4285714 L12.4285714,12.4285714 Z",

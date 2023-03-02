@@ -522,6 +522,7 @@
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
+   metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
