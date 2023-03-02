@@ -64,7 +64,7 @@ export function createMetadata(updateState = (state: EnhancedState) => state) {
   const stateModified = updateState(chain(state)).thaw().value();
 
   stateModified.entities.fields = normalizeFields(
-    stateModified.entities.fields || {},
+    (stateModified.entities.fields as Record<string, IField>) || {},
   );
 
   const metadata = getMetadata(stateModified);

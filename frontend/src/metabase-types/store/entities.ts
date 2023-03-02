@@ -3,9 +3,12 @@ import {
   Collection,
   Dashboard,
   Database,
+  DatabaseId,
   Field,
   FieldId,
   NativeQuerySnippet,
+  Schema,
+  SchemaId,
   Table,
   TableId,
   User,
@@ -14,13 +17,25 @@ import {
 
 export interface NormalizedDatabase extends Omit<Database, "tables"> {
   tables?: TableId[];
+  schemas?: SchemaId[];
 }
 
-export interface NormalizedTable extends Omit<Table, "fields"> {
+export interface NormalizedSchema extends Schema {
+  database?: DatabaseId;
+  tables?: TableId[];
+}
+
+export interface NormalizedTable
+  extends Omit<Table, "db" | "fields" | "schema"> {
+  db?: DatabaseId;
   fields?: FieldId[];
+  schema?: SchemaId;
 }
 
-export interface NormalizedField extends Field {
+export interface NormalizedField extends Omit<Field, "target" | "name_field"> {
+  table?: TableId;
+  target?: FieldId;
+  name_field?: FieldId;
   uniqueId: string;
 }
 
