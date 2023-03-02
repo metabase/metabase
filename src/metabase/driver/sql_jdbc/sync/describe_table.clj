@@ -18,7 +18,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -405,11 +405,14 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        ;; unfolding is disabled if the field has json_unfolding set to false, or if json-unfolding is disabled for the database.
-        (let [unfolding-disabled-field-names (set (db/select-field :name 'Field :table_id (u/the-id table) :json_unfolding false))
-              unfolding-json-fields          (filter (fn [field]
-                                                       (not (contains? unfolding-disabled-field-names (:name field))))
-                                                     json-fields)]
+        ;; unfolding is enabled if the field has json_unfolding=true,
+        ;; or if that field doesn't exist, if json unfolding is enabled for the database
+        (let [existing-fields-by-name (m/index-by :name (t2/select 'Field :table_id (u/the-id table)))
+              unfolding-json-fields   (filter (fn [field]
+                                                (if-let [existing-field (existing-fields-by-name (:name field))]
+                                                  (:json_unfolding existing-field)
+                                                  (database/json-unfolding-default (table/database table))))
+                                              json-fields)]
           (if (empty? unfolding-json-fields)
             #{}
             (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
