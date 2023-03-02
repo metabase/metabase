@@ -404,12 +404,14 @@
         #{}
         (let [existing-fields-by-name (m/index-by :name (t2/select 'Field :table_id (u/the-id table)))
               unfold-json-fields      (filter (fn [field]
-                                                ;; unfold json if the field has json_unfolding=true,
-                                                ;; or if that field doesn't exist already and json unfolding is
-                                                ;; enabled for the database by default
-                                                (if-let [existing-field (existing-fields-by-name (:name field))]
-                                                  (:json_unfolding existing-field)
-                                                  (database/json-unfolding-default (table/database table))))
+                                                ;; unfold json if the field has json_unfolding = true
+                                                ;; don't unfold json if the field has json_unfolding = false
+                                                ;; otherwise if the field doesn't exist or json_unfolding = nil
+                                                ;; use the database default
+                                                (let [existing-field (existing-fields-by-name (:name field))]
+                                                  (or (:json_unfolding existing-field)
+                                                      (and (nil? (:json_unfolding existing-field))
+                                                           (database/json-unfolding-default (table/database table))))))
                                               json-fields)]
           (if (empty? unfold-json-fields)
             #{}

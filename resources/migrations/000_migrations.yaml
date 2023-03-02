@@ -14394,8 +14394,6 @@ databaseChangeLog:
                 UPDATE SET f.base_type = updates.base_type;
 
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
 ########################################################################################################################
 #
 # ADVICE:
