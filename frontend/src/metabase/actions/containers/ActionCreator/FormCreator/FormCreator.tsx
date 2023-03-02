@@ -11,8 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
 import { getDefaultFormSettings, sortActionParams } from "../../../utils";
-import { addMissingSettings } from "../utils";
-import { hasNewParams } from "./utils";
+import { syncFieldsWithParameters } from "../utils";
 
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
 import { FormContainer, InfoText } from "./FormCreator.styled";
@@ -38,8 +37,8 @@ function FormCreator({
 
   useEffect(() => {
     // add default settings for new parameters
-    if (formSettings && params && hasNewParams(params, formSettings)) {
-      setFormSettings(addMissingSettings(formSettings, params));
+    if (formSettings && params) {
+      setFormSettings(syncFieldsWithParameters(formSettings, params));
     }
   }, [params, formSettings]);
 
@@ -50,7 +49,7 @@ function FormCreator({
 
   if (!sortedParams.length) {
     return (
-      <SidebarContent title={t`Action parameters`}>
+      <SidebarContent>
         <FormContainer>
           <EmptyFormPlaceholder />
         </FormContainer>

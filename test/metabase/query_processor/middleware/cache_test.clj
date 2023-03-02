@@ -123,7 +123,7 @@
 (defmacro with-mock-cache [[& bindings] & body]
   `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))
 
-(def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
+(def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
   (merge {:cache-ttl 60, :query :abc} query-kvs))

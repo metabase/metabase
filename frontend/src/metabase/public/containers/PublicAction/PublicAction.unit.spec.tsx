@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -51,7 +51,6 @@ type ExecuteActionRequestBody = {
 
 async function setup({
   action = TEST_ACTION,
-  expectedRequestBody,
   shouldFetchFail = false,
   shouldExecutionFail = false,
 }: {
@@ -60,22 +59,19 @@ async function setup({
   shouldFetchFail?: boolean;
   shouldExecutionFail?: boolean;
 } = {}) {
-  const scope = nock(location.origin);
-
-  scope
-    .get(`/api/public/action/${TEST_PUBLIC_ID}`)
-    .reply(
-      shouldFetchFail ? 404 : 200,
-      shouldFetchFail ? { message: "Not found" } : action,
-    );
+  fetchMock.get(`path:/api/public/action/${TEST_PUBLIC_ID}`, {
+    status: shouldFetchFail ? 404 : 200,
+    body: shouldFetchFail ? { message: "Not found" } : action,
+  });
 
   const executionResponse = shouldExecutionFail
     ? { message: "Something's off" }
     : { "rows-affected": [1] };
 
-  const executeActionEndpointSpy = scope
-    .post(`/api/public/action/${TEST_PUBLIC_ID}/execute`, expectedRequestBody)
-    .reply(shouldExecutionFail ? 400 : 200, executionResponse);
+  fetchMock.post(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`, {
+    status: shouldExecutionFail ? 400 : 200,
+    body: executionResponse,
+  });
 
   renderWithProviders(
     <Route
@@ -96,15 +92,9 @@ async function setup({
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
   );
-
-  return { executeActionEndpointSpy };
 }
 
 describe("PublicAction", () => {
-  beforeEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows acton form", async () => {
     await setup();
 
@@ -136,7 +126,7 @@ describe("PublicAction", () => {
   });
 
   it("submits form correctly", async () => {
-    const { executeActionEndpointSpy } = await setup({
+    await setup({
       expectedRequestBody: {
         parameters: {
           [SIZE_PARAMETER.id]: "42",
@@ -150,7 +140,9 @@ describe("PublicAction", () => {
     userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() => {
-      expect(executeActionEndpointSpy.isDone()).toBe(true);
+      expect(
+        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+      ).toBe(true);
     });
   });
 
@@ -185,13 +177,17 @@ describe("PublicAction", () => {
   });
 
   it("handles actions without parameters", async () => {
-    const { executeActionEndpointSpy } = await setup({
+    await setup({
       action: { ...TEST_ACTION, parameters: [] },
       expectedRequestBody: { parameters: {} },
     });
 
     expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
     userEvent.click(screen.getByRole("button", { name: "Submit" }));
-    await waitFor(() => expect(executeActionEndpointSpy.isDone()).toBe(true));
+    await waitFor(() =>
+      expect(
+        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+      ).toBe(true),
+    );
   });
 });

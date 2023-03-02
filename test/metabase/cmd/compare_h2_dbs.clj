@@ -16,7 +16,6 @@
    :subprotocol       "h2"
    :subname           (str "file:" db-file)
    "IFEXISTS"         "TRUE"
-   "ACCESS_MODE_DATA" "r"
    ;; close DB right away when done
    "DB_CLOSE_DELAY"   "0"})
 

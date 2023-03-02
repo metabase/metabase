@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -7,6 +7,7 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 
 import type { Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import NewItemMenu from "./NewItemMenu";
 
@@ -26,14 +27,7 @@ type SetupOpts = {
   hasModels?: boolean;
 };
 
-const SAMPLE_DATABASE = createMockDatabase({
-  id: 1,
-  engine: "postgres",
-  name: "Sample Database",
-  native_permissions: "write",
-  is_sample: true,
-  settings: null,
-});
+const SAMPLE_DATABASE = createSampleDatabase();
 
 const DB_WITH_ACTIONS = createMockDatabase({
   id: 2,
@@ -53,27 +47,27 @@ function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
 }: SetupOpts = {}) {
-  const scope = nock(location.origin);
   const models = hasModels ? [createMockCard({ dataset: true })] : [];
 
-  setupDatabasesEndpoints(scope, databases);
+  setupDatabasesEndpoints(databases);
 
-  scope.get(/\/api\/search/).reply(200, {
-    available_models: ["dataset"],
-    models: ["dataset"],
-    data: models,
-    total: models.length,
-  });
+  fetchMock.get(
+    {
+      url: "path:/api/search",
+    },
+    {
+      available_models: ["dataset"],
+      models: ["dataset"],
+      data: models,
+      total: models.length,
+    },
+  );
 
   renderWithProviders(<NewItemMenu trigger={<button>New</button>} />);
   userEvent.click(screen.getByText("New"));
 }
 
 describe("NewItemMenu", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();

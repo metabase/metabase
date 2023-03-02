@@ -1,6 +1,6 @@
 import React from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -194,33 +194,30 @@ async function setup({
   hasActionsEnabled = false,
   hasDataPermissions = true,
 }: SetupOpts) {
-  const scope = nock(location.origin).persist();
-
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   const card = model.card() as Card;
 
   if (hasDataPermissions) {
-    setupDatabasesEndpoints(scope, [
+    setupDatabasesEndpoints([
       hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
     ]);
   } else {
-    setupDatabasesEndpoints(scope, []);
-    scope.get(`/api/database/${TEST_DATABASE.id}`).reply(403);
-    scope.get(`/api/database/${TEST_DATABASE_WITH_ACTIONS.id}`).reply(403);
+    setupDatabasesEndpoints([]);
+    fetchMock.get(`path:/api/database/${TEST_DATABASE.id}`, 403);
   }
 
-  scope
-    .get("/api/card")
-    .query({ f: "using_model", model_id: card.id })
-    .reply(
-      200,
-      usedBy.map(question => question.card()),
-    );
+  fetchMock.get(
+    {
+      url: "path:/api/card",
+      query: { f: "using_model", model_id: card.id },
+    },
+    usedBy.map(question => question.card()),
+  );
 
-  setupCardsEndpoints(scope, [card]);
-  setupActionsEndpoints(scope, model.id(), actions);
-  setupCollectionsEndpoints(scope, collections);
+  setupCardsEndpoints([card]);
+  setupActionsEndpoints(model.id(), actions);
+  setupCollectionsEndpoints(collections);
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
@@ -256,7 +253,7 @@ async function setup({
 
   const metadata = getMetadata(store.getState());
 
-  return { history, baseUrl, metadata, scope, modelUpdateSpy };
+  return { history, baseUrl, metadata, modelUpdateSpy };
 }
 
 type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
@@ -272,10 +269,6 @@ function openActionMenu(action: WritebackAction) {
 }
 
 describe("ModelDetailPage", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   [
     { type: "structured", getModel: getStructuredModel },
     { type: "native", getModel: getNativeModel },
@@ -511,7 +504,7 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
-        it("shows empty state if actions are disabled for the model's database but there are existing actions", async () => {
+        it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
           const model = getModel();
           const action = createMockQueryAction({ model_id: model.id() });
 
@@ -530,12 +523,13 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
           await setupActions({ model: getModel(), actions: [] });
           userEvent.click(screen.getByRole("link", { name: "New action" }));
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("lists existing query actions", async () => {
@@ -548,6 +542,7 @@ describe("ModelDetailPage", () => {
           expect(
             screen.getByText(`Created by ${action.creator.common_name}`),
           ).toBeInTheDocument();
+          expect(await screen.findByLabelText("Run")).toBeInTheDocument();
         });
 
         it("lists existing public query actions with public label", async () => {
@@ -576,6 +571,7 @@ describe("ModelDetailPage", () => {
           expect(screen.getByText("Create")).toBeInTheDocument();
           expect(screen.getByText("Update")).toBeInTheDocument();
           expect(screen.getByText("Delete")).toBeInTheDocument();
+          expect(await screen.findAllByLabelText("Run")).toHaveLength(3);
         });
 
         it("allows to create a new query action", async () => {
@@ -587,7 +583,7 @@ describe("ModelDetailPage", () => {
 
           userEvent.click(screen.getByRole("link", { name: "New action" }));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to edit a query action via link", async () => {
@@ -597,7 +593,7 @@ describe("ModelDetailPage", () => {
 
           userEvent.click(screen.getByRole("link", { name: action.name }));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to edit a query action via menu", async () => {
@@ -608,83 +604,7 @@ describe("ModelDetailPage", () => {
           openActionMenu(action);
           userEvent.click(screen.getByText("Edit"));
 
-          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
-        });
-
-        it("allows to create implicit actions", async () => {
-          const createActionSpy = jest.spyOn(ActionsApi, "create");
-          const model = getModel();
-          const action = createMockQueryAction({ model_id: model.id() });
-          await setupActions({ model, actions: [action] });
-
-          userEvent.click(screen.getByLabelText("Actions menu"));
-          userEvent.click(screen.getByText("Create basic actions"));
-
-          await waitFor(() => {
-            expect(createActionSpy).toHaveBeenCalledWith({
-              name: "Create",
-              type: "implicit",
-              kind: "row/create",
-              model_id: model.id(),
-            });
-          });
-          expect(createActionSpy).toHaveBeenCalledWith({
-            name: "Update",
-            type: "implicit",
-            kind: "row/update",
-            model_id: model.id(),
-          });
-          expect(createActionSpy).toHaveBeenCalledWith({
-            name: "Delete",
-            type: "implicit",
-            kind: "row/delete",
-            model_id: model.id(),
-          });
-        });
-
-        it("allows to create implicit actions from the empty state", async () => {
-          const createActionSpy = jest.spyOn(ActionsApi, "create");
-          const model = getModel();
-          await setupActions({ model, actions: [] });
-
-          userEvent.click(
-            screen.getByRole("button", { name: /Create basic action/i }),
-          );
-
-          await waitFor(() => {
-            expect(createActionSpy).toHaveBeenCalledWith({
-              name: "Create",
-              type: "implicit",
-              kind: "row/create",
-              model_id: model.id(),
-            });
-          });
-          expect(createActionSpy).toHaveBeenCalledWith({
-            name: "Update",
-            type: "implicit",
-            kind: "row/update",
-            model_id: model.id(),
-          });
-          expect(createActionSpy).toHaveBeenCalledWith({
-            name: "Delete",
-            type: "implicit",
-            kind: "row/delete",
-            model_id: model.id(),
-          });
-        });
-
-        it("doesn't allow to create implicit actions when they already exist", async () => {
-          const model = getModel();
-          await setupActions({
-            model,
-            actions: createMockImplicitCUDActions(model.id()),
-          });
-
-          userEvent.click(screen.getByLabelText("Actions menu"));
-
-          expect(
-            screen.queryByText(/Create basic action/i),
-          ).not.toBeInTheDocument();
+          expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
         });
 
         it("allows to archive a query action", async () => {
@@ -734,17 +654,6 @@ describe("ModelDetailPage", () => {
           actions.forEach(action => {
             expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
           });
-        });
-
-        it("doesn't allow to disable implicit actions if they don't exist", async () => {
-          const model = getModel();
-          await setupActions({ model, actions: [] });
-
-          userEvent.click(screen.getByLabelText("Actions menu"));
-
-          expect(
-            screen.queryByText("Disable basic actions"),
-          ).not.toBeInTheDocument();
         });
       });
 
@@ -824,11 +733,11 @@ describe("ModelDetailPage", () => {
           const model = getModel();
           const actions = [
             ...createMockImplicitCUDActions(model.id()),
-            createMockQueryAction({ model_id: model.id() }),
+            createMockQueryAction({ id: 4, model_id: model.id() }),
           ];
           await setupActions({ model, actions, hasDataPermissions: false });
 
-          expect(queryIcon("play")).not.toBeInTheDocument();
+          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
       });
     });
@@ -856,6 +765,89 @@ describe("ModelDetailPage", () => {
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
     });
 
+    it("allows to create implicit actions", async () => {
+      const createActionSpy = jest.spyOn(ActionsApi, "create");
+      const action = createMockQueryAction({ model_id: model.id() });
+      await setupActions({ model, actions: [action] });
+
+      userEvent.click(screen.getByLabelText("Actions menu"));
+      userEvent.click(screen.getByText("Create basic actions"));
+
+      await waitFor(() => {
+        expect(createActionSpy).toHaveBeenCalledWith({
+          name: "Create",
+          type: "implicit",
+          kind: "row/create",
+          model_id: model.id(),
+        });
+      });
+      expect(createActionSpy).toHaveBeenCalledWith({
+        name: "Update",
+        type: "implicit",
+        kind: "row/update",
+        model_id: model.id(),
+      });
+      expect(createActionSpy).toHaveBeenCalledWith({
+        name: "Delete",
+        type: "implicit",
+        kind: "row/delete",
+        model_id: model.id(),
+      });
+    });
+
+    it("allows to create implicit actions from the empty state", async () => {
+      const createActionSpy = jest.spyOn(ActionsApi, "create");
+      await setupActions({ model, actions: [] });
+
+      userEvent.click(
+        screen.getByRole("button", { name: /Create basic action/i }),
+      );
+
+      await waitFor(() => {
+        expect(createActionSpy).toHaveBeenCalledWith({
+          name: "Create",
+          type: "implicit",
+          kind: "row/create",
+          model_id: model.id(),
+        });
+      });
+      expect(createActionSpy).toHaveBeenCalledWith({
+        name: "Update",
+        type: "implicit",
+        kind: "row/update",
+        model_id: model.id(),
+      });
+      expect(createActionSpy).toHaveBeenCalledWith({
+        name: "Delete",
+        type: "implicit",
+        kind: "row/delete",
+        model_id: model.id(),
+      });
+    });
+
+    it("doesn't allow to create implicit actions when they already exist", async () => {
+      await setupActions({
+        model,
+        actions: createMockImplicitCUDActions(model.id()),
+      });
+
+      userEvent.click(screen.getByLabelText("Actions menu"));
+
+      expect(
+        screen.queryByText(/Create basic action/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("doesn't allow to disable implicit actions if they don't exist", async () => {
+      await setupActions({ model, actions: [] });
+
+      userEvent.click(screen.getByLabelText("Actions menu"));
+
+      expect(
+        screen.queryByText("Disable basic actions"),
+      ).not.toBeInTheDocument();
+    });
+
     describe("no data permissions", () => {
       it("shows limited model info", async () => {
         await setup({ model, hasDataPermissions: false });
@@ -881,6 +873,15 @@ describe("ModelDetailPage", () => {
       await setup({ model });
       expect(
         screen.queryByTestId("model-relationships"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("doesn't allow to create basic actions", async () => {
+      await setup({ model });
+
+      expect(screen.queryByLabelText("Action menu")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Create basic actions" }),
       ).not.toBeInTheDocument();
     });
   });

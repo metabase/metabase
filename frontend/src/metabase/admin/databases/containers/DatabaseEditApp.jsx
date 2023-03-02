@@ -17,6 +17,8 @@ import { getSetting } from "metabase/selectors/settings";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DatabaseForm from "metabase/databases/containers/DatabaseForm";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { GenericError } from "metabase/containers/ErrorPages";
 import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -128,25 +130,27 @@ class DatabaseEditApp extends Component {
         <Breadcrumbs className="py4" crumbs={crumbs} />
 
         <DatabaseEditMain>
-          <div>
-            <div className="pt0">
-              <LoadingAndErrorWrapper
-                loading={!database}
-                error={initializeError}
-              >
-                <DatabaseEditContent>
-                  <DatabaseEditForm>
-                    <DatabaseForm
-                      initialValues={database}
-                      isAdvanced
-                      onSubmit={handleSubmit}
-                    />
-                  </DatabaseEditForm>
-                  <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                </DatabaseEditContent>
-              </LoadingAndErrorWrapper>
+          <ErrorBoundary errorComponent={GenericError}>
+            <div>
+              <div className="pt0">
+                <LoadingAndErrorWrapper
+                  loading={!database}
+                  error={initializeError}
+                >
+                  <DatabaseEditContent>
+                    <DatabaseEditForm>
+                      <DatabaseForm
+                        initialValues={database}
+                        isAdvanced
+                        onSubmit={handleSubmit}
+                      />
+                    </DatabaseEditForm>
+                    <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
+                  </DatabaseEditContent>
+                </LoadingAndErrorWrapper>
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
 
           {editingExistingDatabase && (
             <Sidebar

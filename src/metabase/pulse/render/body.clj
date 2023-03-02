@@ -135,7 +135,7 @@
                     ;; in the output and should be skipped
                     :when              (not (:remapped_from maybe-remapped-col))]
                 (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
-                  (common/->NumericWrapper col-name)
+                  (common/map->NumericWrapper {:num-str col-name :num-value col-name})
                   col-name))
    :bar-width (when include-bar? 99)})
 
@@ -347,7 +347,9 @@
                       (= (:stackable.stack_type viz-settings) "stacked")
                       (and
                        (= (:display card) :area)
-                       (> (count (:graph.metrics viz-settings)) 1)))]
+                       (or
+                        (> (count (:graph.metrics viz-settings)) 1)
+                        (> (count (:graph.dimensions viz-settings)) 1))))]
     (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))

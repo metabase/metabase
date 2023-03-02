@@ -1247,8 +1247,9 @@ export class ExpressionDimension extends Dimension {
         return dimension?.field();
       };
 
-      type = infer(expr, mbql => field(mbql)?.base_type);
-      semantic_type = infer(expr, mbql => field(mbql)?.semantic_type);
+      type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
+      semantic_type =
+        infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
     } else {
       type = infer(this._expressionName);
     }
