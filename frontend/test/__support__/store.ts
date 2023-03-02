@@ -23,7 +23,7 @@ import {
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
 
-const SCHEMA = {
+const EntitiesSchema = {
   actions: [ActionSchema],
   collections: [CollectionSchema],
   dashboards: [DashboardSchema],
@@ -48,6 +48,6 @@ export interface EntitiesStateOpts {
 }
 
 export const createEntitiesState = (opts: EntitiesStateOpts): EntitiesState => {
-  const schema = normalize(opts, SCHEMA);
+  const schema = normalize(opts, EntitiesSchema);
   return schema.entities;
 };
