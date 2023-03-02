@@ -11,7 +11,6 @@ import CollectionCopyEntityModal from "metabase/collections/components/Collectio
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
-import { NAV_SIDEBAR_WIDTH_HALF } from "metabase/nav/constants";
 import {
   BulkActionsToast,
   CardButton,
@@ -19,52 +18,36 @@ import {
   ToastCard,
 } from "./BulkActions.styled";
 
-function BulkActions(props) {
-  const {
-    selected,
-    collection,
-    selectedItems,
-    selectedAction,
-    onArchive,
-    onMoveStart,
-    onCloseModal,
-    onMove,
-    onCopy,
-    isNavbarOpen,
-  } = props;
-
-  const onMoveClick = selected.every(item => canMoveItem(item, collection))
-    ? onMoveStart
-    : null;
-  const onArchiveClick = selected.every(item =>
-    canArchiveItem(item, collection),
-  )
-    ? onArchive
-    : null;
-
-  const showing = selected.length > 0;
+function BulkActions({
+  selected,
+  collection,
+  selectedItems,
+  selectedAction,
+  onArchive,
+  onMoveStart,
+  onCloseModal,
+  onMove,
+  onCopy,
+  isNavbarOpen,
+}) {
+  const canMove = selected.every(item => canMoveItem(item, collection));
+  const canArchive = selected.every(item => canArchiveItem(item, collection));
+  const isVisible = selected.length > 0;
 
   return (
     <>
-      {/* NOTE: these padding and grid sizes must be carefully matched
-      to the main content above to ensure the bulk checkbox lines up */}
       <Motion
         defaultStyle={{
           opacity: 0,
           translateY: 100,
         }}
         style={{
-          opacity: showing ? spring(1) : spring(0),
-          translateY: showing ? spring(0) : spring(100),
+          opacity: isVisible ? spring(1) : spring(0),
+          translateY: isVisible ? spring(0) : spring(100),
         }}
       >
         {({ translateY }) => (
-          <BulkActionsToast
-            style={{
-              transform: `translate(-50%, ${translateY}px)`,
-              marginLeft: isNavbarOpen ? NAV_SIDEBAR_WIDTH_HALF : 0,
-            }}
-          >
+          <BulkActionsToast translateY={translateY} isNavbarOpen={isNavbarOpen}>
             <ToastCard dark>
               <CardSide>
                 {ngettext(
@@ -77,15 +60,15 @@ function BulkActions(props) {
                 <CardButton
                   medium
                   purple
-                  disabled={!onMoveClick}
-                  onClick={onMoveClick}
+                  disabled={!canMove}
+                  onClick={onMoveStart}
                   data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
                 >{t`Move`}</CardButton>
                 <CardButton
                   medium
                   purple
-                  disabled={!onArchiveClick}
-                  onClick={onArchiveClick}
+                  disabled={!canArchive}
+                  onClick={onArchive}
                   data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
                 >{t`Archive`}</CardButton>
               </CardSide>
