@@ -42,7 +42,7 @@
   (when (seq new-field-metadatas)
     (db/insert-many! Field
       (for [{:keys [database-type database-required base-type effective-type coercion-strategy
-                    field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
+                    field-comment database-position nfc-path visibility-type json-unfolding], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
                     base-type
@@ -65,6 +65,7 @@
           :coercion_strategy (when effective-type coercion-strategy)
           :semantic_type     (common/semantic-type field)
           :parent_id         parent-id
+          :json_unfolding    json-unfolding
           :nfc_path          nfc-path
           :description       field-comment
           :position          database-position
