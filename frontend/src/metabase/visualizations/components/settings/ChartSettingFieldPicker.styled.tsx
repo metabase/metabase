@@ -62,8 +62,8 @@ export const SettingsButton = styled(Button)<SettingsIconProps>`
   margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
   padding: 0;
 
-  &:hover: {
-    background: unset;
+  &:hover {
+    background-color: unset;
   }
 `;
 

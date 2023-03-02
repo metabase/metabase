@@ -67,8 +67,8 @@ export const ColumnItemIcon = styled(Button)`
   margin-left: 1rem;
   padding: 0;
 
-  &:hover: {
-    background: unset;
+  &:hover {
+    background-color: unset;
   }
 `;
 
