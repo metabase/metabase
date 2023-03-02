@@ -110,6 +110,6 @@ If you're having trouble, see the guides under [Troubleshooting data sources][tr
 [google-enable-disable-apis]: https://support.google.com/googleapi/answer/6158841
 [google-managing-service-accounts]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
-[google-service-accounts]: https://cloud.google.com/iam/docs/service-accounts
+[google-service-accounts]: https://cloud.google.com/iam/docs/service-account-overview
 [sync-docs]: ../connecting.md#syncing-and-scanning-databases
 [troubleshooting-data-sources]: ../../troubleshooting-guide#databases
