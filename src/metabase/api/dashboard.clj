@@ -31,12 +31,15 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -716,25 +719,17 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-(s/defn chain-filter
+(mu/defn chain-filter
   "C H A I N filters!
 
-    ;; show me categories
-    (chain-filter 62 \"ee876336\" {})
-    ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
-           :has_more_values false}
-
-    ;; show me categories that have expensive restaurants
-    (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
-    ;; -> {:values          (\"Japanese\" \"Steakhouse\")
-           :has_more_values false}"
+  Used to query for values that populate chained filter dropdowns and text search boxes."
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- su/Map
-    param-key                   :- su/NonBlankString
-    constraint-param-key->value :- su/Map
-    query                       :- (s/maybe su/NonBlankString)]
+  ([dashboard                   :- ms/Map
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- ms/Map
+    query                       :- [:maybe ms/NonBlankString]]
    (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
          field-ids   (param-key->field-ids dashboard param-key)]
      (when (empty? field-ids)
@@ -750,7 +745,7 @@
                           field-ids)
              values (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
          {:values          (if (sequential? (first values))
                              (sort-by second values)
                              (sort values))
@@ -791,7 +786,9 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (param-values dashboard param-key query-params)))
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true]
+      (param-values dashboard param-key query-params))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/search/:query"
@@ -805,7 +802,9 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (param-values dashboard param-key query-params query)))
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true]
+      (param-values dashboard param-key query-params query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/params/valid-filter-fields"

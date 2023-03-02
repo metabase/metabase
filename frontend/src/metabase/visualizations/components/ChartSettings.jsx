@@ -29,10 +29,10 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
+
 import {
   SectionContainer,
   SectionWarnings,
-  TitleButton,
   ChartSettingsRoot,
   ChartSettingsMenu,
   ChartSettingsPreview,
@@ -54,7 +54,6 @@ const withTransientSettingState = ComposedComponent =>
       super(props);
       this.state = {
         settings: props.settings,
-        overrideProps: {},
       };
     }
 
@@ -73,10 +72,6 @@ const withTransientSettingState = ComposedComponent =>
           onDone={settings =>
             this.props.onChange(settings || this.state.settings)
           }
-          setSidebarPropsOverride={overrideProps =>
-            this.setState({ overrideProps })
-          }
-          {...this.state.overrideProps}
         />
       );
     }
@@ -87,7 +82,7 @@ class ChartSettings extends Component {
     super(props);
     this.state = {
       currentSection: (props.initial && props.initial.section) || null,
-      popoverWidget: (props.initial && props.initial.widget) || null,
+      currentWidget: (props.initial && props.initial.widget) || null,
     };
   }
 
@@ -96,38 +91,23 @@ class ChartSettings extends Component {
     if (!_.isEqual(initial, prevProps.initial)) {
       this.setState({
         currentSection: (initial && initial.section) || null,
-        popoverWidget: (initial && initial.widget) || null,
+        currentWidget: (initial && initial.widget) || null,
       });
     }
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, popoverWidget: null });
+    this.setState({ currentSection: section, currentWidget: null });
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowPopoverWidget = (widget, ref) => {
-    this.setState({ popoverRef: ref, popoverWidget: widget });
-  };
-
-  handleSetCurrentWidget = (widget, title) => {
-    this.props.setSidebarPropsOverride({
-      title: title,
-      onBack: () => {
-        this.handleEndShowWidget();
-        this.props.setSidebarPropsOverride({});
-      },
-    });
-    this.setState({ currentWidget: widget });
+  handleShowWidget = (widget, ref) => {
+    this.setState({ popoverRef: ref, currentWidget: widget });
   };
 
   // go back to previously selected section
   handleEndShowWidget = () => {
-    this.setState({
-      popoverWidget: null,
-      popoverRef: null,
-      currentWidget: null,
-    });
+    this.setState({ currentWidget: null, popoverRef: null });
   };
 
   handleResetSettings = () => {
@@ -170,14 +150,13 @@ class ChartSettings extends Component {
     if (this.props.widgets) {
       return this.props.widgets;
     } else {
-      const { isDashboard, metadata, isQueryRunning = false } = this.props;
+      const { isDashboard } = this.props;
       const transformedSeries = this._getTransformedSeries();
 
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,
         isDashboard,
-        { metadata, isQueryRunning },
       );
     }
   }
@@ -223,24 +202,24 @@ class ChartSettings extends Component {
     const widgets = this._getWidgets();
     const series = this._getTransformedSeries();
     const settings = this._getComputedSettings();
-    const { popoverWidget } = this.state;
+    const { currentWidget } = this.state;
     const seriesSettingsWidget =
-      popoverWidget && widgets.find(widget => widget.id === "series_settings");
+      currentWidget && widgets.find(widget => widget.id === "series_settings");
 
     //We don't want to show series settings widget for waterfall charts
     if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
 
-    if (popoverWidget.props?.seriesKey !== undefined) {
+    if (currentWidget.props?.seriesKey !== undefined) {
       return {
         ...seriesSettingsWidget,
         props: {
           ...seriesSettingsWidget.props,
-          initialKey: popoverWidget.props.seriesKey,
+          initialKey: currentWidget.props.seriesKey,
         },
       };
-    } else if (popoverWidget.props?.initialKey) {
+    } else if (currentWidget.props?.initialKey) {
       const hasBreakouts = settings["graph.dimensions"]?.length > 1;
 
       if (hasBreakouts) {
@@ -250,7 +229,7 @@ class ChartSettings extends Component {
       const singleSeriesForColumn = series.find(single => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
-          return getColumnKey(metricColumn) === popoverWidget.props.initialKey;
+          return getColumnKey(metricColumn) === currentWidget.props.initialKey;
         }
       });
 
@@ -270,12 +249,12 @@ class ChartSettings extends Component {
 
   getFormattingWidget = () => {
     const widgets = this._getWidgets();
-    const { popoverWidget } = this.state;
+    const { currentWidget } = this.state;
     const widget =
-      popoverWidget && widgets.find(widget => widget.id === popoverWidget.id);
+      currentWidget && widgets.find(widget => widget.id === currentWidget.id);
 
     if (widget) {
-      return { ...widget, props: { ...widget.props, ...popoverWidget.props } };
+      return { ...widget, props: { ...widget.props, ...currentWidget.props } };
     }
 
     return null;
@@ -290,10 +269,8 @@ class ChartSettings extends Component {
       dashboard,
       dashcard,
       isDashboard,
-      title,
-      onBack,
     } = this.props;
-    const { popoverWidget, popoverRef, currentWidget } = this.state;
+    const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -340,14 +317,7 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    const visibleWidgets =
-      (currentWidget
-        ? [
-            widgets.find(
-              widget => widget.id === currentWidget.props.initialKey,
-            ),
-          ].map(w => ({ ...w, hidden: false }))
-        : sections[currentSection]) || [];
+    const visibleWidgets = sections[currentSection] || [];
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -360,8 +330,7 @@ class ChartSettings extends Component {
       // NOTE: special props to support adding additional fields
       question: question,
       addField: addField,
-      onShowPopoverWidget: this.handleShowPopoverWidget,
-      onSetCurrentWidget: this.handleSetCurrentWidget,
+      onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),
@@ -397,19 +366,13 @@ class ChartSettings extends Component {
         visibleWidgets[0].id === "column_settings" &&
         // and this section doesn't doesn't have that as a direct child
         !currentSectionHasColumnSettings
-      ) &&
-      !currentWidget;
+      );
 
     // default layout with visualization
     return (
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">
           {showSectionPicker && sectionPicker}
-          {title && (
-            <TitleButton onClick={onBack} icon="chevronleft" onlyText>
-              {title}
-            </TitleButton>
-          )}
           <ChartSettingsListContainer className="scroll-show">
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
@@ -444,7 +407,7 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           currentWidgetKey={
-            popoverWidget?.props?.initialKey || popoverWidget?.props?.seriesKey
+            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
           }
           anchor={popoverRef}
           widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(

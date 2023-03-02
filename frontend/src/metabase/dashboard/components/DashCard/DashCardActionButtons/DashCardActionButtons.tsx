@@ -14,7 +14,6 @@ import { Series } from "metabase-types/types/Visualization";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
-import Metadata from "metabase-lib/metadata/Metadata";
 
 import DashCardActionButton from "./DashCardActionButton";
 
@@ -41,7 +40,6 @@ interface Props {
   ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
-  metadata: Metadata;
 }
 
 function DashCardActionButtons({
@@ -58,7 +56,6 @@ function DashCardActionButtons({
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
-  metadata,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -93,7 +90,6 @@ function DashCardActionButtons({
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
-          metadata={metadata}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );

@@ -477,6 +477,11 @@ class QuestionInner {
     return this.canWrite() && hasActionsEnabled;
   }
 
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
+  }
+
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
@@ -764,14 +769,13 @@ class QuestionInner {
 
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col, false) >= 0;
+        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn =
-        findColumnIndexForColumnSetting(cols, colSetting, false) >= 0;
+      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting, false) >= 0;
+        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;

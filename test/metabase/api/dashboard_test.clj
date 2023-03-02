@@ -10,12 +10,12 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Action
             Card
             Collection
-            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -31,6 +31,7 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -39,6 +40,7 @@
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
@@ -322,71 +324,42 @@
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "a dashboard that has link cards on it"
-      (let [link-card-viz-setting (fn [model id]
-                                    {:virtual_card {:display "link"}
-                                     :link         {:entity {:id    id
-                                                             :model model}}})
-            link-card-info-from-resp (fn [resp]
-                                       (->> resp
-                                            :ordered_cards
-                                            (map #(get-in % [:visualization_settings :link :entity]))))
-            crowberto-pc-id         (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto))]
+      (let [link-card-info-from-resp
+            (fn [resp]
+              (->> resp
+                   :ordered_cards
+                   (map (fn [dashcard] (or (get-in dashcard [:visualization_settings :link :entity])
+                                           ;; get for link card
+                                           (get-in dashcard [:visualization_settings :link]))))))]
         (t2.with-temp/with-temp
-          [Collection    {coll-id :id}      {:name        "Linked collection"
-                                             :description "Linked collection desc"
-                                             :location    (format "/%d/" crowberto-pc-id)}
-           Database      {db-id :id}        {:name        "Linked database"
-                                             :description "Linked database desc"}
-           Table         {table-id    :id}  {:db_id        db-id
-                                             :name        "Linked table"
-                                             :display_name "Linked table dname"
-                                             :description "Linked table desc"}
-           Card          {card-id :id}      {:name          "Linked card"
-                                             :description   "Linked card desc"
-                                             :display       "bar"
-                                             :collection_id crowberto-pc-id}
-           Card          {model-id :id}     {:dataset       true
-                                             :name          "Linked model"
-                                             :description   "Linked model desc"
-                                             :display       "table"
-                                             :collection_id crowberto-pc-id}
-           Dashboard     {dash-id :id}      {:name          "Linked Dashboard"
-                                             :description   "Linked Dashboard desc"
-                                             :collection_id crowberto-pc-id}
-           Dashboard     {dashboard-id :id} {:name        "Test Dashboard"}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "collection" coll-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "database" db-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "table" table-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "card" card-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}]
-          (is (= [{:id coll-id  :model "collection":name "Linked collection"  :description "Linked collection desc"  :display nil
-                   :db_id nil   :collection_id     nil}
-                  {:id db-id    :model "database"  :name "Linked database"  :description "Linked database desc"  :display nil
-                   :db_id nil   :collection_id     nil}
-                  {:id table-id :model "table"     :name "Linked table dname" :description "Linked table desc"     :display nil
-                   :db_id db-id :collection_id     nil}
-                  {:id dash-id  :model "dashboard" :name "Linked Dashboard" :description "Linked Dashboard desc" :display nil
-                   :db_id nil   :collection_id     crowberto-pc-id}
-                  {:id card-id  :model "card"      :name "Linked card"      :description "Linked card desc"      :display "bar"
-                   :db_id nil   :collection_id     crowberto-pc-id}
-                  {:id model-id :model "dataset"   :name "Linked model"     :description "Linked model desc"     :display "table"
-                   :db_id nil   :collection_id     crowberto-pc-id}]
-                 (link-card-info-from-resp
-                   (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dashboard-id)))))
+          [Dashboard dashboard {:name "Test Dashboard"}]
+          (dashboard-subscription-test/with-link-card-fixture-for-dashboard dashboard [{:keys [collection-id
+                                                                                               database-id
+                                                                                               table-id
+                                                                                               dashboard-id
+                                                                                               card-id
+                                                                                               model-id]}]
+            (is (= [{:id collection-id :model "collection":name "Linked collection name"  :description "Linked collection desc"  :display nil
+                     :db_id nil   :collection_id     nil}
+                    {:id database-id   :model "database"  :name "Linked database name"  :description "Linked database desc"  :display nil
+                     :db_id nil   :collection_id     nil}
+                    {:id table-id      :model "table"     :name "Linked table dname" :description "Linked table desc"     :display nil
+                     :db_id database-id :collection_id     nil}
+                    {:id dashboard-id  :model "dashboard" :name "Linked Dashboard name" :description "Linked Dashboard desc" :display nil
+                     :db_id nil   :collection_id     collection-id}
+                    {:id card-id  :model "card"      :name "Linked card name"      :description "Linked card desc"      :display "bar"
+                     :db_id nil   :collection_id     collection-id}
+                    {:id model-id :model "dataset"   :name "Linked model name"     :description "Linked model desc"     :display "table"
+                     :db_id nil   :collection_id     collection-id}
+                    {:url "https://metabase.com"}]
+                   (link-card-info-from-resp
+                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
 
-          (testing "should return restricted if user doesn't have permission to view it"
-            (perms/revoke-data-perms! (perms-group/all-users) db-id)
-            (is (= #{{:restricted true}}
-                   (set (link-card-info-from-resp
-                          (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))))))))))
-
+           (testing "should return restricted if user doesn't have permission to view the models"
+             (perms/revoke-data-perms! (perms-group/all-users) database-id)
+             (is (= #{{:restricted true} {:url "https://metabase.com"}}
+                    (set (link-card-info-from-resp
+                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
 
     (testing "fetch a dashboard with a param in it"
       (mt/with-temp* [Table         [{table-id :id} {}]
@@ -1098,6 +1071,7 @@
 
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"
+
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
       (is (= ordered-cards
@@ -1941,6 +1915,24 @@
                          query)
                     query-params))
 
+(deftest dashboard-chain-filter-permissions-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
+              (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
+                     (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
+
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil]
+              (is (= {:values ["Japanese" "Steakhouse"], :has_more_values false}
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
+
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -1983,19 +1975,33 @@
                                                        (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                           (:id dashboard)
-                                                                                           (:category-name param-keys)))))))))
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))
+
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+            (is (= {:values ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 200)
+                        (chain-filter-test/take-n-values 3))))))))
+
+    (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"

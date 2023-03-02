@@ -1031,7 +1031,7 @@
                    (run-query)))))))))
 
 (deftest persistence-disabled-when-sandboxed
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset sample-dataset
       ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
