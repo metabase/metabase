@@ -128,10 +128,17 @@
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
 (defn- cmd-args->map
+  "Returns a map of keywords parsed from command-line argument flags and values. Handles 
+   boolean flags as well as explicit values."
   [args]
-  (into {}
-        (for [[k v] (partition 2 args)]
-          [(mbql.u/normalize-token (subs k 2)) v])))
+  (m/map-keys #(keyword (str/replace-first % "--" ""))
+              (loop [parsed {}
+                     [arg & [maybe-val :as more]] args]
+                (if arg
+                  (if (or (nil? maybe-val) (str/starts-with? maybe-val "--"))
+                    (recur (assoc parsed arg true) more)
+                    (recur (assoc parsed arg maybe-val) (rest more)))
+                  parsed))))
 
 (defn- call-enterprise
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
@@ -184,10 +191,15 @@
 (defn ^:command export
   "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
 
-  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
-  archived entities."
+  Options:
+
+   --collections [collection-id-list] - a comma-separated list of IDs of collection to export
+   --include-field-values             - flag, default false, controls export of field values"
   [path & options]
-  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
+  (let [opts (-> options
+                 cmd-args->map
+                 (update :collections parse-int-list)
+                 (assoc :include-field-values (boolean (some #{"--include-field-values"} options))))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids
