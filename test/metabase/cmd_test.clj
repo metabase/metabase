@@ -23,7 +23,7 @@
                (cmd/load "/path/" "--num-cans" "2")))))
     (testing "import (v2)"
       (testing "with no options"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/")
+        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error false})
                (cmd/import "/path/")))))))
 
 (deftest export-test
