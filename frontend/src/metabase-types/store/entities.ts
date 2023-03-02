@@ -1,30 +1,33 @@
 import {
   Card,
-  CardId,
   Collection,
-  CollectionId,
   Dashboard,
-  DashboardId,
   Database,
   Field,
   FieldId,
   NativeQuerySnippet,
-  NativeQuerySnippetId,
   Table,
+  TableId,
   User,
-  UserId,
   WritebackAction,
-  WritebackActionId,
 } from "metabase-types/api";
 
+export interface NormalizedDatabase extends Omit<Database, "tables"> {
+  tables?: TableId[];
+}
+
+export interface NormalizedTable extends Omit<Table, "fields"> {
+  fields?: FieldId[];
+}
+
 export interface EntitiesState {
-  actions?: Record<WritebackActionId, WritebackAction>;
-  collections?: Partial<Record<CollectionId, Collection>>;
-  dashboards?: Record<DashboardId, Dashboard>;
-  databases?: Record<number, Database>;
-  fields?: Record<FieldId, Field>;
-  tables?: Record<number | string, Table>;
-  snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
-  users?: Record<UserId, User>;
-  questions?: Record<CardId, Card>;
+  actions?: Record<string, WritebackAction>;
+  collections?: Record<string, Collection>;
+  dashboards?: Record<string, Dashboard>;
+  databases?: Record<string, NormalizedDatabase>;
+  tables?: Record<string, NormalizedTable>;
+  fields?: Record<string, Field>;
+  snippets?: Record<string, NativeQuerySnippet>;
+  users?: Record<string, User>;
+  questions?: Record<string, Card>;
 }
