@@ -154,17 +154,20 @@
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                  (let [base-type (database-type->base-type-or-warn driver database-type)
-                       semantic-type (calculated-semantic-type driver column-name database-type)]
+                       semantic-type  (calculated-semantic-type driver column-name database-type)
+                       db             (table/database table)
+                       json-unfolding (when (and (isa? base-type :type/JSON)
+                                                 (driver/database-supports? driver :nested-field-columns db))
+                                        (database/json-unfolding-default db))]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
                     {:base-type         base-type
                      :database-position i}
                     (when semantic-type
                       {:semantic-type semantic-type})
-                    (when (isa? base-type :type/JSON)
-                      {:json-unfolding (database/json-unfolding-default (table/database table))})
-                    (when (and (isa? base-type :type/JSON)
-                               (database/json-unfolding-default (table/database table)))
+                    (when (some? json-unfolding)
+                      {:json-unfolding json-unfolding})
+                    (when (true? json-unfolding)
                       {:visibility-type :details-only}))))))
 
 (defmulti describe-table-fields
