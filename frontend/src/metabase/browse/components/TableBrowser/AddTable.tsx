@@ -52,6 +52,7 @@ export function AddTable({
       Papa.parse(file, {
         header: true,
         dynamicTyping: true,
+        skipEmptyLines: true,
         complete: async function (results: any) {
           const schema = detectSchema(results.data);
           const { columns, rows } = formatInsertData(results.data);
