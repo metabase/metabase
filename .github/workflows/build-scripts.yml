@@ -10,7 +10,7 @@ on:
 jobs:
 
   test-build-scripts:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
     - name: Prepare back-end environment
@@ -19,25 +19,8 @@ jobs:
       with:
         m2-cache-key: 'build-scripts'
 
-    - name: Run metabuild-common build script tests
-      run: clojure -M:test
-      working-directory: bin/common
-      timeout-minutes: 15
-    - name: Run build-drivers build script tests
-      run: clojure -M:test
-      working-directory: bin/build-drivers
-      timeout-minutes: 15
-    - name: Run i18n script tests
-      run: clojure -M:test
-      working-directory: bin/i18n
-      timeout-minutes: 15
-    - name: Run build-mb build script tests
-      run: clojure -M:test
-      working-directory: bin/build-mb
-      timeout-minutes: 15
-    - name: Run release script tests
-      run: clojure -M:test
-      working-directory: bin/release
+    - name: Run build and release script tests
+      run: clojure -X:dev:drivers:build:build-dev:build-test:ci
       timeout-minutes: 15
     - name: Run Liquibase migrations linter tests
       run: clojure -M:test

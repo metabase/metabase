@@ -124,6 +124,42 @@ describe("sortActionParams", () => {
       expect(settings.inputType).toBe("category");
     });
 
+    it("should generate settings for a dateTime field", () => {
+      const fields = [
+        createField({
+          name: "test-field",
+          base_type: "type/DateTime",
+          semantic_type: "type/DateTime",
+        }),
+      ];
+      const params = [
+        createParameter({ id: "test-field", type: "type/DateTime" }),
+      ];
+      const [_id, settings] = getFirstEntry(
+        generateFieldSettingsFromParameters(params, fields),
+      );
+
+      expect(settings.fieldType).toBe("string");
+      expect(settings.inputType).toBe("datetime");
+    });
+
+    it("should generate settings for a date field", () => {
+      const fields = [
+        createField({
+          name: "test-field",
+          base_type: "type/Date",
+          semantic_type: "type/Date",
+        }),
+      ];
+      const params = [createParameter({ id: "test-field", type: "type/Date" })];
+      const [_id, settings] = getFirstEntry(
+        generateFieldSettingsFromParameters(params, fields),
+      );
+
+      expect(settings.fieldType).toBe("string");
+      expect(settings.inputType).toBe("date");
+    });
+
     it("should set the parameter id as the object key", () => {
       const fields = [createField({ name: "test-field" })];
       const params = [createParameter({ id: "test-field" })];
@@ -165,8 +201,8 @@ describe("sortActionParams", () => {
         generateFieldSettingsFromParameters(params, fields),
       );
 
-      expect(settings.placeholder).toBe("test-field");
-      expect(settings.title).toBe("test-field");
+      expect(settings.placeholder).toBe("Test-field");
+      expect(settings.title).toBe("Test-field");
       expect(settings.name).toBe("test-field");
     });
 
@@ -200,6 +236,79 @@ describe("sortActionParams", () => {
       );
 
       expect(settings.description).toBe("foo bar baz");
+    });
+
+    describe("without field metadata", () => {
+      it("humanizes parameter id in the field title", () => {
+        const params = [
+          createParameter({ id: "test_field", type: "type/Integer" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.title).toBe("Test field");
+      });
+
+      it("generates field settings for a numeric field", () => {
+        const params = [
+          createParameter({ id: "test-field", type: "type/Integer" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.fieldType).toBe("number");
+        expect(settings.inputType).toBe("number");
+      });
+
+      it("generates field settings for a string field", () => {
+        const params = [
+          createParameter({ id: "test-field", type: "type/String" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.fieldType).toBe("string");
+        expect(settings.inputType).toBe("string");
+      });
+
+      it("generates field settings for a date field", () => {
+        const params = [
+          createParameter({ id: "test-field", type: "type/Date" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.fieldType).toBe("string");
+        expect(settings.inputType).toBe("date");
+      });
+
+      it("generates field settings for a datetime field", () => {
+        const params = [
+          createParameter({ id: "test-field", type: "type/DateTime" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.fieldType).toBe("string");
+        expect(settings.inputType).toBe("datetime");
+      });
+
+      it("generates field settings for a json field", () => {
+        const params = [
+          createParameter({ id: "test-field", type: "type/Structured" }),
+        ];
+        const [_id, settings] = getFirstEntry(
+          generateFieldSettingsFromParameters(params),
+        );
+
+        expect(settings.fieldType).toBe("string");
+        expect(settings.inputType).toBe("text");
+      });
     });
   });
 

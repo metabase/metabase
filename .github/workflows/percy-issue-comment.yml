@@ -8,7 +8,7 @@ on:
 jobs:
   pr_info:
     if: github.event.comment.body == '@metabase-bot run visual tests'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       pull_request_number: ${{ fromJson(steps.fetch_pr.outputs.data).head.number }}
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
@@ -69,7 +69,7 @@ jobs:
 
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-      - run: ./bin/build
+      - run: ./bin/build.sh
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
