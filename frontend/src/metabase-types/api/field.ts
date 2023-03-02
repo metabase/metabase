@@ -62,7 +62,7 @@ export interface ConcreteField {
 
   base_type: string;
   effective_type?: string;
-  semantic_type: string;
+  semantic_type: string | null;
 
   active: boolean;
   visibility_type: FieldVisibilityType;
