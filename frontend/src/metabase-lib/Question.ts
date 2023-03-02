@@ -604,7 +604,7 @@ class QuestionInner {
     return (
       this.isStructured() &&
       _.any(
-        UtilQuery.getAggregations(this.query()),
+        UtilQuery.getAggregations(this.query().query()),
         aggregation => UtilAggregation.getMetric(aggregation) === metricId,
       )
     );
@@ -613,7 +613,7 @@ class QuestionInner {
   usesSegment(segmentId): boolean {
     return (
       this.isStructured() &&
-      UtilQuery.getFilters(this.query()).some(
+      UtilQuery.getFilters(this.query().query()).some(
         filter => UtilFilter.isSegment(filter) && filter[1] === segmentId,
       )
     );
