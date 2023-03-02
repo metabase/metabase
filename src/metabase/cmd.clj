@@ -198,8 +198,7 @@
   [path & options]
   (let [opts (-> options
                  cmd-args->map
-                 (update :collections parse-int-list)
-                 (assoc :include-field-values (boolean (some #{"--include-field-values"} options))))]
+                 (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids

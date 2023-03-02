@@ -37,7 +37,7 @@
                (cmd/dump "/path/" "--num-cans" "2")))))
     (testing "export (v2)"
       (testing "with no options"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil :include-field-values false})
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil})
                (cmd/export "/path/"))))
       (testing "with --collections list"
         (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3] :include-field-values true})
