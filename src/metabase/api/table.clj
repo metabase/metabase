@@ -4,6 +4,7 @@
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.csv-upload :as csv-upload]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -453,12 +454,12 @@
   {field_order [su/IntGreaterThanZero]}
   (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-;;; ------------------------------------- POST /api/table/ ---------------------------------------
+;;; ------------------------------------- POST /api/table/ and CSV upload  ---------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create `Table` with given schema."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+  [:as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order name db_id schema], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
@@ -471,7 +472,18 @@
    name                    s/Str
    db_id                   su/IntGreaterThanZero
    schema                  {s/Str s/Str}}
-  (db/insert! Table (dissoc body :schema))
-  (table/create-sql-table! db_id name schema))
+  (let [new-table (db/insert! Table (dissoc body :schema))]
+    (csv-upload/create-sql-table! db_id name schema)
+    new-table))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/rows"
+  "Add the given rows to the table"
+  [id :as {{:keys [cols-and-values]} :body}]
+  {id   su/IntGreaterThanZero
+   cols-and-values {:columns [s/Str]
+                    :values  [s/Any]}}
+  (let [table (api/check-404 (db/select-one Table :id id))]
+    (csv-upload/add-rows! table cols-and-values)))
 
 (api/define-routes)

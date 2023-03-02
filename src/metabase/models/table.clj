@@ -1,6 +1,5 @@
 (ns metabase.models.table
   (:require
-   [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -15,7 +14,6 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -216,33 +214,6 @@
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))
-
-;;; ------------------------------------------------ CREATE TABLE -------------------------------------------------
-(def ^:private schema-type-mapping
-  {:string [:varchar 255]
-   :int    :int
-   :float  :decimal})
-
-(defn- schema->column-spec
-  [schema]
-  ;; todo malli schema
-  (map (fn [[name type]]
-         [name (get schema-type-mapping (keyword type))])
-       schema))
-
-(defn create-sql-table!
-  "Create a new table in the given database"
-  [db-id name schema]
-  ;; TODO check if actions enabled, etc.
-  ;; TODO SQL dialect?
-  (let [sql (first (sql/format {:create-table name
-                                :with-columns
-                                (conj (schema->column-spec schema)
-                                      [:id :int [:not nil]])}))
-        query {:type :native
-               :database db-id
-               :native {:query sql}}]
-    (qp.writeback/execute-write-query! query)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes.base/serdes-dependencies "Table" [table]
