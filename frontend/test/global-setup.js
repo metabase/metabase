@@ -4,10 +4,12 @@ module.exports = function () {
   const fs = require("fs");
   const path = require("path");
   const cljs_env = path.join(__dirname, "..", "src", "cljs", "cljs_env.js");
-  const contents = fs.readFileSync(cljs_env, { encoding: "utf8" });
-  const replaced = contents.replace(
-    new RegExp("goog.isProvided_ = function\\(name\\) {\\n.*?\\n\\s*};"),
-    "goog.isProvided_ = function(name) { return false; };",
-  );
-  fs.writeFileSync(cljs_env, replaced);
+  if (fs.existsSync(cljs_env)) {
+    const contents = fs.readFileSync(cljs_env, { encoding: "utf8" });
+    const replaced = contents.replace(
+      new RegExp("goog.isProvided_ = function\\(name\\) {\\n.*?\\n\\s*};"),
+      "goog.isProvided_ = function(name) { return false; };",
+    );
+    fs.writeFileSync(cljs_env, replaced);
+  }
 };
