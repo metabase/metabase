@@ -14,3 +14,5 @@ If you still want to view Google Analytics data in Metabase, we recommend:
 - Setting up a [BigQuery](https://cloud.google.com/bigquery) account.
 - Connecting your [Bigquery to Metabase](./bigquery.md).
 - Exporting your [Google Analytics 4 data to BigQuery](https://support.google.com/analytics/answer/9358801?hl=en).
+
+Google Analytics will export the data to BigQuery in one table per day. You can build native SQL models with [wildcard queries](https://cloud.google.com/bigquery/docs/querying-wildcard-tables), and then build Metabase questions over those views.
