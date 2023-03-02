@@ -20,13 +20,17 @@ export interface NormalizedTable extends Omit<Table, "fields"> {
   fields?: FieldId[];
 }
 
+export interface NormalizedField extends Field {
+  uniqueId: string;
+}
+
 export interface EntitiesState {
   actions?: Record<string, WritebackAction>;
   collections?: Record<string, Collection>;
   dashboards?: Record<string, Dashboard>;
   databases?: Record<string, NormalizedDatabase>;
   tables?: Record<string, NormalizedTable>;
-  fields?: Record<string, Field>;
+  fields?: Record<string, NormalizedField>;
   snippets?: Record<string, NativeQuerySnippet>;
   users?: Record<string, User>;
   questions?: Record<string, Card>;
