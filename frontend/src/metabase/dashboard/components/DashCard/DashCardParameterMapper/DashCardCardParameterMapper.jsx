@@ -238,6 +238,7 @@ export function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
+                aria-label={buttonTooltip}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}

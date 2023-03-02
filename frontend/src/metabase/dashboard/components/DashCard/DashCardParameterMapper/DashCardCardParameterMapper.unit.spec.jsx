@@ -6,13 +6,27 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockActionDashboardCard,
-  createMockMetadata,
 } from "metabase-types/api/mocks";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
+import { createEntitiesState } from "__support__/store";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
+const QUESTION_ID = 1;
+
+const state = createMockState({
+  entities: createEntitiesState({
+    databases: [createSampleDatabase()],
+    questions: [createMockCard({ id: QUESTION_ID })],
+  }),
+});
+
+const metadata = getMetadata(state); // metabase-lib Metadata instance
+
 const setup = options => {
-  const metadata = createMockMetadata();
   render(
     <DashCardCardParameterMapper
       card={createMockCard()}
@@ -32,6 +46,9 @@ describe("DashCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
     setup();
     expect(getIcon("key")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/permission to see this question/i),
+    ).toBeInTheDocument();
   });
 
   it("should render an informative error state for action cards", () => {

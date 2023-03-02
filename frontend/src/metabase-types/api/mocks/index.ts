@@ -7,7 +7,6 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
-export * from "./metadata";
 export * from "./metric";
 export * from "./models";
 export * from "./parameters";
