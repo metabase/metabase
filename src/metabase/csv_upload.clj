@@ -1,5 +1,6 @@
 (ns metabase.csv-upload
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.query-processor.writeback :as qp.writeback]))
 
@@ -9,11 +10,18 @@
    :int    :int
    :float  :decimal})
 
+(defn- databasify
+  [identifier]
+  (-> identifier
+      (str/replace #"[^a-zA-z0-9_]" "_")
+      (str/lower-case)
+      (keyword)))
+
 (defn- schema->column-spec
   [schema]
   ;; todo malli schema
-  (map (fn [[name type]]
-         [name (get schema-type-mapping (keyword type))])
+  (map (fn [[column-name type]]
+         [(databasify (name column-name)) (get schema-type-mapping (keyword type))])
        schema))
 
 (defn create-sql-table!
@@ -21,7 +29,7 @@
   [db-id name schema]
   ;; TODO check if actions enabled, etc.
   ;; TODO SQL dialect? Non-postgres Will break with :serial
-  (let [sql (first (sql/format {:create-table name
+  (let [sql (first (sql/format {:create-table (databasify name)
                                 :with-columns
                                 (conj (schema->column-spec schema)
                                       [:id :serial]

@@ -471,8 +471,10 @@
    field_order             (s/maybe FieldOrder)
    name                    s/Str
    db_id                   su/IntGreaterThanZero
-   schema                  {s/Str s/Str}}
-  (let [new-table (db/insert! Table (dissoc body :schema))]
+   schema                  {s/Any s/Str}}
+  (let [new-table (db/insert! Table (assoc
+                                     (dissoc body :schema)
+                                     :active true))]
     (csv-upload/create-sql-table! db_id name schema)
     new-table))
 
