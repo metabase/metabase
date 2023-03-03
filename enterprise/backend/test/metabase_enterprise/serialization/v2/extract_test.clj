@@ -1349,9 +1349,14 @@
                       [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
-                      (map serdes.base/serdes-path)
-                      set)))))))))
+                    (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
+                         (map serdes.base/serdes-path)
+                         set)))))
+
+        (testing "data-model-only"
+          (let [results (into [] (extract/extract-metabase {:data-model-only true}))]
+            (is (seq (by-model "Table" results)))
+            (is (empty? (by-model "Dashboard" results)))))))))
 
 (deftest foreign-key-field-test
   (ts/with-empty-h2-app-db
