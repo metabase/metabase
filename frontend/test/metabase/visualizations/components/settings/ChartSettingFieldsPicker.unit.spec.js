@@ -1,5 +1,6 @@
 import React from "react";
-import { renderWithProviders, screen, fireEvent } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 
@@ -41,7 +42,7 @@ describe("ChartSettingFieldsPicker", () => {
     expect(screen.queryByTestId("remove-avg")).not.toBeInTheDocument();
     expect(screen.getByText("Add another series")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Add another series"));
+    userEvent.click(screen.getByText("Add another series"));
 
     expect(onChange).toHaveBeenCalledWith(["avg", "count"]);
   });
@@ -58,12 +59,12 @@ describe("ChartSettingFieldsPicker", () => {
       screen.getByRole("img", { name: /chevrondown/i }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Average of Total"));
+    userEvent.click(screen.getByText("Average of Total"));
 
     //Check to see that count is in the popover
     expect(screen.getByText("Count")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Count"));
+    userEvent.click(screen.getByText("Count"));
 
     expect(onChange).toHaveBeenCalledWith(["count"]);
   });
