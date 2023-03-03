@@ -84,10 +84,10 @@ export const many_data_types = async dbClient => {
     table.boolean("boolean");
 
     table.date("date");
-    table.dateTime("datetime");
+    table.dateTime("datetime", { useTz: false });
     table.dateTime("datetimeTZ", { useTz: true });
     table.time("time");
-    table.timestamp("timestamp");
+    table.timestamp("timestamp", { useTz: false });
     table.timestamp("timestampTZ", { useTz: true });
 
     table.json("json");
