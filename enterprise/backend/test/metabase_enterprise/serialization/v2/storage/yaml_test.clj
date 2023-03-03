@@ -128,7 +128,7 @@
                          Field       [website {:name "Company/organization website" :table_id (:id table)}]
                          FieldValues [_       {:field_id (:id website)}]
                          Table       [_       {:name "Orders/Invoices" :db_id (:id db)}]]
-        (let [export          (into [] (extract/extract-metabase nil))]
+        (let [export          (into [] (extract/extract-metabase {:include-field-values true}))]
           (storage.yaml/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]

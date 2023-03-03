@@ -790,7 +790,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1

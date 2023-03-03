@@ -897,7 +897,15 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes.base/serdes-dependencies ser)))))))
+      (testing "extract-metabase behavior"
+        (testing "without :include-field-values"
+          (is (= #{}
+                 (by-model "FieldValues" (extract/extract-metabase {})))))
+        (testing "with :include-field-values true"
+          (let [models (->> {:include-field-values true} extract/extract-metabase (map (comp :model last :serdes/meta)))]
+            ;; why 6?
+            (is (= 6 (count (filter #{"FieldValues"} models))))))))))
 
 (deftest pulses-test
   (mt/with-empty-h2-app-db
