@@ -14303,7 +14303,7 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-003
       author: calherries
-      comment: Added 0.47.0 -- migrate base-type for JSON database types for postgres and mysql
+      comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
       validCheckSum: ANY
       changes:
         - sql:
@@ -14351,8 +14351,9 @@ databaseChangeLog:
                   AND d.engine in ('postgres', 'mysql')
               ) as updates
               ON f.id = updates.id
-              WHEN MATCHED THEN 
+              WHEN MATCHED THEN
                 UPDATE SET f.base_type = updates.base_type;
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
