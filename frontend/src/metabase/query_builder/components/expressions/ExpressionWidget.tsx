@@ -3,10 +3,11 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
-import type { Expression } from "metabase-types/types/Query";
 import Input from "metabase/core/components/Input/Input";
+import type { Expression } from "metabase-types/types/Query";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import {
   Divider,
   ActionButtonsWrapper,
@@ -19,7 +20,6 @@ import {
   StyledFieldTitleIcon,
   Container,
 } from "./ExpressionWidget.styled";
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
 export interface ExpressionWidgetProps {
   query: StructuredQuery;
@@ -71,7 +71,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             placement="right"
             maxWidth={332}
           >
-            <IconWrapper>
+            <IconWrapper circle>
               <StyledFieldTitleIcon name="info" />
             </IconWrapper>
           </Tooltip>
@@ -110,16 +110,13 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
       <Divider />
       <Footer>
         <ActionButtonsWrapper>
-          <Button onClick={() => onClose && onClose()}>{t`Cancel`}</Button>
-
+          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button primary={isValid} disabled={!isValid} onClick={handleCommit}>
             {initialName ? t`Update` : t`Done`}
           </Button>
 
           {initialName && onRemoveExpression ? (
             <RemoveLink
-              as="a"
-              href="#"
               onlyText
               onClick={() => {
                 onRemoveExpression(initialName);

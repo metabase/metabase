@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const Container = styled.div`
   width: 445px;
@@ -16,6 +17,7 @@ export const ExpressionFieldWrapper = styled.div`
 `;
 
 export const FieldTitle = styled.div`
+  display: flex;
   margin-bottom: 0.5rem;
 
   font-weight: 700;
@@ -26,13 +28,8 @@ export const FieldTitle = styled.div`
   color: ${color("text-light")};
 `;
 
-export const IconWrapper = styled.span`
+export const IconWrapper = styled(IconButtonWrapper)`
   margin-left: 4px;
-  cursor: help;
-
-  &:hover {
-    color: ${color("text-dark")};
-  }
 `;
 
 export const StyledFieldTitleIcon = styled(Icon)`
@@ -63,11 +60,6 @@ export const RemoveLink = styled(Button)`
 export const ActionButtonsWrapper = styled.div`
   margin-left: auto;
 
-  & > ${Button} + ${Button} {
-    margin-left: 1rem;
-  }
-
-  & > ${Button} + ${RemoveLink} {
-    margin-left: 1rem;
-  }
+  display: flex;
+  gap: 1rem;
 `;
