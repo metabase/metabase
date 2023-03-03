@@ -876,9 +876,3 @@ export const getHelpText = (
 
 const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
   timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
-
-export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
-  return docsPage
-    ? `questions/query-builder/expressions/${docsPage}`
-    : "questions/query-builder/expressions";
-};
