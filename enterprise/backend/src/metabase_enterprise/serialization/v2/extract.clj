@@ -47,19 +47,15 @@
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (serdes.backfill/backfill-ids)
   ;; TODO document and test data-model-only if we want to keep this feature...
-  (let [model-pred (cond
-                     (:data-model-only opts)
-                     #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-
-                     (:include-field-values opts)
-                     (constantly true)
-
-                     :else
-                     (complement #{"FieldValues"}))
+  (let [models (if (:data-model-only opts)
+                 #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
+                 (set serdes.models/exported-models))
+        models (if (:include-field-values opts)
+                 models
+                 (disj models "FieldValues"))
         ;; This set of unowned top-level collections is used in several `extract-query` implementations.
-        opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
-    (eduction cat (for [model serdes.models/exported-models
-                        :when (model-pred model)]
+        opts   (assoc opts :collection-set (collection-set-for-user (:user opts)))]
+    (eduction cat (for [model models]
                     (serdes.base/extract-all model opts)))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
