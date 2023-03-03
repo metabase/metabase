@@ -678,23 +678,80 @@
                                  (map (fn [k] [k pos]) ks)))))
       starting-positions)))
 
+(defn group-axes-at-once2
+  [joined-rows viz-settings threshold]
+  (println "NEW")
+  (let [;; a double-x-axis 'joined-row' looks like:
+        ;; [["val on x-axis"         "grouping-key"] [series-val]] eg:
+        ;; [["2016-01-01T00:00:00Z"  "Doohickey"   ] [9031.5578 ]]
+
+        ;; a single-x-axis 'joined-row' looks like:
+        ;; [[grouping-key] [series-val-1 series-val-2 ...]]
+        joined-rows-map    (if (= (count (ffirst joined-rows)) 2)
+                           ;; double-x-axis
+                           (-> (group-by (fn [[[_ x2] _]] x2) joined-rows)
+                               (update-vals #(mapcat last %)))
+                           ;; single-x-axis
+                           (->> (:graph.metrics viz-settings)
+                                (map-indexed (fn [idx k]
+                                               [k (mapv #(get (second %) idx) joined-rows)]))
+                                (into {})))
+        ;; map of group-key -> :left :right or nil
+        starting-positions (into {} (for [k (keys joined-rows-map)]
+                                      [k (keyword (series-setting viz-settings k :axis))]))
+        ;; map of position (:left :right or nil) -> vector of 'assigned' groups
+        positions          (-> (group-by second starting-positions)
+                               (update-vals #(mapv first %)))
+        check              {:unassigned? (contains? positions nil)
+                            :stacked?    (boolean (:stackable.stack_type viz-settings))} ]
+    (case check
+      {:unassigned? true  :stacked? true} (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
+      {:unassigned? false :stacked? true} (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
+      {:unassigned? true :stacked? false}
+      (let [;; calculate the overlaps between every group.
+            ;; If there are 4 groups, there will be 4x4 overlaps calculated.
+            ;; TODO: the reciprocal pairings are technically unneeded calculation. It's optimizable,
+            ;; but the number of total groupings might never be high enough to really worry about it.
+            overlaps           (-> joined-rows-map
+                         (update-vals (fn [vs]
+                                        (into {} (map (fn [k]
+                                                        [k (overlap (get joined-rows-map k) vs)])
+                                                      (keys joined-rows-map))))))
+            lefts              (or (:left positions) [(first (get positions nil))])
+            rights             (or (:right positions) [])
+            to-group           (remove (set (concat lefts rights)) (get positions nil))
+            relevant-distances (get overlaps (first lefts))
+            all-positions      (apply (partial merge-with concat)
+                                      (conj
+                                       (for [k to-group]
+                                         (if (> (get relevant-distances k) threshold)
+                                           {:left [k]}
+                                           {:right [k]}))
+                                       (-> positions (dissoc nil) (assoc :left lefts))))]
+        (into {} (apply concat (for [[pos ks] all-positions]
+                                 (map (fn [k] [k pos]) ks)))))
+      ;; else
+      positions)))
+
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
-  (for [[idx y-col] (map-indexed vector y-cols)]
-    (let [y-col-key     (keyword (:name y-col))
-          card-type     (or (series-setting viz-settings y-col-key :display)
-                            chart-type
-                            (nth default-combo-chart-types idx))
-          selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
-          y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos data axis-group-threshold) idx))]
-      {:cardName      card-name
-       :type          card-type
-       :data          selected-rows
-       :yAxisPosition y-axis-pos
-       :column        y-col})))
+  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as _data} card-name]
+  (let [positions (group-axes-at-once2 joined-rows viz-settings axis-group-threshold)]
+    (for [[idx y-col] (map-indexed vector y-cols)]
+      (let [y-col-key      (:name y-col)
+            card-type      (or (series-setting viz-settings y-col-key :display)
+                               chart-type
+                               (nth default-combo-chart-types idx))
+            selected-rows  (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
+            y-axis-pos     (get positions y-col-key)
+            #_#_y-axis-pos (or (series-setting viz-settings y-col-key :axis)
+                               (nth (default-y-pos data axis-group-threshold) idx))]
+        {:cardName      card-name
+         :type          card-type
+         :data          selected-rows
+         :yAxisPosition y-axis-pos
+         :column        y-col}))))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -702,10 +759,11 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
+  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as _data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)
-        positions    (group-axes-at-once groups joined-rows viz-settings axis-group-threshold)]
+        #_#_positions    (group-axes-at-once groups joined-rows viz-settings axis-group-threshold)
+        positions (group-axes-at-once2 joined-rows viz-settings axis-group-threshold)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
@@ -725,10 +783,6 @@
   [(or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
    (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))])
 
-;; HERE: Take the logic from the double-axis code for building up a positions map
-;; and move it here OR into default-y-pos, taking the joined-rows.
-;; This should conform single-axis and double-axis to use the same approach, elminating the need to
-;; have weird cols metadata based guesswork.
 (defn- card-result->series
   "Helper function for `render-multiple-lab-chart` that turns a card query result into a series-settings map in the shape expected by `js-svg/combo chart` (and the combo-chart js code)."
   [idx result]
