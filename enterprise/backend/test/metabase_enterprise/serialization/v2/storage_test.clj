@@ -1,11 +1,11 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.storage.yaml-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.storage-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.test :as mt]
@@ -30,7 +30,7 @@
         (let [export          (into [] (extract/extract-metabase nil))
               parent-filename (format "%s_some_collection"  (:entity_id parent))
               child-filename  (format "%s_child_collection" (:entity_id child))]
-          (storage.yaml/store! export dump-dir)
+          (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{[parent-filename (str parent-filename ".yaml")]
                      [parent-filename child-filename (str child-filename ".yaml")]}
@@ -71,7 +71,7 @@
                          Card        [c4          {:name "child card"       :collection_id (:id child)}]
                          Dashboard   [d1          {:name "parent dash"      :collection_id (:id parent)}]]
         (let [export          (into [] (extract/extract-metabase nil))]
-          (storage.yaml/store! export dump-dir)
+          (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                   p-dir  (str (:entity_id parent)      "_parent_collection")
@@ -103,7 +103,7 @@
                          NativeQuerySnippet [c3          {:name "parent snippet"      :collection_id (:id parent)}]
                          NativeQuerySnippet [c4          {:name "child snippet"       :collection_id (:id child)}]]
         (let [export          (into [] (extract/extract-metabase nil))]
-          (storage.yaml/store! export dump-dir)
+          (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                 p-dir  (str (:entity_id parent)      "_parent_collection")
                 c-dir  (str (:entity_id child)       "_child_collection")]
@@ -129,7 +129,7 @@
                          FieldValues [_       {:field_id (:id website)}]
                          Table       [_       {:name "Orders/Invoices" :db_id (:id db)}]]
         (let [export          (into [] (extract/extract-metabase {:include-field-values true}))]
-          (storage.yaml/store! export dump-dir)
+          (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]
                      ["Company__SLASH__organization website___fieldvalues.yaml"]}

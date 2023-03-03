@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card
                             Collection
                             Dashboard
@@ -218,7 +218,7 @@
             (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
-            (storage.yaml/store! (seq @extraction) dump-dir)
+            (storage/store! (seq @extraction) dump-dir)
 
             (testing "for Actions"
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
@@ -468,7 +468,7 @@
                          :values_source_type "card"}]
                        (:parameters (first (by-model extraction "Card")))))
 
-                (storage.yaml/store! (seq extraction) dump-dir)))
+                (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               (ts/with-dest-db
@@ -576,7 +576,7 @@
                          {:model "Table"    :id "Linked table"}]}
                     (set (serdes.base/serdes-dependencies extracted-dashboard))))
 
-               (storage.yaml/store! (seq extraction) dump-dir)))
+               (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               ;; ingest
