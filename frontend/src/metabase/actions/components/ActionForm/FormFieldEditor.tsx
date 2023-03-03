@@ -64,7 +64,7 @@ function FormFieldEditor({
               />
             )}
           </Header>
-          {isEditable && (
+          {isEditable && fieldSettings && (
             <>
               <Subtitle>{t`Field type`}</Subtitle>
               <Radio
