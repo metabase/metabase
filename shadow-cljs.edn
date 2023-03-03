@@ -14,7 +14,8 @@
    :dev        {:output-dir "frontend/src/cljs/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}}
-   :entries    [metabase.domain-entities.queries.util
+   :entries    [metabase.domain-entities.card
+                metabase.domain-entities.queries.util
                 metabase.mbql.js
                 metabase.types
                 metabase.shared.formatting.constants

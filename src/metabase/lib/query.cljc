@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -91,3 +92,10 @@
   "Get the metadata associated with a `query`, if any."
   [query :- ::lib.schema/query]
   (:lib/metadata query))
+
+(mu/defn source-table-id :- ::lib.schema.id/table
+  "Finds the ID for the source table of `query`."
+  [query :- ::lib.schema/query]
+  (-> query
+      (lib.util/query-stage 0)
+      :source-table))

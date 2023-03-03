@@ -290,6 +290,7 @@
     "test-unit": "yarn build-quick:cljs && jest --maxWorkers=2 --config jest.unit.conf.json",
     "test-unit-keep-cljs": "jest --maxWorkers=2 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
+    "test-unit-watch-keep-cljs": "jest --maxWorkers=2 --config jest.unit.conf.json --watch",
     "test-unit-watch:cljs": "yarn concurrently -n 'cljs,tests' 'yarn build-watch:cljs' 'yarn test-unit-keep-cljs --watch'",
     "test-timezones-unit": "yarn build-quick:cljs && jest --silent --maxWorkers=2 --config jest.tz.unit.conf.json",
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",

@@ -110,3 +110,29 @@
     (cond-> query
       (= (:lib/type (query-stage query -1)) :mbql.stage/native)
       (update :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))))
+
+(defn- stage->native-query [stage]
+  (-> stage
+      (dissoc :lib/type :lib/options)
+      (set/rename-keys {:native :query})))
+
+(defn- stage->inner-query [stage]
+  (if (= (:lib/type stage) :mbql.stage/native)
+    (stage->native-query stage)
+    (dissoc stage :lib/type :lib/options)))
+
+(mu/defn depipeline :- [:map [:type [:keyword]]]
+  "Transform a `:pipeline` pMBQL query into a legacy MBQL query."
+  [query :- ::lib.schema/query]
+  (let [innermost   (-> query :stages first stage->inner-query)
+        inner-query (reduce (fn [inner stage]
+                              (assoc (stage->inner-query stage) :source-query inner))
+                            innermost
+                            (rest (:stages query)))
+        query-type  (if (-> query :stages first :lib/type (= :mbql.stage/native))
+                      :native
+                      :query)]
+    (-> query
+        (select-keys [:database])
+        (assoc :type      query-type
+               query-type inner-query))))

@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import { assoc, assocIn, chain, dissoc } from "icepick";
 import inflection from "inflection";
 import { t } from "ttag";
 /* eslint-disable import/order */
@@ -24,6 +24,7 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
+import * as C from "cljs/metabase.domain_entities.card";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as DESCRIPTION from "metabase-lib/queries/utils/description";
@@ -103,15 +104,33 @@ export type QuestionCreatorOpts = {
 };
 
 /**
+ * An "opaque type": this is a strong type the TS compiler understands, but you can only create one in this file.
+ *
+ * This technique gives us a way to pass around opaque CLJS values that TS will track for us, and in other files it
+ * gets treated like `unknown` so it can't be examined, manipulated or a new one created.
+ */
+type CljsCard = unknown & { _opaque: typeof CljsCard };
+declare const CljsCard: unique symbol;
+
+/**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
 class QuestionInner {
   /**
-   * The plain object presentation of this question, equal to the format that Metabase REST API understands.
+   * The plain JS object representation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
+   *
+   * DO NOT use `this._card` directly - see `this.card()` and its lazy conversion logic.
    */
-  _card: CardObject;
+  _card?: CardObject;
+
+  /**
+   * The CLJS map representation of this question. Opaque to TS, intended to be passed to CLJC functions.
+   *
+   * DO NOT use `this._cljsCardCached` directly - see `this._cljsCard()` and its lazy conversion logic.
+   */
+  _cljsCardCached?: CljsCard;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
@@ -129,11 +148,19 @@ class QuestionInner {
    * Question constructor
    */
   constructor(
-    card: CardObject,
+    card: CardObject | CljsCard,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
   ) {
-    this._card = card;
+    // The constructor can be passed either the vanilla JS `CardObject` or a CLJS map.
+    // This caches whichever representation is passed in.
+    // If the other is needed it will be converted lazily; see `card()` and `_cljsCard()`.
+    if (card.constructor === Object) {
+      this._card = card as CardObject;
+    } else {
+      this._cljsCardCached = card as CljsCard;
+    }
+
     this._metadata =
       metadata ||
       new Metadata({
@@ -147,6 +174,7 @@ class QuestionInner {
     this._parameterValues = parameterValues || {};
   }
 
+  // TODO: Remove callers and this method - Question is already immutable (up to caching).
   clone() {
     return new Question(this._card, this._metadata, this._parameterValues);
   }
@@ -155,18 +183,49 @@ class QuestionInner {
     return this._metadata;
   }
 
-  card() {
+  card(): CardObject {
     return this._doNotCallSerializableCard();
   }
 
-  _doNotCallSerializableCard() {
+  /** Returns the cached CLJS representation, or lazily creates it from {@link _card}. */
+  private _cljsCard(): CljsCard {
+    if (!this._cljsCardCached) {
+      if (!this._card) {
+        throw new Error(
+          "infinite loop - Question has neither _card nor _cljsCardCached",
+        );
+      }
+      this._cljsCardCached = C.from_js(this._card);
+    }
+    return this._cljsCardCached;
+  }
+
+  /** Returns the cached plain JS representation, or lazily creates it from {@link _cljsCard}. */
+  _doNotCallSerializableCard(): CardObject {
+    if (!this._card) {
+      if (!this._cljsCardCached) {
+        throw new Error(
+          "infinite loop - Question has neither _card nor _cljsCardCached",
+        );
+      }
+      this._card = C.to_js(this._cljsCardCached);
+    }
     return this._card;
   }
 
   setCard(card: CardObject): Question {
-    const q = this.clone();
-    q._card = card;
-    return q;
+    return new Question(card, this.metadata(), this._parameterValues);
+  }
+
+  private _fromCljs(cljsCard: CljsCard): Question {
+    // Note that in CLJS:
+    //   (let [x {:foo "bar"}]
+    //     (identical? x (assoc x :foo "bar")))
+    // That is, updating some key of a map to the same value results in returning the original map.
+    // Here we detect these non-changes and simply return `this` for efficiency, caching, etc.
+    return cljsCard === this._cljsCardCached
+      ? this
+      : new Question(cljsCard, this.metadata(), this._parameterValues);
   }
 
   withoutNameAndId() {
@@ -202,7 +261,7 @@ class QuestionInner {
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
   query(): AtomicQuery {
-    const datasetQuery = this._card.dataset_query;
+    const datasetQuery = this.card().dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
@@ -222,11 +281,11 @@ class QuestionInner {
   }
 
   setEnableEmbedding(enabled: boolean): Question {
-    return this.setCard(assoc(this._card, "enable_embedding", enabled));
+    return this.setCard(assoc(this.card(), "enable_embedding", enabled));
   }
 
   setEmbeddingParams(params: Record<string, any> | null): Question {
-    return this.setCard(assoc(this._card, "embedding_params", params));
+    return this.setCard(assoc(this.card(), "embedding_params", params));
   }
 
   /**
@@ -234,7 +293,7 @@ class QuestionInner {
    * The query is saved to the `dataset_query` field of the Card object.
    */
   setQuery(newQuery: Query): Question {
-    if (this._card.dataset_query !== newQuery.datasetQuery()) {
+    if (this.card().dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
       );
@@ -268,7 +327,7 @@ class QuestionInner {
    * The visualization type of the question
    */
   display(): string {
-    return this._card && this._card.display;
+    return this.card()?.display;
   }
 
   setDisplay(display) {
@@ -276,7 +335,7 @@ class QuestionInner {
   }
 
   cacheTTL(): number | null {
-    return this._card?.cache_ttl;
+    return this.card()?.cache_ttl;
   }
 
   setCacheTTL(cache) {
@@ -287,8 +346,8 @@ class QuestionInner {
    * returns whether this question is a model
    * @returns boolean
    */
-  isDataset() {
-    return this._card && this._card.dataset;
+  isDataset(): boolean {
+    return !!this.card()?.dataset;
   }
 
   setDataset(dataset) {
@@ -296,7 +355,7 @@ class QuestionInner {
   }
 
   isPersisted() {
-    return this._card && this._card.persisted;
+    return this.card()?.persisted;
   }
 
   setPersisted(isPersisted) {
@@ -315,23 +374,26 @@ class QuestionInner {
   }
 
   setDisplayIsLocked(locked: boolean): Question {
-    return this.setCard(assoc(this.card(), "displayIsLocked", locked));
+    return this._fromCljs(C.with_display_is_locked(this._cljsCard(), locked));
   }
 
   displayIsLocked(): boolean {
-    return this._card && this._card.displayIsLocked;
+    return C.display_is_locked(this._cljsCard());
   }
 
   // If we're locked to a display that is no longer "sensible", unlock it
   // unless it was locked in unsensible
-  maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays): Question {
-    const wasSensible =
-      previousSensibleDisplays == null ||
-      previousSensibleDisplays.includes(this.display());
-    const isSensible = sensibleDisplays.includes(this.display());
-    const shouldUnlock = wasSensible && !isSensible;
-    const locked = this.displayIsLocked() && !shouldUnlock;
-    return this.setDisplayIsLocked(locked);
+  maybeUnlockDisplay(
+    sensibleDisplays: string[],
+    previousSensibleDisplays?: string[],
+  ): Question {
+    return this._fromCljs(
+      C.maybe_unlock_display(
+        this._cljsCard(),
+        sensibleDisplays,
+        previousSensibleDisplays,
+      ),
+    );
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
@@ -442,7 +504,7 @@ class QuestionInner {
   }
 
   settings(): VisualizationSettings {
-    return (this._card && this._card.visualization_settings) || {};
+    return this.card()?.visualization_settings || {};
   }
 
   setting(settingName, defaultValue = undefined) {
@@ -485,7 +547,7 @@ class QuestionInner {
   }
 
   canWrite(): boolean {
-    return this._card && this._card.can_write;
+    return this.card()?.can_write;
   }
 
   canWriteActions(): boolean {
@@ -857,11 +919,12 @@ class QuestionInner {
    * A user-defined name for the question
    */
   displayName(): string | null | undefined {
-    return this._card && this._card.name;
+    return this.card()?.name;
   }
 
   slug(): string | null | undefined {
-    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
+    const card = this.card();
+    return card?.name && `${card.id}-${slugg(card.name)}`;
   }
 
   setDisplayName(name: string | null | undefined) {
@@ -869,7 +932,7 @@ class QuestionInner {
   }
 
   collectionId(): number | null | undefined {
-    return this._card && this._card.collection_id;
+    return this.card()?.collection_id;
   }
 
   setCollectionId(collectionId: number | null | undefined) {
@@ -877,7 +940,7 @@ class QuestionInner {
   }
 
   id(): number {
-    return this._card && this._card.id;
+    return this.card()?.id;
   }
 
   setId(id: number | undefined): Question {
@@ -905,7 +968,7 @@ class QuestionInner {
   }
 
   description(): string | null {
-    return this._card && this._card.description;
+    return this.card().description;
   }
 
   setDescription(description) {
@@ -913,11 +976,11 @@ class QuestionInner {
   }
 
   lastEditInfo() {
-    return this._card && this._card["last-edit-info"];
+    return this.card()?.["last-edit-info"];
   }
 
   lastQueryStart() {
-    return this._card?.last_query_start;
+    return this.card()?.last_query_start;
   }
 
   isSaved(): boolean {
@@ -925,11 +988,11 @@ class QuestionInner {
   }
 
   publicUUID(): string {
-    return this._card && this._card.public_uuid;
+    return this.card()?.public_uuid;
   }
 
   setPublicUUID(public_uuid: string | null): Question {
-    return this.setCard({ ...this._card, public_uuid });
+    return this.setCard({ ...this.card(), public_uuid });
   }
 
   database(): Database | null | undefined {
@@ -955,7 +1018,7 @@ class QuestionInner {
   }
 
   isArchived(): boolean {
-    return this._card && this._card.archived;
+    return !!this.card()?.archived;
   }
 
   getUrl({
@@ -1129,8 +1192,7 @@ class QuestionInner {
     const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
-      const dashboardId = this._card.dashboardId;
-      const dashcardId = this._card.dashcardId;
+      const { dashboardId, dashcardId } = this.card();
 
       const queryParams = {
         cardId: this.id(),
@@ -1186,9 +1248,7 @@ class QuestionInner {
   }
 
   setParameterValues(parameterValues) {
-    const question = this.clone();
-    question._parameterValues = parameterValues;
-    return question;
+    return new Question(this.card(), this._metadata, parameterValues);
   }
 
   // TODO: Fix incorrect Flow signature
@@ -1244,35 +1304,36 @@ class QuestionInner {
     creationType,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
+    const card = this.card();
     const cardCopy = {
-      name: this._card.name,
-      description: this._card.description,
-      collection_id: this._card.collection_id,
+      name: this.card().name,
+      description: card.description,
+      collection_id: card.collection_id,
       dataset_query: query.datasetQuery(),
-      display: this._card.display,
-      parameters: this._card.parameters,
-      dataset: this._card.dataset,
+      display: card.display,
+      parameters: card.parameters,
+      dataset: card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
             parameterValues: this._parameterValues,
           }),
       // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: this._card.visualization_settings,
+      visualization_settings: card.visualization_settings,
       ...(includeOriginalCardId
         ? {
-            original_card_id: this._card.original_card_id,
+            original_card_id: card.original_card_id,
           }
         : {}),
       ...(includeDisplayIsLocked
         ? {
-            displayIsLocked: this._card.displayIsLocked,
+            displayIsLocked: card.displayIsLocked,
           }
         : {}),
 
       ...(creationType ? { creationType } : {}),
-      dashboardId: this._card.dashboardId,
-      dashcardId: this._card.dashcardId,
+      dashboardId: card.dashboardId,
+      dashcardId: card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -1552,7 +1613,7 @@ class QuestionInner {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]) || [];
+    return this.card()?.moderation_reviews || [];
   }
 }
 
