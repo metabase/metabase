@@ -20,8 +20,19 @@
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
-    :refer [Action Card Collection Dashboard Database Dimension Field
-            Permissions PermissionsGroup Pulse Setting Table User]]
+    :refer [Action
+            Card
+            Collection
+            Dashboard
+            Database
+            Dimension
+            Field
+            Permissions
+            PermissionsGroup
+            Pulse
+            Setting
+            Table
+            User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
