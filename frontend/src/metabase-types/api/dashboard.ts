@@ -86,6 +86,7 @@ export type UnrestrictedLinkEntity = {
   display_name?: string;
   description?: string;
   display?: CardDisplayType;
+  getIcon?: () => { name: string };
 };
 
 export type RestrictedLinkEntity = {

@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { t } from "ttag";
-
 import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Ellipsified from "metabase/core/components/Ellipsified";
 
 import type {
   DashboardOrderedCard,
@@ -17,10 +14,8 @@ import type {
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
 
-import { isEmpty } from "metabase/lib/validate";
-
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
-import { EntityDisplay } from "./EntityDisplay";
+import { EntityDisplay, UrlLinkDisplay } from "./EntityDisplay";
 import { settings } from "./LinkVizSettings";
 
 import {
@@ -28,7 +23,6 @@ import {
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
-  BrandIconWithHorizontalMargin,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -160,13 +154,10 @@ function LinkViz({
     );
   }
 
-  const urlIcon = isEmpty(url) ? "question" : "link";
-
   return (
     <DisplayLinkCardWrapper>
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
-        <BrandIconWithHorizontalMargin name={urlIcon} />
-        <Ellipsified>{!isEmpty(url) ? url : t`Choose a link`}</Ellipsified>
+        <UrlLinkDisplay url={url} />
       </CardLink>
     </DisplayLinkCardWrapper>
   );
