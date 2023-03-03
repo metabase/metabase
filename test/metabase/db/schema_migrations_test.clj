@@ -14,25 +14,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
-    :refer [Action
-            Card
-            Collection
-            Dashboard
-            Database
-            Dimension
-            Field
-            Permissions
-            PermissionsGroup
-            Pulse
-            Setting
-            Table
-            User]]
+    :refer [Action Card Collection Dashboard Database Dimension Field
+            Permissions PermissionsGroup Pulse Setting Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -963,3 +953,24 @@
                  ;; Invalid path is not touched but also doesn't fail the migration
                  ["invalid-path"                                 group-2-id]}
                new-paths-set))))))
+
+(deftest migrate-field-database-type-test
+  (testing "Migration v46.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
+    (impl/test-migrations ["v47.00-003"] [migrate!]
+      (let [[db-id]      (t2/insert-returning-pks! Database {:name "Database" :engine "postgres"})
+            [table-id]   (t2/insert-returning-pks! Table {:db_id      db-id
+                                                          :name       "Table"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :active     true})
+            [field-1-id
+             field-2-id
+             field-3-id] (t2/insert-returning-pks! Field [{:name "Test Field 1" :table_id table-id :database_type "json"    :base_type :type/Structured}
+                                                          {:name "Test Field 2" :table_id table-id :database_type "JSONB"   :base_type :type/Structured}
+                                                          {:name "Test Field 3" :table_id table-id :database_type "varchar" :base_type :type/Text}])
+            _              (migrate!)
+            new-base-types (t2/select-pk->fn :base_type Field)]
+        (are [field-id expected] (= (get new-base-types field-id) expected)
+             field-1-id :type/JSON
+             field-2-id :type/JSON
+             field-3-id :type/Text)))))
