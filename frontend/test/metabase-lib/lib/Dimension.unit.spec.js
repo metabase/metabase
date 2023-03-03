@@ -801,6 +801,62 @@ describe("Dimension", () => {
           expect(base_type).toBe("type/Integer");
         });
 
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for min of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["min", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
+
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for max of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["max", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
+
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
           expect(base_type).toBe("type/Integer");

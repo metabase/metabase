@@ -61,6 +61,18 @@
               (and data link) (assoc :link link))))))
 
 #?(:clj
+   (clojure.core/defn instrument!
+     "Instrument a [[metabase.util.malli/defn]]."
+     [id]
+     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
+                         :report  explain-fn-fail!}))
+   :cljs
+   (clojure.core/defn instrument!
+     "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
+     Clojure AFAIK. [[malli.instrument]] is a Clj-only namespace."
+     [_id]))
+
+#?(:clj
    (core/defn- -defn [schema args]
      (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
@@ -91,9 +103,8 @@
                       ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                       ~@(when-not single (some->> arities val :meta vector)))]
           (mc/=> ~name ~schema)
-          (minst/instrument! {;; instrument the defn we just registered, via ~id
-                              :filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
-                              :report explain-fn-fail!})
+          ;; instrument the defn we just registered, via ~id
+          (instrument! ~id)
           defn#))))
 
 #?(:clj

@@ -5,6 +5,7 @@ import { Field } from "./field";
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
+export type SchemaId = string;
 
 export type TableVisibilityType =
   | null
@@ -28,4 +29,9 @@ export interface Table {
   schema_name?: string;
   visibility_type: TableVisibilityType;
   fields?: Field[];
+}
+
+export interface Schema {
+  id: SchemaId;
+  name: string;
 }

@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import _ from "underscore";
 import { createAction } from "redux-actions";
 
+import { ActionSchema } from "metabase/schema";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { ActionsApi } from "metabase/services";
@@ -102,6 +103,7 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
+  schema: ActionSchema,
   path: "/api/action",
   api: {
     create: (params: CreateActionParams) => ActionsApi.create(params),

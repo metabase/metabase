@@ -14,7 +14,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install openjdk-11-jdk curl 
     && ./linux-install-1.11.1.1208.sh
 
 COPY . .
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh
 
 # ###################
 # # STAGE 2: runner
