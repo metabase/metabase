@@ -70,16 +70,28 @@
                       {:num-stages (count stages)})))
     stage-number'))
 
-(defn has-stage?
-  "Whether the query has a stage with `stage-number`. Like everything else here, this handles negative indices as well,
-  e.g. `-1` is the last stage of the query, `-2` is the penultimate stage, etc."
+(mu/defn ^:private non-negative-stage-index :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+  "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
+  `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
+  [stages       :- [:sequential ::lib.schema/stage]
+   stage-number :- :int]
+  (let [stage-number' (if (neg? stage-number)
+                        (+ (count stages) stage-number)
+                        stage-number)]
+    (when (or (> stage-number' (dec (count stages)))
+              (neg? stage-number'))
+      (throw (ex-info (i18n/tru "Stage {0} does not exist" stage-number)
+                      {})))
+    stage-number'))
+
+(defn previous-stage-number
+  "The index of the previous stage, if there is one."
   [{:keys [stages], :as _query} stage-number]
-  ;; TODO -- this is a little bit duplicated from the logic above... find a way to consolidate?
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
-    (and (not (neg? stage-number))
-         (< stage-number (count stages)))))
+    (when (pos? stage-number)
+      (dec stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of

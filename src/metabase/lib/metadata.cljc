@@ -38,7 +38,9 @@
    [:id {:optional true} ::lib.schema.id/field]
    [:name ::lib.schema.common/non-blank-string]])
 
-(def ^:private TableMetadata
+(def TableMetadata
+  "Schema for the metadata about a capital-T Table (i.e., a Table that lives in the application database and has an
+  `:id`)."
   [:map
    [:lib/type [:= :metadata/table]]
    [:id ::lib.schema.id/table]
