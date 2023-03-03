@@ -18,7 +18,7 @@ Now, whenever you want to refer to your question again you can find it by search
 
 You can also convert a question to a [model][model].
 
-## Downloading your results
+## Downloading your question's results
 
 You can export the results of a question by clicking on the **Download arrow** (a down arrow in a cloud) in the lower right of the screen, or from a chart on a dashboard by clicking on the **...** in the upper right or a dashboard card.
 
@@ -36,6 +36,8 @@ You can download most charts (excluding table and number charts) as images in .p
 
 - From a question: click on the **download arrow** (a down arrow in a cloud in the bottom right) and select .png.
 - From a dashboard card: click on the **...** in the upper right of the card and select .png.
+
+You can't download the image of a dashboard, but you can set up a [dashboard subscription](../../dashboards/subscriptions.md).
 
 ## Editing your question
 
