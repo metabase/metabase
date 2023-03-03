@@ -25,6 +25,7 @@ import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getParameterTarget,
@@ -95,8 +96,8 @@ export function DashCardCardParameterMapper({
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption = _.find(mappingOptions, o =>
-    _.isEqual(o.target, target),
+  const selectedMappingOption = _.find(mappingOptions, option =>
+    _.isEqual(normalize(option.target), normalize(target)),
   );
 
   const handleChangeTarget = useCallback(
