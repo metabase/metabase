@@ -1,34 +1,14 @@
 (ns metabase.lib.field-test
   (:require
-   [clojure.test :refer [are deftest is]]
-   [metabase.lib.core :as lib]
+   [clojure.test :refer [deftest is]]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta])
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
-(deftest ^:parallel field-test
-  (are [x] (fn? x)
-    (lib/field "VENUES" "ID")
-    (lib/field "ID")
-    (lib/field nil "ID")))
-
 (deftest ^:parallel field-from-database-metadata-test
-  (let [field-metadata (lib.metadata/field-metadata meta/metadata "VENUES" "ID")]
-    (is (some? field-metadata))
+  (let [f (lib.field/field (meta/field-metadata :venues :id))]
+    (is (fn? f))
     (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-            (lib/field {:lib/metadata meta/metadata} -1 field-metadata)))
-    (let [f (lib/field field-metadata)]
-      (is (fn? f))
-      (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-              (f {:lib/metadata meta/metadata} -1)))
-      (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-              (#'lib.field/->field {:lib/metadata meta/metadata} -1 f))))))
-
-(deftest ^:parallel field-from-results-metadata-test
-  (let [field-metadata (lib.metadata/field-metadata meta/results-metadata "ID")]
-    (is (=? {:lib/type :metadata/field
-             :name     "ID"}
-            field-metadata))
-    (is (=? [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]
-            (#'lib.field/->field {} -1 field-metadata)))))
+            (f {:lib/metadata meta/metadata-provider} -1)))
+    (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
+            (#'lib.field/->field {:lib/metadata meta/metadata-provider} -1 f)))))
