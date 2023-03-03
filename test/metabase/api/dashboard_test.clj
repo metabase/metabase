@@ -2633,7 +2633,7 @@
                   (mt/user-http-request :crowberto :post 200 execute-path
                                         {:parameters {"id" 1}})
                   (is (= {:data {"action_id" action-id
-                                 "event"     "execute"
+                                 "event"     "action_executed"
                                  "source"    "dashboard"
                                  "type"      "query"}
                           :user-id (str (mt/user->id :crowberto))}

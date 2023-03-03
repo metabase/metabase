@@ -219,7 +219,7 @@
               (testing (format "add an action of type %s" type)
                 (is (=? {:user-id (str (mt/user->id :crowberto))
                          :data    {"action_id"      (:id new-action)
-                                   "event"          "new"
+                                   "event"          "action_created"
                                    "num_parameters" (count parameters)
                                    "type"           type}}
                         (last (snowplow-test/pop-event-data-and-user-id!)))))
@@ -228,7 +228,7 @@
                 (let [updated-action (mt/user-http-request :crowberto :put 200 (str "action/" (:id new-action)) {:name "new name"})]
                   (is (=? {:user-id (str (mt/user->id :crowberto))
                            :data    {"action_id"      (:id updated-action)
-                                     "event"          "update"
+                                     "event"          "action_updated"
                                      "type"           type}}
                           (last (snowplow-test/pop-event-data-and-user-id!))))))
 
@@ -236,7 +236,7 @@
                 (mt/user-http-request :crowberto :delete 204 (str "action/" (:id new-action)))
                 (is (=? {:user-id (str (mt/user->id :crowberto))
                          :data    {"action_id"      (:id new-action)
-                                   "event"          "delete"
+                                   "event"          "action_deleted"
                                    "type"           type}}
                         (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
@@ -410,7 +410,7 @@
                                         {:parameters {:id 1 :name "European"}})))
           (testing "track a snowplow event"
             (is (= {:data {"action_id" action-id
-                           "event"     "execute"
+                           "event"     "action_executed"
                            "source"    "model_detail"
                            "type"      "query"}
                     :user-id (str (mt/user->id :crowberto))}

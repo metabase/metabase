@@ -176,8 +176,7 @@
        ;; Make sure keywords in payload are converted to strings in snake-case
        (m/map-kv
         (fn [k v] [(normalize-kw k) (if (keyword? v) (normalize-kw v) v)])
-        (merge {:event event-kw}
-               data))))
+        (assoc data :event event-kw))))
 
 (defn- track-event-impl!
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
@@ -196,10 +195,10 @@
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
    ::new-task-history               ::task
-   ::new-action                     ::action
-   ::update-action                  ::action
-   ::delete-action                  ::action
-   ::execute-action                 ::action})
+   ::action-created                 ::action
+   ::action-updated                 ::action
+   ::action-deleted                 ::action
+   ::action-executed                ::action})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

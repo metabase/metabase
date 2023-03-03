@@ -1404,7 +1404,7 @@
                   (format "public/action/%s/execute" public_uuid)
                   {:parameters {:id 1 :name "European"}})
                 (is (= {:data   {"action_id" (db/select-one-id 'Action :public_uuid public_uuid)
-                                 "event"     "execute"
+                                 "event"     "action_executed"
                                  "source"    "public_form"
                                  "type"      "query"}
                         :user-id nil}

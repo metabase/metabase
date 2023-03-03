@@ -13,10 +13,10 @@
       "description": "Event name",
       "type": "string",
       "enum": [
-        "new",
-        "update",
-        "delete",
-        "execute"
+        "action_created",
+        "action_updated",
+        "action_deleted",
+        "action_executed"
       ],
       "maxLength": 128
     },
