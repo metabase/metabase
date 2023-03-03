@@ -8,6 +8,8 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
   deleteMappingWithGroups("cn=People1");
 
+  cy.wait(["@deleteGroup", "@deleteGroup"]);
+
   // Create mapping, then clear its groups of members
   createMapping("cn=People2");
   addGroupsToMapping("cn=People2", ["collection", "readonly"]);
