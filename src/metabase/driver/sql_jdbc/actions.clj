@@ -177,7 +177,7 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-deleted 1)
-            (throw (ex-info (if (= rows-deleted 0)
+            (throw (ex-info (if (zero? rows-deleted)
                               (tru "Sorry, the row you''re trying to delete doesn''t exist")
                               (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                             {::incorrect-number-deleted true
