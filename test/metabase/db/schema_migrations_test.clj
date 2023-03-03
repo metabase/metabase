@@ -14,7 +14,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -955,22 +954,38 @@
                new-paths-set))))))
 
 (deftest migrate-field-database-type-test
-  (testing "Migration v46.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
+  (testing "Migration v47.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-003"] [migrate!]
-      (let [[db-id]      (t2/insert-returning-pks! Database {:name "Database" :engine "postgres"})
-            [table-id]   (t2/insert-returning-pks! Table {:db_id      db-id
-                                                          :name       "Table"
-                                                          :created_at :%now
-                                                          :updated_at :%now
-                                                          :active     true})
-            [field-1-id
-             field-2-id
-             field-3-id] (t2/insert-returning-pks! Field [{:name "Test Field 1" :table_id table-id :database_type "json"    :base_type :type/Structured}
-                                                          {:name "Test Field 2" :table_id table-id :database_type "JSONB"   :base_type :type/Structured}
-                                                          {:name "Test Field 3" :table_id table-id :database_type "varchar" :base_type :type/Text}])
+      (let [[pg-db-id
+             mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
+                                                              {:name "MySQL Database" :engine "mysql"}])
+            [pg-table-id
+             mysql-table-id] (t2/insert-returning-pks! Table [{:db_id pg-db-id    :name "PG Table"    :active true}
+                                                              {:db_id mysql-db-id :name "MySQL Table" :active true}])
+            [pg-field-1-id
+             pg-field-2-id
+             pg-field-3-id
+             mysql-field-1-id
+             mysql-field-2-id] (t2/insert-returning-pks! Field [{:name "PG Field 1"    :table_id pg-table-id    :database_type "json"    :base_type :type/Structured}
+                                                                {:name "PG Field 2"    :table_id pg-table-id    :database_type "JSONB"   :base_type :type/Structured}
+                                                                {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
+                                                                {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
+                                                                {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
             _              (migrate!)
             new-base-types (t2/select-pk->fn :base_type Field)]
         (are [field-id expected] (= (get new-base-types field-id) expected)
-             field-1-id :type/JSON
-             field-2-id :type/JSON
-             field-3-id :type/Text)))))
+          pg-field-1-id :type/JSON
+          pg-field-2-id :type/JSON
+          pg-field-3-id :type/Text
+          mysql-field-1-id :type/JSON
+          mysql-field-2-id :type/Text)
+        (testing "Rollback restores the original state"
+          (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
+            (db.setup/migrate! db-type data-source :down 46)
+            (let [new-base-types (t2/select-pk->fn :base_type Field)]
+              (are [field-id expected] (= (get new-base-types field-id) expected)
+                pg-field-1-id :type/Structured
+                pg-field-2-id :type/Structured
+                pg-field-3-id :type/Text
+                mysql-field-1-id :type/SerializedJSON
+                mysql-field-2-id :type/Text))))))))
