@@ -176,10 +176,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/update query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row doesn't exist"
+                                (actions/perform-action! :row/update query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -189,10 +193,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/delete query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row doesn't exist"
+                                (actions/perform-action! :row/delete query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
