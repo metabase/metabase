@@ -70,7 +70,7 @@ const deleteMappingWithGroups = mappingName => {
 
 const createMapping = name => {
   cy.button("New mapping").click();
-  cy.findByPlaceholderText("cn=People,ou=Groups,dc=metabase,dc=com").type(name);
+  cy.findByLabelText("new-group-mapping-name-input").type(name);
   cy.button("Add").click();
 };
 

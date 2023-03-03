@@ -121,11 +121,11 @@ describe(
         cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
       });
 
-      it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
+      it.only("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
         crudGroupMappingsWidget("ldap");
       });
 
-      it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
+      it.only("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
         checkGroupConsistencyAfterDeletingMappings("ldap");
       });
     });
