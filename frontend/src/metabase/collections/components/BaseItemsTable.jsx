@@ -134,7 +134,7 @@ function BaseItemsTable({
   const canSelect = collection.can_write || false;
 
   return (
-    <Table {...props}>
+    <Table canSelect={canSelect} {...props}>
       <colgroup>
         {canSelect && <col style={{ width: "70px" }} />}
         <col style={{ width: "70px" }} />

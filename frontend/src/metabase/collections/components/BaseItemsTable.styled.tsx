@@ -12,24 +12,13 @@ import Link from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-const LAST_EDITED_BY_INDEX = 4;
-const LAST_EDITED_AT_INDEX = 5;
+const LAST_EDITED_BY_INDEX = 3;
+const LAST_EDITED_AT_INDEX = 4;
 
-export const Table = styled.table`
+export const Table = styled.table<{ canSelect: boolean }>`
   background-color: ${color("white")};
   table-layout: fixed;
   border-collapse: unset;
-
-  ${breakpointMaxMedium} {
-    & td:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    th:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    col:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    td:nth-of-type(${LAST_EDITED_AT_INDEX}),
-    th:nth-of-type(${LAST_EDITED_AT_INDEX}),
-    col:nth-of-type(${LAST_EDITED_AT_INDEX}) {
-      display: none;
-    }
-  }
 
   thead {
     th {
@@ -46,6 +35,25 @@ export const Table = styled.table`
       }
     }
   }
+
+  ${props => {
+    const offset = props.canSelect ? 1 : 0;
+    const offsetEditedByIndex = LAST_EDITED_BY_INDEX + offset;
+    const offsetEditedAtIndex = LAST_EDITED_AT_INDEX + offset;
+
+    return `
+      ${breakpointMaxMedium} {
+        & td:nth-of-type(${offsetEditedByIndex}),
+        th:nth-of-type(${offsetEditedByIndex}),
+        col:nth-of-type(${offsetEditedByIndex}),
+        td:nth-of-type(${offsetEditedAtIndex}),
+        th:nth-of-type(${offsetEditedAtIndex}),
+        col:nth-of-type(${offsetEditedAtIndex}) {
+          display: none;
+        }
+      }
+    `;
+  }}
 `;
 
 Table.defaultProps = { className: "ContentTable" };
@@ -120,7 +128,7 @@ export const ModelDetailLink = styled(BaseModelDetailLink)`
   visibility: hidden;
 `;
 
-export const SortingControlContainer = styled.div`
+export const SortingControlContainer = styled.div<{ isActive: boolean }>`
   display: flex;
   align-items: center;
   color: ${props => (props.isActive ? color("text-dark") : "")};
