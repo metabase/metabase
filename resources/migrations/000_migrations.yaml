@@ -14320,7 +14320,7 @@ databaseChangeLog:
               )
       rollback:
         - sql:
-            dbms: postgresql,h2
+            dbms: postgresql
             sql: >-
               UPDATE metabase_field f
               SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
@@ -14338,7 +14338,21 @@ databaseChangeLog:
               SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
               WHERE lower(f.database_type) in ('json', 'jsonb')
                 AND d.engine in ('postgres', 'mysql')
-
+        - sql:
+            dbms: h2
+            sql: >-
+              MERGE INTO metabase_field f
+              USING (
+                SELECT f.id, case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end as base_type
+                FROM metabase_field f
+                JOIN metabase_table t ON f.table_id = t.id
+                JOIN metabase_database d ON t.db_id = d.id
+                WHERE lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              ) as updates
+              ON f.id = updates.id
+              WHEN MATCHED THEN 
+                UPDATE SET f.base_type = updates.base_type;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
