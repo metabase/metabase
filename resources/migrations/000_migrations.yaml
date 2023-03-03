@@ -14307,40 +14307,37 @@ databaseChangeLog:
       validCheckSum: ANY
       changes:
         - sql:
-            dbms: postgresql
             sql: >-
               UPDATE metabase_field f
               SET base_type = 'type/JSON'
-              FROM metabase_database d
-              JOIN metabase_table t ON t.db_id = d.id
-              WHERE f.table_id = t.id
-                AND lower(f.database_type) in ('json', 'jsonb');
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              UPDATE metabase_field f
-              JOIN metabase_table t ON f.table_id = t.id
-              JOIN metabase_database d ON t.db_id = d.id
-              SET base_type = 'type/JSON'
-              WHERE lower(f.database_type) = 'json';
+              WHERE EXISTS (
+                SELECT *
+                FROM metabase_database d
+                JOIN metabase_table t ON t.db_id = d.id
+                WHERE f.table_id = t.id
+                  AND lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              )
       rollback:
         - sql:
-            dbms: postgresql
+            dbms: postgresql,h2
             sql: >-
               UPDATE metabase_field f
-              SET base_type = 'type/SerializedJSON'
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
               FROM metabase_database d
               JOIN metabase_table t ON t.db_id = d.id
               WHERE f.table_id = t.id
-                AND lower(f.database_type) in ('json', 'jsonb');
+                AND lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
         - sql:
             dbms: mysql,mariadb
             sql: >-
               UPDATE metabase_field f
               JOIN metabase_table t ON f.table_id = t.id
               JOIN metabase_database d ON t.db_id = d.id
-              SET base_type = 'type/SerializedJSON'
-              WHERE lower(f.database_type) = 'json';
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
+              WHERE lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
