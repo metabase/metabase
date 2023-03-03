@@ -2,13 +2,14 @@
   (:refer-clojure :exclude [def])
   (:require
    [malli.core :as mc]
-   [malli.registry :as mr])
+   [malli.registry :as mr]
+   [malli.util :as mu])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private registry*
-  (atom (mc/default-schemas)))
+  (atom (merge (mc/default-schemas) (mu/schemas))))
 
-(defonce ^:private registry (mr/mutable-registry registry*))
+(defonce registry (mr/mutable-registry registry*))
 
 (mr/set-default-registry! registry)
 
