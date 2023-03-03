@@ -12,6 +12,7 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -155,17 +156,20 @@
   [{new-metadata-schedule    :metadata_sync_schedule,
     new-fieldvalues-schedule :cache_field_values_schedule,
     new-engine               :engine
+    new-settings             :settings
     :as                      database}]
   (let [{is-sample?               :is_sample
          old-metadata-schedule    :metadata_sync_schedule
          old-fieldvalues-schedule :cache_field_values_schedule
+         existing-settings        :settings
          existing-engine          :engine
          existing-name            :name} (db/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
                                                          :name
-                                                         :is_sample] :id (u/the-id database))
+                                                         :is_sample
+                                                         :settings] :id (u/the-id database))
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -193,7 +197,15 @@
               (schedule-tasks!
                (assoc database
                       :metadata_sync_schedule      new-metadata-schedule
-                      :cache_field_values_schedule new-fieldvalues-schedule)))))))))
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))
+         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
+         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
+         (when (and (:database-enable-actions (or new-settings existing-settings))
+                    (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+           (throw (ex-info (trs "The database does not support actions.")
+                           {:status-code     400
+                            :existing-engine existing-engine
+                            :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details], :as database}]
   (-> (cond-> database
@@ -265,18 +277,27 @@
       driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json Database
-  "When encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!"
+  an API response!
+
+  Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
-   (if (not (mi/can-write? db))
-     (dissoc db :details :settings)
-     (update db :details (fn [details]
-                           (reduce
-                            #(m/update-existing %1 %2 (constantly protected-password))
-                            details
-                            (sensitive-fields-for-db db)))))
+   (let [db (if (not (mi/can-write? db))
+              (dissoc db :details)
+              (update db :details (fn [details]
+                                    (reduce
+                                     #(m/update-existing %1 %2 (constantly protected-password))
+                                     details
+                                     (sensitive-fields-for-db db)))))]
+     (update db :settings (fn [settings]
+                            (when settings
+                              (into {}
+                                    (filter (fn [[setting-name _v]]
+                                              (setting/can-read-setting? setting-name
+                                                                         (setting/current-user-readable-visibilities))))
+                                    settings)))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

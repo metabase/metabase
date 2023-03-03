@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -28,10 +27,6 @@ const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
 describe("DataPicker — picking models", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("opens the picker", async () => {
@@ -65,9 +60,13 @@ describe("DataPicker — picking models", () => {
       },
     });
 
-    const tableListItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_MODEL.name,
-    });
+    const tableListItem = await screen.findByRole(
+      "menuitem",
+      {
+        name: SAMPLE_MODEL.name,
+      },
+      { timeout: 3000 },
+    );
     const collectionListItem = screen.getByRole("menuitem", {
       name: ROOT_COLLECTION.name,
     });

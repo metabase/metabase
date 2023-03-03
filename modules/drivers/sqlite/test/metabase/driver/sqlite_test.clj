@@ -216,18 +216,11 @@
     (mt/test-driver :sqlite
       (mt/dataset sample-dataset
         (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
-                            count (*)         AS count]
-                 :from     [{:select [products.id              AS id
-                                      products.ean             AS ean
-                                      products.title           AS title
-                                      products.category        AS category
-                                      products.vendor          AS vendor
-                                      products.price           AS price
-                                      products.rating          AS rating
-                                      products.created_at      AS created_at
-                                      (products.category || ?) AS CATEGORY_2]
+                            COUNT (*)         AS count]
+                 :from     [{:select [products.category       AS category
+                                      products.category || ?  AS CATEGORY_2]
                              :from   [products]}
-                            source]
+                            AS source]
                  :group-by [source.CATEGORY_2]
                  :order-by [source.CATEGORY_2 ASC]
                  :limit    [1]}

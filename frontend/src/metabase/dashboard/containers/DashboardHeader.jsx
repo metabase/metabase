@@ -25,7 +25,10 @@ import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
 } from "metabase/dashboard/selectors";
-import { toggleSidebar } from "../actions";
+import {
+  addActionToDashboard,
+  toggleSidebar,
+} from "metabase/dashboard/actions";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
@@ -49,6 +52,7 @@ const mapDispatchToProps = {
     Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
   toggleSidebar,
+  addActionToDashboard,
 };
 
 class DashboardHeader extends Component {
@@ -78,6 +82,7 @@ class DashboardHeader extends Component {
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -95,6 +100,7 @@ class DashboardHeader extends Component {
     sidebar: PropTypes.string.isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+    addActionToDashboard: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -113,9 +119,15 @@ class DashboardHeader extends Component {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
+  onAddLinkCard() {
+    this.props.addLinkDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+
   onAddAction() {
-    this.props.addActionDashCardToDashboard({
+    this.props.addActionToDashboard({
       dashId: this.props.dashboard.id,
+      displayType: "button",
+      action: {},
     });
   }
 
@@ -240,6 +252,14 @@ class DashboardHeader extends Component {
             </DashboardHeaderButton>
           </a>
         </Tooltip>,
+        <Tooltip key="add-link-card" tooltip={t`Add link card`}>
+          <DashboardHeaderButton
+            onClick={() => this.onAddLinkCard()}
+            data-metabase-event={`Dashboard;Add Link Card`}
+          >
+            <Icon name="link" size={18} />
+          </DashboardHeaderButton>
+        </Tooltip>,
       );
 
       const {
@@ -283,9 +303,9 @@ class DashboardHeader extends Component {
             <DashboardHeaderActionDivider />
             <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
-                isActive={activeSidebarName === SIDEBAR_NAME.addActionButton}
-                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionButton)}
-                data-metabase-event={`Dashboard;Add Action Sidebar`}
+                onClick={() => this.onAddAction()}
+                aria-label={t`Add action`}
+                data-metabase-event={`Dashboard;Add Action Button`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>

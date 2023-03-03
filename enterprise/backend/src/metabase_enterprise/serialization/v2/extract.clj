@@ -46,9 +46,16 @@
   [opts]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (serdes.backfill/backfill-ids)
-  (let [model-pred (if (:data-model-only opts)
+  ;; TODO document and test data-model-only if we want to keep this feature...
+  (let [model-pred (cond
+                     (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-                     (constantly true))
+
+                     (:include-field-values opts)
+                     (constantly true)
+
+                     :else
+                     (complement #{"FieldValues"}))
         ;; This set of unowned top-level collections is used in several `extract-query` implementations.
         opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
     (eduction cat (for [model serdes.models/exported-models
@@ -162,28 +169,20 @@
   [[serdes.base/serdes-descendants]] is recursively called on these entities and all their descendants, until the
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
   entities are then extracted the same way as [[extract-metabase]].
-
-  If the `:selected-collections` option is set, this function will emit warnings if any transitive descendants belong to
-  Collections not in the `:selected-collections` set. If `:on-error` is `\"abort\"` (the default) this will throw an
-  exception that stops the serialization process. If `:on-error` is `\"continue\"` it will keep emitting warnings, and
-  simply skip over the offending entities (recursively). Eg. if Dashboard B includes a Card A that is derived from a
+Eg. if Dashboard B includes a Card A that is derived from a
   Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
   serialized output."
-  [{:keys [selected-collections targets] :as opts}]
+  [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [selected-collections (or selected-collections (->> targets
-                                                           (filter #(= (first %) "Collection"))
-                                                           (map second)
-                                                           set))]
-    (serdes.backfill/backfill-ids)
-    (if-let [analysis (escape-analysis selected-collections)]
+  (serdes.backfill/backfill-ids)
+  (if-let [analysis (escape-analysis (set (for [[model id] targets :when (= model "Collection")] id)))]
       ;; If that is non-nil, emit the report.
-      (escape-report analysis)
+    (escape-report analysis)
       ;; If it's nil, there are no errors, and we can proceed to do the dump.
-      (let [closure  (descendants-closure opts targets)
-            by-model (->> closure
-                          (group-by first)
-                          (m/map-vals #(set (map second %))))]
-        (eduction cat (for [[model ids] by-model]
-                        (eduction (map #(serdes.base/extract-one model opts %))
-                                  (db/select-reducible (symbol model) :id [:in ids]))))))))
+    (let [closure  (descendants-closure opts targets)
+          by-model (->> closure
+                        (group-by first)
+                        (m/map-vals #(set (map second %))))]
+      (eduction cat (for [[model ids] by-model]
+                      (eduction (map #(serdes.base/extract-one model opts %))
+                                (db/select-reducible (symbol model) :id [:in ids])))))))

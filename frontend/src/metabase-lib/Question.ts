@@ -468,6 +468,17 @@ class QuestionInner {
     return this._card && this._card.can_write;
   }
 
+  canWriteActions(): boolean {
+    const database = this.database();
+    const hasActionsEnabled = database != null && database.hasActionsEnabled();
+    return this.canWrite() && hasActionsEnabled;
+  }
+
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
+  }
+
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
@@ -910,6 +921,10 @@ class QuestionInner {
   tableId(): TableId | null | undefined {
     const table = this.table();
     return table ? table.id : null;
+  }
+
+  isArchived(): boolean {
+    return this._card && this._card.archived;
   }
 
   getUrl({

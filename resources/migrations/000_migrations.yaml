@@ -14116,6 +14116,26 @@ databaseChangeLog:
             nullable: false
 
   - changeSet:
+      id: v46.00-062
+      author: tsmacdonald
+      comment: Added 0.46.0 -- add actions.archived
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Whether or not the action has been archived'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: archived
+
+  - changeSet:
       id: v46.00-064
       author: noahmoss
       comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
@@ -14207,7 +14227,78 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
+      rollback:
+      # Not required because a rollback would drop the `permission_id` column anyway
 
+  - changeSet:
+      id: v46.00-076
+      author: noahmoss
+      comment: Remove foreign key constraint on sandboxes.permission_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+      # Not required because a rollback would drop the `permission_id` column anyway
+
+  - changeSet:
+      id: v46.00-077
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id with the appropriate onDelete policy
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-079
+      author: john-metabase
+      comment: Added 0.46.0 -- migrates Databases using deprecated and removed presto driver to presto-jdbc
+      changes:
+        - sql: UPDATE metabase_database SET engine = 'presto-jdbc' WHERE engine = 'presto'
+      rollback: # nothing to do, since we don't know which drivers used to be presto
+
+  - changeSet:
+      id: v46.00-080
+      author: noahmoss
+      comment: Migrate data permission paths from v1 to v2 (splitting them into separate data and query permissions)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.SplitDataPermissions"
+
+  - changeSet:
+      id: v46.00-084
+      author: qnkhuat
+      comment: Added 0.46.0 - CASCADE delete for action.model_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: action
+            constraintName: fk_action_model_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-085
+      author: qnkhuat
+      comment: Added 0.46.0 - CASCADE delete for action.model_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+            onDelete: CASCADE
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -15,7 +15,9 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -102,6 +104,33 @@
       (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
 
+(deftest create-group-test
+  (testing "POST /permissions/group"
+    (testing "happy path"
+      (mt/with-model-cleanup [PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
+        (is (some? (t2/select PermissionsGroup :name "Test Group")))))
+
+   (testing "requires superuser"
+     (is (= "You don't have permissions to do that."
+          (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
+
+   (testing "group name is required"
+     (is (= {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
+
+(deftest delete-group-test
+  (testing "DELETE /permissions/group/:id"
+    (testing "happy path"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+        (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
+        (is (= 0 (t2/count PermissionsGroup :name "Test group")))))
+
+    (testing "requires superuser"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+         (is (= "You don't have permissions to do that."
+                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
+
 ;;; +---------------------------------------------- permissions graph apis -----------------------------------------------------------+
 
 
@@ -117,6 +146,18 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
+(deftest fetch-perms-graph-v2-test
+  (testing "GET /api/permissions/graph-v2"
+    (testing "make sure we can fetch the perms graph from the API"
+      (mt/with-temp Database [{db-id :id}]
+        (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph-v2")]
+          (is (partial= {:groups {(u/the-id (perms-group/admin))
+                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                        graph)))))
+
+    (testing "make sure a non-admin cannot fetch the perms graph from the API"
+      (mt/user-http-request :rasta :get 403 "permissions/graph-v2"))))
+
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
@@ -128,7 +169,10 @@
                      [:groups (u/the-id group) (mt/id) :data :schemas]
                      {"PUBLIC" {db-id :all}}))
           (is (= {db-id :all}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
@@ -139,7 +183,10 @@
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]
@@ -150,8 +197,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:data {:native :write}, :query {:schemas :all}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
 
     (testing "permissions for new db with no tables"
       (mt/with-temp* [PermissionsGroup [group]
@@ -161,8 +210,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:query {:schemas :all}, :data {:native :write}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"

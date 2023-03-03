@@ -22,16 +22,21 @@ export default class ChartSettingsSidebar extends React.Component {
       onClose,
       onOpenChartType,
       visualizationSettings,
-      isRunning,
+      showSidebarTitle = false,
     } = this.props;
     const { sidebarPropsOverride } = this.state;
+    const sidebarContentProps = showSidebarTitle
+      ? {
+          title: t`${visualizations.get(question.display()).uiName} options`,
+          onBack: () => onOpenChartType(),
+        }
+      : {};
     return (
       result && (
         <SidebarContent
           className="full-height"
-          title={t`${visualizations.get(question.display()).uiName} options`}
-          onDone={onClose}
-          onBack={onOpenChartType}
+          onDone={() => onClose()}
+          {...sidebarContentProps}
           {...sidebarPropsOverride}
         >
           <ChartSettings
@@ -44,12 +49,11 @@ export default class ChartSettingsSidebar extends React.Component {
               },
             ]}
             onChange={onReplaceAllVisualizationSettings}
-            onClose={onClose}
+            onClose={() => onClose()}
             noPreview
             initial={initialChartSetting}
             setSidebarPropsOverride={this.setSidebarPropsOverride}
             computedSettings={visualizationSettings}
-            isQueryRunning={isRunning}
           />
         </SidebarContent>
       )

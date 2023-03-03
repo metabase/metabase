@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   close-stale-prs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/stale@v6
         with:

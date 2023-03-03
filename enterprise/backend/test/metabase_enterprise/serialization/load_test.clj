@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.serialization.cmd :refer [dump load]]
+   [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
     :refer [Card
@@ -302,7 +302,6 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
-                               :presto    ; no bare table names allowed
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
@@ -317,8 +316,8 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                          :only-db-ids #{db-id}})
+                          (v1-dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                             :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root
@@ -394,7 +393,7 @@
                                            [Card               (db/select-one Card :id card-id-with-native-snippet)]
                                            [Card               (db/select-one Card :id card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :skip})
+          (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))

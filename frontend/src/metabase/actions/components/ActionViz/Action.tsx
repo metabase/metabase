@@ -1,8 +1,11 @@
 import React, { useMemo, useCallback } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { executeRowAction } from "metabase/dashboard/actions";
+
+import Tooltip from "metabase/core/components/Tooltip";
 
 import type {
   ActionDashboardCard,
@@ -10,27 +13,37 @@ import type {
   WritebackQueryAction,
   Dashboard,
 } from "metabase-types/api";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
+import {
+  generateFieldSettingsFromParameters,
+  setNumericValues,
+} from "metabase/actions/utils";
+
+import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import Databases from "metabase/entities/databases";
+
+import type Database from "metabase-lib/metadata/Database";
 
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
-  setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
-import { ActionParameterOptions } from "./ActionOptions";
-import { StyledButton } from "./ActionButton.styled";
+import ActionButtonView from "./ActionButtonView";
+import { FullContainer } from "./ActionButton.styled";
 
 export interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
+  isEditingDashcard: boolean;
+  database: Database;
 }
 
 export function ActionComponent({
@@ -38,9 +51,9 @@ export function ActionComponent({
   dashboard,
   dispatch,
   isSettings,
-  isEditing,
   settings,
   parameterValues,
+  isEditingDashcard,
 }: ActionProps) {
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
@@ -92,38 +105,65 @@ export function ActionComponent({
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
-  const showParameterMapper = isEditing && !isSettings;
-
   return (
-    <>
-      {showParameterMapper && (
-        <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
-      )}
-      <ActionVizForm
-        onSubmit={onSubmit}
-        dashcard={dashcard}
-        dashboard={dashboard}
-        settings={settings}
-        isSettings={isSettings}
-        missingParameters={missingParameters}
-        dashcardParamValues={dashcardParamValues}
-        action={dashcard.action as WritebackQueryAction}
-        shouldDisplayButton={shouldDisplayButton}
-      />
-    </>
+    <ActionVizForm
+      onSubmit={onSubmit}
+      dashcard={dashcard}
+      dashboard={dashboard}
+      settings={settings}
+      isSettings={isSettings}
+      missingParameters={missingParameters}
+      dashcardParamValues={dashcardParamValues}
+      action={dashcard.action as WritebackQueryAction}
+      shouldDisplayButton={shouldDisplayButton}
+      isEditingDashcard={isEditingDashcard}
+    />
   );
 }
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
-export default function Action(props: ActionProps) {
-  if (!props.dashcard?.action) {
+function mapStateToProps(state: State, props: ActionProps) {
+  return {
+    isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
+  };
+}
+
+export function ActionFn(props: ActionProps) {
+  const {
+    database,
+    dashcard: { action },
+  } = props;
+
+  const hasActionsEnabled = database?.hasActionsEnabled?.();
+
+  if (!action || !hasActionsEnabled) {
+    const tooltip = !action
+      ? t`No action assigned`
+      : t`Actions are not enabled for this database`;
+
     return (
-      <StyledButton>
-        <strong>{t`Assign an action`}</strong>
-      </StyledButton>
+      <Tooltip tooltip={tooltip}>
+        <FullContainer>
+          <ActionButtonView
+            disabled
+            icon="bolt"
+            tooltip={tooltip}
+            settings={props.settings}
+            focus={props.isEditingDashcard}
+          />
+        </FullContainer>
+      </Tooltip>
     );
   }
 
   return <ConnectedActionComponent {...props} />;
 }
+
+export default _.compose(
+  Databases.load({
+    id: (state: State, props: ActionProps) =>
+      props.dashcard?.action?.database_id,
+  }),
+  connect(mapStateToProps),
+)(ActionFn);

@@ -3,6 +3,7 @@
   (:require
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -55,12 +56,19 @@
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
     (hydrate
-     (action/select-actions [model] :model_id model-id)
+     (action/select-actions [model] :model_id model-id :archived false)
      :creator)))
+
+(api/defendpoint GET "/public"
+  "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
+  []
+  (validation/check-has-application-permission :setting)
+  (validation/check-public-sharing-enabled)
+  (db/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (-> (action/select-action :id action-id)
+  (-> (action/select-action :id action-id :archived false)
       (hydrate :creator)
       api/read-check))
 
@@ -90,15 +98,15 @@
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
-
-  (api/write-check Card model_id)
   (when (and (nil? database_id)
              (= "query" type))
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        type
                      :status-code 400})))
-  (when database_id
-    (actions/check-actions-enabled! (db/select-one Database :id database_id)))
+  (let [model (api/write-check Card model_id)]
+    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+      (actions/check-actions-enabled-for-database!
+       (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (action/select-action :id action-id)
@@ -108,9 +116,10 @@
 
 (api/defendpoint PUT "/:id"
   [id :as
-   {{:keys [type name description model_id parameters parameter_mappings visualization_settings
-            kind database_id dataset_query template response_handle error_handle] :as action} :body}]
+   {{:keys [archived database_id dataset_query description error_handle kind model_id name parameter_mappings parameters
+            response_handle template type visualization_settings] :as action} :body}]
   {id                     pos-int?
+   archived               [:maybe boolean?]
    database_id            [:maybe pos-int?]
    dataset_query          [:maybe map?]
    description            [:maybe :string]
@@ -124,6 +133,7 @@
    template               [:maybe http-action-template]
    type                   [:maybe supported-action-type]
    visualization_settings [:maybe map?]}
+  (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
   (action/select-action :id id))
@@ -136,12 +146,13 @@
   {id pos-int?}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
-  (api/read-check Action id)
-  {:uuid (or (db/select-one-field :public_uuid Action :id id)
-             (u/prog1 (str (UUID/randomUUID))
-                      (db/update! Action id
-                                  :public_uuid <>
-                                  :made_public_by_id api/*current-user-id*)))})
+  (let [action (api/read-check Action id :archived false)]
+    (actions/check-actions-enabled! action)
+    {:uuid (or (:public_uuid action)
+               (u/prog1 (str (UUID/randomUUID))
+                 (db/update! Action id
+                             :public_uuid <>
+                             :made_public_by_id api/*current-user-id*)))}))
 
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
@@ -150,8 +161,20 @@
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-exists? Action :id id, :public_uuid [:not= nil])
+  (api/check-exists? Action :id id, :public_uuid [:not= nil], :archived false)
+  (actions/check-actions-enabled! id)
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})
+
+(api/defendpoint POST "/:id/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [id :as {{:keys [parameters], :as _body} :body}]
+  {id       pos-int?
+   parameters [:maybe [:map-of :keyword any?]]}
+  (-> (action/select-action :id id :archived false)
+      (api/check-404)
+      (actions.execution/execute-action! (update-keys parameters name))))
 
 (api/define-routes)

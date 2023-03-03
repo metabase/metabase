@@ -1,24 +1,14 @@
-import { Scope } from "nock";
+import fetchMock from "fetch-mock";
 import { Field, FieldValues } from "metabase-types/api";
 
-export function setupFieldEndpoints(scope: Scope, field: Field) {
-  scope.get(`/api/field/${field.id}`).reply(200, field);
+export function setupFieldEndpoints(field: Field) {
+  fetchMock.get(`path:/api/field/${field.id}`, field);
 }
 
-export function setupFieldValuesEndpoints(
-  scope: Scope,
-  fieldValues: FieldValues,
-) {
-  scope
-    .get(`/api/field/${fieldValues.field_id}/values`)
-    .reply(200, fieldValues);
+export function setupFieldValuesEndpoints(fieldValues: FieldValues) {
+  fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
 }
 
-export function setupFieldsValuesEndpoints(
-  scope: Scope,
-  fieldsValues: FieldValues[],
-) {
-  fieldsValues.forEach(fieldValues => {
-    setupFieldValuesEndpoints(scope, fieldValues);
-  });
+export function setupFieldsValuesEndpoints(fieldsValues: FieldValues[]) {
+  fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }

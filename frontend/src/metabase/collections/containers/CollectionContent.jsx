@@ -80,7 +80,8 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   });
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
+    usePagination();
   const { selected, toggleItem, toggleAll, getIsSelected, clear } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
@@ -94,8 +95,9 @@ function CollectionContent({
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
       clear();
+      resetPage();
     }
-  }, [previousCollection, collection, clear]);
+  }, [previousCollection, collection, clear, resetPage]);
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -283,6 +285,7 @@ function CollectionContent({
                       </div>
                       <BulkActions
                         selected={selected}
+                        collection={collection}
                         onSelectAll={handleSelectAll}
                         onSelectNone={clear}
                         onArchive={handleBulkArchive}
@@ -315,7 +318,11 @@ function CollectionContent({
 export default _.compose(
   Bookmark.loadList(),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: {
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    },
     loadingAndErrorWrapper: false,
   }),
   Collection.load({

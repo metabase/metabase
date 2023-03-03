@@ -7,7 +7,8 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             Collection
             Dashboard
             DashboardCard
@@ -21,6 +22,7 @@
             Timeline
             TimelineEvent
             User]]
+   [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.util :as u]
    [schema.core :as s]
@@ -787,7 +789,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1
@@ -939,3 +941,39 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest load-action-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "extraction succeeds"
+        (ts/with-source-db
+          (let [db       (ts/create! Database :name "my-db")
+                card     (ts/create! Card
+                                     :name "the query"
+                                     :query_type :native
+                                     :dataset true
+                                     :database_id (:id db)
+                                     :dataset_query {:database (:id db)
+                                                     :native {:type   :native
+                                                              :native {:query "wow"}}})
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
+                                                     (and (= model "Action") (= id eid)))
+                                                   @serialized))]
+              (is (some? action-serialized))
+              (testing ":type should be a string"
+                (is (string? (:type action-serialized))))))))
+      (testing "loading succeeds"
+        (ts/with-dest-db
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (let [action (db/select-one Action :entity_id eid)]
+            (is (some? action))
+            (testing ":type should be a keyword again"
+              (is (keyword? (:type action))))))))))

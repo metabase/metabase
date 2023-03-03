@@ -149,7 +149,7 @@
 
   ### Known Permissions Paths
 
-  See [[path-regex]] for an always-up-to-date list of permissions paths.
+  See [[path-regex-v1]] for an always-up-to-date list of permissions paths.
 
     /collection/:id/                                ; read-write perms for a Coll and its non-Coll children
     /collection/:id/read/                           ; read-only  perms for a Coll and its non-Coll children
@@ -170,6 +170,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -235,6 +236,14 @@
    [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "query/" "segmented/"] :dk/db-schema-name-table-and-segmented})
 
 (def ^:private DataKind (into [:enum] (vals data-rx->data-kind)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; *-permissions-rx
+;;
+;; The *-permissions-rx do not have anchors, since they get combined (and anchors placed around them) below. Take care
+;; to use anchors where they make sense.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private v1-data-permissions-rx
   "Paths starting with /db/ is a DATA ACCESS permissions path
@@ -338,8 +347,10 @@
    [(u.regex/rx "^/" admin-permissions-rx "$")           :admin]])
 
 (def ^:private path-regex-v2
-  "Regex for a valid permissions path. will not match a path like \"/db/1\" or \"/db/1/\".
-   [[metabase.util.regex/rx]] is used to make the big-and-hairy regex somewhat readable."
+  "Regex for a valid permissions path. built with [[metabase.util.regex/rx]] to make the big-and-hairy regex somewhat readable.
+  Will not match:
+  - a v1 data path like \"/db/1\" or \"/db/1/\"
+  - a block path like \"block/db/2/\""
   (u.regex/rx
    "^/" [:or
          v2-data-permissions-rx
@@ -350,17 +361,18 @@
          execute-permissions-rx
          collection-permissions-rx
          non-scoped-permissions-rx
-         block-permissions-rx
          admin-permissions-rx]
    "$"))
 
 (def ^:private Path "A permission path."
-  [:or [:re path-regex-v1] [:re path-regex-v2]])
+  [:or {:title "Path"} [:re path-regex-v1] [:re path-regex-v2]])
 
 (def ^:private Kind
-  (into [:enum] (map second rx->kind)))
+  (into [:enum {:title "Kind"}] (map second rx->kind)))
 
-(mu/defn classify-path :- Kind [path :- Path]
+(mu/defn classify-path :- Kind
+  "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
+  [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -372,7 +384,9 @@
 (def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
-(mu/defn classify-data-path :- DataKind [data-path :- DataPath]
+(mu/defn classify-data-path :- DataKind
+  "Classifies data path permissions [[metabase.models.permissions/DataPath]] into a [[metabase.models.permissions/DataKind]]"
+  [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
@@ -826,27 +840,79 @@
             {}
             permissions)))
 
+(defn- post-process-graph [graph]
+  (->>
+   graph
+   (walk/postwalk-replace {{:query {:schemas :all}}             {:query {:schemas :all :native :none}}
+                           {:query {:schemas :all :native nil}} {:query {:schemas :all :native :none}}})))
+
+(mu/defn generate-graph :- :map
+  "Used to generation permission graph from parsed permission paths of v1 and v2 permission graphs for the api layer."
+  [db-ids group-id->paths :- [:map-of :int [:* Path]]]
+  (->> group-id->paths
+       (m/map-vals
+        (fn [paths]
+          (let [permissions-graph (perms-parse/->graph paths)]
+            (if (= permissions-graph :all)
+              (all-permissions db-ids)
+              (:db permissions-graph)))))
+       post-process-graph))
+
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
-  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
-  []
-  (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (h2x/literal "/")]
-                                                   [:like :object (h2x/literal "%/db/%")]])
-        db-ids          (delay (db/select-ids 'Database))
-        group-id->graph (m/map-vals
-                         (fn [paths]
-                           ;; Currently we do not use v2 permissions paths, and permissions->graph doesn't handle them.
-                           ;; so we ignore those until that work is complete.
-                           (let [v1-paths (filter #(mc/validate path-regex-v1 %) paths)
-                                 permissions-graph (perms-parse/permissions->graph v1-paths)]
-                             (if (= permissions-graph :all)
-                               (all-permissions @db-ids)
-                               (:db permissions-graph))))
-                         group-id->paths)]
-    {:revision (perms-revision/latest-id)
-     :groups   group-id->graph}))
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
 
+  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
+
+         v1 permissions
+  |--------------------------------|
+  |                                |
+  v1-data, block | all-other-paths | v2-data, v2-query
+                 |                                   |
+                 |-----------------------------------|
+                           v2 permissions
+  "
+  []
+  (let [db-ids             (delay (db/select-ids 'Database))
+        group-id->v1-paths (->> (permissions-by-group-ids [:or
+                                                           [:= :object (h2x/literal "/")]
+                                                           [:like :object (h2x/literal "%/db/%")]])
+                                ;;  keep v1 paths, implicitly remove v2
+                                (m/map-vals (fn [paths]
+                                              (filter (fn [path]
+                                                        (mc/validate [:re path-regex-v1] path))
+                                                      paths))))]
+    {:revision (perms-revision/latest-id)
+     :groups   (generate-graph @db-ids group-id->v1-paths)}))
+
+(defn data-perms-graph-v2
+  "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code. This version of data-perms-graph
+  removes v1 paths, implicitly keeping Only v2 style paths.
+
+  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
+
+         v1 permissions
+  |--------------------------------|
+  |                                |
+  v1-data, block | all-other-paths | v2-data, v2-query
+                 |                                   |
+                 |-----------------------------------|
+                           v2 permissions"
+  []
+  (let [db-ids             (delay (db/select-ids 'Database))
+        group-id->v2-paths (->> (permissions-by-group-ids [:or
+                                                           [:= :object (h2x/literal "/")]
+                                                           [:like :object (h2x/literal "%/db/%")]])
+                                (m/map-vals (fn [paths]
+                                              ;; remove v1 paths, implicitly keep v2 paths
+                                              (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
+                                                                  path))
+                                                      paths))))]
+    {:revision (perms-revision/latest-id)
+     :groups   (generate-graph @db-ids group-id->v2-paths)}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-perms-graph
   "Fetch a graph representing the current *execution* permissions status for
   every Group and all permissioned databases."
@@ -856,7 +922,7 @@
                                                    [:like :object (h2x/literal "/execute/%")]])
         group-id->graph (m/map-vals
                          (fn [paths]
-                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                           (let [permissions-graph (perms-parse/->graph paths)]
                              (if (#{:all {:execute :all}} permissions-graph)
                                :all
                                (:execute permissions-graph))))
@@ -938,20 +1004,21 @@
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
 (mu/defn ^:private ->v2-path :- [:vector [:re path-regex-v2]]
+  "Takes either a v1 or v2 path, and translates it into one or more v2 paths."
   [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
-  ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
   (let [kind (classify-path path)]
     (case kind
       :data (let [data-permission-kind (classify-data-path path)
                   rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
               (rewrite-fn path))
+
       :admin ["/"]
       :block []
 
-      ;; for sake of idempotency, v2 perm-paths should be left untouched.
+      ;; for sake of idempotency, v2 perm-paths should be unchanged.
       (:data-v2 :query-v2) [path]
 
-      ;; other paths should be left untouched too
+      ;; other paths should be unchanged too.
       [path])))
 
 (defn grant-permissions!
@@ -964,7 +1031,7 @@
    ;; TEMPORARY HACK: v2 paths won't be in the graph, so they will not be seen in the old graph, so will be
    ;; interpreted as being new, and hence will not get deleted.
    ;; But we can simply delete them here:
-   ;; This must be pulled out once we are properly parsing v2 query and data permissions
+   ;; This must be pulled out once the frontend is sending up a proper v2 graph.
    (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
@@ -1216,7 +1283,7 @@
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?
-   new-db-perms :- metabase.api.permission-graph/strict-data-perms]
+   new-db-perms :- metabase.api.permission-graph/StrictDataPerms]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1255,7 +1322,7 @@
     (throw (ee-permissions-exception perm-type))))
 
 (mu/defn ^:private update-group-permissions!
-  [group-id :- pos-int? new-group-perms :- api.permission-graph/strict-db-graph]
+  [group-id :- pos-int? new-group-perms :- api.permission-graph/StrictDbGraph]
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
@@ -1334,7 +1401,7 @@
    returns the newly created `PermissionsRevision` entry.
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
-  ([new-graph :- metabase.api.permission-graph/strict-data]
+  ([new-graph :- metabase.api.permission-graph/StrictData]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})

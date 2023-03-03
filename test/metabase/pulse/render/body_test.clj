@@ -46,11 +46,12 @@
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
 
-(defn- number [x]
-  (common/map->NumericWrapper {:num-str x}))
+(defn- number [num-str num-value]
+  (common/map->NumericWrapper {:num-str   (str num-str)
+                               :num-value num-value}))
 
 (def ^:private default-header-result
-  [{:row       [(number "ID") (number "Latitude") "Last Login" "Name"]
+  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name"]
     :bar-width nil}
    #{4}])
 
@@ -151,23 +152,23 @@
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
-  (is (= [{:row [(number "ID") (number "Latitude")]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]
            :bar-width 99}
           #{2}]
          (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249),  :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -201,16 +202,16 @@
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (deftest remapped-col
-  (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name"]
            :bar-width nil}
           #{5}]
          (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.1") "Bad" "April 1, 2014" "Stout Burgers & Beers"]
-          [(number "2") (number "34.04") "Ok" "December 5, 2014" "The Apple Pan"]
-          [(number "3") (number "34.05") "Good" "August 1, 2014" "The Gorbals"]]
+  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "April 1, 2014" "Stout Burgers & Beers"]
+          [(number "2" 2) (number "34.04" 34.0406) "Ok" "December 5, 2014" "The Apple Pan"]
+          [(number "3" 3) (number "34.05" 34.0474) "Good" "August 1, 2014" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
                                                           {}
                                                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -232,9 +233,9 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows test-data})))))
@@ -674,3 +675,34 @@
       (is (= {:bottom "X custom", :left "Y custom"}
              (#'body/x-and-y-axis-label-info x-col y-col {:graph.x_axis.title_text "X custom"
                                                           :graph.y_axis.title_text "Y custom"}))))))
+
+(deftest lab-charts-respect-y-axis-range
+  (let [rows     [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        2          1.9]
+                  ["C"        -3          6]]
+        renderfn (fn [viz]
+                   (-> rows
+                       (render.tu/make-card-and-data :bar)
+                       (render.tu/merge-viz-settings viz)
+                       render.tu/render-as-hiccup))]
+    (testing "Graph min and max values are respected in the render. #27927"
+      (let [to-find           ["14" "2" "-2" "-14"]
+            no-viz-render     (renderfn {})
+            viz-a-render      (renderfn {:graph.y_axis.max 14
+                                         :graph.y_axis.min -14})
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text no-viz-render %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text viz-a-render %))) to-find)]
+        ;; we only see 14/-14 in the render where min and max are explicitly set.
+        ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
+        ;; without cutting off the chart's actual values
+        (is (= {:without-viz ["2" "-2"]
+                :with-viz    ["14" "2" "-2" "-14"]}
+               {:without-viz (remove nil? nodes-without-viz)
+                :with-viz    nodes-with-viz}))))
+    (testing "Graph min and max values do not cut off the chart."
+      (let [viz-b-render   (renderfn {:graph.y_axis.max 1
+                                      :graph.y_axis.min -1})
+            to-find        ["14" "2" "-2" "-14"]
+            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-text viz-b-render %))) to-find)]
+        (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))

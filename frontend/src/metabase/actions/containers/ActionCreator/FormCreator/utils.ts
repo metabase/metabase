@@ -3,12 +3,7 @@ import _ from "underscore";
 
 import { moveElement } from "metabase/core/utils/arrays";
 
-import type {
-  ActionFormSettings,
-  WritebackAction,
-  FieldSettingsMap,
-  Parameter,
-} from "metabase-types/api";
+import type { WritebackAction, FieldSettingsMap } from "metabase-types/api";
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
   if (action.type === "implicit" && action.kind === "row/delete") {
@@ -30,9 +25,13 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     if (action.kind === "row/update") {
       return t`Update`;
     }
+
+    if (action.kind === "row/create") {
+      return t`Save`;
+    }
   }
 
-  return t`Save`;
+  return t`Run`;
 };
 
 export const reorderFields = (
@@ -58,8 +57,3 @@ export const reorderFields = (
 
   return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
 };
-
-export const hasNewParams = (
-  params: Parameter[],
-  formSettings: ActionFormSettings,
-) => !!params.find(param => !formSettings.fields[param.id]);

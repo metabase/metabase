@@ -28,10 +28,7 @@ interface Props {
   columns: DatasetColumn[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowPopoverWidget: (
-    config: unknown,
-    targetElement: HTMLElement | null,
-  ) => void;
+  onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
 }
 
 type ListColumnSlot = "left" | "right";
@@ -53,7 +50,7 @@ function ChartSettingsListColumns({
   value,
   columns,
   onChange,
-  onShowPopoverWidget,
+  onShowWidget,
 }: Props) {
   const onChangeColumn = useCallback(
     (slot: ListColumnSlot, index: number, val: FieldIdOrFieldRef) => {
@@ -77,7 +74,7 @@ function ChartSettingsListColumns({
           _.isEqual(column.field_ref, fieldIdOrFieldRef),
       );
       if (column) {
-        onShowPopoverWidget(
+        onShowWidget(
           {
             id: "column_settings",
             props: {
@@ -88,7 +85,7 @@ function ChartSettingsListColumns({
         );
       }
     },
-    [columns, onShowPopoverWidget],
+    [columns, onShowWidget],
   );
 
   const columnOptions = columns.map(column => ({

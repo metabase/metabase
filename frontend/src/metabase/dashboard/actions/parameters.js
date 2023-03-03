@@ -103,7 +103,7 @@ export const setParameterMapping = createThunkAction(
 
     let parameter_mappings = dashcard.parameter_mappings || [];
 
-    // allow mapping the same parameeter to multiple action targets
+    // allow mapping the same parameter to multiple action targets
     if (!isAction) {
       parameter_mappings = parameter_mappings.filter(
         m => m.card_id !== card_id || m.parameter_id !== parameter_id,
@@ -128,6 +128,23 @@ export const setParameterMapping = createThunkAction(
       setDashCardAttributes({
         id: dashcard_id,
         attributes: { parameter_mappings },
+      }),
+    );
+  },
+);
+
+export const SET_ACTION_FOR_DASHCARD =
+  "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
+export const setActionForDashcard = createThunkAction(
+  SET_PARAMETER_MAPPING,
+  (dashcard, newAction) => dispatch => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          action_id: newAction.id,
+          action: newAction,
+        },
       }),
     );
   },

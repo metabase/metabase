@@ -11,6 +11,7 @@
    [metabase.models :refer [Card
                             Collection
                             Dashboard
+                            DashboardCard
                             Database
                             ParameterCard
                             Field
@@ -21,7 +22,12 @@
    [metabase.test.generate :as test-gen]
    [reifyhealth.specmonstah.core :as rs]
    [toucan.db :as db]
-   [yaml.core :as yaml]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [yaml.core :as yaml])
+ (:import
+  (java.io File)
+  (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,9 +61,9 @@
                    empty?)]
     coll-dir))
 
-(defn- file-set [dir]
-  (let [base (.toPath dir)]
-    (set (for [file (file-seq dir)
+(defn- file-set [^File dir]
+  (let [^Path base (.toPath dir)]
+    (set (for [^File file (file-seq dir)
                :when (.isFile file)
                :let [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
@@ -147,7 +153,8 @@
                                                                            :query {:source-table 3
                                                                                    :aggregation [[:count]]
                                                                                    :breakout [[:field 16 nil]]}
-                                                                           :type :query}}}
+                                                                           :type :query}
+                                                           :dataset       true}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))
@@ -491,3 +498,115 @@
                                first
                                :values_source_config)))
                     (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+
+(deftest dashcards-with-link-cards-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-source-and-dest-dbs
+      (ts/with-source-db
+        (let [link-card-viz-setting (fn [model id]
+                                      {:virtual_card {:display "link"}
+                                       :link         {:entity {:id    id
+                                                               :model model}}})
+              dashboard->link-cards (fn [dashboard]
+                                      (map #(get-in % [:visualization_settings :link :entity]) (:ordered_cards dashboard)))]
+          (t2.with-temp/with-temp
+            [Collection    {coll-id   :id
+                            coll-name :name
+                            coll-eid  :entity_id}    {:name        "Link collection"
+                                                      :description "Linked Collection"}
+             Database      {db-id   :id
+                            db-name :name}           {:name        "Linked database"
+                                                      :description "Linked database desc"}
+             Table         {table-id   :id
+                            table-name :name}        {:db_id        db-id
+                                                      :schema      "Public"
+                                                      :name        "Linked table"
+                                                      :description "Linked table desc"}
+             Card          {card-id   :id
+                            card-name :name
+                            card-eid  :entity_id}    {:name          "Linked card"
+                                                      :description   "Linked card desc"
+                                                      :display       "bar"}
+
+             Card          {model-id   :id
+                            model-name :name
+                            model-eid  :entity_id}   {:dataset       true
+                                                      :name          "Linked model"
+                                                      :description   "Linked model desc"
+                                                      :display       "table"}
+
+             Dashboard     {dash-id   :id
+                            dash-name :name
+                            dash-eid  :entity_id}    {:name          "Linked Dashboard"
+                                                      :collection_id coll-id
+                                                      :description   "Linked Dashboard desc"}
+             Dashboard     {dashboard-id   :id
+                            dashboard-name :name}    {:name          "Test Dashboard"
+                                                      :collection_id coll-id}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "collection" coll-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "database" db-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "table" table-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "card" card-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "dataset" model-id)}]
+            (testing "extract and store"
+              (let [extraction          (into [] (extract/extract-metabase {}))
+                    extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
+                (is (= [{:model "collection" :id coll-eid}
+                        {:model "database"   :id "Linked database"}
+                        {:model "table"      :id ["Linked database" "Public" "Linked table"]}
+                        {:model "dashboard"  :id dash-eid}
+                        {:model "card"       :id card-eid}
+                        {:model "dataset"    :id model-eid}]
+                       (dashboard->link-cards extracted-dashboard)))
+
+               (is (= #{[{:id dash-eid          :model "Dashboard"}]
+                        [{:id coll-eid          :model "Collection"}]
+                        [{:id model-eid         :model "Card"}]
+                        [{:id card-eid          :model "Card"}]
+                        [{:id "Linked database" :model "Database"}]
+                        [{:model "Database" :id "Linked database"}
+                         {:model "Schema"   :id "Public"}
+                         {:model "Table"    :id "Linked table"}]}
+                    (set (serdes.base/serdes-dependencies extracted-dashboard))))
+
+               (storage.yaml/store! (seq extraction) dump-dir)))
+
+            (testing "ingest and load"
+              ;; ingest
+              (ts/with-dest-db
+                (testing "doing ingestion"
+                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                      "successful"))
+
+                (doseq [[name model]
+                        [[db-name    'Database]
+                         [table-name 'Table]
+                         [card-name  'Card]
+                         [model-name 'Card]
+                         [dash-name  'Dashboard]]]
+                  (testing (format "model %s from link cards are loaded properly" model)
+                   (is (some? (db/select model :name name)))))
+
+                (testing "linkcards are loaded with correct fk"
+                  (let [new-db-id    (t2/select-one-pk Database :name db-name)
+                        new-table-id (t2/select-one-pk Table :name table-name)
+                        new-card-id  (t2/select-one-pk Card :name card-name)
+                        new-model-id (t2/select-one-pk Card :name model-name)
+                        new-dash-id  (t2/select-one-pk Dashboard :name dash-name)
+                        new-coll-id  (t2/select-one-pk Collection :name coll-name)]
+                    (is (= [{:id new-coll-id  :model "collection"}
+                            {:id new-db-id    :model "database"}
+                            {:id new-table-id :model "table"}
+                            {:id new-dash-id  :model "dashboard"}
+                            {:id new-card-id  :model "card"}
+                            {:id new-model-id :model "dataset"}]
+                           (-> (t2/select-one Dashboard :name dashboard-name)
+                               (t2/hydrate :ordered_cards)
+                               dashboard->link-cards)))))))))))))

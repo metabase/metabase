@@ -51,7 +51,13 @@ const Questions = createEntity({
           ),
         );
         dispatch(
-          Collections.actions.fetchList({ tree: true }, { reload: true }),
+          Collections.actions.fetchList(
+            {
+              tree: true,
+              "exclude-archived": true,
+            },
+            { reload: true },
+          ),
         );
 
         const card = result?.payload?.question;

@@ -1,25 +1,29 @@
 import { t } from "ttag";
+
 import type {
   ActionFormSettings,
   Database,
   Parameter,
   WritebackAction,
+  WritebackActionBase,
   ActionDashboardCard,
   BaseDashboardOrderedCard,
   Card,
   FieldSettings,
+  FieldSettingsMap,
   ParameterId,
+  ParametersForActionExecution,
+  ImplicitQueryAction,
 } from "metabase-types/api";
 
-import { slugify } from "metabase/lib/formatting";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { slugify, humanize } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
-
-export const checkDatabaseSupportsActions = (database: Database) =>
-  database.features.includes("actions");
 
 export const checkDatabaseActionsEnabled = (database: Database) =>
   !!database.settings?.["database-enable-actions"];
@@ -80,8 +84,10 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
-    const aOrder = formSettings.fields[a.id]?.order ?? 0;
-    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+    const fields = formSettings.fields || {};
+
+    const aOrder = fields[a.id]?.order ?? 0;
+    const bOrder = fields[b.id]?.order ?? 0;
 
     return aOrder - bOrder;
   };
@@ -94,14 +100,15 @@ export const getDefaultFormSettings = (
   description: "",
   fields: {},
   confirmMessage: "",
-  successMessage: getSuccessMessage(overrides),
+  successMessage: "",
   ...overrides,
 });
 
-export const getSuccessMessage = (
-  formSettings: Partial<ActionFormSettings> = {},
-) => {
-  return formSettings.successMessage ?? t`Thanks for your submission.`;
+export const getSuccessMessage = (action: WritebackAction) => {
+  return (
+    action.visualization_settings?.successMessage ||
+    t`${action.name} ran successfully`
+  );
 };
 
 export const getDefaultFieldSettings = (
@@ -134,7 +141,14 @@ export const generateFieldSettingsFromParameters = (
   params.forEach((param, index) => {
     const field = fieldMetadataMap[param.id]
       ? new Field(fieldMetadataMap[param.id])
-      : undefined;
+      : new Field({
+          id: param.id,
+          name: param.id,
+          slug: param.id,
+          display_name: humanize(param.id),
+          base_type: param.type,
+          semantic_type: param.type,
+        });
 
     const name = param["display-name"] ?? param.name ?? param.id;
     const displayName = field?.displayName?.() ?? name;
@@ -149,7 +163,6 @@ export const generateFieldSettingsFromParameters = (
       description: field?.description ?? "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
-      field: field ?? undefined,
     });
   });
   return fieldSettings;
@@ -201,6 +214,12 @@ export const getInputType = (param: Parameter, field?: Field) => {
   return "string";
 };
 
+export function isSavedAction(
+  action?: Partial<WritebackActionBase>,
+): action is WritebackAction {
+  return action != null && action.id != null;
+}
+
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
@@ -213,3 +232,57 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
+
+export function setNumericValues(
+  params: ParametersForActionExecution,
+  fieldSettings: FieldSettingsMap,
+) {
+  Object.entries(params).forEach(([key, value]) => {
+    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
+      params[key] = Number(value) ?? null;
+    }
+  });
+
+  return params;
+}
+
+function hasDataFromExplicitAction(result: any) {
+  const isInsert = result["created-row"];
+  const isUpdate =
+    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isDelete = result["rows-deleted"]?.[0] > 0;
+  return !isInsert && !isUpdate && !isDelete;
+}
+
+function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+  if (action.kind === "row/create") {
+    return t`Successfully saved`;
+  }
+  if (action.kind === "row/update") {
+    return t`Successfully updated`;
+  }
+  if (action.kind === "row/delete") {
+    return t`Successfully deleted`;
+  }
+  return t`Successfully ran the action`;
+}
+
+export function getActionExecutionMessage(
+  action: WritebackAction,
+  result: any,
+) {
+  if (action.type === "implicit") {
+    return getImplicitActionExecutionMessage(action);
+  }
+  if (hasDataFromExplicitAction(result)) {
+    return t`Success! The action returned: ${JSON.stringify(result)}`;
+  }
+  return getSuccessMessage(action);
+}
+
+export function getActionErrorMessage(error: unknown) {
+  return (
+    getResponseErrorMessage(error) ??
+    t`Something went wrong while executing the action`
+  );
+}

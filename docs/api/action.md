@@ -36,6 +36,10 @@ Returns cards that can be used for QueryActions.
 
 *  **`action-id`**
 
+## `GET /api/action/public`
+
+Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled.
+
 ## `POST /api/action/`
 
 Create a new action.
@@ -70,6 +74,20 @@ Create a new action.
 
 *  **`action`**
 
+## `POST /api/action/:id/execute`
+
+Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+
+### PARAMS:
+
+*  **`id`** integer greater than 0
+
+*  **`parameters`** nullable map from <keyword> to <anything>
+
+*  **`_body`**
+
 ## `POST /api/action/:id/public_link`
 
 Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
@@ -91,6 +109,8 @@ You must be a superuser to do this.
 *  **`parameters`** nullable sequence of map
 
 *  **`description`** nullable string
+
+*  **`archived`** nullable boolean
 
 *  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 

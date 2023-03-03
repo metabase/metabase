@@ -128,6 +128,10 @@ export const getIsDirty = createSelector(
     ),
 );
 
+export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
+  return sidebar?.props?.dashcardId;
+});
+
 export const getEditingParameterId = createSelector([getSidebar], sidebar => {
   return sidebar.name === SIDEBAR_NAME.editParameter
     ? sidebar.props?.parameterId
