@@ -29,7 +29,7 @@
 
 (def ^:private tracked-models (atom #{}))
 
-(defn ^:dynamcic on-change
+(defn on-change
   "When a change occurred, execute this function.
 
   Currently it just prints the console out to the console.
