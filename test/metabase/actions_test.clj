@@ -182,7 +182,7 @@
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/update query-that-returns-more-than-one)))
-          (is (thrown-with-msg? Exception #"Sorry, the row doesn't exist"
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to update doesn't exist"
                                 (actions/perform-action! :row/update query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
@@ -199,7 +199,7 @@
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/delete query-that-returns-more-than-one)))
-          (is (thrown-with-msg? Exception #"Sorry, the row doesn't exist"
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
                                 (actions/perform-action! :row/delete query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
