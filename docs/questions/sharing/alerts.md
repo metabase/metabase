@@ -14,7 +14,7 @@ To start using alerts, an administrator will need to make sure that either [emai
 
 ## Setting up an alert
 
-Go to a questions and click on the **bell** icon in the bottom right of the screen.
+Go to a question and click on the **bell** icon in the bottom right of the screen.
 
 ## Types of alerts
 
