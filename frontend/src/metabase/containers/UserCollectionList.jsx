@@ -39,23 +39,25 @@ const UserCollectionList = ({ collectionsById }) => (
         ]}
       />
     </ListHeader>
-    <User.ListLoader>
+    <User.ListLoader
+      query={{
+        status: "all",
+      }}
+    >
       {({ list }) => {
         return (
           <div>
             <Grid>
               {
-                // map through all users that have logged in at least once
-                // which gives them a personal collection ID
-                list.map(
-                  user =>
-                    user.personal_collection_id && (
+                // Render all personal collections that exist and are non-archived
+                list.map(user => {
+                  const collection =
+                    collectionsById[user.personal_collection_id];
+                  return (
+                    collection &&
+                    !collection.archived && (
                       <ListGridItem key={user.personal_collection_id}>
-                        <Link
-                          to={Urls.collection(
-                            collectionsById[user.personal_collection_id],
-                          )}
-                        >
+                        <Link to={Urls.collection(collection)}>
                           <Card p={2} hoverable>
                             <CardContent>
                               <Icon
@@ -69,8 +71,9 @@ const UserCollectionList = ({ collectionsById }) => (
                           </Card>
                         </Link>
                       </ListGridItem>
-                    ),
-                )
+                    )
+                  );
+                })
               }
             </Grid>
           </div>

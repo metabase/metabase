@@ -29,6 +29,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
@@ -1088,14 +1089,17 @@
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
-  This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
+  This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead.
+  We also add a `personal_owner_active` boolean flag indicating whether the owner of the collection is an active user,
+  since only personal collections of deactivated users can be archived or unarchived."
   [{:keys [personal_owner_id] :as collection}]
   (if-not personal_owner_id
     collection
     (let [collection-name (user->personal-collection-name personal_owner_id :user)]
       (assoc collection
-             :name collection-name
-             :slug (u/slugify collection-name)))))
+             :name                  collection-name
+             :slug                  (u/slugify collection-name)
+             :personal_owner_active (t2/select-one-fn :is_active 'User :id personal_owner_id)))))
 
 (s/defn user->existing-personal-collection :- (s/maybe (mi/InstanceOf Collection))
   "For a `user-or-id`, return their personal Collection, if it already exists.

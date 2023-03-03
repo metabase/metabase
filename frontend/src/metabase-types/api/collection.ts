@@ -29,6 +29,7 @@ export interface Collection {
 
   parent_id?: CollectionId;
   personal_owner_id?: UserId;
+  personal_owner_active?: boolean;
 
   location?: string;
   effective_ancestors?: Collection[];

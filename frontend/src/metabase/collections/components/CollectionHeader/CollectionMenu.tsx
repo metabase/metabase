@@ -55,6 +55,13 @@ const CollectionMenu = ({
       link: `${url}/move`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Move Collection`,
     });
+  }
+
+  if (
+    !isRoot &&
+    canWrite &&
+    (!isPersonal || !collection.personal_owner_active)
+  ) {
     items.push({
       title: t`Archive`,
       icon: "archive",
