@@ -5,6 +5,7 @@
    [metabase.lib.util :as lib.util]))
 
 (defmulti ->pMBQL
+  "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
@@ -42,13 +43,18 @@
     (update-vals ->pMBQL m)))
 
 (defmethod ->pMBQL :field
-  [[_field id-or-name options]]
-  (let [options (cond-> options
-                  (not (:lib/uuid options))
-                  (assoc :lib/uuid (str (random-uuid))))]
+  [[_field x y]]
+  (let [[id-or-name options] (if (map? x)
+                               [y x]
+                               [x y])
+        options              (cond-> options
+                               (not (:lib/uuid options))
+                               (assoc :lib/uuid (str (random-uuid))))]
     [:field options id-or-name]))
 
 (defmulti ->legacy-MBQL
+  "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
+  not already legacy MBQL."
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
