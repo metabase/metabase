@@ -20,7 +20,9 @@ You can also convert a question to a [model][model].
 
 ## Downloading your results
 
-You can export the results of a question by clicking on the __Download arrow__ (a down arrow in a cloud) in the lower right of the screen. Results can be downloaded as:
+You can export the results of a question by clicking on the **Download arrow** (a down arrow in a cloud) in the lower right of the screen, or from a chart on a dashboard by clicking on the **...** in the upper right or a dashboard card.
+
+Results can be downloaded as:
 
 - .csv
 - .xlsx
@@ -28,9 +30,12 @@ You can export the results of a question by clicking on the __Download arrow__ (
 
 The maximum download size is 1 million rows. Exported .xlsx files preserve the formatting defined in the question: date and currency formats are kept throughout, as well as column ordering and visibility. Files names for the exported question will include a slug of the question title, so you can easily distinguish files when exporting multiple questions.
 
-## Exporting chart images
+## Exporting charts as images
 
-Charts (excluding tables) can also be download as an image (.png format).
+You can download most charts (excluding table and number charts) as images in .png format.
+
+- From a question: click on the **download arrow** (a down arrow in a cloud in the bottom right) and select .png.
+- From a dashboard card: click on the **...** in the upper right of the card and select .png.
 
 ## Editing your question
 
