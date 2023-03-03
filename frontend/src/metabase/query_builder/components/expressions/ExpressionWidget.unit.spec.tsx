@@ -53,6 +53,7 @@ const createMockQueryForExpressions = () => {
 
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const mocks = {
+    onClose: jest.fn(),
     onChangeExpression: jest.fn(),
   };
 
