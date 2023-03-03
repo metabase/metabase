@@ -20,6 +20,7 @@ import {
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
@@ -79,7 +80,7 @@ DashCardCardParameterMapper.propTypes = {
   isMobile: PropTypes.bool,
 };
 
-function DashCardCardParameterMapper({
+export function DashCardCardParameterMapper({
   card,
   dashcard,
   editingParameter,
@@ -94,7 +95,7 @@ function DashCardCardParameterMapper({
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
-  const isDisabled = mappingOptions.length === 0;
+  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const selectedMappingOption = _.find(mappingOptions, option =>
     _.isEqual(normalize(option.target), normalize(target)),
   );
@@ -196,7 +197,7 @@ function DashCardCardParameterMapper({
             {mappingInfoText}
           </TextCardDefault>
         ) : (
-          <TextCardDefault>
+          <TextCardDefault aria-label={mappingInfoText}>
             <Icon
               name="info"
               size={16}
@@ -238,6 +239,7 @@ function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
+                aria-label={buttonTooltip}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}
