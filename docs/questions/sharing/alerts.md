@@ -62,13 +62,6 @@ You probably don't want to be alerted about all the bad reviews you've _ever_ go
 
 Save the question, the click on the bell icon in the bottom-right of the screen, and select how often you want Metabase to check this question for results. That's it!
 
-## Adding additional recipients to your alerts
-
-
-You can add any Metabase user, email address, or even a Slack channel as a recipient of an alert. Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-
-Here's more information about [setting up email integration](../../configuring-metabase/email.md) and [setting up Slack integration](../../configuring-metabase/slack.md).
-
 ## Editing and deleting alerts
 
 Admins get special privileges with alerts.
@@ -76,12 +69,14 @@ Admins get special privileges with alerts.
 ### Admins
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
+- Admins can add or remove recipients on any alert, even ones that they did not create themselves.
 - Admins on some [paid plans](/pricing) can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
 
 ### Everyone
 
-- Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 - Everyone can edit alerts that they've set up (but not alerts set up by other people).
+- Everyone can add any Metabase user account, email address, or even a Slack channel as a recipient of an alert that they created (but not alerts created by others).
+- Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 
 ## Alert expiration
 
@@ -89,6 +84,8 @@ Some circumstances will automatically delete alerts:
 
 - If a saved question that has an alert gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, Metabase will delete the alert.
 - If a question gets archived, Metabase will delete any alerts set up for that question.
+
+Alerts will continue to work even if the person who set up the alert no longer has an active account. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
 
 ## Admins can audit alerts
 
