@@ -78,7 +78,7 @@
     (new-change model action row)
     row))
 
-(def ^:private hook-and-actions
+(def ^:private hook+aux-method+action+deriveable
   "A list of toucan hooks that we will subscribed to when tracking a model."
   [;; will be better if we could use after-insert to get the inserted id, but toucan2 doesn't define a multimethod for after-insert
    [#'t2.before-insert/before-insert :after :insert ::t2.before-insert/before-insert]
@@ -88,11 +88,11 @@
 
 (defn- track-one!
   [model]
-  (doseq [[hook aux-method action deriveable] hook-and-actions]
-    #_(when-not (m/primary-method @hook model)
-        ;; aux-method will not be triggered if there isn't a primary method
-        (t2.util/maybe-derive model deriveable)
-        (m/add-primary-method! hook model (fn [_ _model row] row)))
+  (doseq [[hook aux-method action deriveable] hook+aux-method+action+deriveable]
+    (when-not (m/primary-method @hook model)
+      ;; aux-method will not be triggered if there isn't a primary method
+      (t2.util/maybe-derive model deriveable)
+      (m/add-primary-method! hook model (fn [_ _model row] row)))
     (m/add-aux-method-with-unique-key! hook aux-method model (new-change-thunk model action) ::tracking)))
 
 (defn track!
@@ -106,7 +106,7 @@
 
 (defn- untrack-one!
   [model]
-  (doseq [[hook aux-method _action] hook-and-actions]
+  (doseq [[hook aux-method _action] hook+aux-method+action+deriveable]
     (m/remove-aux-method-with-unique-key! hook aux-method model ::tracking)
     (swap! tracked-models disj model)))
 
