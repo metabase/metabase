@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.util-test
+(ns metabase-enterprise.serialization.v2.test-util-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]

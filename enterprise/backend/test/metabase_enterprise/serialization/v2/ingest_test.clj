@@ -1,10 +1,9 @@
-(ns metabase-enterprise.serialization.v2.ingest.yaml-test
+(ns metabase-enterprise.serialization.v2.ingest-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
-   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
    [yaml.core :as yaml]))
 
 (deftest basic-ingest-test
@@ -21,7 +20,7 @@
     (spit (io/file dump-dir "collections" "0987654321zyxwvuABCDE" "0987654321zyxwvuABCDE.yaml")
           (yaml/generate-string {:some "other" :data "in this one" :entity_id "0987654321zyxwvuABCDE"}))
 
-    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+    (let [ingestable (ingest/ingest-yaml dump-dir)
           exp-files  {[{:model "Collection"
                         :id    "1234567890abcdefABCDE"
                         :label "the_label"}]                              {:some "made up"
@@ -56,7 +55,7 @@
                    "1234567890abcdefABCDE_human-readable-things.yaml")
           (yaml/generate-string {:some "made up" :data "here"}))
 
-    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+    (let [ingestable (ingest/ingest-yaml dump-dir)
           exp {:some "made up"
                :data "here"
                :serdes/meta [{:model "Collection" :id "1234567890abcdefABCDE"}]}]
@@ -77,7 +76,7 @@
     (spit (io/file dump-dir "databases" "my data__SLASH__speculations" "my data__SLASH__speculations.yaml")
           (yaml/generate-string {:some "made up" :data "here"}))
 
-    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+    (let [ingestable (ingest/ingest-yaml dump-dir)
           exp {:some "made up"
                :data "here"
                :serdes/meta [{:model "Database" :id "my data/speculations"}]}]
@@ -96,7 +95,7 @@
           (yaml/generate-string {:visualization_settings
                                  {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}}))
 
-    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+    (let [ingestable (ingest/ingest-yaml dump-dir)
           exp {:visualization_settings {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}
                :serdes/meta [{:model "Card" :id "1234567890abcdefABCDE"}]}]
       (testing "the file as read in correctly reconstructs keywords only where legal"

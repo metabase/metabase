@@ -1,11 +1,11 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.e2e.yaml-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.e2e-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card
@@ -294,14 +294,14 @@
           (testing "ingest and load"
             (ts/with-dest-db
               (testing "ingested set matches extracted set"
-                (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
+                (let [extracted-set (set (map (comp #'ingest/strip-labels serdes.base/serdes-path) @extraction))]
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
-                         (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+                         (set (keys (#'ingest/ingest-all (io/file dump-dir))))))))
 
               (testing "doing ingestion"
-                (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
                     "successful"))
 
               (testing "for Actions"
@@ -474,7 +474,7 @@
               (ts/with-dest-db
                 ;; ingest
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
                       "successful"))
 
                 (let [dash1d (db/select-one Dashboard :name (:name dash1s))
@@ -582,7 +582,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
                       "successful"))
 
                 (doseq [[name model]
