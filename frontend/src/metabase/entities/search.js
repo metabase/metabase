@@ -63,6 +63,7 @@ export default createEntity({
           data: data
             ? data.map(item => ({
                 collection_id: canonicalCollectionId(collection),
+                parent_id: canonicalCollectionId(collection),
                 archived: archived || false,
                 ...item,
               }))
