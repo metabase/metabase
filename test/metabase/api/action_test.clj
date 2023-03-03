@@ -212,11 +212,11 @@
 (deftest snowplow-test
   (snowplow-test/with-fake-snowplow-collector
     (mt/with-actions-enabled
-      (testing "Should track when"
+      (testing "Should send a snowplow event when"
         (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
-              (testing (format "add an action of type %s" type)
+              (testing (format "adding an action of type %s" type)
                 (is (=? {:user-id (str (mt/user->id :crowberto))
                          :data    {"action_id"      (:id new-action)
                                    "event"          "action_created"
@@ -408,7 +408,7 @@
                                         :post 200
                                         (format "action/%s/execute" action-id)
                                         {:parameters {:id 1 :name "European"}})))
-          (testing "track a snowplow event"
+          (testing "send a snowplow event"
             (is (= {:data {"action_id" action-id
                            "event"     "action_executed"
                            "source"    "model_detail"

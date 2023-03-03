@@ -1397,7 +1397,7 @@
                         :post 400
                         (format "public/action/%s/execute" public_uuid)
                         {:parameters {:id 1 :name "European"}})))))
-            (testing "Check that we track snowplow when execute an action"
+            (testing "Check that we send a snowplow event when execute an action"
               (snowplow-test/with-fake-snowplow-collector
                 (client/client
                   :post 200

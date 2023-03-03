@@ -586,10 +586,10 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
-            ;; Undo middleware string->keyword coercion
             (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :public_form
                                                                                      :type      (:type action)
                                                                                      :action_id (:id action)})
+            ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 
 

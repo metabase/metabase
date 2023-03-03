@@ -2628,7 +2628,7 @@
                 (is (has-valid-action-execution-error-message?
                      (mt/user-http-request :crowberto :post 500 execute-path
                                            {:parameters {"id" "BAD"}}))))
-              (testing "should track snowplow"
+              (testing "should send a snowplow event"
                 (snowplow-test/with-fake-snowplow-collector
                   (mt/user-http-request :crowberto :post 200 execute-path
                                         {:parameters {"id" 1}})
