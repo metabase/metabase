@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.ref
   "Malli schema for a Field, aggregation, or expression reference (etc.)"
   (:require
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
@@ -15,44 +16,52 @@
    [:map
     [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
 
-;;; `:field` clause
-(mr/def ::field
-  [:and
-   [:catn
-    [:clause [:= :field]]
-    [:id-or-name [:altn
-                  [:id ::id/field]
-                  [:name ::common/non-blank-string]]]
-    [:options ::field.options]]
-   [:fn (fn [[_field id-or-name options]]
-          (or (integer? id-or-name)
-              (and (string? id-or-name)
-                   (isa? (:base-type options) :type/*))))]])
+(mr/def ::base-type
+  [:fn #(isa? % :type/*)])
 
-;; this is a placeholder that will be resolved later once we have metadata and `append` it to the query. Used to
-;; implement [[metabase.lib.field/field]] so you don't have to pass metadata to it directly.
-(mr/def ::field.unresolved
+(mr/def ::field.literal.options
+  [:and
+   ::field.options
+   [:map
+    [:base-type ]]])
+
+;;; `:field` clause
+(mr/def ::field.literal
   [:catn
-   [:clause [:= :field/unresolved]]
-   [:info [:fn map?]]])
+   [:clause [:= :field]]
+   [:options ::field.literal.options]
+   [:name ::common/non-blank-string]])
+
+(mr/def ::field.id
+  [:catn
+   [:clause [:= :field]]
+   [:options ::field.options]
+   [:name ::id/field]])
+
+(mr/def ::field
+  [:multi {:dispatch (fn [[_field _opts id-or-name]]
+                       (lib.dispatch/dispatch-value id-or-name))}
+   [:dispatch-type/integer ::field.id]
+   [:dispatch-type/string ::field.literal]])
 
 (mr/def ::expression
   [:catn
    [:clause [:= :expression]]
+   [:options ::field.options]
    [:name ::common/non-blank-string]])
 
 (mr/def ::aggregation
   [:catn
    [:clause [:= :aggregation]]
+   [:options ::field.options]
    [:index ::common/int-greater-than-or-equal-to-zero]])
 
 (mr/def ::ref
   [:and
    [:catn
-    [:clause [:keyword]]
+    [:clause [:enum :field :expression :aggregation]]
     [:args   [:* any?]]]
    [:multi {:dispatch #(keyword (first %))}
-    [:field/unresolved ::field.unresolved]
     [:field ::field]
     [:aggregation ::aggregation]
     [:expression ::expression]]])

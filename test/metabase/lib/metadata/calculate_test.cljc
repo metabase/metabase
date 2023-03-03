@@ -1,34 +1,43 @@
 (ns metabase.lib.metadata.calculate-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata.calculate :as calculate]
    [metabase.lib.test-metadata :as meta])
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
-(defn- ^:deprecated column-info [query _results-metadata]
-  (calculate/stage-metadata query -1))
+(defn- stage-metadata [query]
+  (let [query (assoc (lib.convert/->pMBQL (merge {:database (meta/id)}
+                                                 query))
+                     :lib/metadata meta/metadata-provider)]
+    (calculate/stage-metadata query -1)))
+
+(defn- ^:deprecated column-info
+  [query _results-metadata]
+  (stage-metadata query))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
-    (is (= [(merge (meta/field-metadata :venues :price)
-                   {:source    :fields
-                    :field_ref [:field (meta/id :venues :price) nil]})]
-           (column-info
-            {:type  :query
-             :query {:fields [[:field (meta/id :venues :price) nil]]}}
-            {:columns [:price]})))))
+    (is (=? [(merge (dissoc (meta/field-metadata :venues :price) :database_type)
+                    {:source    :fields
+                     :field_ref [:field {:lib/uuid string?} (meta/id :venues :price)]})]
+            (stage-metadata
+             {:database (meta/id)
+              :type     :query
+              :query    {:source-table (meta/id :venues)
+                         :fields       [[:field (meta/id :venues :price) nil]]}})))))
 
 (deftest ^:parallel col-info-implicit-join-test
   (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                 "info about the source Field")
-    (is (= [(merge (meta/field-metadata :categories :name)
-                   {:fk_field_id (meta/id :venues :category-id)
-                    :source      :fields
-                    :field_ref   [:field (meta/id :categories :name) {:fk-field-id (meta/id :venues :category-id)}]})]
-           (column-info
-            {:type  :query
-             :query {:fields [[:field (meta/id :categories :name) {:fk-field-id (meta/id :venues :category-id)}]]}}
-            {:columns [:name]})))))
+    (is (=? [(merge (dissoc (meta/field-metadata :categories :name) :database_type)
+                    {:fk_field_id (meta/id :venues :category-id)
+                     :source      :fields
+                     :field_ref   [:field {:fk-field-id (meta/id :venues :category-id)} (meta/id :categories :name)]})]
+            (stage-metadata
+             {:type  :query
+              :query {:source-table (meta/id :venues)
+                      :fields       [[:field (meta/id :categories :name) {:fk-field-id (meta/id :venues :category-id)}]]}})))))
 
 (deftest ^:parallel col-info-explicit-join-test
   (testing (str "we should get `:fk_field_id` and information where possible when using joins; "

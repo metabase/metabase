@@ -42,11 +42,14 @@
     (update-vals ->pMBQL m)))
 
 (defmethod ->pMBQL :field
-  [[_field id-or-name options]]
-  (let [options (cond-> options
-                  (not (:lib/uuid options))
-                  (assoc :lib/uuid (str (random-uuid))))]
-    [:field options id-or-name]))
+  [[_field x y]]
+  (let [[id-or-name options] (if (map? x)
+                               [y x]
+                               [x y])]
+    (let [options (cond-> options
+                    (not (:lib/uuid options))
+                    (assoc :lib/uuid (str (random-uuid))))]
+      [:field options id-or-name])))
 
 (defmulti ->legacy-MBQL
   {:arglists '([x])}

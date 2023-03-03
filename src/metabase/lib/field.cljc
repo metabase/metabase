@@ -30,16 +30,16 @@
   (f query stage))
 
 (defmethod lib.options/options :field
-  [clause]
-  (last clause))
+  [[_field opts _id-or-name]]
+  opts)
 
 (defmethod lib.options/with-options :field
-  [[_field id-or-name _opts] options]
-  [:field id-or-name options])
+  [[_field _opts id-or-name] options]
+  [:field options id-or-name])
 
 (defmethod lib.temporal-bucket/temporal-bucket* :field
-  [[_field id-or-name options] unit]
-  [:field id-or-name (assoc options :temporal-unit unit)])
+  [[_field options id-or-name] unit]
+  [:field (assoc options :temporal-unit unit) id-or-name])
 
 (mu/defn field :- [:or
                    fn?

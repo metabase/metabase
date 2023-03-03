@@ -66,7 +66,7 @@
     #{:datetime-add :datetime-subtract :relative-datetime}
     true
 
-    [:field _ (_ :guard :temporal-unit)]
+    [:field (_opts :guard :temporal-unit) _id-or-name]
     true
 
     :+
@@ -150,11 +150,11 @@
     :field_ref       (lib.options/ensure-uuid clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
-  [query        :- PipelineQuery
-   stage-number :- :int
-   [_ id-or-name opts :as clause]]
+  [query                          :- PipelineQuery
+   stage-number                   :- :int
+   [_ opts id-or-name :as clause] :- ::lib.schema.ref/field]
   (let [join                   (when (:join-alias opts)
-                                    (join-with-alias query stage-number (:join-alias opts)))
+                                 (join-with-alias query stage-number (:join-alias opts)))
         join-is-in-this-stage? (some #(= (:alias %) (:join-alias opts))
                                      (:joins (lib.util/query-stage query stage-number)))
         ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
@@ -163,9 +163,9 @@
         ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
         ;; remapping based on that info)
         namespaced-options     (not-empty (into {}
-                                                   (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
-                                                   opts))]
+                                                (filter (fn [[k _v]]
+                                                          (and (keyword? k) (namespace k))))
+                                                opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref (lib.options/ensure-uuid clause)}
@@ -184,7 +184,9 @@
       (merge (let [{parent-id :parent_id, :as field} (dissoc (field-metadata query stage-number id-or-name) :database_type)]
                (if-not parent-id
                  field
-                 (let [parent (col-info-for-field-clause query stage-number (lib.options/ensure-uuid [:field parent-id nil]))]
+                 (let [parent (->> [:field {} parent-id]
+                                   lib.options/ensure-uuid
+                                   (col-info-for-field-clause query stage-number))]
                    (update field :name #(str (:name parent) \. %))))))
 
       (:binning opts)
@@ -209,10 +211,11 @@
       ;; For IMPLICIT joins, remove `:join-alias` in the resulting Field ref -- it got added there during
       ;; preprocessing by us, and wasn't there originally. Make sure the ref has `:source-field`.
       (:fk-field-id join)
-      (update :field_ref mbql.u/update-field-options (fn [opts]
-                                                       (-> opts
-                                                           (dissoc :join-alias)
-                                                           (assoc :source-field (:fk-field-id join)))))
+      (update :field_ref (fn [[clause opts x]]
+                           (let [opts (-> opts
+                                          (dissoc :join-alias)
+                                          (assoc :source-field (:fk-field-id join)))]
+                             [clause opts x])))
 
       ;; If source Field (for an IMPLICIT join) is specified in either the field ref or matching join, make sure we
       ;; return it as `fk_field_id`. (Not sure what situations it would actually be present in one but not the other
@@ -230,7 +233,9 @@
              (let [previous-stage (lib.util/query-stage query previous-stage-number)]
                (string? (:source-table previous-stage))))
            (not join-is-in-this-stage?))
-      (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
+      (update :field_ref (fn [[clause opts x]]
+                           (let [opts (dissoc opts :join-alias)]
+                             [clause opts x]))))))
 
 (mu/defn ^:private col-info-for-field-clause :- [:and
                                                  lib.metadata/ColumnMetadata
