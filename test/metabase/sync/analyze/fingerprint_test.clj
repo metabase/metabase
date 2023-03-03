@@ -38,7 +38,7 @@
             [:not (mdb.u/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not= :base_type "type/Structured"]
+           [:not-in :base_type ["type/Structured" "type/JSON"]]
            [:or
             [:and
              [:< :fingerprint_version 1]
@@ -53,7 +53,7 @@
             [:not (mdb.u/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not= :base_type "type/Structured"]
+           [:not-in :base_type ["type/Structured" "type/JSON"]]
            [:or
             [:and
              [:< :fingerprint_version 2]
@@ -73,7 +73,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/Structured"]
+             [:not-in :base_type ["type/Structured" "type/JSON"]]
              [:or
               [:and
                [:< :fingerprint_version 2]
@@ -94,7 +94,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/Structured"]
+             [:not-in :base_type ["type/Structured" "type/JSON"]]
              [:or
               [:and
                [:< :fingerprint_version 4]
@@ -120,7 +120,7 @@
                      [:not (mdb.u/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not= :base_type "type/Structured"]]}
+                    [:not-in :base_type ["type/Structured" "type/JSON"]]]}
            (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
@@ -217,7 +217,19 @@
              (binding [fingerprint/*refingerprint?* true]
                (field-was-fingerprinted?
                  {1 #{:type/Text}}
-                 {:base_type :type/Text, :fingerprint_version 1})))))))
+                 {:base_type :type/Text, :fingerprint_version 1}))))))
+
+  (testing "field has a type/JSON base-type"
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+            {2 #{:type/*}}
+            {:base_type :type/JSON, :fingerprint_version 1}))))
+
+  (testing "field has a type/Structured base-type"
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+            {2 #{:type/*}}
+            {:base_type :type/Structured, :fingerprint_version 1})))))
 
 
 (deftest fingerprint-table!-test
