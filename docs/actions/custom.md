@@ -77,7 +77,7 @@ From the model detail page, click on the **...** next to the action. Once in the
 
 ### Make public
 
-Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. useful for creating surveys.
+Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. Useful for creating surveys.
 
 ![Public action form](./images/public-form.png)
 
