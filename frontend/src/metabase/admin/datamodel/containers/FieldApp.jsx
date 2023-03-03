@@ -300,7 +300,7 @@ const FieldGeneralPane = ({
       />
     </Section>
 
-    {isa(field.semantic_type, TYPE.SerializedJSON) &&
+    {isa(field.base_type, TYPE.JSON) &&
       database.hasFeature("nested-field-columns") && (
         <Section>
           <SectionHeader
