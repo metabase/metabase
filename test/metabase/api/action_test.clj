@@ -10,7 +10,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.util UUID)))
 
@@ -213,7 +214,8 @@
   (snowplow-test/with-fake-snowplow-collector
     (mt/with-actions-enabled
       (testing "Should send a snowplow event when"
-        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
+        (t2.with-temp/with-temp
+          [Card {card-id :id} {:dataset true}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
               (testing (format "adding an action of type %s" type)
