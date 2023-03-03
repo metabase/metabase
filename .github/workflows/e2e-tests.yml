@@ -192,6 +192,16 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
+      - name: Foresight Test Results
+        uses: runforesight/foresight-test-kit-action@v1
+        if: always()
+        with:
+          api_key: ${{ secrets.FORESIGHT_API_KEY }}
+          test_format: JSON
+          test_framework: CYPRESS
+          test_path: ./cypress/reports/cypress-test-report.json
+          tags: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+
   e2e-tests-skipped-stub:
     needs: [build, files-changed]
     if: |
