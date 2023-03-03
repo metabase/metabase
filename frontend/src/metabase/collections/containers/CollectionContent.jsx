@@ -289,14 +289,11 @@ function CollectionContent({
                       <BulkActions
                         selected={selected}
                         collection={collection}
-                        onSelectAll={handleSelectAll}
-                        onSelectNone={clear}
                         onArchive={handleBulkArchive}
                         onMoveStart={handleBulkMoveStart}
                         onMove={handleBulkMove}
                         onCloseModal={handleCloseModal}
                         onCopy={clear}
-                        hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                         isNavbarOpen={isNavbarOpen}
