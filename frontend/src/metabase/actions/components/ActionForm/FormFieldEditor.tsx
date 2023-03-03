@@ -25,7 +25,7 @@ import {
   PreviewContainer,
 } from "./FormFieldEditor.styled";
 
-interface FormFieldEditorProps {
+export interface FormFieldEditorProps {
   field: ActionFormFieldProps;
   fieldSettings: FieldSettings;
   isEditable: boolean;
