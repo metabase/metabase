@@ -22,6 +22,7 @@ import {
   WritebackAction,
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
 
 const EntitiesSchema = {
   actions: [ActionSchema],
@@ -49,5 +50,5 @@ export interface EntitiesStateOpts {
 
 export const createEntitiesState = (opts: EntitiesStateOpts): EntitiesState => {
   const schema = normalize(opts, EntitiesSchema);
-  return schema.entities;
+  return createMockEntitiesState(schema.entities);
 };
