@@ -647,40 +647,7 @@
 (def ^:private axis-group-threshold 0.33)
 
 (defn- group-axes-at-once
-  [group-keys joined-rows viz-settings threshold]
-  (let [starting-positions (into {} (for [k group-keys]
-                                      [k (keyword (series-setting viz-settings k :axis))]))
-        positions          (-> (group-by second starting-positions)
-                               (update-vals #(mapv first %)))]
-    (if (contains? positions nil)
-      (let [grouping-fn        #(if (= (count (first %)) 1)
-                                  (first (first %))
-                                  (second (first %)))
-            joined-rows-map    (-> (group-by grouping-fn joined-rows)
-                                   (update-vals #(mapcat last %)))
-            overlaps           (-> joined-rows-map
-                                   (update-vals (fn [vs]
-                                                  (into {} (map (fn [k]
-                                                                  [k (overlap (get joined-rows-map k) vs)])
-                                                                (keys joined-rows-map))))))
-            lefts              (or (:left positions) [(first (get positions nil))])
-            rights             (or (:right positions) [])
-            to-group           (remove (set (concat lefts rights)) (get positions nil))
-            relevant-distances (get overlaps (first lefts))
-            all-positions      (apply (partial merge-with concat)
-                                      (conj
-                                       (for [k to-group]
-                                         (if (> (get relevant-distances k) threshold)
-                                           {:left [k]}
-                                           {:right [k]}))
-                                       (-> positions (dissoc nil) (assoc :left lefts))))]
-        (into {} (apply concat (for [[pos ks] all-positions]
-                                 (map (fn [k] [k pos]) ks)))))
-      starting-positions)))
-
-(defn group-axes-at-once2
   [joined-rows viz-settings threshold]
-  (println "NEW")
   (let [;; a double-x-axis 'joined-row' looks like:
         ;; [["val on x-axis"         "grouping-key"] [series-val]] eg:
         ;; [["2016-01-01T00:00:00Z"  "Doohickey"   ] [9031.5578 ]]
@@ -737,16 +704,14 @@
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
   [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as _data} card-name]
-  (let [positions (group-axes-at-once2 joined-rows viz-settings axis-group-threshold)]
+  (let [positions (group-axes-at-once joined-rows viz-settings axis-group-threshold)]
     (for [[idx y-col] (map-indexed vector y-cols)]
       (let [y-col-key      (:name y-col)
             card-type      (or (series-setting viz-settings y-col-key :display)
                                chart-type
                                (nth default-combo-chart-types idx))
             selected-rows  (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
-            y-axis-pos     (get positions y-col-key)
-            #_#_y-axis-pos (or (series-setting viz-settings y-col-key :axis)
-                               (nth (default-y-pos data axis-group-threshold) idx))]
+            y-axis-pos     (or (get positions y-col-key) "left")]
         {:cardName      card-name
          :type          card-type
          :data          selected-rows
@@ -762,8 +727,7 @@
   [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as _data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)
-        #_#_positions    (group-axes-at-once groups joined-rows viz-settings axis-group-threshold)
-        positions (group-axes-at-once2 joined-rows viz-settings axis-group-threshold)]
+        positions    (group-axes-at-once joined-rows viz-settings axis-group-threshold)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
