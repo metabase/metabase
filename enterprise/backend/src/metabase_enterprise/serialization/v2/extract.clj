@@ -43,16 +43,12 @@
 
   Takes an options map which is passed on to [[serdes.base/extract-all]] for each model. The options are documented
   there."
-  [opts]
+  [{:keys [data-model-only include-field-values] :as opts}]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (serdes.backfill/backfill-ids)
   ;; TODO document and test data-model-only if we want to keep this feature...
-  (let [models (if (:data-model-only opts)
-                 #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-                 (set serdes.models/exported-models))
-        models (if (:include-field-values opts)
-                 models
-                 (disj models "FieldValues"))
+  (let [models (cond-> (if data-model-only serdes.models/data-model serdes.models/exported-models)
+                 (not include-field-values) (disj "FieldValues"))
         ;; This set of unowned top-level collections is used in several `extract-query` implementations.
         opts   (assoc opts :collection-set (collection-set-for-user (:user opts)))]
     (eduction cat (for [model models]
