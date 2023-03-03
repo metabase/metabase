@@ -502,7 +502,7 @@
                       (:fields)
                       (:take 1)
                       (first)
-                      (juxt :base-type :semantic-type))))
+                      ((juxt :base-type :semantic-type)))))
           (is (= '#{{:name              "incoherent_json_val → b",
                      :database-type     "text",
                      :base-type         :type/Text,
