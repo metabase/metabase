@@ -470,7 +470,7 @@
    \newline
    ["CREATE TABLE describe_json_table ("
     "  coherent_json_val JSON NOT NULL,"
-    "  incoherent_json_val JSON NOT NULL"
+    "  incoherent_json_val JSONB NOT NULL"
     ");"
     "INSERT INTO"
     "  describe_json_table (coherent_json_val, incoherent_json_val)"
