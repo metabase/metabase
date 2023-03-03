@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   navigationSidebar,
+  getFullName,
   openNewCollectionItemFlowFor,
   getCollectionActions,
   openCollectionMenu,
@@ -133,6 +134,55 @@ describe("personal collections", () => {
       cy.visit(`/collection/${NODATA_PERSONAL_COLLECTION_ID}`);
       cy.findByText("Foo");
     });
+
+    it("should archive a personal collection when the user is deactivated (metabase#25830)", () => {
+      const FULL_NAME = getFullName(USERS.normal);
+      const PERSONAL_COLLECTION_NAME = FULL_NAME + "'s Personal Collection";
+
+      cy.visit("/admin/people")
+      cy.findByText(FULL_NAME)
+        .closest("tr")
+        .within(() => {
+          cy.icon("ellipsis").click();
+        });
+      cy.findByText("Deactivate user").click();
+      cy.button("Deactivate").click();
+      cy.findByText(FULL_NAME).should("not.exist");
+
+      cy.visit("/collection/users")
+      cy.findByText(FULL_NAME).should("not.exist");
+
+      cy.visit("/archive");
+      cy.findByText(PERSONAL_COLLECTION_NAME).should("exist");
+
+      // An archived personal collection can be unarchived
+      cy.findByText(PERSONAL_COLLECTION_NAME).realHover();
+      cy.icon("unarchive").click();
+      cy.findByText(PERSONAL_COLLECTION_NAME).should("not.exist");
+
+      // An unarchived personal collection of a deactivated user can be re-archived
+      cy.visit("/collection/users")
+      cy.findByText(FULL_NAME).click()
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("ellipsis").click()
+      })
+      cy.findByText("Archive").click();
+      cy.button("Archive").click();
+      cy.url().should("match", /\/collection\/root$/)
+      cy.visit("/archive");
+      cy.findByText(PERSONAL_COLLECTION_NAME).should("exist");
+
+      // If the user is re-activated, the personal collection is unarchived automatically
+      cy.visit("/admin/people")
+      cy.findByText("Deactivated").click();
+      cy.findByText(FULL_NAME);
+      cy.icon("refresh").click();
+      cy.button("Reactivate").click();
+      cy.visit("/admin/people")
+      cy.findByText(FULL_NAME).should("exist");
+      cy.visit("/collection/users")
+      cy.findByText(FULL_NAME).should("exist");
+    })
   });
 
   describe("all users", () => {
