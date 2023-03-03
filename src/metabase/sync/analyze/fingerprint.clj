@@ -152,7 +152,7 @@
     [:not (mdb.u/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not= :base_type "type/Structured"]])
+   [:not-in :base_type ["type/Structured" "type/JSON"]]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
