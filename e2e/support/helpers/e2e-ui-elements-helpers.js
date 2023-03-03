@@ -30,6 +30,10 @@ export function appBar() {
   return cy.get("#root header").first();
 }
 
+export function appContent() {
+  return cy.get("main");
+}
+
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
 }

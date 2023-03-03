@@ -11,6 +11,7 @@ import {
   openCollectionMenu,
   visitCollection,
   getPersonalCollectionName,
+  appContent,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -453,9 +454,12 @@ describe("scenarios > collection defaults", () => {
       });
 
       describe("move", () => {
-        it("should be possible to bulk move items and undo", () => {
+        it("should be possible to bulk move items and undo (metabase#28860)", () => {
           cy.visit("/collection/root");
+
+          createNestedCollection();
           selectItemUsingCheckbox("Orders");
+          selectItemUsingCheckbox("A nested collection");
 
           cy.findByText(/item(s)? selected/)
             .button("Move")
@@ -466,16 +470,19 @@ describe("scenarios > collection defaults", () => {
             cy.button("Move").click();
           });
 
-          cy.findByText("Orders").should("not.exist");
+          appContent().findByText("Orders").should("not.exist");
+          appContent().findByText("A nested collection").should("not.exist");
           cy.findByText(/item(s)? selected/).should("not.be.visible");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
-          cy.findByText("Orders");
+          appContent().findByText("Orders").should("be.visible");
+          appContent().findByText("A nested collection").should("be.visible");
 
           cy.findByText("Undo").click();
           navigationSidebar().findByText("Our analytics").click();
-          cy.findByText("Orders").should("be.visible");
+          appContent().findByText("Orders").should("be.visible");
+          appContent().findByText("A nested collection").should("be.visible");
           cy.findByText("Undo").should("not.exist");
         });
       });
@@ -518,8 +525,9 @@ function openEllipsisMenuFor(item) {
     .click({ force: true });
 }
 
-function selectItemUsingCheckbox(item, icon = "table") {
-  cy.findByText(item)
+function selectItemUsingCheckbox(item) {
+  appContent()
+    .findByText(item)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
 }
@@ -599,4 +607,12 @@ function moveItemToCollection(itemName, collectionName) {
   function getCollectionItem(collection, itemName) {
     return collection.find(item => item.name === itemName);
   }
+}
+
+function createNestedCollection() {
+  cy.findByText("New").click();
+  cy.findByText("Collection").click();
+  cy.findByLabelText("Name").type("A nested collection");
+  cy.findByText("Create").click();
+  navigationSidebar().findByText("Our analytics").click();
 }
