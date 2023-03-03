@@ -116,11 +116,7 @@ export const ActionForm = ({
   if (isSettings) {
     const fieldSettings = formSettings.fields || {};
     return (
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={formValidationSchema}
-        onSubmit={handleSubmit}
-      >
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
