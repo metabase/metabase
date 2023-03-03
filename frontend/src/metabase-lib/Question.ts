@@ -148,6 +148,10 @@ class QuestionInner {
   }
 
   card() {
+    return this._doNotCallSerializableCard();
+  }
+
+  _doNotCallSerializableCard() {
     return this._card;
   }
 
@@ -207,6 +211,14 @@ class QuestionInner {
 
   isStructured(): boolean {
     return this.query() instanceof StructuredQuery;
+  }
+
+  setEnableEmbedding(enabled: boolean): Question {
+    return this.setCard(assoc(this._card, "enable_embedding", enabled));
+  }
+
+  setEmbeddingParams(params: Record<string, any> | null): Question {
+    return this.setCard(assoc(this._card, "embedding_params", params));
   }
 
   /**
@@ -271,16 +283,16 @@ class QuestionInner {
     return this._card && this._card.dataset;
   }
 
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
   isPersisted() {
     return this._card && this._card.persisted;
   }
 
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
-  }
-
-  setDataset(dataset) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   setPinned(pinned: boolean) {
@@ -438,7 +450,7 @@ class QuestionInner {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  type(): string {
+  private _type(): string {
     return this.datasetQuery().type;
   }
 
@@ -669,7 +681,10 @@ class QuestionInner {
     return resultedQuery.question();
   }
 
-  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
+  private _syncStructuredQueryColumnsAndSettings(
+    previousQuestion,
+    previousQuery,
+  ) {
     const query = this.query();
 
     if (
@@ -899,6 +914,10 @@ class QuestionInner {
 
   publicUUID(): string {
     return this._card && this._card.public_uuid;
+  }
+
+  setPublicUUID(public_uuid: string | null): Question {
+    return this.setCard({ ...this._card, public_uuid });
   }
 
   database(): Database | null | undefined {
@@ -1246,7 +1265,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToMbql() {
+  private _convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
@@ -1280,7 +1299,7 @@ class QuestionInner {
       if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToMbql()
+          ._convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,
