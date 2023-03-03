@@ -573,8 +573,7 @@ describe("scenarios > question > custom column", () => {
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
 
-    // Shift+Tab twice and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
+    // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
