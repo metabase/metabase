@@ -70,7 +70,7 @@ Admins get special privileges with alerts.
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-- Admins on some [paid plans](/pricing) can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
+- Admins on some [paid plans](https://www.metabase.com/pricing) can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
 
 ### Everyone
 
