@@ -28,6 +28,12 @@
   [database-metadata-provider query]
   (query-from-existing database-metadata-provider query))
 
+;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
+;;; passed in
+(defmethod ->query :mbql/query
+  [database-metadata-provider query]
+  (assoc query :lib/metadata database-metadata-provider))
+
 (defmethod ->query :metadata/table
   [database-metadata-provider table-metadata]
   (query-with-stages database-metadata-provider
@@ -48,24 +54,24 @@
 
   Native in this sense means a pMBQL `:pipeline` query with a first stage that is a native query."
   ([database-metadata-provider :- lib.metadata/DatabaseMetadataProvider
-    query]
-   (native-query database-metadata-provider nil query))
+    inner-query]
+   (native-query database-metadata-provider nil inner-query))
 
   ([database-metadata-provider :- lib.metadata/DatabaseMetadataProvider
     results-metadata           :- lib.metadata/StageMetadata
-    query]
+    inner-query]
    (query-with-stages database-metadata-provider
                       [(-> {:lib/type           :mbql.stage/native
                             :lib/stage-metadata results-metadata
-                            :native             query}
+                            :native             inner-query}
                            lib.options/ensure-uuid)])))
 
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [database-metadata-provider :- lib.metadata/DatabaseMetadataProvider
-   {query :dataset_query, metadata :result_metadata}]
-  (let [query (cond-> (assoc (lib.util/pipeline query)
-                             :lib/metadata database-metadata-provider)
-                metadata
-                (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]
-    (query database-metadata-provider query)))
+   {mbql-query :dataset_query, metadata :result_metadata}]
+  (let [mbql-query (cond-> (assoc (lib.util/pipeline mbql-query)
+                                  :lib/metadata database-metadata-provider)
+                     metadata
+                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]
+    (query database-metadata-provider mbql-query)))

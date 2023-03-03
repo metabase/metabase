@@ -93,23 +93,23 @@
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
   ([metadata-provider
     table-id          :- ::lib.schema.id/table]
-   (some (fn [table]
-           (when (= (:id table) table-id)
-             table))
+   (some (fn [table-metadata]
+           (when (= (:id table-metadata) table-id)
+             table-metadata))
          (tables metadata-provider)))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
     table-name        :- ::lib.schema.common/non-blank-string]
-   (some (fn [table]
+   (some (fn [table-metadata]
            (when (and (or (nil? table-schema)
-                          (= (:schema table) table-schema))
-                      (= (:name table) table-name))
-             table))
+                          (= (:schema table-metadata) table-schema))
+                      (= (:name table-metadata) table-name))
+             table-metadata))
          (tables metadata-provider))))
 
 (mu/defn fields :- [:sequential ColumnMetadata]
-  "Get metadata about all the Fields belonging to a specific Table "
+  "Get metadata about all the Fields belonging to a specific Table."
   ([metadata-provider
     table-id          :- ::lib.schema.id/table]
    (lib.metadata.protocols/fields (->database-metadata-provider metadata-provider) table-id))
@@ -124,28 +124,28 @@
   "Get metadata about a specific Field in the Database we're querying."
   ([metadata-provider
     field-id          :- ::lib.schema.id/field]
-   (some (fn [table]
-           (some (fn [field]
-                   (when (= (:id field) field-id)
-                     field))
-                 (fields metadata-provider (:id table))))
+   (some (fn [table-metadata]
+           (some (fn [field-metadata]
+                   (when (= (:id field-metadata) field-id)
+                     field-metadata))
+                 (fields metadata-provider (:id table-metadata))))
          (tables metadata-provider)))
 
   ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
   ([metadata-provider
     table-id          :- ::lib.schema.id/table
     field-name        :- ::lib.schema.common/non-blank-string]
-   (some (fn [field]
-           (when (= (:name field) field-name)
-             field))
+   (some (fn [field-metadata]
+           (when (= (:name field-metadata) field-name)
+             field-metadata))
          (fields metadata-provider table-id)))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
     table-name        :- ::lib.schema.common/non-blank-string
     field-name        :- ::lib.schema.common/non-blank-string]
-   (let [table (table metadata-provider table-schema table-name)]
-     (field metadata-provider (:id table) field-name))))
+   (let [table-metadata (table metadata-provider table-schema table-name)]
+     (field metadata-provider (:id table-metadata) field-name))))
 
 ;;;; Stage metadata
 
