@@ -28,7 +28,7 @@ import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import {
   getEditingParameter,
   getParameterTarget,
-  makeGetParameterMappingOptions,
+  getParameterMappingOptions,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -60,7 +60,7 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: makeGetParameterMappingOptions()(state, props),
+  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
 });
 
