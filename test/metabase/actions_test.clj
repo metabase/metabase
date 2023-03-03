@@ -337,7 +337,7 @@
                 "first error")
                (s/one
                 {:index (s/eq 3)
-                 :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
+                 :error #"Sorry, the row you're trying to delete doesn't exist"}
                 "second error")]
               :status-code (s/eq 400)}
              (actions/perform-action! :bulk/delete
