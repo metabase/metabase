@@ -31,9 +31,10 @@ export const CardLink = styled(Link)`
   min-width: 0;
   gap: 0.5rem;
   align-items: center;
+  font-weight: bold;
+
   &:hover {
     color: ${color("brand")};
-    text-decoration: underline;
   }
 `;
 
