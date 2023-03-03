@@ -14,8 +14,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 import { currency } from "cljs/metabase.shared.util.currency";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { TYPE } from "metabase-lib/types/constants";
-import { isa, isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
+import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
 import { getFieldRawName } from "../../../utils";
 import { ColumnItemInput } from "./ColumnItem.styled";
 
@@ -153,15 +152,19 @@ export class SemanticTypeAndTargetPicker extends Component {
   handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 
-    let change = { semantic_type };
-    if (isTypeFK(field.semantic_type)) {
-      // If we are changing the field from a FK to something else, we should delete any FKs present
-      change = { ...change, fk_target_field_id: null };
-    } else if (isa(field.semantic_type, TYPE.SerializedJSON)) {
-      // If we are changing the field from SerializedJSON to something else, we should set json_unfolding to nil
-      change = { ...change, json_unfolding: null };
+    // If we are changing the field from a FK to something else, we should delete any FKs present
+    if (
+      field.target &&
+      field.target.id != null &&
+      isTypeFK(field.semantic_type)
+    ) {
+      await updateField({
+        semantic_type,
+        fk_target_field_id: null,
+      });
+    } else {
+      await updateField({ semantic_type });
     }
-    await updateField(change);
 
     MetabaseAnalytics.trackStructEvent(
       "Data Model",
