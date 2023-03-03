@@ -3,13 +3,13 @@
   (:require
    [malli.core :as mc]
    [malli.registry :as mr]
-   [malli.util :as mu])
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private registry*
-  (atom (merge (mc/default-schemas) (mu/schemas))))
+  (atom (merge (mc/default-schemas) (mut/schemas))))
 
-(defonce registry (mr/mutable-registry registry*))
+(defonce ^:private registry (mr/mutable-registry registry*))
 
 (mr/set-default-registry! registry)
 
