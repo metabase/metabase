@@ -9,7 +9,7 @@
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas) (mut/schemas))))
 
-(defonce registry (mr/mutable-registry registry*))
+(defonce ^:private registry (mr/mutable-registry registry*))
 
 (mr/set-default-registry! registry)
 
