@@ -6,32 +6,77 @@ import HomePopularSection from "../../containers/HomePopularSection";
 import HomeRecentSection from "../../containers/HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
 import { isWithinWeeks } from "../../utils";
+import { t } from "ttag";
+import { SettingsApi } from "metabase/services";
+import { refreshCurrentUser } from "metabase/redux/user";
+import { Dispatch } from "metabase-types/store";
+import { color } from "metabase/lib/colors";
+import Toggle from "metabase/core/components/Toggle";
+import Label from "metabase/components/type/Label";
 
 export interface HomeContentProps {
   user: User;
   databases?: Database[];
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
+  dispatch: Dispatch;
 }
 
-const HomeContent = (props: HomeContentProps): JSX.Element | null => {
+export interface TogglePopularSectionProps {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}
+
+const TogglePopularSection = (props: TogglePopularSectionProps) => {
+  return (
+    <div className="flex justify-end w-full mt2">
+      <Label>
+        {props.value ? t`Hide popular items` : t`Show popular items`}
+      </Label>
+      <Toggle
+        style={!props.value ? { backgroundColor: color("bg-dark") } : {}}
+        value={props.value}
+        onChange={props.onChange}
+      ></Toggle>
+    </div>
+  );
+};
+
+const HomeContent = (props: HomeContentProps): JSX.Element => {
+  const isPopularSectionEnabled =
+    isPopularSection(props) &&
+    props.user?.settings?.["enable-popular-items-section"] !== "false";
+
+  const onTogglePopularSection = (value: boolean) => {
+    SettingsApi.put({
+      key: "enable-popular-items-section",
+      value: value,
+    }).then(() => {
+      props.dispatch(refreshCurrentUser());
+    });
+  };
+
   if (isLoading(props)) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (isPopularSection(props)) {
-    return <HomePopularSection />;
-  }
-
-  if (isRecentSection(props)) {
-    return <HomeRecentSection />;
-  }
-
-  if (isXraySection(props)) {
-    return <HomeXraySection />;
-  }
-
-  return null;
+  return (
+    <>
+      {isPopularSectionEnabled && <HomePopularSection />}
+      {(isRecentSection(props) && !isPopularSectionEnabled && (
+        <HomeRecentSection />
+      )) ||
+        (isXraySection(props) && !isPopularSectionEnabled && (
+          <HomeXraySection />
+        ))}
+      {isPopularSection(props) && (
+        <TogglePopularSection
+          value={isPopularSectionEnabled}
+          onChange={onTogglePopularSection}
+        />
+      )}
+    </>
+  );
 };
 
 const isLoading = ({
