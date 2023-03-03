@@ -6,11 +6,9 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
