@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
+            auto-coerce
             auto-parse
             malli-route-dox
             malli-validate-params
@@ -363,7 +364,7 @@
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
+                           :body `((auto-coerce ~args ~arg->schema
                                                ~@(malli-validate-params arg->schema)
                                                (wrap-response-if-needed
                                                 (do ~@body))))))))

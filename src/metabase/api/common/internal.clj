@@ -3,13 +3,16 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
@@ -276,6 +279,37 @@
        ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          AUTO-COERCION                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def defendpoint-transformer "Transformer used on values " (mtx/transformer (mtx/string-transformer) (mtx/json-transformer)))
+
+(defn- extract-symbols [x]
+  (let [*symbols (atom [])]
+    (walk/postwalk
+     (fn [x]
+       (when (symbol? x) (swap! *symbols conj x))
+       x)
+     x)
+    @*symbols))
+
+(defn- mauto-let-form [arg->schema arg-symbol]
+  (when arg->schema
+    (when-let [schema (arg->schema arg-symbol)]
+      `[~arg-symbol (mc/decode ~schema ~arg-symbol defendpoint-transformer)])))
+
+(defmacro auto-coerce
+  "Create a `let` form that tries to coerce the value bound to any symbol in `args` that are present in
+  `arg->schema` using [[defendpoint-transformer]]."
+  {:style/indent 1}
+  [args arg->schema & body]
+  (let [let-forms (->> args
+                       extract-symbols
+                       (mapcat #(mauto-let-form arg->schema %))
+                       (remove nil?))]
+    `(let [~@let-forms] ~@body)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -290,7 +324,7 @@
                                        (-> schema
                                            (mc/explain value)
                                            me/with-spell-checking
-                                           me/humanize)}}))))
+                                           (me/humanize {:wrap mu/humanize-include-value}))}}))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

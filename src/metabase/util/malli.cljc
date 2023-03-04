@@ -40,7 +40,7 @@
          (<= 2000 (count url)) nil
          :else url)))))
 
-(core/defn- humanize-include-value
+(core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
   [{:keys [value message]}]
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
