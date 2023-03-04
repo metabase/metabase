@@ -12,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]])
   (:import
@@ -115,24 +116,23 @@
       (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
-  [id :as
-   {{:keys [archived database_id dataset_query description error_handle kind model_id name parameter_mappings parameters
-            response_handle template type visualization_settings] :as action} :body}]
-  {id                     pos-int?
-   archived               [:maybe boolean?]
-   database_id            [:maybe pos-int?]
-   dataset_query          [:maybe map?]
-   description            [:maybe :string]
-   error_handle           [:maybe json-query-schema]
-   kind                   [:maybe implicit-action-kind]
-   model_id               [:maybe pos-int?]
-   name                   [:maybe :string]
-   parameter_mappings     [:maybe map?]
-   parameters             [:maybe [:sequential map?]]
-   response_handle        [:maybe json-query-schema]
-   template               [:maybe http-action-template]
-   type                   [:maybe supported-action-type]
-   visualization_settings [:maybe map?]}
+  [id :as {action :body}]
+  {id     pos-int?
+   action [:map
+           [:archived               [:maybe boolean?]]
+           [:database_id            [:maybe pos-int?]]
+           [:dataset_query          [:maybe map?]]
+           [:description            [:maybe :string]]
+           [:error_handle           [:maybe json-query-schema]]
+           [:kind                   [:maybe implicit-action-kind]]
+           [:model_id               [:maybe pos-int?]]
+           [:name                   [:maybe :string]]
+           [:parameter_mappings     [:maybe map?]]
+           [:parameters             [:maybe [:sequential map?]]]
+           [:response_handle        [:maybe json-query-schema]]
+           [:template               [:maybe http-action-template]]
+           [:type                   [:maybe supported-action-type]]
+           [:visualization_settings [:maybe map?]]]}
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
@@ -143,7 +143,7 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [id]
-  {id pos-int?}
+  {id ms/Id}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (let [action (api/read-check Action id :archived false)]
@@ -157,7 +157,7 @@
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
-  {id pos-int?}
+  {id ms/Id}
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
@@ -171,7 +171,7 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [id :as {{:keys [parameters], :as _body} :body}]
-  {id       pos-int?
+  {id         ms/Id
    parameters [:maybe [:map-of :keyword any?]]}
   (-> (action/select-action :id id :archived false)
       (api/check-404)

@@ -29,6 +29,12 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
+(def Id
+  "Schema representing some kind of Id."
+  (mu/with-api-error-message
+    [:int {:min 1}]
+    (deferred-tru "ID must be an int greater than 1.")))
+
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message

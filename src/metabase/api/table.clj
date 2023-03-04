@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -46,7 +47,9 @@
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
-  (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
+  {id ms/Id
+   include_editable_data_model :boolean}
+  (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
@@ -56,6 +59,7 @@
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} body]
+  {id ms/Id}
   (when-let [changes (not-empty (u/select-keys-when body
                                   :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                   :present [:description :caveats :points_of_interest :visibility_type]))]
@@ -407,6 +411,7 @@
 (api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
+  {id ms/Id}
   (api/read-check Table id)
   (when-let [field-ids (seq (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
@@ -421,6 +426,7 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
+  {id ms/Id}
   (let [table (api/write-check (db/select-one Table :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -436,6 +442,7 @@
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
+  {id ms/Id}
   (api/write-check (db/select-one Table :id id))
   (when-let [field-ids (db/select-ids Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
@@ -444,13 +451,14 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
+  {id ms/Id}
   (-> (db/select-one Table :id id) api/read-check related/related))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/fields/order"
+(api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
-  {field_order [su/IntGreaterThanZero]}
+  {id ms/Id
+   field_order [:sequential ms/IntGreaterThanZero]}
   (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -74,6 +75,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
   [id]
+  {id ms/Id}
   (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
