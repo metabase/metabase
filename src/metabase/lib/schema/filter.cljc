@@ -18,20 +18,25 @@
   [sch & args]
   {:pre [(qualified-keyword? sch)]}
   (mr/def sch
-    [:catn
+    [:vcatn
      [:clause [:= (keyword (name sch))]]
      [:options ::common/options]
      (into [:args] args)]))
 
 (doseq [op [::and ::or]]
-  (defclause op [:repeat {:min 2} [:schema [:ref ::filter]]]))
+  ;; using [:repeat {:min 2} [:schema [:ref ::filter]]] resulted in
+  ;; invalid values being generated
+  (let [s [:schema [:ref ::filter]]]
+    (defclause op [:cat s [:+ s]])))
 
 (defclause ::not
   [:schema [:ref ::filter]])
 
 (doseq [op [::= ::!=]]
   (defclause op
-    [:repeat {:min 2} eq-comparable]))
+    ;; using [:repeat {:min 2} eq-comparable] resulted in
+    ;; invalid values being generated
+    [:cat eq-comparable [:+ eq-comparable]]))
 
 (doseq [op [::< ::<= ::> ::>=]]
   (defclause op
@@ -64,7 +69,7 @@
 ;; [:does-not-contain ...] = [:not [:contains ...]]
 (doseq [op [::starts-with ::ends-with ::contains ::does-not-contain]]
   (mr/def op
-    [:catn
+    [:vcatn
      [:clause [:= (keyword (name op))]]
      [:options [:merge ::common/options string-filter-options]]
      [:args [:catn [:whole string] [:part string]]]]))
@@ -77,7 +82,7 @@
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mr/def ::time-interval
-  [:catn
+  [:vcatn
    [:clause [:= :time-interval]]
    [:options [:merge ::common/options time-interval-options]]
    [:args [:catn
@@ -116,3 +121,12 @@
    ::does-not-contain
    ::time-interval
    ::segment])
+
+(comment
+  (require '[malli.core :as mc]
+           '[malli.generator :as mg])
+
+  (let [schema ::filter]
+    (not-empty (remove #(mc/validate schema %) (mg/sample schema {:size 100}))))
+
+  nil)
