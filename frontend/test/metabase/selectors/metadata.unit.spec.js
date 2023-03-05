@@ -153,7 +153,7 @@ describe("instantiateQuestion", () => {
   it("should return an instance of Question", () => {
     const instance = instantiateQuestion({ id: 123 }, metadata);
     expect(instance).toBeInstanceOf(Question);
-    expect(instance.card()).toHaveProperty("id", 123);
+    expect(instance.id()).toBe(123);
     expect(instance.metadata()).toBe(metadata);
   });
 });
