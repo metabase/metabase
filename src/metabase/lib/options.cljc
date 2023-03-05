@@ -89,4 +89,4 @@
   [mbql-clause-or-map]
   (update-options mbql-clause-or-map (fn [options]
                                        (cond-> options
-                                         (not (:lib/uuid options)) (assoc :lib/uuid (str (random-uuid)))))))
+                                         (not (:lib/uuid options)) (assoc :lib/uuid (random-uuid))))))

@@ -16,10 +16,10 @@
        (let [[op & args] f]
          (cond
            (and (map? (first args)) (not (:lib/uuid (first args))))
-           (assoc-in f [1 :lib/uuid] (str (random-uuid)))
+           (assoc-in f [1 :lib/uuid] (random-uuid))
 
            (not-any? #(and (map? %) (:lib/uuid %)) args)
-           (into [op {:lib/uuid (str (random-uuid))}] args)
+           (into [op {:lib/uuid (random-uuid)}] args)
 
            :else f))
        f))
@@ -50,8 +50,8 @@
       ops)))
 
 (deftest ^:parallel filter-test
-  (let [field [:field 1 {:lib/uuid (str (random-uuid))}]
-        boolean-field [:field 2 {:lib/uuid (str (random-uuid))
+  (let [field [:field 1 {:lib/uuid (random-uuid)}]
+        boolean-field [:field 2 {:lib/uuid (random-uuid)
                                  :base-type :type/Boolean}]
         filter-expr
         [:and

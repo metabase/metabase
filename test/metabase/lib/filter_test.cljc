@@ -15,15 +15,15 @@
       (let [f (lib/= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
         (is (=? [:=
-                 {:lib/uuid string?}
-                 [:field (meta/id :venues :category-id) {:lib/uuid string?}]
-                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]]
+                 {:lib/uuid uuid?}
+                 [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
+                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
                 (f {:lib/metadata meta/metadata} -1)))))
     (testing "with query/stage-number, return clause right away"
       (is (=? [:=
-               {:lib/uuid string?}
-               [:field (meta/id :venues :category-id) {:lib/uuid string?}]
-               [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]]
+               {:lib/uuid uuid?}
+               [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
+               [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
               (lib/= {:lib/metadata meta/metadata}
                      -1
                      venues-category-id-metadata
