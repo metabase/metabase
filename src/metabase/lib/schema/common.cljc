@@ -13,10 +13,6 @@
 (mr/def ::int-greater-than-zero
   [:int {:min 1}])
 
-(mr/def ::uuid
-  ;; TODO -- should this be stricter?
-  [:string {:min 36, :max 36}])
-
 (mr/def ::options
   [:map
-   [:lib/uuid ::uuid]])
+   [:lib/uuid :uuid]])

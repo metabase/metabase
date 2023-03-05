@@ -87,7 +87,7 @@
   "Check that `mbql-clause-or-map` has a `:lib/uuid` in its [[options]]; generate a UUID and add it if it does not
   already have one."
   [mbql-clause-or-map]
-  (update-options mbql-clause-or-map (fn [options-map]
-                                       (cond-> options-map
-                                         (not (:lib/uuid options-map))
-                                         (assoc :lib/uuid (str (random-uuid)))))))
+  (update-options mbql-clause-or-map (fn [options]
+                                       (cond-> options
+                                         (not (:lib/uuid options))
+                                         (assoc :lib/uuid (random-uuid))))))
