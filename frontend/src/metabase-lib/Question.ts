@@ -87,6 +87,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+import * as UtilQuery from "metabase-lib/queries/utils/query";
+import * as UtilFilter from "metabase-lib/queries/utils/filter";
+import * as UtilAggregation from "metabase-lib/queries/utils/aggregation";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -615,6 +618,25 @@ class QuestionInner {
 
   distribution(column): Question {
     return distribution(this, column) || this;
+  }
+
+  usesMetric(metricId): boolean {
+    return (
+      this.isStructured() &&
+      _.any(
+        UtilQuery.getAggregations(this.query().query()),
+        aggregation => UtilAggregation.getMetric(aggregation) === metricId,
+      )
+    );
+  }
+
+  usesSegment(segmentId): boolean {
+    return (
+      this.isStructured() &&
+      UtilQuery.getFilters(this.query().query()).some(
+        filter => UtilFilter.isSegment(filter) && filter[1] === segmentId,
+      )
+    );
   }
 
   composeThisQuery(): Question | null | undefined {
