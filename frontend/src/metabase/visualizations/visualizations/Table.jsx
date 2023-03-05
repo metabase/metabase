@@ -9,6 +9,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
+import { getTitleForColumn } from "metabase/visualizations/lib/columns";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -189,13 +190,26 @@ export default class Table extends Component {
           fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
         })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-      }),
+      getProps: (series, settings) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = series;
+
+        return {
+          columns: cols,
+          getColumnName: columnSetting => {
+            const columnIndex = findColumnIndexForColumnSetting(
+              cols,
+              columnSetting,
+            );
+            if (columnIndex >= 0) {
+              return getTitleForColumn(columnIndex, cols, series, settings);
+            }
+          },
+        };
+      },
     },
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
@@ -419,15 +433,7 @@ export default class Table extends Component {
       return null;
     }
     const { series, settings } = this.props;
-    const isPivoted = Table.isPivoted(series, settings);
-    const column = cols[columnIndex];
-    if (isPivoted) {
-      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
-    } else {
-      return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
-      );
-    }
+    return getTitleForColumn(columnIndex, cols, series, settings);
   };
 
   render() {
