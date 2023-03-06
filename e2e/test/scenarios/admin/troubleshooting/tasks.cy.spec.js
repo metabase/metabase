@@ -1,40 +1,43 @@
 import { restore } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+const total = 57;
+const limit = 50;
 
 describe("scenarios > admin > troubleshooting > tasks", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    // The only reliable way to reproduce this issue is by stubing page responses!
+    // All previous attempts to generate enough real tasks (more than 50)
+    // resulted in flaky and unpredictable tests.
+    stubPageResponses({ page: 0, alias: "first" });
+    stubPageResponses({ page: 1, alias: "second" });
   });
 
   it("pagination should work (metabase#14636)", () => {
-    // Really ugly way to bump up total number of tasks (but more realistic than using fixture, or stubbing)
-    // Since this happens async, that number may vary but it should always be greater than 50 [1] and less than 100 [2]
-    // Note: each sync generates 6 tasks and we start with 12 tasks already for the testing sample database
-    for (let i = 0; i < 13; i++) {
-      cy.request("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`);
-    }
-    cy.intercept("GET", "/api/task?limit=50&offset=0").as("tasks");
-
     cy.visit("/admin/troubleshooting/tasks");
-
-    cy.wait("@tasks").then(xhr => {
-      expect(xhr.response.body.total).to.be.greaterThan(50); /* [1] */
-      expect(xhr.response.body.total).to.be.lessThan(100); /* [2] */
-    });
+    cy.wait("@first");
 
     cy.findByText("Troubleshooting logs");
     cy.icon("chevronleft").as("previous");
     cy.icon("chevronright").as("next");
 
     cy.contains("1 - 50");
+    cy.contains("field values scanning");
+    cy.contains("513");
+
     shouldBeDisabled("@previous");
     shouldNotBeDisabled("@next");
 
     cy.get("@next").click();
-    // 51 - any 2 digits number
-    cy.contains(/51 - \d{2}/);
+    cy.wait("@second");
+
+    cy.contains(`51 - ${total}`);
     cy.contains("1 - 50").should("not.exist");
+    cy.contains("analyze");
+    cy.contains("200");
+
     shouldNotBeDisabled("@previous");
     shouldBeDisabled("@next");
   });
@@ -46,4 +49,56 @@ function shouldNotBeDisabled(selector) {
 
 function shouldBeDisabled(selector) {
   cy.get(selector).parent().should("have.attr", "disabled");
+}
+
+/**
+ * @param {Object} payload
+ * @param {(0|1)} payload.page
+ * @param {("first"|"second")} payload.alias
+ */
+function stubPageResponses({ page, alias }) {
+  const offset = page * limit;
+
+  cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, req => {
+    req.reply(res => {
+      res.body = {
+        data: stubPageRows(page),
+        limit,
+        offset,
+        total,
+      };
+    });
+  }).as(alias);
+}
+
+/**
+ * @typedef {Object} Row
+ *
+ * @param {(0|1)} page
+ * @returns Row[]
+ */
+function stubPageRows(page) {
+  // There rows details don't really matter.
+  // We're generating two types of rows. One for each page.
+  const tasks = ["field values scanning", "analyze"];
+  const durations = [513, 200];
+
+  /** type: {Row} */
+  const row = {
+    id: page + 1,
+    task: tasks[page],
+    db_id: 1,
+    started_at: "2023-03-04T01:45:26.005475-08:00",
+    ended_at: "2023-03-04T01:45:26.518597-08:00",
+    duration: durations[page],
+    task_details: null,
+    name: `Item $page}`,
+    model: "card",
+  };
+
+  const pageRows = [limit, total - limit];
+  const length = pageRows[page];
+
+  const stubbedRows = Array.from({ length }, () => row);
+  return stubbedRows;
 }
