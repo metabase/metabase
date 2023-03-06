@@ -8,7 +8,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli :as mu]))
 
 (mu/defn field :- fn?
