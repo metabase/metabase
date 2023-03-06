@@ -21,8 +21,7 @@ export const ItemIcon = styled(Icon)`
 export const ActionsContainer = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-
+  gap: 0.125rem;
   visibility: hidden;
 `;
 

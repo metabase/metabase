@@ -1,13 +1,14 @@
 import React, { useState } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
-
+import { getSetting } from "metabase/selectors/settings";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-
+import ModelXrayLink from "metabase/models/components/ModelXrayLink";
+import { isItemModel } from "metabase/collections/utils";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
+import { State } from "metabase-types/store";
 import {
   Body,
   Description,
@@ -19,7 +20,7 @@ import {
   Title,
 } from "./PinnedItemCard.styled";
 
-type Props = {
+interface OwnProps {
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
@@ -28,7 +29,13 @@ type Props = {
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-};
+}
+
+interface StateProps {
+  isXrayEnabled: boolean;
+}
+
+type PinnedItemCardProps = OwnProps & StateProps;
 
 const TOOLTIP_MAX_WIDTH = 450;
 
@@ -40,22 +47,29 @@ function getDefaultDescription(model: string) {
   }[model];
 }
 
+function mapStateToProps(state: State): StateProps {
+  return {
+    isXrayEnabled: getSetting(state, "enable-xrays"),
+  };
+}
+
 function PinnedItemCard({
-  bookmarks,
-  createBookmark,
-  deleteBookmark,
   className,
   item,
   collection,
+  bookmarks,
+  isXrayEnabled,
   onCopy,
   onMove,
-}: Props) {
+  createBookmark,
+  deleteBookmark,
+}: PinnedItemCardProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
-
   const defaultedDescription = description || getDefaultDescription(model);
+  const isModel = isItemModel(item);
 
   const maybeEnableTooltip = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -75,9 +89,8 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon} />
             <ActionsContainer>
-              {item.model === "dataset" && (
-                <ModelDetailLink model={item as CollectionItem<"dataset">} />
-              )}
+              {isModel && isXrayEnabled && <ModelXrayLink id={item.id} />}
+              {isModel && <ModelDetailLink model={item} />}
               <ActionMenu
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
@@ -123,4 +136,4 @@ function PinnedItemCard({
   );
 }
 
-export default PinnedItemCard;
+export default connect(mapStateToProps)(PinnedItemCard);

@@ -521,6 +521,30 @@ describe("scenarios > collection defaults", () => {
       });
     });
   });
+
+  describe("x-rays", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/automagic-dashboards/question/*").as(
+        "dashboard",
+      );
+    });
+
+    it("should allow to x-ray questions and models from collection views", () => {
+      cy.request("PUT", "/api/card/2", { dataset: true });
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor("Orders");
+      popover().findByText("X-ray this question").click();
+      cy.wait("@dashboard");
+
+      cy.findByText("Our analytics").click();
+      openEllipsisMenuFor("Orders, Count");
+      popover().findByText("X-ray this model").click();
+      cy.wait("@dashboard");
+    });
+  });
 });
 
 function openEllipsisMenuFor(item) {
