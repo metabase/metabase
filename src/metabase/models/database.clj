@@ -311,11 +311,11 @@
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
-(defmethod serdes/serdes-entity-id "Database"
+(defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
   name)
 
-(defmethod serdes/serdes-generate-path "Database"
+(defmethod serdes/generate-path "Database"
   [_ {:keys [name]}]
   [{:model "Database" :id name}])
 

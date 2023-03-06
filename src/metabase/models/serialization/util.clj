@@ -32,7 +32,7 @@
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
           entity     (db/select-one model (models/primary-key model) id)
-          path       (mapv :id (serdes/serdes-generate-path model-name entity))]
+          path       (mapv :id (serdes/generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
         path))))

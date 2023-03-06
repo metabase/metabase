@@ -54,7 +54,7 @@
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/serdes-generate-path "PulseCard"
+(defmethod serdes/generate-path "PulseCard"
   [_ {:keys [pulse_id] :as card}]
   [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
    (serdes/infer-self-path "PulseCard" card)])

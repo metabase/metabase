@@ -356,7 +356,7 @@
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/serdes-generate-path "PulseChannel"
+(defmethod serdes/generate-path "PulseChannel"
   [_ {:keys [pulse_id] :as channel}]
   [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
    (serdes/infer-self-path "PulseChannel" channel)])

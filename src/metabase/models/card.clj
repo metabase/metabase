@@ -483,7 +483,7 @@
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
 
-(defmethod serdes/serdes-descendants "Card" [_model-name id]
+(defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (db/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))

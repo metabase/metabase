@@ -490,7 +490,7 @@
        (set/union #{[{:model "Collection" :id collection_id}]})
        (set/union (serdes.util/parameters-deps parameters))))
 
-(defmethod serdes/serdes-descendants "Dashboard" [_model-name id]
+(defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
         dashboard (db/select-one Dashboard :id id)]

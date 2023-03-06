@@ -17,7 +17,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models])
+  (:refer-clojure :exclude [descendants]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              :serdes/meta                                                      |
@@ -39,7 +40,7 @@
 ;;;
 ;;; Many of the multimethods are keyed on the `:model` field of the leaf entry (the last).
 
-(defmulti serdes-entity-id
+(defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
 
   This abstracts over the exact definition of the \"entity ID\" for a given entity.
@@ -49,10 +50,10 @@
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
-(defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
+(defmethod entity-id :default [_ {:keys [entity_id]}]
   entity_id)
 
-(defmulti serdes-generate-path
+(defmulti generate-path
   "Given the model name and raw entity from the database, returns a vector giving its *path*.
   `(serdes-generate-path \"ModelName\" entity)`
 
@@ -100,7 +101,7 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     {:model model-name
-     :id    (or (serdes-entity-id model-name entity)
+     :id    (or (entity-id model-name entity)
                 (some-> (get entity pk) model serdes.hash/identity-hash)
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
@@ -118,7 +119,7 @@
        (assoc self :label (u/slugify label {:unicode? true}))
        self)]))
 
-(defmethod serdes-generate-path :default [model-name entity]
+(defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
   (maybe-labeled model-name entity :name))
 
@@ -264,13 +265,13 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> (into {} entity)
-        (assoc :serdes/meta (serdes-generate-path model-name entity))
+        (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
 
-(defmulti serdes-descendants
+(defmulti descendants
   "Captures the notion that eg. a dashboard \"contains\" its cards.
   Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
   or requires to be executed.
@@ -300,7 +301,7 @@
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 
-(defmethod serdes-descendants :default [_ _]
+(defmethod descendants :default [_ _]
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -982,10 +982,10 @@
     [[{:model "Collection" :id parent_id}]]
     []))
 
-(defmethod serdes/serdes-generate-path "Collection" [_ coll]
+(defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes/serdes-descendants "Collection" [_model-name id]
+(defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (db/select-one-field :location Collection :id id)
         child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))

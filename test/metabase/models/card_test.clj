@@ -498,15 +498,15 @@
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp* [Card [card {:name "some card"}]]
-      (is (empty? (serdes/serdes-descendants "Card" (:id card))))))
+      (is (empty? (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
-      (is (empty? (serdes/serdes-descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
-             (serdes/serdes-descendants "Card" (:id card2))))))
+             (serdes/descendants "Card" (:id card2))))))
 
   (testing "cards that has a native template tag"
     (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
@@ -518,7 +518,7 @@
                                                                                          :snippet-id   (:id snippet)}}
                                                                :query "select * from products where {{snippet}}"}}}]]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
-             (serdes/serdes-descendants "Card" (:id card))))))
+             (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have parameter's source is another card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
@@ -528,7 +528,7 @@
                                                :values_source_type   "card"
                                                :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
-             (serdes/serdes-descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2)))))))
 
 
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------

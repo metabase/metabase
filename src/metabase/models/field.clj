@@ -373,7 +373,7 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+(defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
                    (db/select-one 'Table :id table_id))
         db    (when table
@@ -387,7 +387,7 @@
                     {:model "Table"    :id table}
                     {:model "Field"    :id field}])))
 
-(defmethod serdes/serdes-entity-id "Field" [_ {:keys [name]}]
+(defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
 (defmethod serdes/extract-query "Field" [_model-name _opts]

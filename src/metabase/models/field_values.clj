@@ -450,9 +450,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes/serdes-generate-path "FieldValues" [_ {:keys [field_id]}]
+(defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
   (let [field (db/select-one 'Field :id field_id)]
-    (conj (serdes/serdes-generate-path "Field" field)
+    (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 
 (defmethod serdes/serdes-dependencies "FieldValues" [fv]

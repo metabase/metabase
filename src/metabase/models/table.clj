@@ -219,14 +219,14 @@
 (defmethod serdes/serdes-dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
-(defmethod serdes/serdes-generate-path "Table" [_ table]
+(defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
 
-(defmethod serdes/serdes-entity-id "Table" [_ {:keys [name]}]
+(defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)
 
 (defmethod serdes/load-find-local "Table"

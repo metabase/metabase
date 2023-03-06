@@ -67,7 +67,7 @@
   (loop [to-chase (set targets)
          chased   #{}]
     (let [[m i :as item] (first to-chase)
-          desc           (serdes/serdes-descendants m i)
+          desc           (serdes/descendants m i)
           chased         (conj chased item)
           to-chase       (set/union (disj to-chase item) (set/difference desc chased))]
       (if (empty? to-chase)

@@ -336,7 +336,7 @@
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
-(defmethod serdes/serdes-generate-path "DashboardCard" [_ dashcard]
+(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   [(serdes/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardCard" dashcard)])
 
