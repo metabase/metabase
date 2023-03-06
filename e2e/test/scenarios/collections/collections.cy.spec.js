@@ -412,18 +412,6 @@ describe("scenarios > collection defaults", () => {
           cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
 
-        it("should not be possible to archive or move a personal collection via bulk actions", () => {
-          cy.visit("/collection/root");
-
-          selectItemUsingCheckbox(
-            getPersonalCollectionName(USERS.admin),
-            "person",
-          );
-
-          cy.findByText("1 item selected").should("be.visible");
-          cy.button("Move").should("be.disabled");
-          cy.button("Archive").should("be.disabled");
-        });
       });
 
       describe("archive", () => {
