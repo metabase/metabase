@@ -23,7 +23,9 @@
   field
   query-for-table-name]
  [lib.filter
-  =]
+  =
+  and
+  or]
  [lib.join
   join
   join-clause
