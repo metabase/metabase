@@ -3,13 +3,15 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -106,6 +108,18 @@
              (transduce
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+
+(deftest json-details-only-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset json
+      (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+            table (t2/select-one Table :id (mt/id :json))]
+        (with-open [conn (jdbc/get-connection spec)]
+          (let [fields (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                json-field (first (filter #(= (:name %) "json_bit") fields))
+                text-field (first (filter #(= (:name %) "bloop") fields))]
+            (is (= (:visibility-type json-field) :details-only))
+            (is (nil? (:visibility-type text-field)))))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
