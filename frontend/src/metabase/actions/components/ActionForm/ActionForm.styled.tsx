@@ -9,5 +9,4 @@ export const ActionFormButtonContainer = styled.div`
 
 export const FormFieldEditorDragContainer = styled.div`
   margin-bottom: ${space(1)};
-  overflow: hidden;
 `;
