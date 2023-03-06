@@ -10,7 +10,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import UndoListing from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/containers/UndoListing";
 
 import {
   getErrorPage,

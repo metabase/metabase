@@ -5,8 +5,8 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.test-metadata :as meta])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel field-test
   (are [x] (fn? x)

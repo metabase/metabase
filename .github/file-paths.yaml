@@ -91,3 +91,7 @@ documentation:
 yaml:
   - "**/*.yml"
   - "**/*.yaml"
+
+codeql:
+  - "frontend/src/**"
+  - "enterprise/frontend/src/**"

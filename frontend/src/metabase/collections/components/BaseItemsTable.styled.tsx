@@ -10,24 +10,50 @@ import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;
 
-export const Table = styled.table`
+export const Table = styled.table<{ canSelect: boolean }>`
+  background-color: ${color("white")};
   table-layout: fixed;
   border-collapse: unset;
 
-  ${breakpointMaxMedium} {
-    & td:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    th:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    col:nth-of-type(${LAST_EDITED_BY_INDEX}),
-    td:nth-of-type(${LAST_EDITED_AT_INDEX}),
-    th:nth-of-type(${LAST_EDITED_AT_INDEX}),
-    col:nth-of-type(${LAST_EDITED_AT_INDEX}) {
-      display: none;
+  thead {
+    th {
+      border-top: 1px solid ${color("border")};
+
+      &:first-of-type {
+        border-top-left-radius: 8px;
+        border-left: 1px solid ${color("border")};
+      }
+
+      &:last-child {
+        border-top-right-radius: 8px;
+        border-right: 1px solid ${color("border")};
+      }
     }
   }
+
+  ${props => {
+    const offset = props.canSelect ? 1 : 0;
+    const offsetEditedByIndex = LAST_EDITED_BY_INDEX + offset;
+    const offsetEditedAtIndex = LAST_EDITED_AT_INDEX + offset;
+
+    return `
+      ${breakpointMaxMedium} {
+        & td:nth-of-type(${offsetEditedByIndex}),
+        th:nth-of-type(${offsetEditedByIndex}),
+        col:nth-of-type(${offsetEditedByIndex}),
+        td:nth-of-type(${offsetEditedAtIndex}),
+        th:nth-of-type(${offsetEditedAtIndex}),
+        col:nth-of-type(${offsetEditedAtIndex}) {
+          display: none;
+        }
+      }
+    `;
+  }}
 `;
 
 Table.defaultProps = { className: "ContentTable" };
@@ -36,6 +62,12 @@ export const ColumnHeader = styled.th`
   padding: 1em 1em 0.75em !important;
   font-weight: bold;
   color: ${color("text-medium")};
+`;
+
+export const BulkSelectWrapper = styled(IconButtonWrapper)`
+  padding-left: 12px;
+  padding-right: 12px;
+  width: 3em;
 `;
 
 export const LastEditedByCol = styled.col`
@@ -96,7 +128,7 @@ export const ModelDetailLink = styled(BaseModelDetailLink)`
   visibility: hidden;
 `;
 
-export const SortingControlContainer = styled.div`
+export const SortingControlContainer = styled.div<{ isActive: boolean }>`
   display: flex;
   align-items: center;
   color: ${props => (props.isActive ? color("text-dark") : "")};
@@ -124,8 +156,6 @@ export const TableItemSecondaryField = styled.span`
 `;
 
 export const TBody = styled.tbody`
-  background-color: ${color("white")};
-
   td {
     border: none;
     background-color: transparent;
@@ -143,16 +173,6 @@ export const TBody = styled.tbody`
 
   tr {
     background-color: transparent;
-  }
-
-  tr:first-of-type {
-    td:first-of-type {
-      border-top-left-radius: 8px;
-    }
-
-    td:last-child {
-      border-top-right-radius: 8px;
-    }
   }
 
   tr:last-child {

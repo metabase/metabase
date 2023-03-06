@@ -19,6 +19,14 @@
 ;;; Field  = a Column that is associated with a capital-F Field in the application database, i.e. has an `:id`
 ;;;
 ;;; All Fields are Columns, but not all Columns are Fields.
+;;;
+;;; Also worth a mention: we also have `Dimension`s, associated with the `dimension` table in the application
+;;; database, which can act like psuedo-Fields or affect how we treat normal Fields. For example, Dimensions are used
+;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
+;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
+;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
+;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
+;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
 (def ColumnMetadata
   "Malli schema for a valid map of column metadata, which can mean one of two things:
@@ -61,7 +69,7 @@
 
 (def DatabaseMetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/DatabaseMetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/DatabaseMetadataProvider?])
+  [:fn lib.metadata.protocols/database-metadata-provider?])
 
 (defmulti ^:private ->database-metadata-provider*
   {:arglists '([x])}
@@ -77,7 +85,7 @@
 
 (mu/defn ^:private ->database-metadata-provider :- DatabaseMetadataProvider
   [x :- some?]
-  (if (lib.metadata.protocols/DatabaseMetadataProvider? x)
+  (if (lib.metadata.protocols/database-metadata-provider? x)
     x
     (->database-metadata-provider* x)))
 

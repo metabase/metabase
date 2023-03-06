@@ -39,7 +39,7 @@
        set))
 
 (deftest fundamentals-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{coll-id    :id
                                     coll-eid   :entity_id
                                     coll-slug  :slug}      {:name "Some Collection"}]
@@ -100,7 +100,7 @@
                  (by-model "Collection" (extract/extract-metabase {:user 218921})))))))))
 
 (deftest dashboard-and-cards-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{coll-id    :id
                                     coll-eid   :entity_id}    {:name "Some Collection"}]
                        User       [{mark-id :id}              {:first_name "Mark"
@@ -481,7 +481,7 @@
                      (by-model "Dashboard")))))))))
 
 (deftest dimensions-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
                        Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
@@ -567,7 +567,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest metrics-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
                                                               :last_name  "Wilson"
                                                               :email      "ann@heart.band"}]
@@ -604,7 +604,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest native-query-snippets-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User               [{ann-id       :id}        {:first_name "Ann"
                                                                       :last_name  "Wilson"
                                                                       :email      "ann@heart.band"}]
@@ -653,7 +653,7 @@
               (is (empty? (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest timelines-and-events-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User               [{ann-id       :id}        {:first_name "Ann"
                                                                       :last_name  "Wilson"
                                                                       :email      "ann@heart.band"}]
@@ -708,7 +708,7 @@
                      (set (serdes.base/serdes-dependencies ser)))))))))))
 
 (deftest segments-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
                                                               :last_name  "Wilson"
                                                               :email      "ann@heart.band"}]
@@ -746,7 +746,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest implicit-action-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
                                                        :last_name  "Wilson"
                                                        :email      "ann@heart.band"}]
@@ -782,7 +782,7 @@
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest http-action-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
                                                        :last_name  "Wilson"
                                                        :email      "ann@heart.band"}]
@@ -818,7 +818,7 @@
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest query-action-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
                                                        :last_name  "Wilson"
                                                        :email      "ann@heart.band"}]
@@ -858,7 +858,7 @@
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest field-values-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
                        Field      [{field-id     :id}        {:name "Some Field"
@@ -897,10 +897,18 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes.base/serdes-dependencies ser)))))))
+      (testing "extract-metabase behavior"
+        (testing "without :include-field-values"
+          (is (= #{}
+                 (by-model "FieldValues" (extract/extract-metabase {})))))
+        (testing "with :include-field-values true"
+          (let [models (->> {:include-field-values true} extract/extract-metabase (map (comp :model last :serdes/meta)))]
+            ;; why 6?
+            (is (= 6 (count (filter #{"FieldValues"} models))))))))))
 
 (deftest pulses-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
                                                               :last_name  "Wilson"
                                                               :email      "ann@heart.band"}]
@@ -994,7 +1002,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest pulse-cards-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User          [{ann-id        :id}        {:first_name "Ann"
                                                                   :last_name  "Wilson"
                                                                   :email      "ann@heart.band"}]
@@ -1077,7 +1085,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest cards-test
- (ts/with-empty-h2-app-db
+ (mt/with-empty-h2-app-db
    (ts/with-temp-dpc
      [User       [{mark-id :id}              {:first_name "Mark"
                                               :last_name  "Knopfler"
@@ -1127,7 +1135,7 @@
                 (set (serdes.base/serdes-dependencies ser)))))))))
 
 (deftest selective-serialization-basic-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{mark-id :id}              {:first_name "Mark"
                                                                :last_name  "Knopfler"
                                                                :email      "mark@direstrai.ts"}]
@@ -1346,7 +1354,7 @@
                       set)))))))))
 
 (deftest foreign-key-field-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Database   [{db-id         :id}        {:name "My Database"}]
                        Table      [{no-schema-id  :id}        {:name "Schemaless Table" :db_id db-id}]
                        Field      [{some-field-id :id}        {:name "Some Field" :table_id no-schema-id}]

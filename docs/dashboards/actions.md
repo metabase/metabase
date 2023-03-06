@@ -40,8 +40,8 @@ If you also wire that filter up to the model cards on the dashboard, you can fil
 
 ![Button form](./images/button-form.png)
 
- You can add as many buttons as you want, and wire them up to one or more filters.
+You can add as many buttons as you want, and wire them up to one or more filters.
 
- ## Further reading
+## Further reading
 
- - [Actions](../actions/start.md)
+- [Actions](../actions/start.md)
