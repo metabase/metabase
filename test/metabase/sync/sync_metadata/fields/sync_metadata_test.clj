@@ -25,29 +25,33 @@
              :database-type     "Integer"
              :base-type         :type/Integer
              :database-position 0
-             :database-required false}
+             :database-required false
+             :database-auto-incremented false}
             {:name              "My Field"
              :database-type     "NULL"
              :base-type         :type/Integer
              :id                1
              :database-position 0
-             :database-required false})))))
+             :database-required false
+             :database-auto-incremented false})))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_required false}]]
+    (is (= [["Field" 1 {:database_required false :database_auto_incremented true}]]
            (updates-that-will-be-performed
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
              :database-position 0
-             :database-required false}
+             :database-required false
+             :database-auto-incremented true}
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
              :id                1
              :database-position 0
-             :database-required true})))))
+             :database-required true
+             :database-auto-incremented false})))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
@@ -57,13 +61,15 @@
              :database-type     "Integer"
              :base-type         :type/Integer
              :database-position 0
-             :database-required false}
+             :database-required false
+             :database-auto-incremented true}
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
              :id                1
              :database-position 0
-             :database-required false})))))
+             :database-required false
+             :database-auto-incremented true})))))
 
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "

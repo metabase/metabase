@@ -26,32 +26,38 @@
                      :base-type         :type/BigInteger
                      :pk?               true
                      :database-position 0
-                     :database-required false}
+                     :database-required false
+                     :database-auto-incremented true}
                     {:name              "NAME"
                      :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
                      :database-position 1
-                     :database-required false}
+                     :database-required false
+                     :database-auto-incremented false}
                     {:name              "CATEGORY_ID"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 2
-                     :database-required false}
+                     :database-required false
+                     :database-auto-incremented false}
                     {:name              "LATITUDE"
                      :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 3
-                     :database-required false}
+                     :database-required false
+                     :database-auto-incremented false}
                     {:name              "LONGITUDE"
                      :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 4
-                     :database-required false}
+                     :database-required false
+                     :database-auto-incremented false}
                     {:name              "PRICE"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 5
-                     :database-required false}}}
+                     :database-required false
+                     :database-auto-incremented false}}}
          (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
 (deftest ^:parallel describe-table-fks-test

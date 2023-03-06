@@ -807,22 +807,25 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name              "name"
-                             :database-type     "varchar"
-                             :base-type         :type/Text
-                             :pk?               true
-                             :database-position 0
-                             :database-required true}
-                            {:name              "status"
-                             :database-type     "bird_status"
-                             :base-type         :type/PostgresEnum
-                             :database-position 1
-                             :database-required true}
-                            {:name              "type"
-                             :database-type     "bird type"
-                             :base-type         :type/PostgresEnum
-                             :database-position 2
-                             :database-required true}}}
+                  :fields #{{:name                      "name"
+                             :database-type             "varchar"
+                             :base-type                 :type/Text
+                             :pk?                       true
+                             :database-position         0
+                             :database-required         true
+                             :database-auto-incremented false}
+                            {:name                      "status"
+                             :database-type             "bird_status"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         1
+                             :database-required         true
+                             :database-auto-incremented false}
+                            {:name                      "type"
+                             :database-type             "bird type"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         2
+                             :database-required         true
+                             :database-auto-incremented false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

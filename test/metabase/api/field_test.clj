@@ -33,7 +33,8 @@
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults Field)
-                (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version :database_position :database_required]
+                (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+                                :database_position :database_required :database_auto_incremented]
                   :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
@@ -63,6 +64,7 @@
                  :effective_type   "type/Text"
                  :has_field_values "list"
                  :database_required false
+                 :database_auto_incremented fasle
                  :dimensions       []
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))

@@ -22,6 +22,7 @@
 
 (s/defn ^:private fields->parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}
   [fields :- (s/maybe [i/FieldInstance])]
+  (def fields fields)
   (->> (for [field fields]
          {:parent-id                 (:parent_id field)
           :id                        (:id field)
@@ -69,7 +70,7 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
  (db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-             :parent_id :id :description :database_position :nfc_path :database_required]
+             :parent_id :id :description :database_position :nfc_path :database_auto_incremented :database_required]
      :table_id  (u/the-id table)
      :active    true
      {:order-by table/field-order-rule}))

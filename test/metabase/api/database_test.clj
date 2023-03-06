@@ -369,7 +369,8 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
                                                              :database_position 0
-                                                             :database_required false})
+                                                             :database_required false
+                                                             :database_auto_incremented true})
                                                            (merge
                                                             (field-details (db/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -382,7 +383,8 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
                                                              :database_position 1
-                                                             :database_required true})]
+                                                             :database_required true
+                                                             :database_auto_incremented false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
