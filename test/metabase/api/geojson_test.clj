@@ -135,6 +135,26 @@
                                          {:value resource-geojson})
                    (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
 
+(defprotocol GeoJsonTestServer
+  (-port [_]))
+
+(defn- non-responding-server
+  "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
+  call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
+  ^java.io.Closeable []
+  (let [server (ring-jetty/run-jetty (fn silent-async-handler
+                                       [_request _respond _raise])
+                                     {:join?         false
+                                      :async?        true
+                                      :port          0
+                                      :async-timeout 60000})]
+    (reify
+      java.io.Closeable
+      (close [_] (.stop server))
+
+      GeoJsonTestServer
+      (-port [_] (.. server getURI getPort)))))
+
 (deftest url-proxy-endpoint-test
   (testing "GET /api/geojson"
     (testing "test the endpoint that fetches JSON files given a URL"
@@ -150,20 +170,12 @@
       ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
       ;; issues. This ensures we give a good error message in this case.
-      (let [never-responder    (fn silent-async-handler [_request _respond _raise])
-            server             (ring-jetty/run-jetty never-responder
-                                                     {:join?         false
-                                                      :async?        true
-                                                      :port          0
-                                                      :async-timeout 60000})
-            port               (.. server getURI getPort)
-            never-responds-url (str "http://localhost:" port)]
-        (try
+      (with-open [server (non-responding-server)]
+        (let [never-responds-url (str "http://localhost:" (-port server))]
           (testing "error is returned if URL connection fails"
             (is (= "GeoJSON URL failed to load"
                    (mt/user-http-request :crowberto :get 400 "geojson"
-                                         :url never-responds-url))))
-          (finally (.stop server)))))
+                                         :url never-responds-url)))))))
     (testing "error is returned if URL is invalid"
       (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
                   "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
