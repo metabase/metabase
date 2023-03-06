@@ -8,9 +8,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli :as mu]))
 
-(mu/defn field :- fn?
+(mu/defn field :- [:=> [:cat ::lib.schema/query :int] ::lib.schema.ref/field]
   "Returns a function that can get resolved to an actual `:field` clause later."
   ([id-or-name :- [:or
                    ::lib.schema.id/field

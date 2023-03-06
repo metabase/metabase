@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
@@ -17,13 +17,13 @@
 
 (deftest ^:parallel card-source-query-test
   (is (=? {:lib/type :mbql/query
-           :database 1
+           :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
-                                    {:dataset_query   {:database 1
+                                    {:dataset_query   {:database (meta/id)
                                                        :type     :native
                                                        :native   {:query "SELECT * FROM VENUES;"}}
                                      :result_metadata meta/results-metadata}))))

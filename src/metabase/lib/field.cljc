@@ -41,9 +41,7 @@
   [[_field id-or-name options] unit]
   [:field id-or-name (assoc options :temporal-unit unit)])
 
-(mu/defn field :- [:or
-                   fn?
-                   ::lib.schema.ref/field]
+(mu/defn field :- ::lib.schema.ref/field
   "Create a `:field` clause. With one or two args: return a function with the signature
 
     (f query stage-number)

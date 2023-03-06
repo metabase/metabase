@@ -1,10 +1,9 @@
 (ns metabase.lib.metadata.protocols
-  #?(:clj
-     (:require [metabase.shared.util.i18n :as i18n]
-               [potemkin :as p]
-               [pretty.core :as pretty])
-     :cljs
-     (:require [metabase.shared.util.i18n :as i18n])))
+  (:require
+   [metabase.shared.util.i18n :as i18n]
+   #?@(:clj
+       ([potemkin :as p]
+        [pretty.core :as pretty]))))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) DatabaseMetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
@@ -25,7 +24,7 @@
   - methods to facilitate more fine-grained access in the future, such as methods that let us fetch more limited info
     about a large number of objects, then other methods to let you fetch more complete information for a single object
     once you make a selection. E.g. the first method might be used to power a list of Tables to choose from to join
-    against, then once you choose a Table we hit the second method to get more info about t
+    against, then once you choose a Table we hit the second method to get more info about it
 
   - methods for searching for Tables or Fields matching some string
 
@@ -46,7 +45,7 @@
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."))
 
-(defn DatabaseMetadataProvider?
+(defn database-metadata-provider?
   "Whether `x` is a valid [[DatabaseMetadataProvider]]."
   [x]
   (satisfies? DatabaseMetadataProvider x))
