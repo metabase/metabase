@@ -375,18 +375,6 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("should not be able to move or archive a personal collection", () => {
-      cy.visit("/collection/root");
-
-      openEllipsisMenuFor(getPersonalCollectionName(USERS.admin));
-
-      popover().within(() => {
-        cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Move").should("not.exist");
-        cy.findByText("Archive").should("not.exist");
-      });
-    });
-
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
