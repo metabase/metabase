@@ -83,7 +83,7 @@ function FormFieldEditor({
         <Column />
         <Column full>
           <InputContainer>
-            <FormFieldWidget key={field.name} formField={field} />
+            <FormFieldWidget formField={field} />
           </InputContainer>
         </Column>
       </PreviewContainer>
