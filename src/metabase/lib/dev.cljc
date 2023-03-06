@@ -11,7 +11,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli :as mu]))
 
-(mu/defn field :- [:=> [:cat ::lib.schema/query :int] ::lib.schema.ref/field]
+(mu/defn field :- fn?
   "Returns a function that can get resolved to an actual `:field` clause later."
   ([id-or-name :- [:or
                    ::lib.schema.id/field
