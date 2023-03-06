@@ -13,7 +13,6 @@ export interface HelpTextConfig {
   name: string;
   args: HelpTextArg[];
   description: (database: Database, reportTimezone: string) => string;
-  example: string;
   structure: string;
   docsPage?: string;
 }
@@ -21,4 +20,5 @@ export interface HelpTextConfig {
 export interface HelpTextArg {
   name: string;
   description: string;
+  example: string;
 }
