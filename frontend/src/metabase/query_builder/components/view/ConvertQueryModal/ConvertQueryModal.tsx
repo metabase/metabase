@@ -50,7 +50,7 @@ const ConvertQueryModal = ({
     const newQuestion = question.setDatasetQuery({
       type: "native",
       native: { query, "template-tags": {} },
-      database: question.databaseId() || undefined,
+      database: question.datasetQuery().database,
     });
 
     onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
