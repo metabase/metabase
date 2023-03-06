@@ -100,7 +100,9 @@ describe(
 
       cy.findByRole("link", { name: "New action" }).click();
       fillActionQuery("DELETE FROM orders WHERE id = {{ id }}");
-      fieldSettings().findByText("Number").click();
+      cy.findByRole("radiogroup", { name: "Field type" })
+        .findByText("Number")
+        .click();
       cy.findByRole("button", { name: "Save" }).click();
       modal().within(() => {
         cy.findByLabelText("Name").type("Delete Order");
@@ -112,8 +114,7 @@ describe(
 
       openActionEditorFor("Delete Order");
       fillActionQuery(" AND status = 'pending'");
-      fieldSettings()
-        .findByRole("radiogroup", { name: "Field type" })
+      cy.findByRole("radiogroup", { name: "Field type" })
         .findByLabelText("Number")
         .should("be.checked");
       cy.findByRole("button", { name: "Update" }).click();
@@ -336,11 +337,6 @@ function assertQueryEditorDisabled() {
   // Instead we'd assert that a user can't type in the editor
   fillActionQuery("QWERTY");
   cy.findByText("QWERTY").should("not.exist");
-}
-
-function fieldSettings() {
-  cy.findByTestId("action-form-editor").within(() => cy.icon("gear").click());
-  return popover();
 }
 
 function enableSharingFor(actionName, { publicUrlAlias }) {

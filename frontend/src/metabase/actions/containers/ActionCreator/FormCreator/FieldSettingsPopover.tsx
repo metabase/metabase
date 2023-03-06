@@ -14,7 +14,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import { isEmpty } from "metabase/lib/validate";
 
-import { getFieldTypes, getInputTypes } from "./constants";
+import { getInputTypes } from "./constants";
 import {
   SettingsTriggerIcon,
   ToggleContainer,
@@ -39,7 +39,7 @@ export function FieldSettingsPopover({
       triggerContent={
         <SettingsTriggerIcon
           name="gear"
-          size={14}
+          size={16}
           tooltip={t`Change field settings`}
           aria-label={t`Field settings`}
         />
@@ -75,15 +75,6 @@ export function FormCreatorPopoverBody({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
-  const inputTypes = useMemo(getInputTypes, []);
-
-  const handleUpdateFieldType = (newFieldType: FieldType) =>
-    onChange({
-      ...fieldSettings,
-      fieldType: newFieldType,
-      inputType: inputTypes[newFieldType][0].value,
-    });
-
   const handleUpdateInputType = (newInputType: InputSettingType) =>
     onChange({
       ...fieldSettings,
@@ -114,11 +105,6 @@ export function FormCreatorPopoverBody({
 
   return (
     <SettingsPopoverBody data-testid="field-settings-popover">
-      <FieldTypeSelect
-        value={fieldSettings.fieldType}
-        onChange={handleUpdateFieldType}
-      />
-      <Divider />
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
@@ -138,29 +124,6 @@ export function FormCreatorPopoverBody({
         onChange={handleUpdateRequired}
       />
     </SettingsPopoverBody>
-  );
-}
-
-function FieldTypeSelect({
-  value,
-  onChange,
-}: {
-  value: FieldType;
-  onChange: (newFieldType: FieldType) => void;
-}) {
-  const fieldTypes = useMemo(getFieldTypes, []);
-
-  return (
-    <div>
-      <SectionLabel>{t`Field type`}</SectionLabel>
-      <Radio
-        variant="bubble"
-        value={value}
-        options={fieldTypes}
-        aria-label={t`Field type`}
-        onChange={onChange}
-      />
-    </div>
   );
 }
 
