@@ -21,6 +21,7 @@ import {
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
 import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
@@ -61,12 +62,12 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getCard(getState());
+    const outdatedQuestion = getQuestion(getState());
 
     dispatch(resetQB());
 
     const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+      Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
@@ -80,7 +81,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(card, { dirty: false }));
+    dispatch(updateUrl(new Question(card), { dirty: false }));
 
     return card;
   };
@@ -195,7 +196,7 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
+    dispatch(updateUrl(createdQuestion, { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",

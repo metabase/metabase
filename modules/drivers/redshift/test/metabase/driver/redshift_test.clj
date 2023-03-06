@@ -22,7 +22,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.test]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -276,8 +276,8 @@
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (u/lower-case-en (tu/random-name))
-            random-schema (u/lower-case-en (tu/random-name))
+      (let [temp-username (u/lower-case-en (tu.random/random-name))
+            random-schema (u/lower-case-en (tu.random/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (redshift.test/execute! (str "CREATE SCHEMA %s;"
@@ -356,3 +356,11 @@
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]
                        (mt/first-row (qp/process-query query))))))))))))
+
+(deftest interval-test
+  (mt/test-drivers #{:postgres :redshift}
+    (testing "Redshift Interval values should behave the same as postgres (#19501)"
+      (is (= ["0 years 0 mons 5 days 0 hours 0 mins 0.0 secs"]
+             (mt/first-row
+               (qp/process-query
+                 (mt/native-query {:query "select interval '5 days'"}))))))))

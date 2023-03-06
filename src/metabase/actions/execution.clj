@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models :refer [Card DashboardCard Database Table]]
    [metabase.models.action :as action]
@@ -182,6 +183,9 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
+                                                                             :type      (:type action)
+                                                                             :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values

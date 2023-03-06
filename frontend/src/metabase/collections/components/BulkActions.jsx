@@ -3,10 +3,8 @@ import React from "react";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
-import BulkActionBar from "metabase/components/BulkActionBar";
-import Button from "metabase/core/components/Button";
+import { Motion, spring } from "react-motion";
 import Modal from "metabase/components/Modal";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
@@ -14,80 +12,70 @@ import CollectionCopyEntityModal from "metabase/collections/components/Collectio
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import {
-  ActionBarContent,
-  ActionBarText,
-  ActionControlsRoot,
+  BulkActionsToast,
+  CardButton,
+  CardSide,
+  ToastCard,
 } from "./BulkActions.styled";
 
-const BulkActionControls = ({ onArchive, onMove }) => (
-  <ActionControlsRoot>
-    <Button
-      ml={1}
-      medium
-      disabled={!onArchive}
-      onClick={onArchive}
-      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
-    >{t`Archive`}</Button>
-    <Button
-      ml={1}
-      medium
-      disabled={!onMove}
-      onClick={onMove}
-      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
-    >{t`Move`}</Button>
-  </ActionControlsRoot>
-);
-
-const SelectionControls = ({
+function BulkActions({
   selected,
-  hasUnselected,
-  onSelectAll,
-  onSelectNone,
-  size = 18,
-}) =>
-  !hasUnselected ? (
-    <StackedCheckBox checked onChange={onSelectNone} size={size} />
-  ) : selected.length === 0 ? (
-    <StackedCheckBox onChange={onSelectAll} size={size} />
-  ) : (
-    <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
-  );
-
-function BulkActions(props) {
-  const {
-    selected,
-    collection,
-    selectedItems,
-    selectedAction,
-    onArchive,
-    onMoveStart,
-    onCloseModal,
-    onMove,
-    onCopy,
-    isNavbarOpen,
-  } = props;
-
+  collection,
+  selectedItems,
+  selectedAction,
+  onArchive,
+  onMoveStart,
+  onCloseModal,
+  onMove,
+  onCopy,
+  isNavbarOpen,
+}) {
   const canMove = selected.every(item => canMoveItem(item, collection));
   const canArchive = selected.every(item => canArchiveItem(item, collection));
+  const isVisible = selected.length > 0;
 
   return (
-    <BulkActionBar showing={selected.length > 0} isNavbarOpen={isNavbarOpen}>
-      {/* NOTE: these padding and grid sizes must be carefully matched
-                   to the main content above to ensure the bulk checkbox lines up */}
-      <ActionBarContent>
-        <SelectionControls {...props} />
-        <BulkActionControls
-          onArchive={canArchive ? onArchive : null}
-          onMove={canMove ? onMoveStart : null}
-        />
-        <ActionBarText>
-          {ngettext(
-            msgid`${selected.length} item selected`,
-            `${selected.length} items selected`,
-            selected.length,
-          )}
-        </ActionBarText>
-      </ActionBarContent>
+    <>
+      <Motion
+        defaultStyle={{
+          opacity: 0,
+          translateY: 100,
+        }}
+        style={{
+          opacity: isVisible ? spring(1) : spring(0),
+          translateY: isVisible ? spring(0) : spring(100),
+        }}
+      >
+        {({ translateY }) => (
+          <BulkActionsToast translateY={translateY} isNavbarOpen={isNavbarOpen}>
+            <ToastCard dark>
+              <CardSide>
+                {ngettext(
+                  msgid`${selected.length} item selected`,
+                  `${selected.length} items selected`,
+                  selected.length,
+                )}
+              </CardSide>
+              <CardSide>
+                <CardButton
+                  medium
+                  purple
+                  disabled={!canMove}
+                  onClick={onMoveStart}
+                  data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
+                >{t`Move`}</CardButton>
+                <CardButton
+                  medium
+                  purple
+                  disabled={!canArchive}
+                  onClick={onArchive}
+                  data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
+                >{t`Archive`}</CardButton>
+              </CardSide>
+            </ToastCard>
+          </BulkActionsToast>
+        )}
+      </Motion>
       {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>
           <CollectionCopyEntityModal
@@ -113,7 +101,7 @@ function BulkActions(props) {
           />
         </Modal>
       )}
-    </BulkActionBar>
+    </>
   );
 }
 

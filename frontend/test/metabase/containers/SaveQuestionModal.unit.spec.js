@@ -28,8 +28,8 @@ const setup = async (
 
   renderWithProviders(
     <SaveQuestionModal
-      card={question.card()}
-      originalCard={originalQuestion && originalQuestion.card()}
+      question={question}
+      originalQuestion={originalQuestion}
       tableMetadata={question.table()}
       onCreate={onCreateMock}
       onSave={onSaveMock}
@@ -86,16 +86,11 @@ function getQuestion({
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion) {
-  const question = originalQuestion
+  return originalQuestion
     .query()
     .breakout(["field", ORDERS.TOTAL.id, null])
-    .question();
-  return question.setCard({
-    ...question.card(),
-    // After a saved question is edited, the ID gets removed
-    // and a user can either overwrite a question or save it as a new one
-    id: undefined,
-  });
+    .question()
+    .markDirty();
 }
 
 function fillForm({ name, description }) {
@@ -187,12 +182,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: EXPECTED_SUGGESTED_NAME,
-        description: null,
-        collection_id: null,
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe(EXPECTED_SUGGESTED_NAME);
+      expect(newQuestion.description()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("should call onCreate correctly with edited form", async () => {
@@ -208,12 +206,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: "My favorite orders",
-        description: "So many of them",
-        collection_id: null,
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My favorite orders");
+      expect(newQuestion.description()).toBe("So many of them");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("should trim name and description", async () => {
@@ -229,12 +230,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: "My favorite orders",
-        description: "So many of them",
-        collection_id: null,
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My favorite orders");
+      expect(newQuestion.description()).toBe("So many of them");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it('should correctly handle saving a question in the "root" collection', async () => {
@@ -249,12 +253,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: "foo",
-        description: "bar",
-        collection_id: null,
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("foo");
+      expect(newQuestion.description()).toBe("bar");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("shouldn't call onSave when form is submitted", async () => {
@@ -320,10 +327,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        name: EXPECTED_DIRTY_SUGGESTED_NAME,
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe(EXPECTED_DIRTY_SUGGESTED_NAME);
+      expect(newQuestion.description()).toBe("Example");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("show allow to save a question with an edited form", async () => {
@@ -338,11 +350,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        name: "My Q",
-        description: "Sample",
-      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My Q");
+      expect(newQuestion.description()).toBe("Sample");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("shouldn't allow to save a question if form is invalid", async () => {
@@ -383,10 +399,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
-      expect(onSaveMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        id: originalQuestion.id(),
-      });
+
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("should allow switching to 'save as new' and back", async () => {
@@ -401,10 +422,15 @@ describe("SaveQuestionModal", () => {
       await waitFor(() => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
-      expect(onSaveMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        id: originalQuestion.id(),
-      });
+
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("should preserve original question's collection id", async () => {
@@ -412,20 +438,23 @@ describe("SaveQuestionModal", () => {
         isSaved: true,
         collection_id: 5,
       });
-      const { onSaveMock } = await setup(
-        getDirtyQuestion(originalQuestion),
-        originalQuestion,
-      );
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onSaveMock } = await setup(dirtyQuestion, originalQuestion);
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(onSaveMock).toHaveBeenCalledWith(
-          expect.objectContaining({
-            collection_id: originalQuestion.collectionId(),
-          }),
-        );
+        expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
+
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("shouldn't allow to save a question if form is invalid", async () => {

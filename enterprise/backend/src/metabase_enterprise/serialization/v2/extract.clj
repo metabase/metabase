@@ -46,9 +46,16 @@
   [opts]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (serdes.backfill/backfill-ids)
-  (let [model-pred (if (:data-model-only opts)
+  ;; TODO document and test data-model-only if we want to keep this feature...
+  (let [model-pred (cond
+                     (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-                     (constantly true))
+
+                     (:include-field-values opts)
+                     (constantly true)
+
+                     :else
+                     (complement #{"FieldValues"}))
         ;; This set of unowned top-level collections is used in several `extract-query` implementations.
         opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
     (eduction cat (for [model serdes.models/exported-models

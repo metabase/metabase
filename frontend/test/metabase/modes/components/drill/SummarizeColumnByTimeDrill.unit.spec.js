@@ -33,12 +33,12 @@ describe("SummarizeColumnByTimeDrill", () => {
       },
     });
     expect(actions).toHaveLength(1);
-    const newCard = actions[0].question().card();
-    expect(newCard.dataset_query.query).toEqual({
+    const newQuestion = actions[0].question();
+    expect(newQuestion.datasetQuery().query).toEqual({
       "source-table": ORDERS.id,
       aggregation: [["sum", ["field", ORDERS.TOTAL.id, null]]],
       breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }]],
     });
-    expect(newCard.display).toEqual("line");
+    expect(newQuestion.display()).toEqual("line");
   });
 });

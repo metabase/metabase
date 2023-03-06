@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Motion, spring } from "react-motion";
-import { FixedBottomBar } from "metabase/collections/components/BulkActions.styled";
+
+import { FixedBottomBar } from "./BulkActionBar.styled";
 
 interface BulkActionBarProps {
   children: React.ReactNode;
