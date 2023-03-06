@@ -1260,13 +1260,13 @@
     (testing "Do top-level collections show up as children of the Root Collection?"
       (with-collection-hierarchy [a b c d e f g]
         (testing "children"
-          (is (= (map collection-item ["A" "Rasta Toucan's Personal Collection"])
+          (is (= (map collection-item ["A"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
       (with-collection-hierarchy [b d e f g]
         (testing "children"
-          (is (= (map collection-item ["B" "D" "F" "Rasta Toucan's Personal Collection"])
+          (is (= (map collection-item ["B" "D" "F"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "does `archived` work on Collections as well?"
