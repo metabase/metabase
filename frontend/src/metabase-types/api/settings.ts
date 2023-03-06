@@ -153,6 +153,7 @@ export interface SettingDefinition {
 }
 
 export interface Settings {
+  "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -221,4 +222,3 @@ export interface Settings {
 }
 
 export type SettingKey = keyof Settings;
-0;

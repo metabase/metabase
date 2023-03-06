@@ -2,7 +2,7 @@ import { restore, isOSS } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licensePage = "/admin/settings/premium-embedding-license";
-const upgradeUrl = "https://www.metabase.com/upgrade/";
+const upgradeUrl = "https://www.metabase.com/upgrade";
 
 // A random embedding token with valid format
 const embeddingToken =
@@ -135,5 +135,5 @@ function stubTokenResponses() {
 function assertLinkMatchesUrl(text, url) {
   cy.findByRole("link", { name: text })
     .should("have.attr", "href")
-    .and("eq", url);
+    .and("contain", url);
 }

@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import {
   createMockActionParameter,
   createMockQueryAction,
@@ -13,6 +12,7 @@ import {
   createMockDashboard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
 
 import Action, { ActionComponent, ActionProps } from "./Action";
 
@@ -80,9 +80,9 @@ async function setupActionWrapper(options?: Partial<ActionProps>) {
   return renderWithProviders(<Action {...defaultProps} {...options} />, {
     withSampleDatabase: true,
     storeInitialState: {
-      entities: {
+      entities: createMockEntitiesState({
         databases,
-      },
+      }),
     },
   });
 }

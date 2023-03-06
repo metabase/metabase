@@ -90,7 +90,7 @@ jobs:
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
     - name: Upload coverage to codecov.io
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: ./coverage/lcov.info
         flags: front-end
