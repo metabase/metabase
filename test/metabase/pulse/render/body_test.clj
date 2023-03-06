@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
@@ -524,8 +525,7 @@
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
          (render-combo-multi-x {:cols         default-multi-columns
-                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]
-                                :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}}))))
+                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
@@ -629,57 +629,72 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
-(deftest reasonable-split-axes-test
-  (let [rows        [["Category" "Series A" "Series B"]
-                     ["A"        1          1.3]
-                     ["B"        2          1.9]
-                     ["C"        3          4]]
-        axes-split? (fn [rows]
-                      (let [text (-> rows first last)]
-                        ;; there is always 1 node with the series name in the legend
-                        ;; so we see if the series name shows up a second time, which will
-                        ;; be the axis label, indicating that there is indeed a split
-                        (< 1 (-> rows
-                                 (render.tu/make-viz-data :bar {})
-                                 :viz-tree
-                                 (render.tu/nodes-with-text text)
-                                 count))))]
-    (testing "Multiple series with close values does not split y-axis."
-      (is (not (axes-split? rows))))
-    (testing "Multiple series with far values does split y-axis."
-      (is (axes-split? (conj rows ["D" 3 70]))))
-    (testing "Multiple series split does not fail when a series has the same value for all of its rows #27427"
-      (let [rows        [["Category" "Series A" "Series B"]
-                         ["A"        1          1.3]
-                         ["B"        1          1.9]
-                         ["C"        1          4]]
-            axes-split? (fn [rows]
-                          (let [text (-> rows first last)]
-                            ;; there is always 1 node with the series name in the legend
-                            ;; so we see if the series name shows up a second time, which will
-                            ;; be the axis label, indicating that there is indeed a split
-                            (< 1 (-> rows
-                                     (render.tu/make-viz-data :bar {})
-                                     :viz-tree
-                                     (render.tu/nodes-with-text text)
-                                     count))))]
-        (is (axes-split? rows))))))
+(defn- get-axis-classes
+  [viz-tree]
+  (let [nodes (render.tu/nodes-with-tag viz-tree :g)
+        xf    (comp
+               (mapcat #(filter map? %))
+               (map :class)
+               (mapcat #(str/split % #" "))
+               (filter #{"visx-axis-left" "visx-axis-right"}))]
+   (into #{} xf nodes)))
 
-(deftest multi-series-reasonable-split-axes
+(deftest reasonable-split-axes-test
+  (let [rows [["Category" "Series A" "Series B"]
+              ["A"        1          1.3]
+              ["B"        2          1.9]
+              ["C"        3          4]]]
+    (testing "Single X-axis, multiple series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Single X-axis, multiple series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Multiple series split does not fail when a series has the same value for all of its rows #27427"
+      (let [rows [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        1          1.9]
+                  ["C"        1          4]]]
+        (is (= #{"visx-axis-left"}
+               (-> rows
+                   (render.tu/make-viz-data :bar :single {})
+                   :viz-tree
+                   get-axis-classes)))))))
+
+(deftest multi-x-axis-series-reasonable-split-axes-test
   (let [rows        [["Category" "Series A" "Series B"]
                      ["A"        1.0          1.3]
                      ["B"        2.0          1.9]
-                     ["C"        3.0          400]]
+                     ["C"        3.0          3.2]]
+        xf          (comp
+                     (mapcat #(filter map? %))
+                     (map :class)
+                     (mapcat #(str/split % #" "))
+                     (filter #{"visx-axis-righst"}))
         axes-split? (fn [rows]
-                      (let [text "400"]
-                        ;; we know that the split axis on the right should go up to 400
-                        ;; so we can look for that text.
-                        (< 1 (-> rows
-                                 (render.tu/make-viz-data :bar :multi {})
-                                 :viz-tree
-                                 (render.tu/nodes-with-text text)
-                                 count))))]
-        (is (not (axes-split? rows)))))
+                      (let [nodes (-> rows
+                                      (render.tu/make-viz-data :bar :multi {})
+                                      :viz-tree
+                                      (render.tu/nodes-with-tag :g))]
+                        (seq (sequence xf nodes))))]
+    (testing "Mulit-x-axis series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Mulit-x-axis series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}

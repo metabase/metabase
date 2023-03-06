@@ -47,12 +47,12 @@
 
 (def test-combo-card
   {:visualization_settings
-   {:graph.metrics ["NumPurchased", "NumKazoos"]
+   {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]
     :graph.dimensions ["Price"]}})
 
 (def test-stack-card
   {:visualization_settings
-   {:graph.metrics ["NumPurchased", "NumKazoos"]
+   {:graph.metrics ["NumPurchased" "NumKazoos"]
     :graph.dimensions ["Price"]
     :stackable.stack_type "stack"}})
 

@@ -550,22 +550,45 @@
 
   overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
   [vals-a vals-b]
-  (let [[min-a max-a]    (-> vals-a sort ((juxt first last)))
-        [min-b max-b]    (-> vals-b sort ((juxt first last)))
-        valid-ranges?    (and min-a min-b max-a max-b
-                              ;; ranges with same min and max won't be considered ranges.
-                              (not= min-a max-a)
-                              (not= min-b max-b))
+  (let [[min-a max-a]          (-> vals-a sort ((juxt first last)))
+        [min-b max-b]          (-> vals-b sort ((juxt first last)))
+        valid-ranges?          (and min-a min-b max-a max-b
+                                    ;; ranges with same min and max won't be considered ranges.
+                                    (not= min-a max-a)
+                                    (not= min-b max-b))
         overlapping-and-valid? (and valid-ranges?
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
-    (if
-     overlapping-and-valid?
+    (cond
+      overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
         (/ (double overlap-width) (double max-width)))
-      0)))
+
+      ;; if either range is just a single point, and it's inside the other range,
+      ;; we consider it overlapped. Not likely in practice, but could happen.
+      (and (= min-a max-a) (<= min-b min-a max-b)) 1
+      (and (= min-b max-b) (<= min-a min-b max-a)) 1
+
+      ;; if we have a range that is a single point, is outside the other range, but
+      ;; is near it, we will calculate a 'nearness', which we will consider an overlap.
+      ;; The nearness score is the percent of the total range that the 'valid range' covers IF,
+      ;; the outer point's distance to the nearest range end covers less of the total range.
+      ;; for visual:  *     *--------------*  <---- the 'pt' on the left is close enough.
+      (or (= min-a max-a) (= min-b max-b))
+      (let [pt                (if (= min-a max-a) min-a min-b)
+            [r1 r2]           (if (= min-a max-a) [min-b max-b] [min-a max-a])
+            total-range       (- (max pt r2) (min pt r1))
+            valid-range-score (/ (- r2 r1) total-range)
+            outer-pt-score    (/ (min (abs (- pt r1))
+                                      (abs (- pt r2)))
+                                 total-range)]
+        (if (>= valid-range-score outer-pt-score)
+          (double valid-range-score)
+          0))
+
+      :else 0)))
 
 (defn- range-from-col
   [col]
@@ -655,14 +678,14 @@
         ;; a single-x-axis 'joined-row' looks like:
         ;; [[grouping-key] [series-val-1 series-val-2 ...]]
         joined-rows-map    (if (= (count (ffirst joined-rows)) 2)
-                           ;; double-x-axis
-                           (-> (group-by (fn [[[_ x2] _]] x2) joined-rows)
-                               (update-vals #(mapcat last %)))
-                           ;; single-x-axis
-                           (->> (:graph.metrics viz-settings)
-                                (map-indexed (fn [idx k]
-                                               [k (mapv #(get (second %) idx) joined-rows)]))
-                                (into {})))
+                             ;; double-x-axis
+                             (-> (group-by (fn [[[_ x2] _]] x2) joined-rows)
+                                 (update-vals #(mapcat last %)))
+                             ;; single-x-axis
+                             (->> (:graph.metrics viz-settings)
+                                  (map-indexed (fn [idx k]
+                                                 [k (mapv #(get (second %) idx) joined-rows)]))
+                                  (into {})))
         ;; map of group-key -> :left :right or nil
         starting-positions (into {} (for [k (keys joined-rows-map)]
                                       [k (keyword (series-setting viz-settings k :axis))]))
@@ -672,7 +695,7 @@
         check              {:unassigned? (contains? positions nil)
                             :stacked?    (boolean (:stackable.stack_type viz-settings))} ]
     (case check
-      {:unassigned? true  :stacked? true} (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
+      {:unassigned? true :stacked? true} (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
       {:unassigned? false :stacked? true} (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
       {:unassigned? true :stacked? false}
       (let [;; calculate the overlaps between every group.
@@ -680,10 +703,10 @@
             ;; TODO: the reciprocal pairings are technically unneeded calculation. It's optimizable,
             ;; but the number of total groupings might never be high enough to really worry about it.
             overlaps           (-> joined-rows-map
-                         (update-vals (fn [vs]
-                                        (into {} (map (fn [k]
-                                                        [k (overlap (get joined-rows-map k) vs)])
-                                                      (keys joined-rows-map))))))
+                                   (update-vals (fn [vs]
+                                                  (into {} (map (fn [k]
+                                                                  [k (overlap (get joined-rows-map k) vs)])
+                                                                (keys joined-rows-map))))))
             lefts              (or (:left positions) [(first (get positions nil))])
             rights             (or (:right positions) [])
             to-group           (remove (set (concat lefts rights)) (get positions nil))
