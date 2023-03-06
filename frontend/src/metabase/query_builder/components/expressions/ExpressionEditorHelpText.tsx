@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { HelpText } from "metabase-lib/expressions/types";
@@ -11,7 +11,7 @@ import {
 } from "./ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
-  helpText: HelpText | null;
+  helpText: HelpText | undefined;
   width: number;
   target: React.RefObject<HTMLElement>;
 }
@@ -21,12 +21,6 @@ const ExpressionEditorHelpText = ({
   width,
   target,
 }: ExpressionEditorHelpTextProps) => {
-  useEffect(() => {
-    if (!helpText) {
-      console.warn('Empty "helpText" provided for ExpressionEditorHelpText');
-    }
-  }, [helpText]);
-
   if (!helpText) {
     return null;
   }

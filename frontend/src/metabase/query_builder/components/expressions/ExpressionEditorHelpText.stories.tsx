@@ -16,10 +16,8 @@ export default {
 const Template: ComponentStory<typeof ExpressionEditorHelpText> = args => {
   const target = useRef(null);
 
-  const helpText = getHelpText("datetime-diff", createMockDatabase(), "UTC");
-
   const props: ExpressionEditorHelpTextProps = {
-    helpText: helpText || null,
+    helpText: getHelpText("datetime-diff", createMockDatabase(), "UTC"),
     width: 397,
     target,
   };

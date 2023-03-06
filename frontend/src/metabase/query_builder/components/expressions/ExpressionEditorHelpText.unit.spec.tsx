@@ -34,8 +34,7 @@ function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   const props: ExpressionEditorHelpTextProps = {
     helpText:
       additionalProps?.helpText ||
-      getHelpText("datetime-diff", database, "UTC") ||
-      null,
+      getHelpText("datetime-diff", database, "UTC"),
     width: 397,
     target,
     ...additionalProps,
