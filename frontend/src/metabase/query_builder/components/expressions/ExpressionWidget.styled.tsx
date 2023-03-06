@@ -30,6 +30,8 @@ export const FieldTitle = styled.div`
 
 export const IconWrapper = styled(IconButtonWrapper)`
   margin-left: 4px;
+
+  cursor: default;
 `;
 
 export const StyledFieldTitleIcon = styled(Icon)`
