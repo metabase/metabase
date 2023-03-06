@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
   (:require
    [metabase.driver :as driver]
-   [metabase.lib.metadata.calculate :as lib.metadata.calculate]
-   [metabase.mbql.util :as mbql.u]))
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [ag-clause]
-  (driver/escape-alias driver/*driver* (lib.metadata.calculate/aggregation-name ag-clause)))
+  (driver/escape-alias driver/*driver* (annotate/aggregation-name ag-clause)))
 
 (defn- pre-alias-and-uniquify [aggregations]
   (mapv

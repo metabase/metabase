@@ -1,5 +1,4 @@
 (ns metabase.lib.util
-  "TODO -- this should probably be rolled into [[metabase.lib.query]]."
   (:require
    [clojure.set :as set]
    [metabase.lib.options :as lib.options]
@@ -7,6 +6,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
+;;; the near future.
 
 (defn- native-query->pipeline
   "Convert a `:type` `:native` QP MBQL query to a `:type` `:pipeline` pMBQL query. See docstring
@@ -20,6 +22,20 @@
                             (set/rename-keys (:native query) {:query :native}))]}
          (dissoc query :type :native)))
 
+(declare inner-query->stages)
+
+(defn- join->pipeline [join]
+  (let [source (select-keys join [:source-table :source-query])
+        stages (inner-query->stages source)]
+    (-> join
+        (dissoc :source-table :source-query)
+        (assoc :lib/type :mbql/join
+               :stages stages)
+        lib.options/ensure-uuid)))
+
+(defn- joins->pipeline [joins]
+  (mapv join->pipeline joins))
+
 (defn- inner-query->stages [{:keys [source-query], :as inner-query}]
   (let [stages     (if source-query
                      (inner-query->stages source-query)
@@ -31,7 +47,9 @@
         ;; readability in the REPL.
         this-stage (merge (lib.options/ensure-uuid
                            {:lib/type stage-type})
-                          (dissoc inner-query :source-query))]
+                          (dissoc inner-query :source-query))
+        this-stage (cond-> this-stage
+                     (seq (:joins this-stage)) (update :joins joins->pipeline))]
     (conj stages this-stage)))
 
 (defn- mbql-query->pipeline
@@ -48,8 +66,11 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(mu/defn pipeline :- ::lib.schema/query
-  "Ensure that a `query` is a pMBQL `:pipeline` query."
+(mu/defn pipeline
+  "Ensure that a `query` is in the general shape of a pMBQL `:pipeline` query. This doesn't walk the query and fix
+  everything! The goal here is just to make sure we have `:stages` in the correct place and the like.
+  See [[metabase.lib.convert]] for functions that actually ensure all parts of the query match the pMBQL schema (they
+  use this function as part of that process.)"
   [query :- [:map [:type [:keyword]]]]
   (condp = (:type query)
     :pipeline query
@@ -68,20 +89,6 @@
               (neg? stage-number'))
       (throw (ex-info (i18n/tru "Stage {0} does not exist" stage-number)
                       {:num-stages (count stages)})))
-    stage-number'))
-
-(mu/defn ^:private non-negative-stage-index :- ::lib.schema.common/int-greater-than-or-equal-to-zero
-  "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
-  `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [stages       :- [:sequential ::lib.schema/stage]
-   stage-number :- :int]
-  (let [stage-number' (if (neg? stage-number)
-                        (+ (count stages) stage-number)
-                        stage-number)]
-    (when (or (> stage-number' (dec (count stages)))
-              (neg? stage-number'))
-      (throw (ex-info (i18n/tru "Stage {0} does not exist" stage-number)
-                      {})))
     stage-number'))
 
 (defn previous-stage-number

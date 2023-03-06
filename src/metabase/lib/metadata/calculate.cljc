@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -20,11 +21,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(def ^:private PipelineQuery
-  [:map [:type [:= :pipeline]]])
-
 (mu/defn ^:private join-with-alias :- [:maybe ::lib.schema.join/join]
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
   (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
@@ -37,7 +35,7 @@
           (recur query previous-stage-number join-alias)))))
 
 (mu/defn ^:private field-metadata :- [:maybe lib.metadata/ColumnMetadata]
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int
    field-id-or-name]
   (or (when (string? field-id-or-name)
@@ -45,10 +43,13 @@
       (when (integer? field-id-or-name)
         (lib.metadata/field query field-id-or-name))))
 
-(defn- display-name-for-joined-field
+(mu/defn ^:private display-name-for-joined-field :- ::lib.schema.common/non-blank-string
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
   alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
-  [query stage-number field-display-name {:keys [fk-field-id], join-alias :alias}]
+  [query                                    :- ::lib.schema/query
+   stage-number                             :- :int
+   field-display-name                       :- ::lib.schema.common/non-blank-string
+   {:keys [fk-field-id], join-alias :alias} :- ::lib.schema.join/join]
   (let [fk-field-metadata (when fk-field-id
                             (field-metadata query stage-number fk-field-id))
         qualifier         (if fk-field-id
@@ -150,7 +151,7 @@
     :field_ref       (lib.options/ensure-uuid clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
-  [query                          :- PipelineQuery
+  [query                          :- ::lib.schema/query
    stage-number                   :- :int
    [_ opts id-or-name :as clause] :- ::lib.schema.ref/field]
   (let [join                   (when (:join-alias opts)
@@ -181,7 +182,7 @@
            :display_name (humanization.impl/name->human-readable-name :simple id-or-name)})
 
       (integer? id-or-name)
-      (merge (let [{parent-id :parent_id, :as field} (dissoc (field-metadata query stage-number id-or-name) :database_type)]
+      (merge (let [{parent-id :parent_id, :as field} (field-metadata query stage-number id-or-name)]
                (if-not parent-id
                  field
                  (let [parent (->> [:field {} parent-id]
@@ -201,7 +202,7 @@
       (assoc :source_alias (or (:join-alias opts) (:alias join)))
 
       join
-      (update :display_name (partial display-name-for-joined-field stage-number query) join)
+      (update :display_name (partial display-name-for-joined-field query stage-number) join)
 
       ;; Join with fk-field-id => IMPLICIT JOIN
       ;; Join w/o fk-field-id  => EXPLICIT JOIN
@@ -242,7 +243,7 @@
                                                  [:map
                                                   [:field_ref ::lib.schema.ref/field]]]
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int
    clause]
   (mbql.u/match-one clause
@@ -376,7 +377,7 @@
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int
    clause]
   (mbql.u/match-one clause
@@ -432,7 +433,7 @@
      (ag->name-info query stage-number &match))))
 
 (mu/defn ^:private cols-for-fields :- [:sequential lib.metadata/ColumnMetadata]
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{:keys [fields], :as _stage} (lib.util/query-stage query stage-number)]
     (for [field fields]
@@ -440,7 +441,7 @@
              :source :fields))))
 
 (mu/defn ^:private cols-for-ags-and-breakouts :- [:sequential lib.metadata/ColumnMetadata]
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{aggregations :aggregation, breakouts :breakout, :as _stage} (lib.util/query-stage query stage-number)]
     (into []
@@ -494,12 +495,12 @@
         joins))
 
 (mu/defn ^:private default-fields :- [:sequential lib.metadata/ColumnMetadata]
-  [query        :- PipelineQuery
+  [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{:keys [source-table joins], :as stage} (lib.util/query-stage query stage-number)]
     (concat (if-let [previous-stage-number (lib.util/previous-stage-number stage stage-number)]
               (let [previous-stage (lib.util/query-stage query previous-stage-number)]
-                (some-> previous-stage lib.metadata/stage :columns))
+                (some-> previous-stage :lib.metadata/stage :columns))
               (when (integer? source-table)
                 (source-table-default-metadata
                  (lib.metadata/table query source-table))))
@@ -509,10 +510,13 @@
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
   aggregations/breakouts/fields, then return THOSE. Otherwise return the defaults based on the source Table or
   previous stage."
-  [query        :- PipelineQuery
-   stage-number :- :int]
-  (or (not-empty (into []
-                       cat
-                       [(cols-for-ags-and-breakouts query stage-number)
-                        (cols-for-fields query stage-number)]))
-      (default-fields query stage-number)))
+  ([query :- ::lib.schema/query]
+   (stage-metadata query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (or (not-empty (into []
+                        cat
+                        [(cols-for-ags-and-breakouts query stage-number)
+                         (cols-for-fields query stage-number)]))
+       (default-fields query stage-number))))

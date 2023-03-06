@@ -8,12 +8,12 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.lib.metadata.calculate :as lib.metadata.calculate]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.wrap-value-literals
     :as qp.wrap-value-literals]
    [metabase.query-processor.store :as qp.store]
@@ -1021,7 +1021,7 @@
                                 :let [ag-expr  (->honeysql driver ag)
                                       ag-alias (->honeysql driver (hx/identifier
                                                                    :field-alias
-                                                                   (driver/escape-alias driver (lib.metadata.calculate/aggregation-name ag))))]]
+                                                                   (driver/escape-alias driver (annotate/aggregation-name ag))))]]
                             (case (long hx/*honey-sql-version*)
                               1 [ag-expr ag-alias]
                               2 [ag-expr [ag-alias]])))]
