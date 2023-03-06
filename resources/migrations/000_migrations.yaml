@@ -14301,7 +14301,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v47.00-003
+      id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
       validCheckSum: ANY
