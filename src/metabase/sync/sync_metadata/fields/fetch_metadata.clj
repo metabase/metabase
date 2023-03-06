@@ -23,18 +23,19 @@
 (s/defn ^:private fields->parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}
   [fields :- (s/maybe [i/FieldInstance])]
   (->> (for [field fields]
-         {:parent-id         (:parent_id field)
-          :id                (:id field)
-          :name              (:name field)
-          :database-type     (:database_type field)
-          :effective-type    (:effective_type field)
-          :coercion-strategy (:coercion_strategy field)
-          :base-type         (:base_type field)
-          :semantic-type     (:semantic_type field)
-          :pk?               (isa? (:semantic_type field) :type/PK)
-          :field-comment     (:description field)
-          :database-position (:database_position field)
-          :database-required (:database_required field)})
+         {:parent-id                 (:parent_id field)
+          :id                        (:id field)
+          :name                      (:name field)
+          :database-type             (:database_type field)
+          :effective-type            (:effective_type field)
+          :coercion-strategy         (:coercion_strategy field)
+          :base-type                 (:base_type field)
+          :semantic-type             (:semantic_type field)
+          :pk?                       (isa? (:semantic_type field) :type/PK)
+          :field-comment             (:description field)
+          :database-auto-incremented (:database_auto_incremented field)
+          :database-position         (:database_position field)
+          :database-required         (:database_required field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
