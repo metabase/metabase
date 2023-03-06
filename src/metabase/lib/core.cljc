@@ -20,7 +20,9 @@
  [lib.field
   field]
  [lib.filter
-  =]
+  =
+  and
+  or]
  [lib.join
   join
   join-clause
