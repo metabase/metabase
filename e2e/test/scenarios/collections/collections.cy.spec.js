@@ -389,7 +389,7 @@ describe("scenarios > collection defaults", () => {
           // Select all
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
-          cy.findByText("6 items selected");
+          cy.findByText("5 items selected");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
