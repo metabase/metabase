@@ -85,7 +85,5 @@ export const PreviewContainer = styled(ContentContainer)`
 `;
 
 export const InputContainer = styled.div`
-  flex-grow: 1;
-  flex-basis: 1;
-  flex-shrink: 0;
+  flex: 1 0 1;
 `;
