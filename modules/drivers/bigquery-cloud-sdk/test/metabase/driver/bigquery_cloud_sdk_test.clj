@@ -271,7 +271,8 @@
                    (count (mt/first-row
                             (mt/run-mbql-query taxi_trips
                               {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
-                                           "Cash"]}))))))
+                                           "Cash"]
+                               :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
