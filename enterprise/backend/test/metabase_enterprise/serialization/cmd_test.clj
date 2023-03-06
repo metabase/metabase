@@ -27,7 +27,7 @@
     ;;
     ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       ;; create a single dummy User to own a Card and a Database for it to reference
       (let [user (db/simple-insert! User
                    :email        "nobody@nowhere.com"
@@ -64,7 +64,7 @@
           user-pre-insert-called?  (atom false)]
       (log/infof "Dumping to %s" dump-dir)
       (cmd/dump dump-dir "--user" "crowberto@metabase.com")
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (with-redefs [load/pre-insert-user  (fn [user]
                                               (reset! user-pre-insert-called? true)
                                               (assoc user :password "test-password"))]
