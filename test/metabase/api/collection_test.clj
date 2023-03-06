@@ -836,19 +836,20 @@
 (defn- lucky-personal-collection []
   (merge
    (mt/object-defaults Collection)
-   {:slug                "lucky_pigeon_s_personal_collection"
-    :color               "#31698A"
-    :can_write           true
-    :name                "Lucky Pigeon's Personal Collection"
-    :personal_owner_id   (mt/user->id :lucky)
-    :effective_ancestors [{:metabase.models.collection.root/is-root? true
-                           :name                                     "Our analytics"
-                           :id                                       "root"
-                           :authority_level                          nil
-                           :can_write                                true}]
-    :effective_location  "/"
-    :parent_id           nil
-    :location            "/"}
+   {:slug                  "lucky_pigeon_s_personal_collection"
+    :color                 "#31698A"
+    :can_write             true
+    :name                  "Lucky Pigeon's Personal Collection"
+    :personal_owner_id     (mt/user->id :lucky)
+    :personal_owner_active true
+    :effective_ancestors   [{:metabase.models.collection.root/is-root? true
+                              :name                                     "Our analytics"
+                              :id                                       "root"
+                              :authority_level                          nil
+                              :can_write                                true}]
+    :effective_location    "/"
+    :parent_id             nil
+    :location              "/"}
    (select-keys (collection/user->personal-collection (mt/user->id :lucky))
                 [:id :entity_id :created_at])))
 

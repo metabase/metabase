@@ -566,7 +566,7 @@
    ;; Also make sure we're not trying to archive a PERSONAL Collection of an active user.
    ;; Personal collections of archived users may be unarchived.
    (when-let [owner-id (db/select-one-field :personal_owner_id Collection :id (u/the-id collection))]
-     (when (and archiving? (:is_active ('User owner-id)))
+     (when (and archiving? (t2/select-one-fn :is_active 'User :id owner-id))
        (throw (Exception. (tru "You cannot archive an active user's Personal Collection.")))))
    (set (for [collection-or-id (cons
                                 (parent collection)
