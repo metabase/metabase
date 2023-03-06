@@ -671,18 +671,7 @@
   (let [rows        [["Category" "Series A" "Series B"]
                      ["A"        1.0          1.3]
                      ["B"        2.0          1.9]
-                     ["C"        3.0          3.2]]
-        xf          (comp
-                     (mapcat #(filter map? %))
-                     (map :class)
-                     (mapcat #(str/split % #" "))
-                     (filter #{"visx-axis-righst"}))
-        axes-split? (fn [rows]
-                      (let [nodes (-> rows
-                                      (render.tu/make-viz-data :bar :multi {})
-                                      :viz-tree
-                                      (render.tu/nodes-with-tag :g))]
-                        (seq (sequence xf nodes))))]
+                     ["C"        3.0          3.2]]]
     (testing "Mulit-x-axis series with close values does not split y-axis."
       (is (= #{"visx-axis-left"}
              (-> rows
