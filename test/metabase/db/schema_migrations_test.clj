@@ -966,7 +966,7 @@
 
 (deftest migrate-field-database-type-test
   (testing "Migration v47.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
-    (impl/test-migrations ["v47.00-003"] [migrate!]
+    (impl/test-migrations ["v47.00-001"] [migrate!]
       (let [[pg-db-id
              mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
                                                               {:name "MySQL Database" :engine "mysql"}])
@@ -984,7 +984,7 @@
                                                                 {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
             _              (migrate!)
             new-base-types (t2/select-pk->fn :base_type Field)]
-        (are [field-id expected] (= (get new-base-types field-id) expected)
+        (are [field-id expected] (= expected (get new-base-types field-id))
           pg-field-1-id :type/JSON
           pg-field-2-id :type/JSON
           pg-field-3-id :type/Text
@@ -994,7 +994,7 @@
           (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
             (db.setup/migrate! db-type data-source :down 46)
             (let [new-base-types (t2/select-pk->fn :base_type Field)]
-              (are [field-id expected] (= (get new-base-types field-id) expected)
+              (are [field-id expected] (= expected (get new-base-types field-id))
                 pg-field-1-id :type/Structured
                 pg-field-2-id :type/Structured
                 pg-field-3-id :type/Text
