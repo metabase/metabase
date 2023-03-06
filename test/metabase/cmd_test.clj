@@ -40,5 +40,5 @@
         (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil})
                (cmd/export "/path/"))))
       (testing "with --collections list"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3]})
-               (cmd/export "/path/" "--collections" "1,2,3")))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3] :include-field-values true})
+               (cmd/export "/path/" "--collections" "1,2,3" "--include-field-values")))))))

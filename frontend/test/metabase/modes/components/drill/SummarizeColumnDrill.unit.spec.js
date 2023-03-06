@@ -18,11 +18,11 @@ describe("SummarizeColumnDrill", () => {
       },
     });
     expect(actions.length).toEqual(3);
-    let newCard = actions[0].question().card();
-    expect(newCard.dataset_query.query).toEqual({
+    const question = actions[0].question();
+    expect(question.datasetQuery().query).toEqual({
       "source-table": ORDERS.id,
       aggregation: [["sum", ["field", ORDERS.TOTAL.id, null]]],
     });
-    expect(newCard.display).toEqual("scalar");
+    expect(question.display()).toEqual("scalar");
   });
 });

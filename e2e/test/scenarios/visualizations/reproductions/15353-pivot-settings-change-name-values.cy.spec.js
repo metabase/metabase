@@ -25,7 +25,10 @@ describe("issue 15353", () => {
 
   it("should be able to change field name used for values (metabase#15353)", () => {
     cy.findByTestId("viz-settings-button").click();
-    sidebar().contains("Count").siblings(".Icon-ellipsis").click();
+    sidebar()
+      .contains("Count")
+      .siblings("[data-testid$=settings-button]")
+      .click();
 
     cy.findByDisplayValue("Count").type(" renamed").blur();
 

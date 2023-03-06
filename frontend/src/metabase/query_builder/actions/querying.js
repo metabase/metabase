@@ -116,9 +116,7 @@ export const runQuestionQuery = ({
         question.isDataset() &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(
-        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
-      );
+      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
     }
 
     const startTime = new Date();
@@ -137,7 +135,7 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.query().datasetQuery().type,
+            question.type(),
             duration,
           ),
         );
