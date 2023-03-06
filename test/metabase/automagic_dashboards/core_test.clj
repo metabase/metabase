@@ -252,7 +252,7 @@
   ;; - The dashboard should only present data visible to the model
   ;; (don't show non-selected fields from within the model or its parent)
   ;; - The dashboard should reference its source as a :related field
-  (testing "Simple model with no dimensions detected"
+  (testing "Simple model with a price dimension"
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
@@ -269,15 +269,23 @@
                                                          (result-metadata-for-query
                                                           source-query))
                                       :dataset         true}]]
-            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
+            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                  binned-field-id (mt/id :products :price)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
-              ;; At this time, this card has no dimensions, so the only useful thing to produce
-              ;; is a count aggregation. Note that this is example-based, so in the future if we
-              ;; properly detect `:category` as a dimension we'd see another card (potentially a
-              ;; histogram of sum/avg/etc. of price within each category.)
-              (is (= 1 (->> dashboard :ordered_cards (filter :card) count)))
+              ;; Count of records
+              ;; Distributions:
+              ;; - Binned price
+              ;; - Binned by category
+              (is (= 3 (->> dashboard :ordered_cards (filter :card) count)))
               (ensure-dashboard-sourcing card dashboard)
-              dashboard))))))
+              ;; This ensures we get a card that does binning on price
+              (is (= binned-field-id
+                     (first
+                      (for [card (:ordered_cards dashboard)
+                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
+                            [_ field-id m] fields
+                            :when (:binning m)]
+                        field-id))))))))))
   (testing "Simple model with a temporal dimension detected"
     ;; Same as above, but the code should detect the time dimension of the model and present
     ;; cards with a time axis.
@@ -310,7 +318,74 @@
               ;; We want to produce at least one temporal axis card
               (is (pos? (count temporal-field-ids)))
               ;; We only have one temporal field, so ensure that's what's used for the temporal cards
-              (is (every? #{temporal-field-id} temporal-field-ids)))))))))
+              (is (every? #{temporal-field-id} temporal-field-ids))))))))
+  (testing "A simple model with longitude and latitude dimensions should generate a card with a map."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :query    {:source-table (mt/id :people)
+                                       :fields       [[:field (mt/id :people :longitude) nil]
+                                                      [:field (mt/id :people :latitude) nil]]},
+                            :type     :query}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [card {:table_id        (mt/id :people)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
+            (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                  temporal-field-ids (for [card (:ordered_cards dashboard)
+                                           :let [fields (get-in card [:card :dataset_query :query :breakout])]
+                                           [_ field-id m] fields
+                                           :when (:temporal-unit m)]
+                                       field-id)]
+              (ensure-single-table-sourced (mt/id :people) dashboard)
+              (ensure-dashboard-sourcing card dashboard)
+              ;; We should generate two cards - locations and total values
+              (is (= #{(format "%s by coordinates" (:name card))
+                       (format "Total %s" (:name card))}
+                     (set
+                      (for [{:keys [card]} ordered_cards
+                            :let [{:keys [name]} card]
+                            :when name]
+                        name)))))))))))
+
+(mt/dataset sample-dataset
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (let [source-query {:database (mt/id)
+                        :query    {:source-table (mt/id :products)
+                                   :fields       [[:field (mt/id :products :category) nil]
+                                                  [:field (mt/id :products :price) nil]]},
+                        :type     :query}]
+      (mt/with-temp* [Collection [{collection-id :id}]
+                      Card [card {:table_id        (mt/id :products)
+                                  :collection_id   collection-id
+                                  :dataset_query   source-query
+                                  :result_metadata (mt/with-test-user
+                                                     :rasta
+                                                     (result-metadata-for-query
+                                                      source-query))
+                                  :dataset         true}]]
+        (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+              binned-field-id (mt/id :products :price)]
+          (ensure-single-table-sourced (mt/id :products) dashboard)
+          ;; Count of records
+          ;; Distributions:
+          ;; - Binned price
+          ;; - Binned by category
+          (is (= 3 (->> dashboard :ordered_cards (filter :card) count)))
+          (ensure-dashboard-sourcing card dashboard)
+          ;; This ensures we get a card that does binning on price
+          (is (= binned-field-id
+                 (first
+                  (for [card (:ordered_cards dashboard)
+                        :let [fields (get-in card [:card :dataset_query :query :breakout])]
+                        [_ field-id m] fields
+                        :when (:binning m)]
+                    field-id)))))))))
 
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms

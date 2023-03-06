@@ -575,7 +575,7 @@
                         (max-key :score a b)))
          definitions))
 
-(defn- instantate-visualization
+(defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
@@ -603,7 +603,7 @@
                s))
            form))
        x)
-      (m/update-existing :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (m/update-existing :visualization #(instantiate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
   [{:keys [base_type engine fingerprint aggregation]}]
@@ -642,10 +642,11 @@
                              (/ score rules/max-score)))
         dimensions      (map (comp (partial into [:dimension]) first) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
-        cell-dimension? (->> context :root singular-cell-dimensions)]
-    (->> used-dimensions
-         (map (some-fn #(get-in (:dimensions context) [% :matches])
-                       (comp #(filter-tables % (:tables context)) rules/->entity)))
+        cell-dimension? (->> context :root singular-cell-dimensions)
+        matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
+                                         (comp #(filter-tables % (:tables context)) rules/->entity))
+                                used-dimensions)]
+    (->> matched-dimensions
          (apply math.combo/cartesian-product)
          (map (partial zipmap used-dimensions))
          (filter (fn [bindings]
