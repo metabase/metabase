@@ -25,7 +25,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -591,19 +591,19 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-one "Pulse"
+(defmethod serdes.base/extract-one "Pulse"
   [_model-name _opts pulse]
-  (cond-> (serdes/extract-one-basics "Pulse" pulse)
+  (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
     (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
     (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
     true                   (update :creator_id    serdes.util/export-user)))
 
-(defmethod serdes/load-xform "Pulse" [pulse]
-  (cond-> (serdes/load-xform-basics pulse)
+(defmethod serdes.base/load-xform "Pulse" [pulse]
+  (cond-> (serdes.base/load-xform-basics pulse)
       true                   (update :creator_id    serdes.util/import-user)
       (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
       (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
 
-(defmethod serdes/parents "Pulse" [{:keys [collection_id dashboard_id]}]
+(defmethod serdes.base/serdes-dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
                   (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

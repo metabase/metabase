@@ -9,7 +9,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.models.setting :as setting]
@@ -302,51 +302,51 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
-(defmethod serdes/extract-one "Database"
+(defmethod serdes.base/extract-one "Database"
   [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
-  (cond-> (serdes/extract-one-basics "Database" entity)
+  (cond-> (serdes.base/extract-one-basics "Database" entity)
     true                 (update :creator_id serdes.util/export-user)
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
-(defmethod serdes/entity-id "Database"
+(defmethod serdes.base/serdes-entity-id "Database"
   [_ {:keys [name]}]
   name)
 
-(defmethod serdes/generate-path "Database"
+(defmethod serdes.base/serdes-generate-path "Database"
   [_ {:keys [name]}]
   [{:model "Database" :id name}])
 
-(defmethod serdes/load-find-local "Database"
+(defmethod serdes.base/load-find-local "Database"
   [[{:keys [id]}]]
   (db/select-one Database :name id))
 
-(defmethod serdes/load-xform "Database"
+(defmethod serdes.base/load-xform "Database"
   [database]
   (-> database
-      serdes/load-xform-basics
+      serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)))
 
-(defmethod serdes/load-insert! "Database" [_ ingested]
-  (let [m (get-method serdes/load-insert! :default)]
+(defmethod serdes.base/load-insert! "Database" [_ ingested]
+  (let [m (get-method serdes.base/load-insert! :default)]
     (m "Database"
        (if (:details ingested)
          ingested
          (assoc ingested :details {})))))
 
-(defmethod serdes/load-update! "Database" [_ ingested local]
-  (let [m (get-method serdes/load-update! :default)]
+(defmethod serdes.base/load-update! "Database" [_ ingested local]
+  (let [m (get-method serdes.base/load-update! :default)]
     (m "Database"
        (update ingested :details #(or % (:details local) {}))
        local)))
 
-(defmethod serdes/storage-path "Database" [{:keys [name]} _]
+(defmethod serdes.base/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(serdes/register-ingestion-path!
+(serdes.base/register-ingestion-path!
   "Database"
   ;; ["databases" "my-db" "my-db"]
   (fn [[a b c :as path]]

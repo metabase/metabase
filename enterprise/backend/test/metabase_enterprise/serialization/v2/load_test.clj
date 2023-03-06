@@ -23,7 +23,7 @@
             TimelineEvent
             User]]
    [metabase.models.action :as action]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan.db :as db])
@@ -44,7 +44,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes/path entity))
+                          [(no-labels (serdes.base/serdes-path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -812,7 +812,7 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes/path)
+                          (map serdes.base/serdes-path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 
@@ -926,7 +926,7 @@
         (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
 
         (testing "on extraction"
-          (reset! extracted (serdes/extract-one "Card" {} @card1s))
+          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
           (is (= (:entity_id @snippet1s)
                  (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
 

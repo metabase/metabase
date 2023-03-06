@@ -1,4 +1,4 @@
-(ns metabase.models.serialization
+(ns metabase.models.serialization.base
   "Defines several helper functions and multimethods for the serialization system.
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
   methods are defined here and implemented for all the exported models.
@@ -39,7 +39,7 @@
 ;;;
 ;;; Many of the multimethods are keyed on the `:model` field of the leaf entry (the last).
 
-(defmulti entity-id
+(defmulti serdes-entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
 
   This abstracts over the exact definition of the \"entity ID\" for a given entity.
@@ -49,10 +49,10 @@
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
-(defmethod entity-id :default [_ {:keys [entity_id]}]
+(defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
   entity_id)
 
-(defmulti generate-path
+(defmulti serdes-generate-path
   "Given the model name and raw entity from the database, returns a vector giving its *path*.
   `(serdes-generate-path \"ModelName\" entity)`
 
@@ -100,7 +100,7 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     {:model model-name
-     :id    (or (entity-id model-name entity)
+     :id    (or (serdes-entity-id model-name entity)
                 (some-> (get entity pk) model serdes.hash/identity-hash)
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
@@ -118,7 +118,7 @@
        (assoc self :label (u/slugify label {:unicode? true}))
        self)]))
 
-(defmethod generate-path :default [model-name entity]
+(defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
   (maybe-labeled model-name entity :name))
 
@@ -264,13 +264,13 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> (into {} entity)
-        (assoc :serdes/meta (generate-path model-name entity))
+        (assoc :serdes/meta (serdes-generate-path model-name entity))
         (dissoc pk :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
 
-(defmulti descendants
+(defmulti serdes-descendants
   "Captures the notion that eg. a dashboard \"contains\" its cards.
   Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
   or requires to be executed.
@@ -300,7 +300,7 @@
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 
-(defmethod descendants :default [_ _]
+(defmethod serdes-descendants :default [_ _]
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -355,7 +355,7 @@
   [ingested]
   (-> ingested :serdes/meta last :model))
 
-(defn path
+(defn serdes-path
   "Given an exported or imported entity with a `:serdes/meta` key on it, return the abstract path (not a filesystem
   path)."
   [entity]
@@ -383,7 +383,7 @@
     (when model
       (lookup-by-id model id))))
 
-(defmulti parents
+(defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
@@ -392,7 +392,7 @@
   {:arglists '([ingested])}
   ingested-model)
 
-(defmethod parents :default [_]
+(defmethod serdes-dependencies :default [_]
   [])
 
 (defmulti load-xform
@@ -540,7 +540,7 @@
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
   [entity {:keys [collections]}]
-  (let [{:keys [model id label]} (-> entity path last)]
+  (let [{:keys [model id label]} (-> entity serdes-path last)]
     (concat ["collections"]
             (get collections (:collection_id entity)) ;; This can be nil, but that's fine - that's the root collection.
             [(lower-plural model) (storage-leaf-file-name id label)])))

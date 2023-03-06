@@ -1,7 +1,7 @@
 (ns metabase.models.pulse-card
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -54,27 +54,27 @@
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/generate-path "PulseCard"
+(defmethod serdes.base/serdes-generate-path "PulseCard"
   [_ {:keys [pulse_id] :as card}]
-  [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
-   (serdes/infer-self-path "PulseCard" card)])
+  [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+   (serdes.base/infer-self-path "PulseCard" card)])
 
-(defmethod serdes/extract-one "PulseCard"
+(defmethod serdes.base/extract-one "PulseCard"
   [_model-name _opts card]
-  (cond-> (serdes/extract-one-basics "PulseCard" card)
+  (cond-> (serdes.base/extract-one-basics "PulseCard" card)
     true                      (update :card_id            serdes.util/export-fk 'Card)
     true                      (update :pulse_id           serdes.util/export-fk 'Pulse)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/export-fk 'DashboardCard)))
 
-(defmethod serdes/load-xform "PulseCard" [card]
-  (cond-> (serdes/load-xform-basics card)
+(defmethod serdes.base/load-xform "PulseCard" [card]
+  (cond-> (serdes.base/load-xform-basics card)
     true                      (update :card_id            serdes.util/import-fk 'Card)
     true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
     true                      (dissoc :dashboard_id)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
-(defmethod serdes/parents "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
+(defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
     (if-let [[dash-id _] dashboard_card_id]

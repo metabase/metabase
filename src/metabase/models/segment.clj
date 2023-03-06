@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -72,30 +72,30 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-(defmethod serdes/extract-one "Segment"
+(defmethod serdes.base/extract-one "Segment"
   [_model-name _opts segment]
-  (-> (serdes/extract-one-basics "Segment" segment)
+  (-> (serdes.base/extract-one-basics "Segment" segment)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
       (update :definition serdes.util/export-mbql)))
 
-(defmethod serdes/load-xform "Segment" [segment]
+(defmethod serdes.base/load-xform "Segment" [segment]
   (-> segment
-      serdes/load-xform-basics
+      serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-mbql)))
 
-(defmethod serdes/parents "Segment" [{:keys [definition table_id]}]
+(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
-(defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes/path last)]
+(defmethod serdes.base/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
     (-> segment
         :table_id
         serdes.util/table->path
         serdes.util/storage-table-path-prefix
-        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
+        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
 
-(serdes/register-ingestion-path! "Segment" (serdes/ingestion-matcher-collected "databases" "Segment"))
+(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))

@@ -6,7 +6,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -279,56 +279,56 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/extract-query "Action" [_model _opts]
+(defmethod serdes.base/extract-query "Action" [_model _opts]
   (eduction (map hydrate-subtype)
             (db/select-reducible 'Action)))
 
 (defmethod serdes.hash/identity-hash-fields Action [_action]
   [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
 
-(defmethod serdes/extract-one "Action" [_model-name _opts action]
-  (-> (serdes/extract-one-basics "Action" action)
+(defmethod serdes.base/extract-one "Action" [_model-name _opts action]
+  (-> (serdes.base/extract-one-basics "Action" action)
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)
       (update :type name)
       (cond-> (= (:type action) :query)
         (update :database_id serdes.util/export-fk-keyed 'Database :name))))
 
-(defmethod serdes/load-xform "Action" [action]
+(defmethod serdes.base/load-xform "Action" [action]
   (-> action
-      serdes/load-xform-basics
+      serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)
       (update :model_id serdes.util/import-fk 'Card)
       (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes.util/import-fk-keyed 'Database :name))))
 
-(defmethod serdes/load-update! "Action" [_model-name ingested local]
+(defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
   (update! (assoc ingested :id (:id local)) local)
   (select-action :id (:id local)))
 
-(defmethod serdes/load-insert! "Action" [_model-name ingested]
+(defmethod serdes.base/load-insert! "Action" [_model-name ingested]
   (log/tracef "Inserting Action: %s" (pr-str ingested))
   (insert! ingested))
 
-(defmethod serdes/parents "Action" [action]
+(defmethod serdes.base/serdes-dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
     (when (= (:type action) "query")
       [[{:model "Database" :id (:database_id action)}]])))
 
-(defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/path last)]
-    ["actions" (serdes/storage-leaf-file-name id label)]))
+(defmethod serdes.base/storage-path "Action" [action _ctx]
+  (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
+    ["actions" (serdes.base/storage-leaf-file-name id label)]))
 
-(serdes/register-ingestion-path!
+(serdes.base/register-ingestion-path!
  "Action"
   ;; ["actions" "my-action"]
  (fn [path]
    (when-let [[id slug] (and (= (first path) "actions")
                              ;; TODO: make action a directory with itself
                              ;; (apply = (take-last 2 path))
-                             (serdes/split-leaf-file-name (last path)))]
+                             (serdes.base/split-leaf-file-name (last path)))]
      (cond-> {:model "Action" :id id}
        slug (assoc :label slug)
        true vector))))

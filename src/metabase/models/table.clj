@@ -11,7 +11,7 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.segment :refer [Segment]]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -216,20 +216,20 @@
      (db/select-one-field :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/parents "Table" [table]
+(defmethod serdes.base/serdes-dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
-(defmethod serdes/generate-path "Table" [_ table]
+(defmethod serdes.base/serdes-generate-path "Table" [_ table]
   (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
 
-(defmethod serdes/entity-id "Table" [_ {:keys [name]}]
+(defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [name]}]
   name)
 
-(defmethod serdes/load-find-local "Table"
+(defmethod serdes.base/load-find-local "Table"
   [path]
   (let [db-name     (-> path first :id)
         schema-name (when (= 3 (count path))
@@ -238,21 +238,21 @@
         db-id       (db/select-one-id Database :name db-name)]
     (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
-(defmethod serdes/extract-one "Table"
+(defmethod serdes.base/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
-  (-> (serdes/extract-one-basics "Table" table)
+  (-> (serdes.base/extract-one-basics "Table" table)
       (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
 
-(defmethod serdes/load-xform "Table"
+(defmethod serdes.base/load-xform "Table"
   [{:keys [db_id] :as table}]
-  (-> (serdes/load-xform-basics table)
+  (-> (serdes.base/load-xform-basics table)
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
 
-(defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes.util/storage-table-path-prefix (serdes/path table))
+(defmethod serdes.base/storage-path "Table" [table _ctx]
+  (concat (serdes.util/storage-table-path-prefix (serdes.base/serdes-path table))
           [(:name table)]))
 
-(serdes/register-ingestion-path!
+(serdes.base/register-ingestion-path!
   "Table"
   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "customers"]
   ;; ["databases" "my-db" "tables" "customers" "customers"]
@@ -262,7 +262,7 @@
                 schema "schemas"
                 table  "tables"}   (and (#{5 7} (count path))
                                         (apply = (take-last 2 path))
-                                        (serdes/ingestion-matcher-pairs path [["databases" "schemas" "tables"]
+                                        (serdes.base/ingestion-matcher-pairs path [["databases" "schemas" "tables"]
                                                                                    ["databases" "tables"]]))]
       (filterv identity [{:model "Database" :id db}
                          (when schema {:model "Schema" :id schema})
