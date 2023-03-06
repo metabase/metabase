@@ -1,18 +1,34 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
+const database = createMockDatabase();
+
 describe("ExpressionEditorHelpText", () => {
   it("should render expression function info and example", async () => {
     setup();
 
     // have to wait for TippyPopover to render content
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("expression-helper-popover"),
+      ).toBeInTheDocument();
+    });
+
     expect(
-      await screen.findByText("datetimeDiff(datetime1, datetime2, unit)"),
+      screen.getByText('datetimeDiff([created_at], [shipped_at], "month")'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        (content, element) =>
+          element.textContent === "datetimeDiff(datetime1, datetime2, unit)",
+      ),
     ).toBeInTheDocument();
 
     expect(
@@ -20,16 +36,38 @@ describe("ExpressionEditorHelpText", () => {
         "Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.",
       ),
     ).toBeInTheDocument();
+  });
 
-    expect(
-      screen.getByText('datetimeDiff([created_at], [shipped_at], "month")'),
-    ).toBeInTheDocument();
+  it("should render function arguments with tooltip", async () => {
+    const {
+      props: { helpText },
+    } = setup({ helpText: getHelpText("concat", database, "UTC") });
+
+    // have to wait for TippyPopover to render content
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("expression-helper-popover-arguments"),
+      ).toBeInTheDocument();
+    });
+
+    const argumentsCodeBlock = screen.getByTestId(
+      "expression-helper-popover-arguments",
+    );
+
+    helpText?.args.forEach(({ name, description }) => {
+      const argumentEl = within(argumentsCodeBlock).getByText(name);
+
+      expect(argumentEl).toBeInTheDocument();
+
+      userEvent.hover(argumentEl);
+
+      expect(screen.getByText(description)).toBeInTheDocument();
+    });
   });
 });
 
 function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   const target = { current: null };
-  const database = createMockDatabase();
 
   const props: ExpressionEditorHelpTextProps = {
     helpText:
@@ -41,4 +79,6 @@ function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   };
 
   render(<ExpressionEditorHelpText {...props} />);
+
+  return { props };
 }

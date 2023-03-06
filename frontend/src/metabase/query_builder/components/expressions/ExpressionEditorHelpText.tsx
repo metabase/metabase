@@ -42,9 +42,12 @@ const ExpressionEditorHelpText = ({
       content={
         <>
           {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-          <Container onMouseDown={e => e.preventDefault()}>
+          <Container
+            onMouseDown={e => e.preventDefault()}
+            data-testid="expression-helper-popover"
+          >
             <div>{description}</div>
-            <FunctionHelpCode>
+            <FunctionHelpCode data-testid="expression-helper-popover-arguments">
               {leftText}
               {args.map(({ name, description }, index) => (
                 <span key={name}>
