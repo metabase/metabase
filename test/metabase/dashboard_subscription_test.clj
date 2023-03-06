@@ -183,19 +183,19 @@
                                          :row                    2
                                          :visualization_settings (link-card-viz-setting "database" db-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    4
+                                         :row                    3
                                          :visualization_settings (link-card-viz-setting "table" table-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    5
+                                         :row                    4
                                          :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    6
+                                         :row                    5
                                          :visualization_settings (link-card-viz-setting "card" card-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    7
+                                         :row                    6
                                          :visualization_settings (link-card-viz-setting "dataset" model-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    8
+                                         :row                    7
                                          :visualization_settings {:virtual_card {:display "link"}
                                                                   :link         {:url "https://metabase.com"}}}]
       (thunk {:collection-owner-id rasta-id
