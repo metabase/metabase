@@ -11,7 +11,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [toucan.db :as db]
@@ -32,7 +32,7 @@
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
           entity     (db/select-one model (models/primary-key model) id)
-          path       (mapv :id (serdes.base/serdes-generate-path model-name entity))]
+          path       (mapv :id (serdes/serdes-generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
         path))))
@@ -43,7 +43,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes.base/serdes-dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes/serdes-dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -55,7 +55,7 @@
           eid        (if (vector? eid)
                        (last eid)
                        eid)
-          entity     (serdes.base/lookup-by-id model eid)]
+          entity     (serdes/lookup-by-id model eid)]
       (if entity
         (get entity (models/primary-key model))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
@@ -128,7 +128,7 @@
                   {:model "Table" :id table-name}]))
 
 (defn storage-table-path-prefix
-  "The [[serdes.base/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
+  "The [[serdes/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
   factored out here.
   Takes the :serdes/meta value for a `Table`!
   The return value includes the directory for the Table, but not the file for the Table itself.
@@ -267,7 +267,7 @@
   "True if the provided string is either an Entity ID or identity-hash string."
   [s]
   (and (string? s)
-       (or (serdes.base/entity-id? s)
+       (or (serdes/entity-id? s)
            (serdes.hash/identity-hash? s))))
 
 (defn- mbql-fully-qualified-names->ids*

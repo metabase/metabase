@@ -1,4 +1,4 @@
-(ns metabase.models.serialization.base
+(ns metabase.models.serialization
   "Defines several helper functions and multimethods for the serialization system.
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
   methods are defined here and implemented for all the exported models.

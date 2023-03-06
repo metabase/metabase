@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [metabase-enterprise.serialization.dump :refer [spit-yaml]]
-            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization :as serdes]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.log :as log]))
 
@@ -16,15 +16,15 @@
 
 (defn- file
   [ctx entity]
-  (let [;; Get the desired [[serdes.base/storage-path]].
-        base-path   (serdes.base/storage-path entity ctx)
+  (let [;; Get the desired [[serdes/storage-path]].
+        base-path   (serdes/storage-path entity ctx)
         dirnames    (drop-last base-path)
         ;; Attach the file extension to the last part.
         basename    (str (last base-path) ".yaml")]
     (apply io/file (:root-dir ctx) (map escape-segment (concat dirnames [basename])))))
 
 (defn- store-entity! [opts entity]
-  (log/info (trs "Storing {0}" (serdes.base/log-path-str (:serdes/meta entity))))
+  (log/info (trs "Storing {0}" (serdes/log-path-str (:serdes/meta entity))))
   (spit-yaml (file opts entity)
              (dissoc entity :serdes/meta)))
 
@@ -38,7 +38,7 @@
   "Helper for storing a serialized database to a tree of YAML files."
   [stream root-dir]
   (let [settings (atom [])
-        opts     (merge {:root-dir root-dir} (serdes.base/storage-base-context))]
+        opts     (merge {:root-dir root-dir} (serdes/storage-base-context))]
     (doseq [entity stream]
       (if (-> entity :serdes/meta last :model (= "Setting"))
         (swap! settings conj entity)

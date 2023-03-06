@@ -7,7 +7,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [potemkin.types :as p]
    [yaml.core :as yaml]
@@ -58,7 +58,7 @@
   file extension is stripped off the last segment.
 
   The heavy lifting is done by the matcher functions registered by each model using
-  [[serdes.base/register-ingestion-path!]]."
+  [[serdes/register-ingestion-path!]]."
   [path-parts]
   (let [basename         (last path-parts)
         basename         (if (str/ends-with? basename ".yaml")
@@ -66,7 +66,7 @@
                            basename)
         path-parts       (concat (map unescape-segment (drop-last path-parts))
                                  [(unescape-segment basename)])]
-    (serdes.base/ingest-path path-parts)))
+    (serdes/ingest-path path-parts)))
 
 (defn- path-split
   "Given a root directory and a file underneath it, return a sequence of path parts to get there.

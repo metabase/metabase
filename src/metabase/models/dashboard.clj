@@ -21,7 +21,7 @@
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.revision.diff :refer [build-sentence]]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.moderation :as moderation]
@@ -428,9 +428,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/extract-query "Dashboard" [_ opts]
+(defmethod serdes/extract-query "Dashboard" [_ opts]
   (eduction (map #(hydrate % :ordered_cards))
-            (serdes.base/extract-query-collections Dashboard opts)))
+            (serdes/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
   [dashcard]
@@ -441,22 +441,22 @@
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)))
 
-(defmethod serdes.base/extract-one "Dashboard"
+(defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
   (let [dash (if (contains? dash :ordered_cards)
                dash
                (hydrate dash :ordered_cards))]
-    (-> (serdes.base/extract-one-basics "Dashboard" dash)
+    (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
         (update :parameters        serdes.util/export-parameters)
         (update :collection_id     serdes.util/export-fk Collection)
         (update :creator_id        serdes.util/export-user)
         (update :made_public_by_id serdes.util/export-user))))
 
-(defmethod serdes.base/load-xform "Dashboard"
+(defmethod serdes/load-xform "Dashboard"
   [dash]
   (-> dash
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
       (update :collection_id     serdes.util/import-fk Collection)
       (update :parameters        serdes.util/import-parameters)
@@ -470,10 +470,10 @@
                        {:model "DashboardCard" :id (:entity_id dashcard)}]))
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
-(defmethod serdes.base/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes.base/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
+(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
     (doseq [dashcard (:ordered_cards ingested)]
-      (serdes.base/load-one! (dashcard-for dashcard dashboard)
+      (serdes/load-one! (dashcard-for dashcard dashboard)
                              (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
@@ -483,14 +483,14 @@
        (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
-(defmethod serdes.base/serdes-dependencies "Dashboard"
+(defmethod serdes/serdes-dependencies "Dashboard"
   [{:keys [collection_id ordered_cards parameters]}]
   (->> (map serdes-deps-dashcard ordered_cards)
        (reduce set/union)
        (set/union #{[{:model "Collection" :id collection_id}]})
        (set/union (serdes.util/parameters-deps parameters))))
 
-(defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
+(defmethod serdes/serdes-descendants "Dashboard" [_model-name id]
   (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
         dashboard (db/select-one Dashboard :id id)]
@@ -509,4 +509,4 @@
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
 
-(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))
+(serdes/register-ingestion-path! "Dashboard" (serdes/ingestion-matcher-collected "collections" "Dashboard"))

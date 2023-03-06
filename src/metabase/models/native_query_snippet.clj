@@ -3,7 +3,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -74,41 +74,41 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ opts]
-  (serdes.base/extract-query-collections NativeQuerySnippet opts))
+(defmethod serdes/extract-query "NativeQuerySnippet" [_ opts]
+  (serdes/extract-query-collections NativeQuerySnippet opts))
 
-(defmethod serdes.base/extract-one "NativeQuerySnippet"
+(defmethod serdes/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
-  (-> (serdes.base/extract-one-basics "NativeQuerySnippet" snippet)
+  (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
       (update :creator_id serdes.util/export-user)
       (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
 
-(defmethod serdes.base/load-xform "NativeQuerySnippet" [snippet]
+(defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       (update :creator_id serdes.util/import-user)
       (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
 
-(defmethod serdes.base/serdes-dependencies "NativeQuerySnippet"
+(defmethod serdes/serdes-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
   (if collection_id
     [[{:model "Collection" :id collection_id}]]
     []))
 
-(defmethod serdes.base/storage-path "NativeQuerySnippet" [snippet ctx]
+(defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   ;; Intended path here is ["snippets" "nested" "collections" "snippet_eid_and_slug"]
   ;; We just the default path, then pull it apart.
   ;; The default is ["collections" "nested" collections" "nativequerysnippets" "base_name"]
-  (let [basis  (serdes.base/storage-default-collection-path snippet ctx)
+  (let [basis  (serdes/storage-default-collection-path snippet ctx)
         file   (last basis)
         colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
 
-(serdes.base/register-ingestion-path!
+(serdes/register-ingestion-path!
   "NativeQuerySnippet"
   (fn [path]
     (when-let [[id slug] (and (= (first path) "snippets")
-                              (serdes.base/split-leaf-file-name (last path)))]
+                              (serdes/split-leaf-file-name (last path)))]
       (cond-> {:model "NativeQuerySnippet" :id id}
         slug (assoc :label slug)
         true vector))))

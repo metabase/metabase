@@ -15,7 +15,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.moderation :as moderation]
@@ -406,8 +406,8 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "Card" [_ opts]
-  (serdes.base/extract-query-collections Card opts))
+(defmethod serdes/extract-query "Card" [_ opts]
+  (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [metadata]
   (when metadata
@@ -432,14 +432,14 @@
                                 [(when (:table_id m) #{(serdes.util/table->path (:table_id m))})
                                  (when (:id m)       #{(serdes.util/field->path (:id m))})])))))
 
-(defmethod serdes.base/extract-one "Card"
+(defmethod serdes/extract-one "Card"
   [_model-name _opts card]
   ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
   (try
-    (-> (serdes.base/extract-one-basics "Card" card)
+    (-> (serdes/extract-one-basics "Card" card)
         (update :database_id            serdes.util/export-fk-keyed 'Database :name)
         (update :table_id               serdes.util/export-table-fk)
         (update :collection_id          serdes.util/export-fk 'Collection)
@@ -453,10 +453,10 @@
     (catch Exception e
       (throw (ex-info "Failed to export Card" {:card card} e)))))
 
-(defmethod serdes.base/load-xform "Card"
+(defmethod serdes/load-xform "Card"
   [card]
   (-> card
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       (update :database_id            serdes.util/import-fk-keyed 'Database :name)
       (update :table_id               serdes.util/import-table-fk)
       (update :creator_id             serdes.util/import-user)
@@ -468,7 +468,7 @@
       (update :visualization_settings serdes.util/import-visualization-settings)
       (update :result_metadata        import-result-metadata)))
 
-(defmethod serdes.base/serdes-dependencies "Card"
+(defmethod serdes/serdes-dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
@@ -483,7 +483,7 @@
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
 
-(defmethod serdes.base/serdes-descendants "Card" [_model-name id]
+(defmethod serdes/serdes-descendants "Card" [_model-name id]
   (let [card               (db/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
@@ -503,4 +503,4 @@
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
 
-(serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))
+(serdes/register-ingestion-path! "Card" (serdes/ingestion-matcher-collected "collections" "Card"))

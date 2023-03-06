@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -72,30 +72,30 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-(defmethod serdes.base/extract-one "Metric"
+(defmethod serdes/extract-one "Metric"
   [_model-name _opts metric]
-  (-> (serdes.base/extract-one-basics "Metric" metric)
+  (-> (serdes/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
       (update :definition serdes.util/export-mbql)))
 
-(defmethod serdes.base/load-xform "Metric" [metric]
+(defmethod serdes/load-xform "Metric" [metric]
   (-> metric
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
+(defmethod serdes/serdes-dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
-(defmethod serdes.base/storage-path "Metric" [metric _ctx]
-  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+(defmethod serdes/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes/serdes-path last)]
     (-> metric
         :table_id
         serdes.util/table->path
         serdes.util/storage-table-path-prefix
-        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
+        (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
 
-(serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
+(serdes/register-ingestion-path! "Metric" (serdes/ingestion-matcher-collected "databases" "Metric"))

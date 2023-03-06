@@ -10,7 +10,7 @@
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -336,11 +336,11 @@
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
-(defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
-  [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
-   (serdes.base/infer-self-path "DashboardCard" dashcard)])
+(defmethod serdes/serdes-generate-path "DashboardCard" [_ dashcard]
+  [(serdes/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+   (serdes/infer-self-path "DashboardCard" dashcard)])
 
-(defmethod serdes.base/load-xform "DashboardCard"
+(defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
