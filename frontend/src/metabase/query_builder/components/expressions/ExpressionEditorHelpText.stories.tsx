@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
 import type { ComponentStory } from "@storybook/react";
 
 import { getHelpText } from "metabase/query_builder/components/expressions/ExpressionEditorTextfield/helper-text-strings";
-import type { Database } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import { HelpText } from "metabase-lib/expressions/types";
+
 import ExpressionEditorHelpText from "./ExpressionEditorHelpText";
 
 export default {
@@ -12,16 +13,18 @@ export default {
 };
 
 const Template: ComponentStory<typeof ExpressionEditorHelpText> = args => {
+  const target = useRef(null);
+
   const helpText = getHelpText(
     "datetime-diff",
-    null as unknown as Database, // Database is not needed for this particular help text generator
+    createMockDatabase(),
     "UTC",
   ) as HelpText;
 
   const props = {
     helpText,
     width: 397,
-    target: null as any,
+    target,
   };
 
   return <ExpressionEditorHelpText {...props} />;

@@ -13,7 +13,7 @@ import {
 interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
   width: number;
-  target: Element;
+  target: React.RefObject<HTMLElement>;
 }
 
 const ExpressionEditorHelpText = ({

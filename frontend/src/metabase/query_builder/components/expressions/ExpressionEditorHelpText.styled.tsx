@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
@@ -14,7 +15,7 @@ export const FunctionHelpCode = styled.div`
   background-color: ${color("bg-light")};
 
   color: ${color("text-dark")};
-  font-family: Monaco, monospace;
+  font-family: ${monospaceFontFamily};
 `;
 
 export const ExampleBlock = styled.div`
@@ -29,5 +30,5 @@ export const ExampleTitleText = styled.div`
 `;
 
 export const ExampleCode = styled.div`
-  font-family: Monaco, monospace;
+  font-family: ${monospaceFontFamily};
 `;
