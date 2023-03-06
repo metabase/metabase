@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.api.common :as api]
@@ -353,39 +354,59 @@
                             :when name]
                         name)))))))))))
 
-(mt/dataset sample-dataset
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:database (mt/id)
-                        :query    {:source-table (mt/id :products)
-                                   :fields       [[:field (mt/id :products :category) nil]
-                                                  [:field (mt/id :products :price) nil]]},
-                        :type     :query}]
-      (mt/with-temp* [Collection [{collection-id :id}]
-                      Card [card {:table_id        (mt/id :products)
-                                  :collection_id   collection-id
-                                  :dataset_query   source-query
-                                  :result_metadata (mt/with-test-user
-                                                     :rasta
-                                                     (result-metadata-for-query
-                                                      source-query))
-                                  :dataset         true}]]
-        (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-              binned-field-id (mt/id :products :price)]
-          (ensure-single-table-sourced (mt/id :products) dashboard)
-          ;; Count of records
-          ;; Distributions:
-          ;; - Binned price
-          ;; - Binned by category
-          (is (= 3 (->> dashboard :ordered_cards (filter :card) count)))
-          (ensure-dashboard-sourcing card dashboard)
-          ;; This ensures we get a card that does binning on price
-          (is (= binned-field-id
-                 (first
-                  (for [card (:ordered_cards dashboard)
-                        :let [fields (get-in card [:card :dataset_query :query :breakout])]
-                        [_ field-id m] fields
-                        :when (:binning m)]
-                    field-id)))))))))
+(deftest model-with-joins-test
+  ;; This model does a join of 3 tables and aliases columns.
+  ;; The created dashboard should use all the data with the correct labels.
+  (mt/dataset sample-dataset
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [source-query {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :orders)
+                                     :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]]
+                                                     :source-table (mt/id :people)
+                                                     :condition    [:=
+                                                                    [:field (mt/id :orders :user_id) nil]
+                                                                    [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                                     :alias        "People - User"}
+                                                    {:fields       [[:field (mt/id :products :price) {:join-alias "Products"}]]
+                                                     :source-table (mt/id :products)
+                                                     :condition    [:=
+                                                                    [:field (mt/id :orders :product_id) nil]
+                                                                    [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                                     :alias        "Products"}]
+                                     :fields       [[:field (mt/id :orders :created_at) nil]]}}]
+        (mt/with-temp* [Collection [{collection-id :id}]
+                        Card [card {:table_id        (mt/id :orders)
+                                    :collection_id   collection-id
+                                    :dataset_query   source-query
+                                    :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
+                                                          (map (fn [m] (update m :display_name {"Created At"            "Created At"
+                                                                                                "People - User → State" "State Where Placed"
+                                                                                                "Products → Price"      "Ordered Item Price"}))))
+                                    :dataset         true}]]
+          (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                card-names (set (filter identity (map (comp :name :card) ordered_cards)))
+                expected-oip-labels #{"Ordered Item Price over time"
+                                      (format "%s by Ordered Item Price" (:name card))}
+                expected-time-labels (set
+                                      (map
+                                       #(format "%s when %s were added" % (:name card))
+                                       ["Quarters" "Months" "Days" "Hours" "Weekdays"]))
+                expected-geo-labels #{(format "%s per state" (:name card))}]
+            (is (= 11 (->> dashboard :ordered_cards (filter :card) count)))
+            ;; Note that this is only true because we currently only pick up the table referenced by the :table_id field
+            ;; in the Card and don't use the :result_metadata :(
+            (ensure-dashboard-sourcing card dashboard)
+            ;; Ensure that the renamed Products → Price field shows the new name when used
+            (is (= expected-oip-labels
+                   (set/intersection card-names expected-oip-labels)))
+            ;; Ensure that the "created at" column was picked up, which will trigger plots over time
+            (is (= expected-time-labels
+                   (set/intersection card-names expected-time-labels)))
+            (map (comp :name :card) ordered_cards)
+            ;; Ensure that the state field was picked up as a geographic dimension
+            (is (= expected-geo-labels
+                   (set/intersection card-names expected-geo-labels)))))))))
 
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms

@@ -245,14 +245,14 @@
 (defn- source
   [card]
   (cond
+    ;; This is a non-native question with no ancestors (It is a query on a table).
+    (:dataset card) (assoc card :entity_type :entity/GenericTable)
     ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
     ;; problems as other cards -- The x-ray is not done on the card, but on its source.
     (nested-query? card) (-> card
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    ;; This is a non-native question with no ancestors (It is a query on a table).
-    (:dataset card) (assoc card :entity_type :entity/GenericTable)
     :else (->> card table-id (db/select-one Table :id))))
 
 (defmethod ->root Card
