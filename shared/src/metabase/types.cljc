@@ -263,7 +263,7 @@
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
-;; `:type/JSON` currently means a column that is JSON data, e.g. a Postgres JSON column.
+;; `:type/JSON` currently means a column that is JSON data, e.g. a Postgres JSON column
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
