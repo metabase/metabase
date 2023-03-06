@@ -1,6 +1,7 @@
 import { createSelector } from "reselect";
 import { assoc, getIn } from "icepick";
 
+import _ from "underscore";
 import Dashboards from "metabase/entities/dashboards";
 
 import { resourceListToMap } from "metabase/lib/redux";
@@ -11,8 +12,9 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
-
-import Question from "metabase-lib/Question";
+import * as Query from "metabase-lib/queries/utils/query";
+import * as Filter from "metabase-lib/queries/utils/filter";
+import * as Aggregation from "metabase-lib/queries/utils/aggregation";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
 
@@ -117,7 +119,14 @@ export const getMetricQuestions = createSelector(
   [getMetricId, getQuestions],
   (metricId, questions) =>
     Object.values(questions)
-      .filter(question => new Question(question).usesMetric(metricId))
+      .filter(
+        question =>
+          question.dataset_query.type === "query" &&
+          _.any(
+            Query.getAggregations(question.dataset_query.query),
+            aggregation => Aggregation.getMetric(aggregation) === metricId,
+          ),
+      )
       .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
@@ -137,7 +146,13 @@ export const getSegmentQuestions = createSelector(
   [getSegmentId, getQuestions],
   (segmentId, questions) =>
     Object.values(questions)
-      .filter(question => new Question(question).usesSegment(segmentId))
+      .filter(
+        question =>
+          question.dataset_query.type === "query" &&
+          Query.getFilters(question.dataset_query.query).some(
+            filter => Filter.isSegment(filter) && filter[1] === segmentId,
+          ),
+      )
       .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
