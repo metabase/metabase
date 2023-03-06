@@ -12,6 +12,10 @@
   (fn [_query _stage-number field]
     (lib.dispatch/dispatch-value field)))
 
+(defmethod ->field :field
+  [field-clause]
+  field-clause)
+
 (defmethod ->field :metadata/field
   [_query _stage-number field-metadata]
   (lib.options/ensure-uuid
@@ -42,13 +46,8 @@
   [:field id-or-name (assoc options :temporal-unit unit)])
 
 (mu/defn field :- ::lib.schema.ref/field
-  "Create a `:field` clause. With one or two args: return a function with the signature
-
-    (f query stage-number)
-
-  that can be called later to resolve to a `:field` clause. With three args: return a `:field` clause right away."
-  ([x]
-   (fn [query stage-number]
-     (->field query stage-number x)))
+  "Create a `:field` clause."
+  ([query x]
+   (->field query -1 x))
   ([query stage-number x]
    (->field query stage-number x)))
