@@ -26,6 +26,7 @@ import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import * as FILTER from "metabase-lib/queries/utils/filter";
 import * as DESCRIPTION from "metabase-lib/queries/utils/description";
 import * as FIELD_REF from "metabase-lib/queries/utils/field-ref";
 import * as QUERY from "metabase-lib/queries/utils/query";
@@ -87,9 +88,6 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
-import * as UtilQuery from "metabase-lib/queries/utils/query";
-import * as UtilFilter from "metabase-lib/queries/utils/filter";
-import * as UtilAggregation from "metabase-lib/queries/utils/aggregation";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -461,7 +459,7 @@ class QuestionInner {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  private _type(): string {
+  type(): string {
     return this.datasetQuery().type;
   }
 
@@ -624,8 +622,8 @@ class QuestionInner {
     return (
       this.isStructured() &&
       _.any(
-        UtilQuery.getAggregations(this.query().query()),
-        aggregation => UtilAggregation.getMetric(aggregation) === metricId,
+        QUERY.getAggregations(this.query().query()),
+        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
       )
     );
   }
@@ -633,8 +631,8 @@ class QuestionInner {
   usesSegment(segmentId): boolean {
     return (
       this.isStructured() &&
-      UtilQuery.getFilters(this.query().query()).some(
-        filter => UtilFilter.isSegment(filter) && filter[1] === segmentId,
+      QUERY.getFilters(this.query().query()).some(
+        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
       )
     );
   }
