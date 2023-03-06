@@ -55,6 +55,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
@@ -78,28 +79,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- random-uppercase-letter []
-  (char (+ (int \A) (rand-int 26))))
-
-(defn random-name
-  "Generate a random string of 20 uppercase letters."
-  []
-  (str/join (repeatedly 20 random-uppercase-letter)))
-
-(defn random-hash
-  "Generate a random hash of 44 characters to simulate a base64 encoded sha. Eg,
-  \"y6dkn65bbhRZkXj9Yyp0awCKi3iy/xeVIGa/eFfsszM=\""
-  []
-  (let [chars (concat (map char (range (int \a) (+ (int \a) 25)))
-                      (map char (range (int \A) (+ (int \A) 25)))
-                      (range 10)
-                      [\/ \+])]
-    (str (apply str (repeatedly 43 #(rand-nth chars))) "=")))
-
-(defn random-email
-  "Generate a random email address."
-  []
-  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
@@ -137,16 +116,16 @@
             :database_id            (data/id)
             :dataset_query          {}
             :display                :table
-            :name                   (random-name)
+            :name                   (tu.random/random-name)
             :visualization_settings {}})
 
    Collection
-   (fn [_] {:name  (random-name)
+   (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
 
    Dashboard
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
 
    DashboardCard
    (fn [_] {:row    0
@@ -161,16 +140,16 @@
    (fn [_] {:details   {}
             :engine    :h2
             :is_sample false
-            :name      (random-name)})
+            :name      (tu.random/random-name)})
 
    Dimension
-   (fn [_] {:name (random-name)
+   (fn [_] {:name (tu.random/random-name)
             :type "internal"})
 
    Field
    (fn [_] {:database_type "VARCHAR"
             :base_type     :type/Text
-            :name          (random-name)
+            :name          (tu.random/random-name)
             :position      1
             :table_id      (data/id :checkins)})
 
@@ -188,17 +167,17 @@
 
    NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
-            :name       (random-name)
+            :name       (tu.random/random-name)
             :content    "1 = 1"})
 
    PersistedInfo
-   (fn [_] {:question_slug (random-name)
-            :query_hash    (random-hash)
-            :definition    {:table-name (random-name)
+   (fn [_] {:question_slug (tu.random/random-name)
+            :query_hash    (tu.random/random-hash)
+            :definition    {:table-name (tu.random/random-name)
                             :field-definitions (repeatedly
                                                 4
-                                                #(do {:field-name (random-name) :base-type "type/Text"}))}
-            :table_name    (random-name)
+                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+            :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)
@@ -206,11 +185,11 @@
             :creator_id    (rasta-id)})
 
    PermissionsGroup
-   (fn [_] {:name (random-name)})
+   (fn [_] {:name (tu.random/random-name)})
 
    Pulse
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
 
    PulseCard
    (fn [_] {:position    0
@@ -240,14 +219,14 @@
    Table
    (fn [_] {:db_id  (data/id)
             :active true
-            :name   (random-name)})
+            :name   (tu.random/random-name)})
 
    TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
        {:db_id      (data/id)
-        :task       (random-name)
+        :task       (tu.random/random-name)
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
@@ -269,10 +248,10 @@
       :creator_id   (rasta-id)})
 
    User
-   (fn [_] {:first_name (random-name)
-            :last_name  (random-name)
-            :email      (random-email)
-            :password   (random-name)})})
+   (fn [_] {:first_name (tu.random/random-name)
+            :last_name  (tu.random/random-name)
+            :email      (tu.random/random-email)
+            :password   (tu.random/random-name)})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -680,7 +659,7 @@
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (tt/with-temp Card [other-card]
       (let [card-count-before (db/count Card)
-            card-name         (random-name)]
+            card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
           (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
@@ -1005,7 +984,7 @@
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
-                   (random-name))
+                   (tu.random/random-name))
         filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)

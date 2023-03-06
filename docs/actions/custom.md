@@ -19,7 +19,7 @@ There are two ways to create a custom action:
 
 ## Custom action editor
 
-Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a model.
+Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table.
 
 For example, you could write an action that would update the `plan` column for a record in the `Invoices` table in the Sample Database:
 
@@ -32,7 +32,7 @@ WHERE id = {{ id }}
 {% endraw %}
 ```
 
-The above code will create a form that prompts people to input updated values for the (required) `plan` field and optionally the `payment` field for a given record specified by `ID`. The code in brackets `[[ ]]` makes it optional: the enclosed statement will only run if someone inserts a value in the payment field.
+The above code will create a form that prompts people to input updated values for the (required) `plan` field and optionally the `payment` field for a given record specified by `ID`. The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed statement will only run if someone inserts a value in the payment field.
 
 ## Field types for action variables
 
@@ -77,7 +77,7 @@ From the model detail page, click on the **...** next to the action. Once in the
 
 ### Make public
 
-Creates a publicly shareable link to the action form.
+Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. Useful for creating surveys.
 
 ![Public action form](./images/public-form.png)
 

@@ -36,7 +36,7 @@ describe("ActionCreator > Implicit Actions", () => {
       }),
     });
 
-    expect(screen.getByText("FooBar")).toBeInTheDocument();
+    expect(screen.getAllByText("FooBar")).toHaveLength(2);
   });
 
   it("allows only form settings changes", async () => {

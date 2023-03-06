@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
    [metabase.models :refer [Card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [toucan.db :as db]
    [yaml.core :as yaml]))
@@ -23,7 +24,7 @@
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
                          Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
         (let [export          (into [] (extract/extract-metabase nil))
@@ -57,7 +58,7 @@
 
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection  [grandparent {:name     "Grandparent Collection"
                                                    :location "/"}]
                          Collection  [parent      {:name     "Parent Collection"
@@ -87,7 +88,7 @@
 
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection         [grandparent {:name      "Grandparent Collection"
                                                           :namespace :snippets
                                                           :location  "/"}]
@@ -121,13 +122,13 @@
 
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Database    [db      {:name "My Company Data"}]
                          Table       [table   {:name "Customers" :db_id (:id db)}]
                          Field       [website {:name "Company/organization website" :table_id (:id table)}]
                          FieldValues [_       {:field_id (:id website)}]
                          Table       [_       {:name "Orders/Invoices" :db_id (:id db)}]]
-        (let [export          (into [] (extract/extract-metabase nil))]
+        (let [export          (into [] (extract/extract-metabase {:include-field-values true}))]
           (storage.yaml/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]

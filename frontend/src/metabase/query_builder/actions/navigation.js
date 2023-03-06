@@ -5,10 +5,7 @@ import { push, replace } from "react-router-redux";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
-import { getMetadata } from "metabase/selectors/metadata";
-
 import { isEqualCard } from "metabase/lib/card";
-import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
@@ -115,7 +112,7 @@ export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
-      card,
+      question,
       {
         dirty,
         replaceState,
@@ -126,12 +123,8 @@ export const updateUrl = createThunkAction(
       } = {},
     ) =>
     (dispatch, getState) => {
-      let question;
-      if (!card) {
-        card = getCard(getState());
+      if (!question) {
         question = getQuestion(getState());
-      } else {
-        question = new Question(card, getMetadata(getState()));
       }
 
       if (dirty == null) {
@@ -156,8 +149,8 @@ export const updateUrl = createThunkAction(
       }
 
       const newState = {
-        card,
-        cardId: card.id,
+        card: question._doNotCallSerializableCard(),
+        cardId: question.id(),
         objectId,
       };
 

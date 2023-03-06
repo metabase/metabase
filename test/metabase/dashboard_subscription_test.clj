@@ -151,7 +151,8 @@
                                 {:virtual_card {:display "link"}
                                  :link         {:entity {:id    id
                                                          :model model}}})
-        rasta-pc-id           (t2/select-one-fn :id Collection :personal_owner_id (mt/user->id :rasta))]
+        rasta-id              (mt/user->id :rasta)
+        rasta-pc-id           (t2/select-one-fn :id Collection :personal_owner_id rasta-id)]
     (t2.with-temp/with-temp
       [Collection    {coll-id :id}      {:name        "Linked collection name"
                                          :description "Linked collection desc"
@@ -175,21 +176,28 @@
                                          :description   "Linked Dashboard desc"
                                          :collection_id coll-id}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    0
                                          :visualization_settings (link-card-viz-setting "collection" coll-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    1
                                          :visualization_settings (link-card-viz-setting "database" db-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    2
                                          :visualization_settings (link-card-viz-setting "table" table-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    3
                                          :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    4
                                          :visualization_settings (link-card-viz-setting "card" card-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    5
                                          :visualization_settings (link-card-viz-setting "dataset" model-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
+                                         :row                    6
                                          :visualization_settings {:virtual_card {:display "link"}
                                                                   :link         {:url "https://metabase.com"}}}]
-      (thunk {:collection-owner-id rasta-pc-id
+      (thunk {:collection-owner-id rasta-id
               :collection-id       coll-id
               :database-id         db-id
               :table-id            table-id
@@ -638,33 +646,33 @@
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
-     (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
-                                                              collection-id
-                                                              database-id
-                                                              table-id
-                                                              card-id
-                                                              model-id
-                                                              dashboard-id]}]
-       (let [site-url (public-settings/site-url)]
-         (testing "should returns all link cards and name are newly fetched"
-           (doseq [[model id] [[Card card-id]
-                               [Table table-id]
-                               [Database database-id]
-                               [Dashboard dashboard-id]
-                               [Collection collection-id]
-                               [Card model-id]]]
-             (t2/update! model id {:name (format "New %s name" (name model))}))
-           (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
-                    {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                    {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                    {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                    {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                    {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                    {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                   (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
+      (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
+                                                               collection-id
+                                                               database-id
+                                                               table-id
+                                                               card-id
+                                                               model-id
+                                                               dashboard-id]}]
+        (let [site-url (public-settings/site-url)]
+          (testing "should returns all link cards and name are newly fetched"
+            (doseq [[model id] [[Card card-id]
+                                [Table table-id]
+                                [Database database-id]
+                                [Dashboard dashboard-id]
+                                [Collection collection-id]
+                                [Card model-id]]]
+              (t2/update! model id {:name (format "New %s name" (name model))}))
+            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
+                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                     {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
+                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                    (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
 
-         (testing "it should filter out models that current users does not have permission to read"
-           (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                    {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                    {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                   (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+          (testing "it should filter out models that current users does not have permission to read"
+            (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                    (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
