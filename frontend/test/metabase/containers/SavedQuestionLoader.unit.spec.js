@@ -24,7 +24,9 @@ describe("SavedQuestionLoader", () => {
   it("should load a question given a questionId", async () => {
     const questionId = 1;
     const q = Question.create({ databaseId: 1, tableId: 2 });
-    const mockFetchQuestion = jest.fn().mockResolvedValue(q.card());
+    const mockFetchQuestion = jest
+      .fn()
+      .mockResolvedValue(q._doNotCallSerializableCard());
 
     render(
       <SavedQuestionLoader
@@ -45,7 +47,7 @@ describe("SavedQuestionLoader", () => {
 
     const calls = mockChild.mock.calls;
     const { question, loading, error } = calls[calls.length - 1][0];
-    expect(question.card()).toEqual(q.card());
+    expect(question.isEqual(q)).toBe(true);
     expect(loading).toEqual(false);
     expect(error).toEqual(null);
   });

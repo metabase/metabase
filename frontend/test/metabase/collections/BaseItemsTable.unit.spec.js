@@ -82,6 +82,41 @@ describe("Collections BaseItemsTable", () => {
     expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
   });
 
+  it("allows user with write permission to select all items", () => {
+    const onSelectAll = jest.fn();
+    setup({
+      hasUnselected: true,
+      onSelectAll,
+      collection: { can_write: true },
+    });
+
+    userEvent.click(screen.getByLabelText("Select all items"));
+
+    expect(onSelectAll).toHaveBeenCalled();
+  });
+
+  it("allows user with write permission to deselect all items", () => {
+    const onSelectNone = jest.fn();
+    setup({
+      hasUnselected: false,
+      onSelectNone,
+      collection: { can_write: true },
+    });
+
+    userEvent.click(screen.getByLabelText("Select all items"));
+
+    expect(onSelectNone).toHaveBeenCalled();
+  });
+
+  it("does not display select all checkbox to user without write permissions", () => {
+    setup({
+      hasUnselected: true,
+      onSelectAll: jest.fn(),
+    });
+
+    expect(screen.queryByLabelText("Select all items")).not.toBeInTheDocument();
+  });
+
   describe("models", () => {
     const model = getCollectionItem({
       id: 1,
