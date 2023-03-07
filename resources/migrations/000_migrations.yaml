@@ -14384,21 +14384,38 @@ databaseChangeLog:
       validCheckSum: ANY
       changes:
         - sql:
-          dbms: postgres
-          sql: >-
-            UPDATE metabase_field f
-            SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding')::boolean, true)
-            FROM metabase_database d
-            JOIN metabase_table t ON t.db_id = d.id
-            WHERE f.table_id = t.id AND f.base_type = 'type/JSON'
+            dbms: postgres
+            sql: >-
+              UPDATE metabase_field f
+              SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding')::boolean, true)
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id AND f.base_type = 'type/JSON'
         - sql:
-          dbms: mysql
-          sql: >-
-            UPDATE metabase_field f
-            JOIN metabase_table t ON f.table_id = t.id
-            JOIN metabase_database d ON t.db_id = d.id
-            SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$.json-unfolding'))::boolean, true)
-            WHERE f.base_type = 'type/JSON'
+            dbms: mysql
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$.json-unfolding'))::boolean, true)
+              WHERE f.base_type = 'type/JSON'
+        - sql:
+            dbms: h2
+            sql:
+              MERGE INTO metabase_field f
+              USING (
+                SELECT
+                  coalesce(JSON_VALUE(d.details, 'json-unfolding'), true) as json_unfolding,
+                  f.id
+                FROM metabase_field f
+                JOIN metabase_table t ON f.table_id = t.id
+                JOIN metabase_database d ON t.db_id = d.id
+                WHERE lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              ) as updates
+              ON f.id = updates.id
+              WHEN MATCHED THEN
+                UPDATE SET f.json_unfolding = updates.json_unfolding
       rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:

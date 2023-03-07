@@ -11,6 +11,38 @@
 (defn- upcase ^String [s]
   (some-> s u/upper-case-en))
 
+(defn- create-udfs!
+  "Registers the JSON manipulation functions for an H2 database."
+  [^JdbcConnection conn]
+  (.execute (.createStatement conn) "
+CREATE ALIAS IF NOT EXISTS JSON_VALUE AS $$
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.JSONArray;
+@CODE
+String jsonStringValue(String s, String key) {
+    Object obj = JSONValue.parse(s);
+    if (obj instanceof JSONObject) {
+        JSONObject jsonObject = (JSONObject) obj;
+        if (jsonObject.containsKey(key)) {
+            return jsonObject.get(key).toString();
+        } else {
+            return null;
+        }
+    } else if (obj instanceof JSONArray) {
+        JSONArray jsonArray = (JSONArray) obj;
+        int keyInt = Integer.parseInt(key);
+        if (keyInt < jsonArray.size() && keyInt >= 0) {
+            return jsonArray.get(keyInt).toString();
+        } else {
+            return null;
+        }
+    } else {
+        return null;
+    }
+}
+$$;"))
+
 (defn- h2-database* ^H2Database []
   (proxy [H2Database] []
     (quoteObject [object-name object-type]
@@ -49,7 +81,9 @@
       (assert (.getPackage klass) (format "Failed to create package for proxy class %s." class-name)))))
 
 (defn h2-database
-  "A version of the Liquibase H2 implementation that always converts identifiers to uppercase and then quotes them."
+  "A version of the Liquibase H2 implementation that always converts identifiers to uppercase and then quotes them.
+   Also creates UDFs for JSON handling."
   ^H2Database [^JdbcConnection conn]
+  (create-udfs! conn)
   (doto (h2-database*)
     (.setConnection conn)))
