@@ -490,7 +490,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`unit`,
-        description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
         example: formatStringLiteral("month"),
       },
     ],
@@ -597,7 +597,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: formatStringLiteral("day"),
       },
     ],
@@ -620,7 +620,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: formatStringLiteral("month"),
       },
     ],
@@ -637,7 +637,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: formatStringLiteral("day"),
       },
     ],
@@ -860,7 +860,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
         example: formatStringLiteral("month"),
       },
     ],
@@ -884,7 +884,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
         example: formatStringLiteral("month"),
       },
     ],

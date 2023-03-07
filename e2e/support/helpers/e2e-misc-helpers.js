@@ -270,5 +270,5 @@ export function visitPublicDashboard(id) {
  * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
  */
 export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => element.textContent === textToFind
+  return (content, element) => element?.textContent === textToFind
 }

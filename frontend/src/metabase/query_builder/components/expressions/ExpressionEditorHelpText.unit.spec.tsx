@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { getBrokenUpTextMatcher } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
@@ -26,8 +27,7 @@ describe("ExpressionEditorHelpText", () => {
 
     expect(
       screen.getByText(
-        (content, element) =>
-          element.textContent === "datetimeDiff(datetime1, datetime2, unit)",
+        getBrokenUpTextMatcher("datetimeDiff(datetime1, datetime2, unit)"),
       ),
     ).toBeInTheDocument();
 
@@ -54,7 +54,7 @@ describe("ExpressionEditorHelpText", () => {
       "expression-helper-popover-arguments",
     );
 
-    helpText?.args.forEach(({ name, description }) => {
+    helpText?.args?.forEach(({ name, description }) => {
       const argumentEl = within(argumentsCodeBlock).getByText(name);
 
       expect(argumentEl).toBeInTheDocument();
