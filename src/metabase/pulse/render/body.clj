@@ -560,6 +560,9 @@
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (cond
+      ;; any nils in the ranges means we can't compare them.
+      (some nil? (concat vals-a vals-b)) 0
+
       overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
