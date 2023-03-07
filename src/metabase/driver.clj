@@ -312,7 +312,7 @@
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
   should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:arglists '([this database table])}
+  {:arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -229,15 +229,15 @@
   (into
    #{}
    (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                      (fn [^ResultSet rs]
-                                        (fn []
-                                          {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                           :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                              :schema (.getString rs "PKTABLE_SCHEM")}
-                                           :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+                                           (fn [^ResultSet rs]
+                                             (fn []
+                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
+                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
-  "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
