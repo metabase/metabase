@@ -9,7 +9,9 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -60,18 +62,18 @@
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
-                     :dashboard-id  (u/the-id dashboard)
-                     :card-id       card-id
-                     :dashcard-id   (u/the-id dashcard)
-                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                     :export-format :api
-                     :parameters    parameters
-                     :middleware    {:process-viz-settings? true
-                                     :js-int-to-string?     false}
-                     :run           (fn [query info]
-                                      (qp/process-query-and-save-with-max-results-constraints!
-                                       (assoc query :async? false)
-                                       info)))]
+                   :dashboard-id  (u/the-id dashboard)
+                   :card-id       card-id
+                   :dashcard-id   (u/the-id dashcard)
+                   :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                   :export-format :api
+                   :parameters    parameters
+                   :middleware    {:process-viz-settings? true
+                                   :js-int-to-string?     false}
+                   :run           (fn [query info]
+                                    (qp/process-query-and-save-with-max-results-constraints!
+                                     (assoc query :async? false)
+                                     info)))]
       {:card     card
        :dashcard dashcard
        :result   result})
