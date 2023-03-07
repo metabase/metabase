@@ -23,14 +23,8 @@ const getOptionsFromArray = (
   options: (number | string)[],
 ): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
 
-const getSampleOptions = () => [
-  { name: t`Option One`, value: 1 },
-  { name: t`Option Two`, value: 2 },
-  { name: t`Option Three`, value: 3 },
-];
-
-const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
-  ["select", "radio"].includes(fieldSettings.inputType);
+export const inputTypeHasOptions = (inputType: InputSettingType) =>
+  ["select", "radio"].includes(inputType);
 
 type FieldPropTypeMap = Record<InputSettingType, InputComponentType>;
 
@@ -73,10 +67,10 @@ export const getFormField = (
     field: fieldSettings.field,
   };
 
-  if (inputTypeHasOptions(fieldSettings)) {
+  if (inputTypeHasOptions(fieldSettings.inputType)) {
     fieldProps.options = fieldSettings.valueOptions?.length
       ? getOptionsFromArray(fieldSettings.valueOptions)
-      : getSampleOptions();
+      : [];
   }
 
   return fieldProps;
