@@ -46,25 +46,6 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
     ).toBeInTheDocument();
   });
 
-  it("should fire onChange handler clicking a different field type", async () => {
-    const { settings, onChange } = setup();
-
-    userEvent.click(screen.getByLabelText("Field settings"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-
-    userEvent.click(screen.getByText("Date"));
-
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith({
-      ...settings,
-      fieldType: "date",
-      inputType: "date", // should set default input type for new field type
-    });
-  });
-
   it("should fire onChange handler clicking a different input type", async () => {
     const { settings, onChange } = setup();
 

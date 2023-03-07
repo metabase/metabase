@@ -19,14 +19,9 @@ export const InfoText = styled.span`
 `;
 
 export const FieldSettingsButtonsContainer = styled.div`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: ${space(0)};
   display: flex;
-  gap: ${space(1)};
   align-items: center;
-  justify-content: flex-end;
+  gap: ${space(1)};
 `;
 
 export const EmptyFormPlaceholderWrapper = styled.div`

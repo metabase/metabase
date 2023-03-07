@@ -82,4 +82,7 @@ const FormField = forwardRef(function FormField(
   );
 });
 
-export default FormField;
+export default Object.assign(FormField, {
+  Root: FieldRoot,
+  Label: FieldLabel,
+});
