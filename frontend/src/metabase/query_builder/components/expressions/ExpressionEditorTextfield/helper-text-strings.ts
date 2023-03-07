@@ -38,7 +38,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "sum",
-    structure: `Sum`,
+    structure: "Sum",
     description: () => t`Adds up all the values of the column.`,
     args: [
       {
@@ -50,7 +50,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "cum-sum",
-    structure: `CumulativeSum`,
+    structure: "CumulativeSum",
     description: () => t`The rolling sum of a column across a breakout.`,
     args: [
       {
@@ -62,7 +62,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "distinct",
-    structure: `Distinct`,
+    structure: "Distinct",
     description: () => t`The number of distinct values in this column.`,
     args: [
       {
@@ -74,7 +74,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "stddev",
-    structure: `StandardDeviation`,
+    structure: "StandardDeviation",
     description: () => t`Calculates the standard deviation of the column.`,
     args: [
       {
@@ -86,7 +86,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "avg",
-    structure: `Average`,
+    structure: "Average",
     description: () => t`Returns the average of the values in the column.`,
     args: [
       {
@@ -98,7 +98,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "median",
-    structure: `Median`,
+    structure: "Median",
     description: () => t`Returns the median of all the values of a column.`,
     args: [
       {
@@ -110,7 +110,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "min",
-    structure: `Min`,
+    structure: "Min",
     description: () => t`Returns the smallest value found in the column`,
     args: [
       {
@@ -122,7 +122,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "max",
-    structure: `Max`,
+    structure: "Max",
     description: () => t`Returns the largest value found in the column.`,
     args: [
       {
@@ -134,7 +134,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "share",
-    structure: `Share`,
+    structure: "Share",
     description: () =>
       t`Returns the percent of rows in the data that match the condition, as a decimal.`,
     args: [
@@ -149,7 +149,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "count-where",
-    structure: `CountIf`,
+    structure: "CountIf",
     description: () => t`Only counts rows where the condition is true.`,
     args: [
       {
@@ -161,7 +161,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "sum-where",
-    structure: `SumIf`,
+    structure: "SumIf",
     description: () =>
       t`Sums up the specified column only for rows where the condition is true.`,
     args: [
@@ -181,7 +181,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "var",
-    structure: `Variance`,
+    structure: "Variance",
     description: () => t`Returns the numeric variance for a given column.`,
     args: [
       {
@@ -193,7 +193,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "median",
-    structure: `Median`,
+    structure: "Median",
     description: () => t`Returns the median value of the specified column.`,
     args: [
       {
@@ -205,7 +205,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "percentile",
-    structure: `Percentile`,
+    structure: "Percentile",
     description: () =>
       t`Returns the value of the column at the percentile value.`,
     args: [
@@ -223,7 +223,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "lower",
-    structure: `lower`,
+    structure: "lower",
     description: () => t`Returns the string of text in all lower case.`,
     args: [
       {
@@ -235,7 +235,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "upper",
-    structure: `upper`,
+    structure: "upper",
     description: () => t`Returns the text in all upper case.`,
     args: [
       {
@@ -247,7 +247,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "substring",
-    structure: `substring`,
+    structure: "substring",
     description: () => t`Returns a portion of the supplied text.`,
     args: [
       {
@@ -270,7 +270,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "regex-match-first",
-    structure: `regexextract`,
+    structure: "regexextract",
     description: () =>
       t`Extracts matching substrings according to a regular expression.`,
     args: [
@@ -289,7 +289,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "concat",
-    structure: `concat`,
+    structure: "concat",
     description: () => t`Combine two or more strings of text together.`,
     args: [
       {
@@ -312,7 +312,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "replace",
-    structure: `replace`,
+    structure: "replace",
     description: () => t`Replaces a part of the input text with new text.`,
     args: [
       {
@@ -334,7 +334,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "length",
-    structure: `length`,
+    structure: "length",
     description: () => t`Returns the number of characters in text.`,
     args: [
       {
@@ -346,7 +346,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "trim",
-    structure: `trim`,
+    structure: "trim",
     description: () =>
       t`Removes leading and trailing whitespace from a string of text.`,
     args: [
@@ -359,7 +359,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "rtrim",
-    structure: `rtrim`,
+    structure: "rtrim",
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: [
       {
@@ -371,7 +371,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "ltrim",
-    structure: `ltrim`,
+    structure: "ltrim",
     description: () => t`Removes leading whitespace from a string of text.`,
     args: [
       {
@@ -383,7 +383,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "abs",
-    structure: `abs`,
+    structure: "abs",
     description: () =>
       t`Returns the absolute (positive) value of the specified column.`,
     args: [
@@ -396,7 +396,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "floor",
-    structure: `floor`,
+    structure: "floor",
     description: () => t`Rounds a decimal number down.`,
     args: [
       {
@@ -408,7 +408,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "ceil",
-    structure: `ceil`,
+    structure: "ceil",
     description: () => t`Rounds a decimal number up.`,
     args: [
       {
@@ -420,7 +420,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "round",
-    structure: `round`,
+    structure: "round",
     description: () =>
       t`Rounds a decimal number either up or down to the nearest integer value.`,
     args: [
@@ -433,7 +433,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "sqrt",
-    structure: `sqrt`,
+    structure: "sqrt",
     description: () => t`Returns the square root.`,
     args: [
       {
@@ -445,7 +445,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "power",
-    structure: `power`,
+    structure: "power",
     description: () => t`Raises a number to the power of the exponent value.`,
     args: [
       {
@@ -462,7 +462,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "log",
-    structure: `log`,
+    structure: "log",
     description: () => t`Returns the base 10 log of the number.`,
     args: [
       {
@@ -474,7 +474,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "datetime-diff",
-    structure: `datetimeDiff`,
+    structure: "datetimeDiff",
     description: () =>
       t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     args: [
@@ -498,7 +498,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "exp",
-    structure: `exp`,
+    structure: "exp",
     description: () =>
       t`Returns Euler's number, e, raised to the power of the supplied number.`,
     args: [
@@ -511,7 +511,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "contains",
-    structure: `contains`,
+    structure: "contains",
     description: () => t`Checks to see if string1 contains string2 within it.`,
     args: [
       {
@@ -528,7 +528,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "starts-with",
-    structure: `startsWith`,
+    structure: "startsWith",
     description: () =>
       t`Returns true if the beginning of the text matches the comparison text.`,
     args: [
@@ -546,7 +546,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "ends-with",
-    structure: `endsWith`,
+    structure: "endsWith",
     description: () =>
       t`Returns true if the end of the text matches the comparison text.`,
     args: [
@@ -564,7 +564,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "between",
-    structure: `between`,
+    structure: "between",
     description: () =>
       t`Checks a date or number column's values to see if they're within the specified range.`,
     args: [
@@ -587,7 +587,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "interval",
-    structure: `timeSpan`,
+    structure: "timeSpan",
     description: () => t`Gets a time interval of specified length`,
     args: [
       {
@@ -604,7 +604,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "time-interval",
-    structure: `interval`,
+    structure: "interval",
     description: () =>
       t`Checks a date column's values to see if they're within the relative range.`,
     args: [
@@ -627,7 +627,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "relative-datetime",
-    structure: `relativeDateTime`,
+    structure: "relativeDateTime",
     description: () => t`Gets a timestamp relative to the current time`,
     args: [
       {
@@ -644,7 +644,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "is-null",
-    structure: `isnull`,
+    structure: "isnull",
     description: () => t`Checks if a column is null`,
     args: [
       {
@@ -657,7 +657,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "is-empty",
-    structure: `isempty`,
+    structure: "isempty",
     description: () => t`Checks if a column is empty`,
     args: [
       {
@@ -670,7 +670,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "coalesce",
-    structure: `coalesce`,
+    structure: "coalesce",
     description: () =>
       t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
     args: [
@@ -694,7 +694,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "case",
-    structure: `case`,
+    structure: "case",
     description: () =>
       t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: [
@@ -720,7 +720,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-year",
-    structure: `year`,
+    structure: "year",
     description: () =>
       t`Takes a datetime and returns an integer with the number of the year.`,
     args: [
@@ -733,7 +733,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-quarter",
-    structure: `quarter`,
+    structure: "quarter",
     description: () =>
       t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
     args: [
@@ -746,7 +746,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-month",
-    structure: `month`,
+    structure: "month",
     description: () =>
       t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
     args: [
@@ -759,7 +759,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-week",
-    structure: `week`,
+    structure: "week",
     description: () => t`Extracts the week of the year as an integer.`,
     args: [
       {
@@ -780,7 +780,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-day",
-    structure: `day`,
+    structure: "day",
     description: () =>
       t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
     args: [
@@ -793,7 +793,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-day-of-week",
-    structure: `weekday`,
+    structure: "weekday",
     description: () =>
       t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
     args: [
@@ -806,7 +806,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-hour",
-    structure: `hour`,
+    structure: "hour",
     description: () =>
       t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
     args: [
@@ -819,7 +819,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-minute",
-    structure: `minute`,
+    structure: "minute",
     description: () =>
       t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
     args: [
@@ -832,7 +832,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "get-second",
-    structure: `second`,
+    structure: "second",
     description: () =>
       t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
     args: [
@@ -845,7 +845,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "datetime-add",
-    structure: `datetimeAdd`,
+    structure: "datetimeAdd",
     description: () => t`Adds some units of time to a date or timestamp value.`,
     args: [
       {
@@ -868,7 +868,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "datetime-subtract",
-    structure: `datetimeSubtract`,
+    structure: "datetimeSubtract",
     description: () =>
       t`Subtracts some units of time to a date or timestamp value.`,
     args: [
@@ -897,7 +897,7 @@ const helperTextStrings: HelpTextConfig[] = [
   },
   {
     name: "convert-timezone",
-    structure: `convertTimezone`,
+    structure: "convertTimezone",
     description: () => t`Convert timezone of a date or timestamp column.
 We support tz database time zone names.
 See the full list here: https://w.wiki/4Jx`,
