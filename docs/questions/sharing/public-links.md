@@ -57,7 +57,7 @@ You can also pass filter values from the parent dashboard to the child question 
 2. On the parent dashboard, create a custom destination set to the child dashboard's public link.
 3. At the end of the child dashboard's public link, add a query parameter for the filter:
   ```
-  /public/dashboard/?child_filter_name={{parent_column_name}}
+  /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
   ```
 
 For example, if you have a parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a child dashboard that uses **Accounts** data:
