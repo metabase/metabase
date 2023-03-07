@@ -4,7 +4,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.filter :as lib.schema.filter]
+   metabase.lib.schema.filter
    [metabase.util.malli :as mu]))
 
 (defmulti ^:private ->filter-arg
