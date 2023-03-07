@@ -82,7 +82,7 @@
         categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
     (prn venues-category-id-metadata categories-id-metadata)
     (testing "without query/stage-number, return a function for later resolution"
-      (let [f (lib/= venues-category-id-metadata categories-id-metadata)]
+      (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
         (is (=? [:=
                  {:lib/uuid uuid?}
