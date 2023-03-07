@@ -45,15 +45,25 @@
    ::stage.mbql
    [:fn (complement #(contains? % :source-table))]])
 
+;;; the schemas are constructed this way instead of using `:or` because they give better error messages
+(mr/def ::stage.type
+  [:enum :mbql.stage/native :mbql.stage/mbql])
+
 (mr/def ::stage
-  [:or
-   ::stage.native
-   ::stage.mbql])
+  [:and
+   [:map
+    [:lib/type ::stage.type]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql]]])
 
 (mr/def ::stage.initial
-  [:or
-   ::stage.native
-   ::stage.mbql.with-source])
+  [:and
+   [:map
+    [:lib/type ::stage.type]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql.with-source]]])
 
 (mr/def ::stage.additional
   ::stage.mbql.without-source)
