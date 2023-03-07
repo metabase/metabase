@@ -37,7 +37,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan2.core :as t2]
@@ -95,8 +95,8 @@
   [email]
   (db/simple-insert! User
     :email        email
-    :first_name   (tu/random-name)
-    :last_name    (tu/random-name)
+    :first_name   (tu.random/random-name)
+    :last_name    (tu.random/random-name)
     :password     (str (UUID/randomUUID))
     :date_joined  :%now
     :is_active    true
@@ -965,7 +965,7 @@
                new-paths-set))))))
 
 (deftest migrate-field-database-type-test
-  (testing "Migration v47.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
+  (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [migrate!]
       (let [[pg-db-id
              mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}

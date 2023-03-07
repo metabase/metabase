@@ -30,3 +30,4 @@ runs:
         reporter: java-junit
         list-suites: failed
         list-tests: failed
+        fail-on-error: false
