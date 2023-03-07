@@ -95,7 +95,7 @@
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
-(define-migration RemoveAbandonmentEmailTask
+(define-migration DeleteAbandonmentEmailTask
   (task/start-scheduler!)
   (task/delete-task! (jobs/key "metabase.task.abandonment-emails.job")
                      (triggers/key "metabase.task.abandonment-emails.trigger"))
