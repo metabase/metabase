@@ -286,7 +286,8 @@
                             :let [fields (get-in card [:card :dataset_query :query :breakout])]
                             [_ field-id m] fields
                             :when (:binning m)]
-                        field-id))))))))))
+                        field-id))))
+              (->> dashboard :ordered_cards (filter :card) count)))))))
   (testing "Simple model with a temporal dimension detected"
     ;; Same as above, but the code should detect the time dimension of the model and present
     ;; cards with a time axis.
