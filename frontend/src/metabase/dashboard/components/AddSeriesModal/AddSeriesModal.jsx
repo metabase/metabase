@@ -99,7 +99,7 @@ class AddSeriesModal extends Component {
           MetabaseAnalytics.trackStructEvent(
             "Dashboard",
             "Add Series",
-            question.type() + ", " + card.display + ", fail",
+            card.dataset_query.type + ", " + card.display + ", fail",
           );
         }
       } else {
