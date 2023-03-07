@@ -109,6 +109,7 @@ TimelineSchema.define({
 });
 
 export const ENTITIES_SCHEMA_MAP = {
+  actions: ActionSchema,
   questions: QuestionSchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
