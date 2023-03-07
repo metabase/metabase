@@ -634,26 +634,21 @@
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
            query permissions (#28947)"
-    (try
-      (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
-                      Card      [{card-id :id} {:name "Products (SQL)"
-                                                :dataset_query (mt/native-query {:query
-                                                                                 "SELECT * FROM venues LIMIT 1"})}]
-                      DashboardCard [_ {:dashboard_id dashboard-id
-                                        :card_id     card-id}]]
-        (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph)
-                                                  [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
-                                                  :none))
-        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-               (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
-                   first
-                   :result
-                   :data
-                   :rows))))
-      (finally
-        (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph)
-                                                  [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
-                                                  :write))))))
+    (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
+          original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
+      (try
+        (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
+                        Card      [{card-id :id} {:name "Products (SQL)"
+                                                  :dataset_query (mt/native-query {:query
+                                                                                   "SELECT * FROM venues LIMIT 1"})}]
+                        DashboardCard [_ {:dashboard_id dashboard-id
+                                          :card_id     card-id}]]
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                     first :result :data :rows))))
+        (finally
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
 
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
