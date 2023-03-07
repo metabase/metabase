@@ -3,8 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel order-by-test
   (is (=? {:database (meta/id)
@@ -13,7 +13,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
                                        {:lib/uuid string?}
-                                       [:field (meta/id :venues :id) {:lib/uuid string?}]]]}]}
+                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/order-by (lib/field "VENUES" "ID"))))))
 
@@ -24,7 +24,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
                                        {:lib/uuid string?}
-                                       [:field (meta/id :venues :id) {:lib/uuid string?}]]]}]}
+                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/order-by (lib/field "VENUES" "ID"))
               (dissoc :lib/metadata)))))
@@ -36,7 +36,7 @@
                        :source-table (meta/id :venues)
                        :order-by     [[:desc
                                        {:lib/uuid string?}
-                                       [:field (meta/id :venues :id) {:lib/uuid string?}]]]}]}
+                                       [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/order-by (lib/field "VENUES" "ID") :desc)
               (dissoc :lib/metadata)))))
@@ -52,9 +52,7 @@
                        :lib/options {:lib/uuid string?}
                        :order-by    [[:asc
                                       {:lib/uuid string?}
-                                      [:field
-                                       (meta/id :venues :id)
-                                       {:lib/uuid string?}]]]}
+                                      [:field {:lib/uuid string?} (meta/id :venues :id)]]]}
                       {:lib/type    :mbql.stage/mbql
                        :lib/options {:lib/uuid string?}}]}
           (-> (lib/query meta/metadata-provider {:database (meta/id)
@@ -67,7 +65,7 @@
   (testing "Should be able to create an order by using raw Field metadata"
     (is (=? [:asc
              {:lib/uuid string?}
-             [:field (meta/id :venues :id) {:lib/uuid string?}]]
+             [:field {:lib/uuid string?} (meta/id :venues :id)]]
             (lib/order-by-clause {} -1 (lib.metadata/field meta/metadata-provider nil "VENUES" "ID"))))))
 
 (deftest ^:parallel append-order-by-field-metadata-test
@@ -79,15 +77,13 @@
                            :source-table (meta/id :categories)
                            :order-by     [[:asc
                                            {:lib/uuid string?}
-                                           [:field (meta/id :venues :id) {:lib/uuid string?}]]]}]}
-              (-> query
-                  (lib/order-by venues-id)
-                  (dissoc :lib/metadata)))))))
+                                           [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
+              (lib/order-by query venues-id))))))
 
 (deftest ^:parallel order-bys-test
   (is (=? [[:asc
             {:lib/uuid string?}
-            [:field (meta/id :venues :id) {:lib/uuid string?}]]]
+            [:field {:lib/uuid string?} (meta/id :venues :id)]]]
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/order-by (lib/field "VENUES" "ID"))
               lib/order-bys))))
