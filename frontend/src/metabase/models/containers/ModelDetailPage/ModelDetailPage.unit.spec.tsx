@@ -33,6 +33,7 @@ import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import type {
   Card,
   Collection,
+  Database,
   Field,
   WritebackAction,
   WritebackQueryAction,
@@ -42,9 +43,9 @@ import {
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
+  createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockImplicitQueryAction,
   createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -179,8 +180,7 @@ type SetupOpts = {
   model: Question;
   tab?: string;
   actions?: WritebackAction[];
-  hasActionsEnabled?: boolean;
-  hasDataPermissions?: boolean;
+  databases?: Database[];
   collections?: Collection[];
   usedBy?: Question[];
 };
@@ -189,23 +189,14 @@ async function setup({
   model,
   tab = "usage",
   actions = [],
+  databases = [TEST_DATABASE],
   collections = [],
   usedBy = [],
-  hasActionsEnabled = false,
-  hasDataPermissions = true,
 }: SetupOpts) {
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
-
   const card = model.card() as Card;
 
-  if (hasDataPermissions) {
-    setupDatabasesEndpoints([
-      hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
-    ]);
-  } else {
-    setupDatabasesEndpoints([]);
-    fetchMock.get(`path:/api/database/${TEST_DATABASE.id}`, 403);
-  }
+  setupDatabasesEndpoints(databases);
 
   fetchMock.get(
     {
@@ -256,10 +247,16 @@ async function setup({
   return { history, baseUrl, metadata, modelUpdateSpy };
 }
 
-type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
-
-async function setupActions(opts: SetupActionsOpts) {
-  return setup({ ...opts, tab: "actions", hasActionsEnabled: true });
+async function setupActions({
+  tab = "actions",
+  databases = [TEST_DATABASE_WITH_ACTIONS],
+  ...opts
+}: SetupOpts) {
+  return setup({
+    tab,
+    databases,
+    ...opts,
+  });
 }
 
 function openActionMenu(action: WritebackAction) {
@@ -439,12 +436,15 @@ describe("ModelDetailPage", () => {
 
       describe("actions section", () => {
         it("is shown if actions are enabled for model's database", async () => {
-          await setup({ model: getModel(), hasActionsEnabled: true });
+          await setup({
+            model: getModel(),
+            databases: [TEST_DATABASE_WITH_ACTIONS],
+          });
           expect(screen.getByText("Actions")).toBeInTheDocument();
         });
 
         it("isn't shown if actions are disabled for model's database", async () => {
-          await setup({ model: getModel(), hasActionsEnabled: false });
+          await setup({ model: getModel() });
           expect(screen.queryByText("Actions")).not.toBeInTheDocument();
         });
 
@@ -455,7 +455,6 @@ describe("ModelDetailPage", () => {
           await setup({
             model: model,
             actions: [action],
-            hasActionsEnabled: false,
           });
 
           expect(screen.getByText("Actions")).toBeInTheDocument();
@@ -464,7 +463,6 @@ describe("ModelDetailPage", () => {
         it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
           const { baseUrl, history } = await setup({
             model: getModel(),
-            hasActionsEnabled: false,
             tab: "actions",
           });
 
@@ -484,7 +482,6 @@ describe("ModelDetailPage", () => {
           await setup({
             model,
             actions: [action],
-            hasActionsEnabled: false,
             tab: "actions",
           });
 
@@ -512,7 +509,6 @@ describe("ModelDetailPage", () => {
             model,
             actions: [action],
             tab: "actions",
-            hasActionsEnabled: false,
           });
 
           expect(
@@ -721,7 +717,7 @@ describe("ModelDetailPage", () => {
         it("doesn't show model editor links", async () => {
           await setup({
             model: getModel(),
-            hasDataPermissions: false,
+            databases: [],
             tab: "schema",
           });
           expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
@@ -734,7 +730,7 @@ describe("ModelDetailPage", () => {
             ...createMockImplicitCUDActions(model.id()),
             createMockQueryAction({ id: 4, model_id: model.id() }),
           ];
-          await setupActions({ model, actions, hasDataPermissions: false });
+          await setupActions({ model, actions, databases: [] });
 
           expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
@@ -849,7 +845,7 @@ describe("ModelDetailPage", () => {
 
     describe("no data permissions", () => {
       it("shows limited model info", async () => {
-        await setup({ model, hasDataPermissions: false });
+        await setup({ model, databases: [] });
 
         expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
         expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
@@ -891,7 +887,7 @@ describe("ModelDetailPage", () => {
     it("navigates between tabs", async () => {
       const { baseUrl, history } = await setup({
         model,
-        hasActionsEnabled: true,
+        databases: [TEST_DATABASE_WITH_ACTIONS],
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
