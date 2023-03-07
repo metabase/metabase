@@ -127,6 +127,11 @@ const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
+const TEST_DATABASE_WITH_ACTIONS_READONLY = createMockDatabase({
+  ...TEST_DATABASE_WITH_ACTIONS,
+  native_permissions: "none",
+});
+
 function getStructuredModel(card?: Partial<StructuredSavedCard>) {
   return _getStructuredModel({
     ...card,
@@ -757,6 +762,20 @@ describe("ModelDetailPage", () => {
           await setupActions({
             model: getModel(),
             databases: [TEST_DATABASE_WITH_ACTIONS],
+            actions: [action],
+          });
+
+          expect(screen.getByLabelText("Run")).toBeInTheDocument();
+        });
+
+        it("allows to run an action without native query access", async () => {
+          const action = createMockQueryAction({
+            database_id: TEST_DATABASE_WITH_ACTIONS_READONLY.id,
+          });
+
+          await setupActions({
+            model: getModel(),
+            databases: [TEST_DATABASE_WITH_ACTIONS_READONLY],
             actions: [action],
           });
 
