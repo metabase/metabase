@@ -1000,3 +1000,49 @@
                 pg-field-3-id :type/Text
                 mysql-field-1-id :type/SerializedJSON
                 mysql-field-2-id :type/Text))))))))
+
+(deftest migrate-field-json-unfolding-type-test
+  (testing "Migration v47.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
+    (impl/test-migrations ["v47.00-003"] [migrate!]
+      (let [[enabled-db-id
+             enabled-by-default-db-1-id
+             enabled-by-default-db-2-id
+             disabled-db-id] (t2/insert-returning-pks! Database [{:name    "enabled"
+                                                                  :engine  "postgres"
+                                                                  :details {:json-unfolding true}}
+                                                                 {:name    "enabled by default"
+                                                                  :engine  "postgres"
+                                                                  :details {}}
+                                                                 {:name    "enabled by default"
+                                                                  :engine  "postgres"
+                                                                  :details {:json-unfolding nil}}
+                                                                 {:name    "disabled"
+                                                                  :engine  "postgres"
+                                                                  :details {:json-unfolding false}}])
+            [enabled-table-id
+             enabled-by-default-table-1-id
+             enabled-by-default-table-2-id
+             disabled-table-id] (t2/insert-returning-pks! Table (for [db-id [enabled-db-id
+                                                                             enabled-by-default-db-1-id
+                                                                             enabled-by-default-db-2-id
+                                                                             disabled-db-id]]
+                                                                  {:db_id db-id :name "Table" :active true}))
+            [enabled-field-id
+             enabled-by-default-field-1-id
+             enabled-by-default-field-2-id
+             disabled-field-id] (t2/insert-returning-pks! Field (for [table-id [enabled-table-id
+                                                                                enabled-by-default-table-1-id
+                                                                                enabled-by-default-table-2-id
+                                                                                disabled-table-id]]
+                                                                  {:table_id      table-id
+                                                                   :name          "Field"
+                                                                   :active        true
+                                                                   :base_type     :type/JSON
+                                                                   :database_type "json"}))
+            _              (migrate!)
+            new-base-types (t2/select-pk->fn :json_unfolding Field)]
+        (are [field-id expected] (= expected (get new-base-types field-id))
+          enabled-field-id true
+          enabled-by-default-field-1-id true
+          enabled-by-default-field-2-id true
+          disabled-field-id false)))))
