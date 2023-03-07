@@ -38,7 +38,7 @@
 
 (defn all-paths [basis]
   (concat (:paths basis)
-          (get-in basis [:classpath-args :extra-paths])))
+          (get-in basis [:argmap :extra-paths])))
 
 (defn clean! []
   (u/step "Clean"
