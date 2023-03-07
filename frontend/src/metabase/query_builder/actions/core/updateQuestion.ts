@@ -169,12 +169,15 @@ export const updateQuestion = (
       if (isPivot && hasBreakouts) {
         const key = "pivot_table.column_split";
         const rawSeries = getRawSeries(getState()) as Series;
-        const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
-        const setting = getQuestionWithDefaultVisualizationSettings(
-          newQuestion,
-          series,
-        ).setting(key);
-        newQuestion = newQuestion.updateSettings({ [key]: setting });
+
+        if (rawSeries) {
+          const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
+          const setting = getQuestionWithDefaultVisualizationSettings(
+            newQuestion,
+            series,
+          ).setting(key);
+          newQuestion = newQuestion.updateSettings({ [key]: setting });
+        }
       }
 
       run = checkShouldRerunPivotTableQuestion({
@@ -195,8 +198,9 @@ export const updateQuestion = (
       );
     }
 
+    const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
-    if (newQuestion.isNative()) {
+    if (newDatasetQuery.type === "native") {
       const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
     }
