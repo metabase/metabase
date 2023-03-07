@@ -38,11 +38,13 @@ const ChartSettingFieldsPicker = ({
             {provided => (
               <div {...provided.droppableProps} ref={provided.innerRef}>
                 {fields.map((field, fieldIndex) => {
+                  const dragEnabled = fields.length > 1;
                   return (
                     <Draggable
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
                       index={fieldIndex}
+                      isDragDisabled={!dragEnabled}
                     >
                       {provided => (
                         <div
@@ -87,7 +89,7 @@ const ChartSettingFieldsPicker = ({
                                     ])
                                 : null
                             }
-                            showDragHandle={fields.length > 1}
+                            showDragHandle={dragEnabled}
                           />
                         </div>
                       )}

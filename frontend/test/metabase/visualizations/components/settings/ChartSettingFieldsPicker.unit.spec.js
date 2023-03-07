@@ -68,4 +68,16 @@ describe("ChartSettingFieldsPicker", () => {
 
     expect(onChange).toHaveBeenCalledWith(["count"]);
   });
+
+  it("should show drag handles if there is more than 1 field in the list", () => {
+    setup();
+    expect(screen.getAllByRole("img", { name: /grabber/i })).toHaveLength(2);
+  });
+
+  it("should not show drag handles if there is only 1 field in the list", () => {
+    setup({ value: ["avg"] });
+    expect(
+      screen.queryByRole("img", { name: /grabber/i }),
+    ).not.toBeInTheDocument();
+  });
 });
