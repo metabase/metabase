@@ -9,7 +9,7 @@ describe("canRunAction", () => {
   it("should not be able to run an action if the user has no access to the database", () => {
     const action = createMockQueryAction();
 
-    expect(canRunAction(action, [])).toBeFalsy();
+    expect(canRunAction(action, [])).toBe(false);
   });
 
   it("should not be able to run an action if the database has readonly permissions", () => {
@@ -18,7 +18,7 @@ describe("canRunAction", () => {
     );
     const action = createMockQueryAction({ database_id: database.id });
 
-    expect(canRunAction(action, [database])).toBeFalsy();
+    expect(canRunAction(action, [database])).toBe(false);
   });
 
   it("should be able to run an acton if the database has write permissions", () => {
@@ -27,6 +27,6 @@ describe("canRunAction", () => {
     );
     const action = createMockQueryAction({ database_id: database.id });
 
-    expect(canRunAction(action, [database])).toBeTruthy();
+    expect(canRunAction(action, [database])).toBe(true);
   });
 });
