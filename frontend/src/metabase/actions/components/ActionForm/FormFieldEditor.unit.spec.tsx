@@ -1,8 +1,16 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon, queryIcon } from "__support__/ui";
+import {
+  render,
+  screen,
+  getIcon,
+  queryIcon,
+  waitFor,
+  within,
+} from "__support__/ui";
 import FormProvider from "metabase/core/components/FormProvider";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
+import type { FieldSettings } from "metabase-types/api";
 import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
@@ -76,5 +84,46 @@ describe("FormFieldEditor", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber2")).not.toBeInTheDocument();
+  });
+
+  it("clears field value options on a need", async () => {
+    const initialSettings: FieldSettings = {
+      ...getDefaultFieldSettings(),
+      fieldType: "number",
+      inputType: "select",
+      valueOptions: [1, 2, 3],
+    };
+    const { onChange } = setup({ fieldSettings: initialSettings });
+
+    userEvent.click(screen.getByLabelText("Field settings"));
+    const popover = await screen.findByRole("tooltip");
+
+    userEvent.click(
+      await within(popover).findByRole("radio", { name: "Number" }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...initialSettings,
+      inputType: "number",
+    });
+
+    userEvent.click(
+      await within(popover).findByRole("radio", { name: "Inline select" }),
+    );
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...initialSettings,
+        inputType: "radio",
+      }),
+    );
+
+    userEvent.click(screen.getByText("Text"));
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...initialSettings,
+        fieldType: "string",
+        inputType: "string",
+        valueOptions: undefined,
+      }),
+    );
   });
 });

@@ -12,6 +12,7 @@ import {
   getInputTypes,
 } from "../../containers/ActionCreator/FormCreator/constants";
 
+import { inputTypeHasOptions } from "./utils";
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
   Column,
@@ -42,11 +43,24 @@ function FormFieldEditor({
   const inputTypes = useMemo(getInputTypes, []);
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
-    const [defaultInputType] = inputTypes[nextFieldType];
+    // When field type changes, we automatically set the first available input type
+    const [nextInputType] = inputTypes[nextFieldType];
+
+    const shouldResetOptions =
+      nextFieldType !== fieldSettings.fieldType ||
+      !inputTypeHasOptions(nextInputType.value);
+
+    const defaultValueOptions = inputTypeHasOptions(nextInputType.value)
+      ? []
+      : undefined;
+
     onChange({
       ...fieldSettings,
       fieldType: nextFieldType,
-      inputType: defaultInputType.value,
+      inputType: nextInputType.value,
+      valueOptions: shouldResetOptions
+        ? defaultValueOptions
+        : fieldSettings.valueOptions,
     });
   };
 
