@@ -153,7 +153,7 @@ export default class NativeQuery extends AtomicQuery {
     return Boolean(
       this.hasData() &&
         this.queryText().length > 0 &&
-        this.allTemplateTagsAreValid(),
+        this._allTemplateTagsAreValid(),
     );
   }
 
@@ -347,22 +347,13 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
 
-  hasReferencedQuestions() {
-    return this.templateTags().some(t => t.type === "card");
-  }
-
   referencedQuestionIds(): number[] {
     return this.templateTags()
       .filter(tag => tag.type === "card")
       .map(tag => tag["card-id"]);
   }
 
-  validate() {
-    const tagErrors = this.validateTemplateTags();
-    return tagErrors;
-  }
-
-  validateTemplateTags() {
+  private _validateTemplateTags() {
     return this.templateTags()
       .map(tag => {
         if (!tag["display-name"]) {
@@ -384,8 +375,8 @@ export default class NativeQuery extends AtomicQuery {
       );
   }
 
-  allTemplateTagsAreValid() {
-    const tagErrors = this.validateTemplateTags();
+  private _allTemplateTagsAreValid() {
+    const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;
   }
 
@@ -490,7 +481,7 @@ export default class NativeQuery extends AtomicQuery {
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
-  _getUpdatedTemplateTags(queryText: string): TemplateTags {
+  private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     if (queryText && this.supportsNativeParameters()) {
       const tags = recognizeTemplateTags(queryText);
       const existingTemplateTags = this.templateTagsMap();

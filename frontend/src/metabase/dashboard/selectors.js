@@ -178,15 +178,12 @@ export const getParameters = createSelector(
   },
 );
 
-export const makeGetParameterMappingOptions = () => {
-  const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard, getDashCard],
-    (metadata, parameter, card, dashcard) => {
-      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
-    },
-  );
-  return getParameterMappingOptions;
-};
+export const getParameterMappingOptions = createSelector(
+  [getMetadata, getEditingParameter, getCard, getDashCard],
+  (metadata, parameter, card, dashcard) => {
+    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+  },
+);
 
 export const getDefaultParametersById = createSelector(
   [getDashboard],

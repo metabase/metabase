@@ -17,7 +17,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
@@ -529,7 +529,7 @@
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [table-name (format "table_%s" (tu/random-name))]
+    (let [table-name (format "table_%s" (tu.random/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!

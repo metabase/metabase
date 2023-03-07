@@ -1,5 +1,6 @@
 import { assocIn } from "icepick";
 
+import { UserSchema } from "metabase/schema";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -26,6 +27,7 @@ function loadMemberships() {
 const Users = createEntity({
   name: "users",
   nameOne: "user",
+  schema: UserSchema,
 
   path: "/api/user",
 

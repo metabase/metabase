@@ -68,6 +68,9 @@
       ;; :else                             url
 
 (defn- icon-bundle
+  "Bundle an icon.
+
+  The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]

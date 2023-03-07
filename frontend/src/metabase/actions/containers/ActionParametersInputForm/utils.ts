@@ -27,13 +27,13 @@ export const formatValue = (
 ) => {
   if (!isEmpty(value)) {
     if (inputType === "date" && moment(value).isValid()) {
-      return moment(value).utc(false).format("YYYY-MM-DD");
+      return moment(value).utc(true).format("YYYY-MM-DD");
     }
     if (inputType === "datetime" && moment(value).isValid()) {
-      return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
+      return moment(value).utc(true).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (inputType === "time") {
-      return String(value).replace(/z/gi, "");
+      return moment(`2020-01-10 ${value}`).utc(true).format("HH:mm:ss");
     }
   }
   return value;
