@@ -48,7 +48,7 @@
 
 (defmacro define-migration
   "Define a custom migration without a reverse migration."
-  [name migration-body]
+  [name & migration-body]
   `(define-reversible-migration ~name ~migration-body (no-op ~(str name))))
 
 
@@ -96,5 +96,7 @@
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
 (define-migration RemoveAbandonmentEmailTask
+  (task/start-scheduler!)
   (task/delete-task! (jobs/key "metabase.task.abandonment-emails.job")
-                     (triggers/key "metabase.task.abandonment-emails.trigger")))
+                     (triggers/key "metabase.task.abandonment-emails.trigger"))
+  (task/stop-scheduler!))
