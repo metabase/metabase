@@ -34,8 +34,6 @@ For more information about the option to **Embed this item in an application**, 
 
 Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-If you want to create a drill-down pathway on your question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) that goes to the public link of another question or dashboard.
-
 ### Public link to export question results in CSV, XLSX, JSON
 
 The export option is only available for questions, not dashboards.
@@ -48,6 +46,23 @@ To create a public link that people can use to download the results of a questio
 4. Open the public link in a new tab to test the download.
 
 ![Public export](../images/public-export.png)
+
+## Custom destinations in public links 
+
+If you want to create a drill-down pathway on a public question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) on your parent dashboard that goes to the public link of a child question or dashboard.
+
+You can also pass filter values from the parent dashboard to the child question or dashboard:
+
+1. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on your child dashboard.
+2. On the parent dashboard, create a custom destination set to the child dashboard's public link.
+3. At the end of the child dashboard's public link, add a query parameter for the filter:
+  ```
+  /public/dashboard/?child_filter_name={{parent_column_name}}
+  ```
+
+For example, if you have a parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a child dashboard that uses **Accounts** data:
+
+![Public link with custom destination](../images/public-link-custom-destination.png)
 
 ## Public embeds
 
