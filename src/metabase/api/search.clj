@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -475,6 +476,7 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
+  {table-db-id [:maybe ms/Id]}
   (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

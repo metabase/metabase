@@ -12,6 +12,7 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,7 +36,9 @@
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."
   [yyyy-mm]
-  (let [[year month] (map #(mc/coerce ms/IntGreaterThanZero % (mtx/string-transformer)) (str/split yyyy-mm #"\-"))]
+  {yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
+             (deferred-tru "Must be a string like 2020-04 or 2222-11."))}
+  (let [[year month] (mc/coerce ms/IntGreaterThanZero (str/split yyyy-mm #"\-") (mtx/string-transformer))]
     (api/check-superuser)
     (query-execution-logs year month)))
 

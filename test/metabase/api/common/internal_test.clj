@@ -67,6 +67,7 @@
 
 (api/defendpoint POST "/auto-coerce-square/:x"
   [x]
+  ;; if not for this annotation, x would continue to be a string:
   {x :int}
   (* x x))
 

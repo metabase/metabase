@@ -406,7 +406,7 @@
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
   [id]
-  {id ms/IntGreaterThanZero}
+  {id ms/Id}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
   (let [table-ids (db/select-ids Table :db_id id)]

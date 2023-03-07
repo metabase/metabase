@@ -15,8 +15,8 @@
 (api/defendpoint GET "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [group_id table_id]
-  {group_id [:maybe pos-int?]
-   table_id [:maybe pos-int?]}
+  {group_id [:maybe ms/Id]
+   table_id [:maybe ms/Id]}
   (if (and group_id table_id)
     (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
     (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
@@ -24,6 +24,7 @@
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
+  {id ms/Id}
   (api/check-404 (db/select-one GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
@@ -67,8 +68,8 @@
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
   sandbox is saved, but doesn't actually save the sandbox."
   [:as {{:keys [table_id card_id]} :body}]
-  {table_id             pos-int?
-   card_id              [:maybe pos-int?]}
+  {table_id             ms/Id
+   card_id              [:maybe ms/Id]}
   (gtap/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 

@@ -211,8 +211,8 @@
 (api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         ms/IntGreaterThanZero
-   user_id          ms/IntGreaterThanZero
+  {group_id         ms/Id
+   user_id          ms/Id
    is_group_manager [:maybe :boolean]}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
@@ -252,6 +252,7 @@
 (api/defendpoint PUT "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
+  {group-id ms/Id}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))

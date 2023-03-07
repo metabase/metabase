@@ -52,7 +52,7 @@
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
-  {model-id pos-int?}
+  {model-id ms/Id}
   (let [model (api/read-check Card model-id)]
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
@@ -69,6 +69,7 @@
 
 (api/defendpoint GET "/:action-id"
   [action-id]
+  {action-id ms/Id}
   (-> (action/select-action :id action-id :archived false)
       (hydrate :creator)
       api/read-check))
@@ -87,14 +88,14 @@
                 database_id dataset_query
                 template response_handle error_handle] :as action} :body}]
   {name                   :string
-   model_id               pos-int?
+   model_id               ms/Id
    type                   [:maybe supported-action-type]
    description            [:maybe :string]
    parameters             [:maybe [:sequential map?]]
    parameter_mappings     [:maybe map?]
    visualization_settings [:maybe map?]
    kind                   [:maybe implicit-action-kind]
-   database_id            [:maybe pos-int?]
+   database_id            [:maybe ms/Id]
    dataset_query          [:maybe map?]
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
@@ -117,15 +118,15 @@
 
 (api/defendpoint PUT "/:id"
   [id :as {action :body}]
-  {id     pos-int?
+  {id     ms/Id
    action [:map
            [:archived               {:optional true} [:maybe :boolean]]
-           [:database_id            {:optional true} [:maybe pos-int?]]
+           [:database_id            {:optional true} [:maybe ms/Id]]
            [:dataset_query          {:optional true} [:maybe :map]]
            [:description            {:optional true} [:maybe :string]]
            [:error_handle           {:optional true} [:maybe json-query-schema]]
            [:kind                   {:optional true} [:maybe implicit-action-kind]]
-           [:model_id               {:optional true} [:maybe pos-int?]]
+           [:model_id               {:optional true} [:maybe ms/Id]]
            [:name                   {:optional true} [:maybe :string]]
            [:parameter_mappings     {:optional true} [:maybe :map]]
            [:parameters             {:optional true} [:maybe [:sequential :map]]]
