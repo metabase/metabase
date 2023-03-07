@@ -37,7 +37,13 @@
         s
         humanized))))
 
-;; :none is just an identity implementation
+;;; `:none` is just an identity implementation
 (defmethod name->human-readable-name :none
   [_strategy s]
   s)
+
+;;; `:advanced` doesn't exist anymore, it used to be super fancy and do neat things. On the off chance someone still
+;;; tries to use it, just do the same thing `:simple` does.
+(defmethod name->human-readable-name :advanced
+  [strategy s]
+  ((get-method name->human-readable-name :simple) strategy s))
