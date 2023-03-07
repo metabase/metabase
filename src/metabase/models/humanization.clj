@@ -10,7 +10,7 @@
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
-   [Metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
