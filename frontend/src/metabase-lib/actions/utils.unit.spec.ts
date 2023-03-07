@@ -12,18 +12,24 @@ describe("canRunAction", () => {
     expect(canRunAction(action, [])).toBe(false);
   });
 
-  it("should not be able to run an action if the database has readonly permissions", () => {
+  it("should not be able to run an action if the database has actions disabled", () => {
     const database = new Database(
-      createMockDatabase({ native_permissions: "read" }),
+      createMockDatabase({
+        native_permissions: "write",
+        settings: { "database-enable-actions": false },
+      }),
     );
     const action = createMockQueryAction({ database_id: database.id });
 
     expect(canRunAction(action, [database])).toBe(false);
   });
 
-  it("should be able to run an acton if the database has write permissions", () => {
+  it("should be able to run an acton if the database has actions enabled", () => {
     const database = new Database(
-      createMockDatabase({ native_permissions: "write" }),
+      createMockDatabase({
+        native_permissions: "read",
+        settings: { "database-enable-actions": true },
+      }),
     );
     const action = createMockQueryAction({ database_id: database.id });
 

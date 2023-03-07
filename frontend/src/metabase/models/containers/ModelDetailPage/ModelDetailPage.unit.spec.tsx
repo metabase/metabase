@@ -127,11 +127,6 @@ const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
-const TEST_DATABASE_READONLY = createMockDatabase({
-  id: 2,
-  native_permissions: "read",
-});
-
 function getStructuredModel(card?: Partial<StructuredSavedCard>) {
   return _getStructuredModel({
     ...card,
@@ -740,21 +735,21 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
-        it("doesn't allow to run an action if its database has no write permissions", async () => {
+        it("doesn't allow to run an action if its database has actions disabled", async () => {
           const action = createMockQueryAction({
-            database_id: TEST_DATABASE_READONLY.id,
+            database_id: TEST_DATABASE.id,
           });
 
           await setupActions({
             model: getModel(),
-            databases: [TEST_DATABASE_WITH_ACTIONS, TEST_DATABASE_READONLY],
+            databases: [TEST_DATABASE],
             actions: [action],
           });
 
           expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
-        it("allows to run an action if its database has write permissions", async () => {
+        it("allows to run an action if its database has actions enabled", async () => {
           const action = createMockQueryAction({
             database_id: TEST_DATABASE_WITH_ACTIONS.id,
           });
