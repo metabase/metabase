@@ -9,7 +9,6 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
-import { getTitleForColumn } from "metabase/visualizations/lib/columns";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -34,6 +33,17 @@ import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+
+const getTitleForColumn = (column, series, settings) => {
+  const isPivoted = Table.isPivoted(series, settings);
+  if (isPivoted) {
+    return formatColumn(column) || t`Unset`;
+  } else {
+    return (
+      settings.column(column)["_column_title_full"] || formatColumn(column)
+    );
+  }
+};
 
 export default class Table extends Component {
   static uiName = t`Table`;
@@ -205,7 +215,7 @@ export default class Table extends Component {
               columnSetting,
             );
             if (columnIndex >= 0) {
-              return getTitleForColumn(columnIndex, cols, series, settings);
+              return getTitleForColumn(cols[columnIndex], series, settings);
             }
           },
         };
@@ -433,7 +443,7 @@ export default class Table extends Component {
       return null;
     }
     const { series, settings } = this.props;
-    return getTitleForColumn(columnIndex, cols, series, settings);
+    return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
   render() {
