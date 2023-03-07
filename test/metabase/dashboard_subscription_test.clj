@@ -638,11 +638,11 @@
           original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
       (try
         (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
-                        Card      [{card-id :id} {:name "Products (SQL)"
-                                                  :dataset_query (mt/native-query {:query
-                                                                                   "SELECT * FROM venues LIMIT 1"})}]
+                        Card      [{card-id :id} {:name          "Products (SQL)"
+                                                  :dataset_query (mt/native-query
+                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
                         DashboardCard [_ {:dashboard_id dashboard-id
-                                          :card_id     card-id}]]
+                                          :card_id      card-id}]]
           (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                  (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
