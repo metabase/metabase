@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [= and or])
+  (:refer-clojure :exclude [and or not = < <= > >= not-empty case])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
@@ -26,35 +26,49 @@
   [query stage-number f]
   (->filter-arg query stage-number (f query stage-number)))
 
-;; TODO move 2-arity version to the dev namespace
-(mu/defn = :- [:or
-               fn?
-               ::lib.schema.filter/=]
-  "Create an `=` filter clause."
+(defmacro ^:private deffilter
+  [filter-name argvec]
+  {:pre [(symbol? filter-name)
+         (vector? argvec) (every? symbol? argvec)
+         (not-any? #{'query 'stage-number} argvec)]}
+  (let [arglist-expr (if (.contains argvec '&)
+                       (cons 'list* (remove #{'&} argvec))
+                       argvec)]
+    `(mu/defn ~filter-name :- ~(keyword "metabase.lib.schema.filter" (name filter-name))
+       ~(format "Create a filter clause of type `%s`." (name filter-name))
+       [~'query ~'stage-number ~@argvec]
+       (-> (into [~(keyword filter-name)]
+                 (map (fn [~'arg]
+                   (->filter-arg ~'query ~'stage-number ~'arg)))
+                 ~arglist-expr)
+           lib.options/ensure-uuid))))
+
+(deffilter and [x y & more])
+(deffilter or [x y & more])
+(deffilter not [x])
+(deffilter = [x y & more])
+(deffilter != [x y & more])
+(deffilter < [x y])
+(deffilter <= [x y])
+(deffilter > [x y])
+(deffilter >= [x y])
+(deffilter between [x lower upper])
+(deffilter inside [lat lon lat-max lon-min lat-min lon-max])
+(deffilter is-null [x])
+(deffilter not-null [x])
+(deffilter is-empty [x])
+(deffilter not-empty [x])
+(deffilter starts-with [whole part])
+(deffilter ends-with [whole part])
+(deffilter contains [whole part])
+(deffilter does-not-contain [whole part])
+(deffilter time-interval [x amount unit])
+(deffilter segment [segment-id])
+(deffilter case [& pred-exprs])
+
+;; TODO move to the dev namespace
+(mu/defn ->= :- fn?
+  "Return function creating an `=` filter clause."
   ([x y]
    (fn [query stage-number]
-     (= query stage-number x y)))
-  ([query stage-number x y & more]
-   (-> (into [:=]
-             (map (fn [arg]
-                    (->filter-arg query stage-number arg)))
-             (list* x y more))
-       lib.options/ensure-uuid)))
-
-(mu/defn and :- ::lib.schema.filter/and
-  "Create an `and` filter clause."
-  [query stage-number x y & more]
-  (-> (into [:and]
-            (map (fn [arg]
-                   (->filter-arg query stage-number arg)))
-            (list* x y more))
-      lib.options/ensure-uuid))
-
-(mu/defn or :- ::lib.schema.filter/or
-  "Create an `or` filter clause."
-  [query stage-number x y & more]
-  (-> (into [:or]
-            (map (fn [arg]
-                   (->filter-arg query stage-number arg)))
-            (list* x y more))
-      lib.options/ensure-uuid))
+     (= query stage-number x y))))

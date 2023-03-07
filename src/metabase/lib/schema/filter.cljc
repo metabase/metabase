@@ -43,7 +43,7 @@
     [:cat orderable orderable]))
 
 (defclause ::between
-  [:catn [:field orderable] [:min orderable] [:max orderable]])
+  [:catn [:field orderable] [:lower orderable] [:upper orderable]])
 
 ;; sugar: a pair of `:between` clauses
 (defclause ::inside

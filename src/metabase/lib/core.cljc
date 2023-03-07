@@ -20,9 +20,22 @@
  [lib.field
   field]
  [lib.filter
-  =
   and
-  or]
+  or
+  not
+  = !=
+  < <=
+  > >=
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  time-interval
+  segment
+  case
+  ->=]
  [lib.join
   join
   join-clause
