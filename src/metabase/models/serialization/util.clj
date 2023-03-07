@@ -12,7 +12,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -268,7 +267,7 @@
   [s]
   (and (string? s)
        (or (serdes/entity-id? s)
-           (serdes.hash/identity-hash? s))))
+           (serdes/identity-hash? s))))
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]

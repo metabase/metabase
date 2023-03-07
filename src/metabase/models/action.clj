@@ -7,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -283,8 +282,8 @@
   (eduction (map hydrate-subtype)
             (db/select-reducible 'Action)))
 
-(defmethod serdes.hash/identity-hash-fields Action [_action]
-  [:name (serdes.hash/hydrated-hash :model) :created_at])
+(defmethod serdes/hash-fields Action [_action]
+  [:name (serdes/hydrated-hash :model) :created_at])
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)

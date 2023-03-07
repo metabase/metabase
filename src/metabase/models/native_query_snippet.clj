@@ -4,7 +4,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -40,9 +39,9 @@
   :pre-insert pre-insert
   :pre-update pre-update})
 
-(defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
+(defmethod serdes/hash-fields NativeQuerySnippet
   [_snippet]
-  [:name (serdes.hash/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]

@@ -11,7 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -199,9 +198,9 @@
   :properties     (constantly {::mi/timestamped? true})
   :pre-insert     pre-insert})
 
-(defmethod serdes.hash/identity-hash-fields Field
+(defmethod serdes/hash-fields Field
   [_field]
-  [:name (serdes.hash/hydrated-hash :table)])
+  [:name (serdes/hydrated-hash :table)])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

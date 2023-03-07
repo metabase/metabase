@@ -16,7 +16,6 @@
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
@@ -400,9 +399,9 @@
   :pre-delete     pre-delete
   :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
-(defmethod serdes.hash/identity-hash-fields Card
+(defmethod serdes/hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

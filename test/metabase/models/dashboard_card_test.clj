@@ -11,7 +11,7 @@
     :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface-test :as i.test]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db])
@@ -281,5 +281,5 @@
                                                :col                    3
                                                :created_at             now}]]
         (is (= "1311d6dc"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {} 6 3 now])
-               (serdes.hash/identity-hash dashcard)))))))
+               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
+               (serdes/identity-hash dashcard)))))))

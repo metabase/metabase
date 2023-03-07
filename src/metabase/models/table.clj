@@ -12,7 +12,6 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [toucan.db :as db]
@@ -79,9 +78,9 @@
   :pre-insert     pre-insert
   :pre-delete     pre-delete})
 
-(defmethod serdes.hash/identity-hash-fields Table
+(defmethod serdes/hash-fields Table
   [_table]
-  [:schema :name (serdes.hash/hydrated-hash :db)])
+  [:schema :name (serdes/hydrated-hash :db)])
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------

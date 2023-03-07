@@ -5,7 +5,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
    [toucan.models :as models]))
@@ -23,10 +22,10 @@
   :properties (constantly {::mi/timestamped? true
                            ::mi/entity-id    true})})
 
-(defmethod serdes.hash/identity-hash-fields Dimension
+(defmethod serdes/hash-fields Dimension
   [_dimension]
-  [(serdes.hash/hydrated-hash :field)
-   (serdes.hash/hydrated-hash :human_readable_field)
+  [(serdes/hydrated-hash :field)
+   (serdes/hydrated-hash :human_readable_field)
    :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

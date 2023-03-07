@@ -23,7 +23,6 @@
    [java-time :as t]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -175,9 +174,9 @@
   :pre-update  pre-update
   :post-select post-select})
 
-(defmethod serdes.hash/identity-hash-fields FieldValues
+(defmethod serdes/hash-fields FieldValues
   [_field-values]
-  [(serdes.hash/hydrated-hash :field)])
+  [(serdes/hydrated-hash :field)])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Utils fns                                                     |

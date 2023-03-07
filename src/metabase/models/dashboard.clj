@@ -22,7 +22,6 @@
    [metabase.models.revision :as revision]
    [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
@@ -158,9 +157,9 @@
   :post-update post-update
   :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
 
-(defmethod serdes.hash/identity-hash-fields Dashboard
+(defmethod serdes/hash-fields Dashboard
   [_dashboard]
-  [:name (serdes.hash/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

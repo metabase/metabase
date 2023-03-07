@@ -12,11 +12,11 @@
   (:require
    [clojure.string :as str]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models])
   (:refer-clojure :exclude [descendants]))
 
@@ -53,9 +53,53 @@
 (defmethod entity-id :default [_ {:keys [entity_id]}]
   entity_id)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Identity Hashes                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; Generated entity_id values have lately been added to most exported models, but they only get populated on newly
+;;; created entities. Since we can't rely on entity_id being present, we need a content-based definition of identity for
+;;; all exported models.
+
+(defn raw-hash
+  "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
+  Don't call this outside a test, use [[identity-hash]] instead."
+  [target]
+  (when (sequential? target)
+    (assert (seq target) "target cannot be an empty sequence"))
+  (format "%08x" (hash target)))
+
+(defmulti hash-fields
+  "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
+   function on an entity map."
+  {:arglists '([model-or-instance])}
+  mi/dispatch-on-model)
+
+(defn identity-hash
+  "Returns an identity hash string from an entity map."
+  [entity]
+  {:pre [(some? entity)]}
+  (-> (for [f (hash-fields entity)]
+        (f entity))
+      raw-hash))
+
+(defn identity-hash?
+  "Returns true if s is a valid identity hash string."
+  [s]
+  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
+
+(defn hydrated-hash
+  "Returns a function which accepts an entity and returns the identity hash of 
+   the value of the hydrated property under key k."
+  [k]
+  (fn [entity]
+    (or
+     (some-> entity (hydrate k) (get k) identity-hash)
+     "<none>")))
+
 (defmulti generate-path
   "Given the model name and raw entity from the database, returns a vector giving its *path*.
-  `(serdes-generate-path \"ModelName\" entity)`
+  `(generate-path \"ModelName\" entity)`
 
   The path is a vector of maps, root first and this entity itself last. Each map looks like:
   `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`
@@ -75,7 +119,7 @@
   against existing entities.
 
   The default implementation is a single level, using the model name provided and the ID from either
-  [[serdes-entity-id]] or [[serdes.hash/identity-hash]], and any `:name` field as the `:label`.
+  [[entity-id]] or [[identity-hash]], and any `:name` field as the `:label`.
   This default implementation is factored out as [[maybe-labeled]] for reuse.
 
   Implementation notes:
@@ -88,12 +132,12 @@
   (fn [model-name _instance] model-name))
 
 (defn infer-self-path
-  "Implements the default logic from [[serdes-generate-path]] that guesses the `:id` of this entity. Factored out
-  so it can be called by implementors of [[serdes-generate-path]].
+  "Implements the default logic from [[generate-path]] that guesses the `:id` of this entity. Factored out
+  so it can be called by implementors of [[generate-path]].
 
   The guesses are:
-  - [[serdes-entity-id]]
-  - [[serdes.hash/identity-hash]] after looking up the Toucan entity by primary key
+  - [[entity-id]]
+  - [[identity-hash]] after looking up the Toucan entity by primary key
 
   Returns `{:model \"ModelName\" :id \"id-string\"}`; throws if the inference fails, since it indicates a programmer
   error and not a runtime one."
@@ -102,12 +146,10 @@
         pk    (models/primary-key model)]
     {:model model-name
      :id    (or (entity-id model-name entity)
-                (some-> (get entity pk) model serdes.hash/identity-hash)
-                (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
-                                {:model model-name :entity entity})))}))
+                (some-> (get entity pk) model identity-hash))}))
 
 (defn maybe-labeled
-  "Common helper for defining [[serdes-generate-path]] for an entity that is
+  "Common helper for defining [[generate-path]] for an entity that is
   (1) top-level, ie. a one layer path;
   (2) labeled by a single field, slugified.
 
@@ -178,7 +220,7 @@
 ;;; those it needs in order to be executed, such as when questions depend on each other, or NativeQuerySnippets are
 ;;; referenced by a SQL question.
 ;;;
-;;; (serdes-descendants entity) returns a set of such descendants for the given entity (in its exported form); see that
+;;; (descendants entity) returns a set of such descendants for the given entity (in its exported form); see that
 ;;; multimethod for more details.
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -212,7 +254,7 @@
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
   `(extract-one \"ModelName\" opts entity)`
 
-  The default implementation uses [[serdes-generate-path]] to build the `:serdes/meta`. It also strips off the
+  The default implementation uses [[generate-path]] to build the `:serdes/meta`. It also strips off the
   database's numeric primary key.
 
   That suffices for a few simple entities, but most entities will need to override this.
@@ -256,7 +298,7 @@
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
   - Convert to a vanilla Clojure map.
-  - Add `:serdes/meta` by calling [[serdes-generate-path]].
+  - Add `:serdes/meta` by calling [[generate-path]].
   - Drop the primary key.
   - Drop :updated_at; it's noisy in git and not really used anywhere.
 
@@ -284,20 +326,20 @@
   - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
   - a `NativeQuerySnippet` similarly might derive from others;
 
-  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
+  A transitive closure over [[descendants]] should thus give a complete \"subtree\", such as a complete
   `Collection` and all its contents.
 
   A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
   `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
 
   What about [[serdes-dependencies]]?
-  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
+  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[descendants]] finds
   all entities that are \"part\" of the given entity.
 
   [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
   this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
   `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
-  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
+  `Card`. [[descendants]] points *down* to contents, children, and components."
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 
@@ -370,7 +412,7 @@
 
   By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
   the incoming key. For the identity hash, this scans the entire table and builds a cache of
-  [[serdes.hash/identity-hash]] to primary keys, since the identity hash cannot be queried directly.
+  [[identity-hash]] to primary keys, since the identity hash cannot be queried directly.
   This cache is cleared at the beginning and end of the deserialization process."
   {:arglists '([path])}
   (fn [path]
@@ -501,7 +543,7 @@
   ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
   (->> (db/select-reducible model)
-       (into [] (comp (filter #(= id-hash (serdes.hash/identity-hash %)))
+       (into [] (comp (filter #(= id-hash (identity-hash %)))
                       (take 1)))
        first))
 

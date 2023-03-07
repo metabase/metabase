@@ -7,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -42,9 +41,9 @@
   :hydration-keys (constantly [:segment])
   :pre-update     pre-update})
 
-(defmethod serdes.hash/identity-hash-fields Segment
+(defmethod serdes/hash-fields Segment
   [_segment]
-  [:name (serdes.hash/hydrated-hash :table) :created_at])
+  [:name (serdes/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

@@ -12,7 +12,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -403,10 +402,10 @@
       (mt/with-temp* [Collection [c1   {:name "top level" :location "/" :created_at now}]
                       Dashboard  [dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]]
         (is (= "8cbf93b7"
-               (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
-               (serdes.hash/identity-hash dash)))))))
+               (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) now])
+               (serdes/identity-hash dash)))))))
 
-(deftest serdes-descendants-test
+(deftest descendants-test
   (testing "dashboard which have parameter's source is another card"
     (mt/with-temp* [Field     [field     {:name "A field"}]
                     Card      [card      {:name "A card"}]

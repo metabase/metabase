@@ -26,7 +26,6 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -154,9 +153,9 @@
   :pre-update     pre-update
   :types          (constantly {:parameters :json})})
 
-(defmethod serdes.hash/identity-hash-fields Pulse
+(defmethod serdes/hash-fields Pulse
   [_pulse]
-  [:name (serdes.hash/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled

@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -16,10 +15,10 @@
  PulseCard
  {:properties (constantly {::mi/entity-id true})})
 
-(defmethod serdes.hash/identity-hash-fields PulseCard
+(defmethod serdes/hash-fields PulseCard
   [_pulse-card]
-  [(serdes.hash/hydrated-hash :pulse)
-   (serdes.hash/hydrated-hash :card)
+  [(serdes/hydrated-hash :pulse)
+   (serdes/hydrated-hash :card)
    :position])
 
 (defn next-position-for

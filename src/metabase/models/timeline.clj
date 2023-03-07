@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
@@ -59,9 +58,9 @@
  {:properties (constantly {::mi/timestamped? true
                            ::mi/entity-id true})})
 
-(defmethod serdes.hash/identity-hash-fields Timeline
+(defmethod serdes/hash-fields Timeline
   [_timeline]
-  [:name (serdes.hash/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;;; serialization
 (defmethod serdes/extract-query "Timeline" [_model-name opts]

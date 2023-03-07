@@ -6,7 +6,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
@@ -201,9 +200,9 @@
   :pre-insert     validate-email-domains
   :pre-update     validate-email-domains})
 
-(defmethod serdes.hash/identity-hash-fields PulseChannel
+(defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
-  [(serdes.hash/hydrated-hash :pulse) :channel_type :details :created_at])
+  [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is

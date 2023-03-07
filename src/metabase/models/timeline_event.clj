@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -96,9 +95,9 @@
  TimelineEvent
  {:properties (constantly {::mi/timestamped? true})})
 
-(defmethod serdes.hash/identity-hash-fields TimelineEvent
+(defmethod serdes/hash-fields TimelineEvent
   [_timeline-event]
-  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
+  [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
 ;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].

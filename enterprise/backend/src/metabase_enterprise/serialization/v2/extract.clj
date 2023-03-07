@@ -166,7 +166,7 @@
 
   The targeted entities are specified as a list of `[\"SomeModel\" database-id]` pairs.
 
-  [[serdes/serdes-descendants]] is recursively called on these entities and all their descendants, until the
+  [[serdes/descendants]] is recursively called on these entities and all their descendants, until the
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
   entities are then extracted the same way as [[extract-metabase]].
 Eg. if Dashboard B includes a Card A that is derived from a

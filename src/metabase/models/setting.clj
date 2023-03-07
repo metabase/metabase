@@ -83,7 +83,6 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -146,7 +145,7 @@
  {:types       (constantly {:value :encrypted-text})
   :primary-key (constantly :key)})
 
-(defmethod serdes.hash/identity-hash-fields Setting
+(defmethod serdes/hash-fields Setting
   [_setting]
   [:key])
 

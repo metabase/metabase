@@ -16,7 +16,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -920,10 +919,10 @@
                       (hydrate :parent_id)
                       :parent_id)]
     (if parent-id
-      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
+      (serdes/identity-hash (db/select-one Collection :id parent-id))
       "ROOT")))
 
-(defmethod serdes.hash/identity-hash-fields Collection
+(defmethod serdes/hash-fields Collection
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
@@ -957,7 +956,7 @@
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent
-                           (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+                           (or (:entity_id parent) (serdes/identity-hash parent)))
         owner-email      (when (:personal_owner_id coll)
                            (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
     (-> (serdes/extract-one-basics "Collection" coll)

@@ -11,7 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -55,10 +54,10 @@
                            :visualization_settings :visualization-settings})
   :pre-insert pre-insert})
 
-(defmethod serdes.hash/identity-hash-fields DashboardCard
+(defmethod serdes/hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card) ; :card is optional, eg. text cards
-   (comp serdes.hash/identity-hash
+  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
+   (comp serdes/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
    :visualization_settings

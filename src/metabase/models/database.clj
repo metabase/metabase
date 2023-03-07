@@ -10,7 +10,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
@@ -236,7 +235,7 @@
   :pre-update     pre-update
   :pre-delete     pre-delete})
 
-(defmethod serdes.hash/identity-hash-fields Database
+(defmethod serdes/hash-fields Database
   [_database]
   [:name :engine])
 
