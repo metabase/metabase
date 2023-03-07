@@ -34,6 +34,7 @@
          new-database-name             :name
          new-database-auto-incremented :database-auto-incremented
          new-db-required               :database-required} field-metadata
+        new-database-auto-incremented              (boolean new-database-auto-incremented)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
@@ -105,7 +106,7 @@
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-database-auto-incremented
                           new-database-auto-incremented))
-           {:database_auto_incremented new-db-auto-incremented?})
+           {:database_auto_incremented new-database-auto-incremented})
          (when new-db-required?
            (log/info (trs "Database required of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)

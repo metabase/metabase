@@ -64,7 +64,7 @@
                  :effective_type   "type/Text"
                  :has_field_values "list"
                  :database_required false
-                 :database_auto_incremented fasle
+                 :database_auto_incremented false
                  :dimensions       []
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))

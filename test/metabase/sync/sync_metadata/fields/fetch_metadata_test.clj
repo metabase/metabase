@@ -23,7 +23,7 @@
               :semantic-type     :type/PK
               :pk?               true
               :database-required false
-              :database-auto-incremented true}
+              :database-auto-incremented false}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
@@ -59,6 +59,7 @@
               :effective-type    :type/Dictionary
               :pk?               false
               :database-required false
+              :database-auto-incremented false
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text

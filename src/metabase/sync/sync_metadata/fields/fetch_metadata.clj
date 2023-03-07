@@ -22,7 +22,6 @@
 
 (s/defn ^:private fields->parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}
   [fields :- (s/maybe [i/FieldInstance])]
-  (def fields fields)
   (->> (for [field fields]
          {:parent-id                 (:parent_id field)
           :id                        (:id field)

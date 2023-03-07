@@ -37,14 +37,14 @@
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_required false :database_auto_incremented true}]]
+    (is (= [["Field" 1 {:database_required false}]]
            (updates-that-will-be-performed
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
              :database-position 0
              :database-required false
-             :database-auto-incremented true}
+             :database-auto-incremented false}
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
@@ -52,6 +52,24 @@
              :database-position 0
              :database-required true
              :database-auto-incremented false})))))
+
+(deftest database-auto-incremented-changed-test
+  (testing "test that if database-required changes we will update it in the DB"
+    (is (= [["Field" 1 {:database_auto_incremented true}]]
+           (updates-that-will-be-performed
+            {:name              "My Field"
+             :database-type     "Integer"
+             :base-type         :type/Integer
+             :database-position 0
+             :database-required false
+             :database-auto-incremented false}
+            {:name              "My Field"
+             :database-type     "Integer"
+             :base-type         :type/Integer
+             :id                1
+             :database-position 0
+             :database-required false
+             :database-auto-incremented true})))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
