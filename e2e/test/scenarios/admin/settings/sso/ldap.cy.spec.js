@@ -119,6 +119,9 @@ describe(
           "getSessionProperties",
         );
         cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+        cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
+          "clearGroup",
+        );
       });
 
       it.only("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
