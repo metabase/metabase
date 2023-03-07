@@ -1,3 +1,4 @@
+export * from "./actions";
 export * from "./activity";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
@@ -20,10 +21,12 @@ export * from "./segment";
 export * from "./settings";
 export * from "./slack";
 export * from "./snippets";
+export * from "./store";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
 export * from "./parameters";
+export * from "./search";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

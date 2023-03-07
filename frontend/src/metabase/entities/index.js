@@ -1,3 +1,4 @@
+export { default as actions } from "./actions";
 export { default as alerts } from "./alerts";
 export { default as collections } from "./collections";
 export { default as snippetCollections } from "./snippet-collections";

@@ -30,7 +30,7 @@
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (validation/check-has-application-permission :setting)
-  (setting/admin-writable-settings))
+  (setting/writable-settings))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
@@ -52,7 +52,7 @@
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
-  {key su/NonBlankStringPlumatic}
+  {key su/NonBlankString}
   (with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)

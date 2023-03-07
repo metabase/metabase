@@ -9,6 +9,8 @@
   (:import
    (org.joda.time DateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;; TIMEZONE FIXME - no Joda Time
 (defn- extract-time-zone [^DateTime dt]
   (-> dt .getChronology .getZone .getID))

@@ -14,7 +14,7 @@
   "Is given form an MBQL field reference?"
   (complement (s/checker mbql.s/field)))
 
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankStringPlumatic su/IntGreaterThanZeroPlumatic))
+(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
   "Extract field ID from a given field reference form."
   [clause]
   (mbql.u/match-one clause [:field id _] id))

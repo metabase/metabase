@@ -40,7 +40,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
@@ -86,6 +86,9 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -237,6 +240,25 @@ export const getRoutes = store => (
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
+        </Route>
+
+        <Route path="/model/:slug/detail">
+          <IndexRedirect to="usage" />
+          <Route path="usage" component={ModelDetailPage} />
+          <Route path="schema" component={ModelDetailPage} />
+          <Route path="actions" component={ModelDetailPage}>
+            <ModalRoute
+              path="new"
+              modal={ActionCreatorModal}
+              modalProps={{ wide: true, enableTransition: false }}
+            />
+            <ModalRoute
+              path=":actionId"
+              modal={ActionCreatorModal}
+              modalProps={{ wide: true, enableTransition: false }}
+            />
+          </Route>
+          <Redirect from="*" to="usage" />
         </Route>
 
         <Route path="/model">

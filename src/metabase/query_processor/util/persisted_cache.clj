@@ -8,12 +8,6 @@
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]))
 
-(defn- segmented-user?
-  []
-  (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented?)
-    false))
-
 (defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
   persisted version."
@@ -27,8 +21,7 @@
        (= (:query_hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
        (= (:definition persisted-info)
           (persisted-info/metadata->definition (:result_metadata card)
-                                               (:table_name persisted-info)))
-       (not (segmented-user?))))
+                                               (:table_name persisted-info)))))
 
 (defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if

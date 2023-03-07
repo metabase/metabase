@@ -22,7 +22,7 @@ on:
 jobs:
   build:
     name: Build MB ${{ matrix.edition }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
       matrix:
@@ -39,13 +39,15 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: uberjar
     - name: Build
-      run: ./bin/build
+      run: ./bin/build.sh
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
   check_jar_health:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: build
     timeout-minutes: 10
@@ -71,7 +73,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize_test_and_push_container:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Containerize ${{ matrix.edition }}
     needs: check_jar_health
     strategy:
@@ -140,6 +142,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-enterprise-head:latest
         format: sarif
@@ -148,6 +152,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-head:latest
         format: sarif
@@ -156,6 +162,8 @@ jobs:
     - name: Run Trivy vulnerability scanner if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif

@@ -2,19 +2,17 @@
 title: "Collection"
 summary: |
   `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-    the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-    `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-    To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-    `?namespace=snippet`).
+    the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+    `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+    endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 ---
 
 # Collection
 
 `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`).
+  the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+  endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 
 ## `GET /api/collection/`
 

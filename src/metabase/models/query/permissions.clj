@@ -3,7 +3,6 @@
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -13,6 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -40,7 +40,7 @@
 ;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
-(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZeroPlumatic)}
+(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
   "Return a sequence of all Table IDs referenced by `query`."
   [query]
   (set
@@ -67,15 +67,15 @@
 (def ^:private TableOrIDOrNativePlaceholder
   (s/cond-pre
    (s/eq ::native)
-   su/IntGreaterThanZeroPlumatic))
+   su/IntGreaterThanZero))
 
-(s/defn tables->permissions-path-set :- #{perms/Path}
+(s/defn tables->permissions-path-set :- #{perms/PathSchema}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
 
   Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
   permissions, such as download permissions."
-  [database-or-id            :- (s/cond-pre su/IntGreaterThanZeroPlumatic su/MapPlumatic)
+  [database-or-id            :- (s/cond-pre su/IntGreaterThanZero su/Map)
    tables-or-ids             :- #{TableOrIDOrNativePlaceholder}
    {:keys [segmented-perms?
            table-perms-fn
@@ -100,10 +100,10 @@
                              (table-or-id->schema table-or-id)
                              (u/the-id table-or-id)))))))
 
-(s/defn ^:private source-card-read-perms :- #{perms/Path}
+(s/defn ^:private source-card-read-perms :- #{perms/PathSchema}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
-  [source-card-id :- su/IntGreaterThanZeroPlumatic]
+  [source-card-id :- su/IntGreaterThanZero]
   (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
@@ -115,14 +115,14 @@
   (binding [api/*current-user-id* nil]
     ((resolve 'metabase.query-processor/preprocess) query)))
 
-(s/defn ^:private mbql-permissions-path-set :- #{perms/Path}
+(s/defn ^:private mbql-permissions-path-set :- #{perms/PathSchema}
   "Return the set of required permissions needed to run an adhoc `query`.
 
   Also optionally specify `throw-exceptions?` -- normally this function avoids throwing Exceptions to avoid breaking
   things when a single Card is busted (e.g. API endpoints that filter out unreadable Cards) and instead returns 'only
   admins can see this' permissions -- `#{\"db/0\"}` (DB 0 will never exist, thus normal users will never be able to
   get permissions for it, but admins have root perms and will still get to see (and hopefully fix) it)."
-  [query :- {:query su/MapPlumatic, s/Keyword s/Any}
+  [query :- {:query su/Map, s/Keyword s/Any}
    {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
     (let [query (mbql.normalize/normalize query)]
@@ -145,7 +145,7 @@
         (log/error e))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
-(s/defn ^:private perms-set* :- #{perms/Path}
+(s/defn ^:private perms-set* :- #{perms/PathSchema}
   "Does the heavy lifting of creating the perms set. `opts` will indicate whether exceptions should be thrown and
   whether full or segmented table permissions should be returned."
   [{query-type :type, database :database, :as query} perms-opts :- PermsOptions]

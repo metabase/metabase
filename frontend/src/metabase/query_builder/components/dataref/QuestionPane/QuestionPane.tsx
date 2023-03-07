@@ -79,7 +79,7 @@ const QuestionPane = ({
           <QuestionPaneDetailText>{t`ID #${question.id()}`}</QuestionPaneDetailText>
         </QuestionPaneDetail>
         <QuestionPaneDetail>
-          <QuestionPaneIcon name="all" />
+          <QuestionPaneIcon name="collection" />
           <QuestionPaneDetailText>
             {collection?.name ?? t`Our analytics`}
           </QuestionPaneDetailText>

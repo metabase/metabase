@@ -193,7 +193,7 @@
      (mt/$ids ~'bird-count
               (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
                          ;; therefore a different macro is tested in bigquery driver tests
@@ -298,7 +298,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
@@ -388,9 +388,7 @@
                   :order-by    [[:asc $id]]})))))))
 
 (deftest expression-using-aggregation-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
-                         ;; The limit in source-query is ignored (#27249)
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
               [ "25°" 2 2 0]

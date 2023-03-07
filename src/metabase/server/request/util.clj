@@ -4,15 +4,17 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [user-agent :as user-agent]))
+
+(set! *warn-on-reflection* true)
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -51,18 +53,18 @@
     ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
     ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
     (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-    (= "https" (str/lower-case (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+    (= "https" (u/lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
 
     ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
     ;; will be set to `on` if the original request was over HTTPS.
     (or x-forwarded-ssl front-end-https)
-    (= "on" (str/lower-case (or x-forwarded-ssl front-end-https)))
+    (= "on" (u/lower-case-en (or x-forwarded-ssl front-end-https)))
 
     ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
     ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
     ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
     origin
-    (str/starts-with? (str/lower-case origin) "https")
+    (str/starts-with? (u/lower-case-en origin) "https")
 
     ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
     ;; front of us), we can look directly at the scheme of the request sent to Jetty.
@@ -89,9 +91,9 @@
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
-  {:device_id          su/NonBlankStringPlumatic
-   :device_description su/NonBlankStringPlumatic
-   :ip_address         su/NonBlankStringPlumatic})
+  {:device_id          su/NonBlankString
+   :device_description su/NonBlankString
+   :ip_address         su/NonBlankString})
 
 (s/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
@@ -137,10 +139,10 @@
   5000)
 
 (def ^:private IPAddress
-  (s/constrained su/NonBlankStringPlumatic u/ip-address? "valid IP address string"))
+  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankStringPlumatic
+(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
                                                      :timezone    (s/maybe java.time.ZoneId)}})
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."

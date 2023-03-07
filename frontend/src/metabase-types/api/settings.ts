@@ -153,6 +153,7 @@ export interface SettingDefinition {
 }
 
 export interface Settings {
+  "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -173,7 +174,6 @@ export interface Settings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
-  "experimental-enable-actions": boolean;
   "ga-enabled": boolean;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;
@@ -222,4 +222,3 @@ export interface Settings {
 }
 
 export type SettingKey = keyof Settings;
-0;

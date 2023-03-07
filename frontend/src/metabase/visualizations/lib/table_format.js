@@ -141,7 +141,13 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => getSafeColor(scale(value));
+    return value => {
+      const colorValue = scale(value);
+      if (!colorValue) {
+        return null;
+      }
+      return getSafeColor(colorValue);
+    };
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;

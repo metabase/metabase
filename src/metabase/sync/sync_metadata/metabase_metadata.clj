@@ -7,7 +7,6 @@
   their database for an enhanced Metabase experience out-of-the box."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
@@ -17,19 +16,20 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
 
 (def ^:private KeypathComponents
-  {:table-name (s/maybe su/NonBlankStringPlumatic)
-   :field-name (s/maybe su/NonBlankStringPlumatic)
+  {:table-name (s/maybe su/NonBlankString)
+   :field-name (s/maybe su/NonBlankString)
    :k          s/Keyword})
 
 (s/defn ^:private parse-keypath :- KeypathComponents
   "Parse a KEYPATH into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
-  [keypath :- su/NonBlankStringPlumatic]
+  [keypath :- su/NonBlankString]
   ;; keypath will have one of three formats:
   ;; property (for database-level properties)
   ;; table_name.property
@@ -84,7 +84,7 @@
 (s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
-  (= "_metabase_metadata" (str/lower-case (:name table))))
+  (= "_metabase_metadata" (u/lower-case-en (:name table))))
 
 (s/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.

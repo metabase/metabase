@@ -11,6 +11,8 @@
   (:import
    (java.time LocalDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private metric-defaults
   {:description             nil
    :how_is_this_calculated  nil
@@ -26,13 +28,13 @@
     (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
-             UnsupportedOperationException
+             Exception
              #"You cannot update the creator_id of a Metric"
              (db/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
-             UnsupportedOperationException
+             Exception
              #"You cannot update the creator_id of a Metric"
              (db/update! Metric id {:creator_id nil}))))
 

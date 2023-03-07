@@ -7,6 +7,8 @@
    [metabase.models.field :refer [Field]]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
     sigil))

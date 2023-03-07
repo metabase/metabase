@@ -55,7 +55,10 @@
     :renameSequence
     :renameTable
     :renameTrigger
-    :renameView})
+    :renameView
+    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
+    ;; metabase.db.custom-migrations
+    :customChange})
 
 (defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\""

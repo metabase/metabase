@@ -1,7 +1,6 @@
 (ns metabase.core
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.trace :as trace]
    [java-time :as t]
    [metabase.analytics.prometheus :as prometheus]
@@ -26,7 +25,10 @@
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (comment
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types

@@ -22,6 +22,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn- trigger-for-db [db-id]
@@ -65,6 +67,49 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest can-read-database-setting-test
+  (let [encode-decode (fn [obj] (decode (encode obj)))
+        pg-db         (mi/instance
+                       Database
+                       {:description nil
+                        :name        "testpg"
+                        :details     {}
+                        :settings    {:database-enable-actions true ; visibility: :public
+                                      :max-results-bare-rows 2000}  ; visibility: :authenticated
+                        :id          3})]
+    (testing "authenticated users should see settings with authenticated visibility"
+      (mw.session/with-current-user
+        (mt/user->id :rasta)
+        (is (= {"description" nil
+                "name"        "testpg"
+                "settings"    {"database-enable-actions" true
+                               "max-results-bare-rows"  2000}
+                "id"          3}
+               (encode-decode pg-db)))))
+    (testing "non-authenticated users shouldn't see settings with authenticated visibility"
+      (mw.session/with-current-user nil
+        (is (= {"description" nil
+                "name"        "testpg"
+                "settings"    {"database-enable-actions" true}
+                "id"          3}
+               (encode-decode pg-db)))))))
+
+(deftest driver-supports-actions-and-database-enable-actions-test
+  (mt/test-drivers #{:sqlite}
+    (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :sqlite}]
+        (is (= false (driver/database-supports? :sqlite :actions database)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :settings {:database-enable-actions true})))))
+    (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :engine :sqlite)))))))
+
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
@@ -87,6 +132,7 @@
                                       :user                          "metabase"
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
+                        :settings    {:database-enable-actions true}
                         :id          3})
         bq-db         (mi/instance
                        Database
@@ -97,6 +143,7 @@
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
                                       :project-id           project-id}
+                        :settings    {:database-enable-actions true}
                         :id          2
                         :engine      :bigquery-cloud-sdk})]
     (testing "sensitive fields are redacted when database details are encoded"
@@ -105,12 +152,14 @@
             (mt/user->id :rasta)
             (is (= {"description" nil
                     "name"        "testpg"
+                    "settings"    {"database-enable-actions" true}
                     "id"          3}
                    (encode-decode pg-db)))
             (is (= {"description" nil
                     "name"        "testbq"
                     "id"          2
-                    "engine"      "bigquery-cloud-sdk"}
+                    "engine"      "bigquery-cloud-sdk"
+                    "settings"    {"database-enable-actions" true}}
                    (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
@@ -132,6 +181,7 @@
                                    "port"                          5432
                                    "password"                      "**MetabasePass**"
                                    "tunnel-host"                   "localhost"}
+                    "settings"    {"database-enable-actions" true}
                     "id"          3}
                    (encode-decode pg-db)))
             (is (= {"description" nil
@@ -142,6 +192,7 @@
                                    "use-jvm-timezone"     false
                                    "project-id"           project-id}
                     "id"          2
+                    "settings"    {"database-enable-actions" true}
                     "engine"      "bigquery-cloud-sdk"}
                    (encode-decode bq-db))))))))
 
@@ -176,7 +227,7 @@
   (testing "manipulating secret values in db-details works correctly"
     (mt/with-driver :secret-test-driver
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
-        (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
+        (let [secret-ids  (atom #{})    ; keep track of all secret IDs created with the temp database
               check-db-fn (fn [{:keys [details] :as _database} exp-secret]
                             (when (not= :file-path (:source exp-secret))
                               (is (not (contains? details :password-value))
@@ -196,12 +247,13 @@
                               (is (some? updated_at) "updated_at populated for the secret instance")
                               (doseq [[exp-key exp-val] exp-secret]
                                 (testing (format "%s=%s in secret" exp-key exp-val)
-                                  (is (= exp-val (cond-> (exp-key secret)
-                                                   (string? exp-val)
-                                                   (String.)
-
-                                                   :else
-                                                   identity)))))))]
+                                  (let [v (exp-key secret)
+                                        v (if (and (string? exp-val)
+                                                   (bytes? v))
+                                            (String. ^bytes v "UTF-8")
+                                            v)]
+                                    (is (= exp-val
+                                           v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
             (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
                                                                        :name    "Test DB with secrets"

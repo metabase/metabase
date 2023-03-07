@@ -1,9 +1,14 @@
 (ns metabase.models.bookmark-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.bookmark :as bookmark]))
+   [metabase.models.bookmark :as bookmark]
+   [metabase.test :as mt]))
 
-(deftest normalize-bookmark-result-test
+(deftest ^:parallel bookmarks-for-user-test
+  (testing "Sanity check: just make sure the bookmarks-for-user DB query actually works"
+    (is (some? (bookmark/bookmarks-for-user (mt/user->id :rasta))))))
+
+(deftest ^:parallel normalize-bookmark-result-test
   (testing "collection properties don't shadow other properties"
     (let [row {:report_card.archived         nil
                :report_dashboard.description "Dashboard description"

@@ -12,7 +12,9 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
-(s/defn ^:private parse-value-for-base-type [v :- s/Str, base-type :- su/FieldTypePlumatic]
+(set! *warn-on-reflection* true)
+
+(s/defn ^:private parse-value-for-base-type [v :- s/Str, base-type :- su/FieldType]
   {:pre [(string? v)]}
   (try
     (condp #(isa? %2 %1) base-type

@@ -1,15 +1,17 @@
 (ns metabase.email
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [postal.core :as postal]
    [postal.support :refer [make-props]]
    [schema.core :as s])
   (:import
    (javax.mail Session)))
+
+(set! *warn-on-reflection* true)
 
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*
@@ -27,7 +29,7 @@
   :visibility :settings-manager)
 
 (def ^:private ReplyToAddresses
-  (s/maybe [su/EmailPlumatic]))
+  (s/maybe [su/Email]))
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
   (s/validator ReplyToAddresses))
@@ -106,7 +108,7 @@
    {:subject      s/Str
     :recipients   [(s/pred u/email?)]
     :message-type (s/enum :text :html :attachments)
-    :message      (s/cond-pre s/Str [su/MapPlumatic])} ; TODO - what should this be a sequence of?
+    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
      (if (= message-type :attachments)
        (and (sequential? message) (every? map? message))
@@ -163,8 +165,8 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                         su/NonBlankStringPlumatic
-   :port                         su/IntGreaterThanZeroPlumatic
+  {:host                         su/NonBlankString
+   :port                         su/IntGreaterThanZero
      ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    (s/optional-key :user)        (s/maybe s/Str)
    (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
@@ -198,7 +200,7 @@
 
 (def ^:private email-security-order [:tls :starttls :ssl])
 
-(def ^:private retry-delay-ms
+(def ^:private ^Long retry-delay-ms
   "Amount of time to wait between retrying SMTP connections with different security options. This delay exists to keep
   us from getting banned on Outlook.com."
   500)

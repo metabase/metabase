@@ -14,6 +14,8 @@
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
 
+(set! *warn-on-reflection* true)
+
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
 
@@ -23,7 +25,7 @@
    :content                      [s/Any]
    (s/optional-key :render/text) (s/maybe s/Str)})
 
-(p.types/defrecord+ NumericWrapper [num-str]
+(p.types/defrecord+ NumericWrapper [^String num-str ^Number num-value]
   hiccup.util/ToString
   (to-str [_] num-str)
 
@@ -124,25 +126,27 @@
                         scientific? (str "E0")
                         percent?    (str "%"))
               fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
-          (NumericWrapper.
-           (str (when prefix prefix)
-                (when (and currency? (or (nil? currency-style)
-                                         (= currency-style "symbol")))
-                  (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                (when (and currency? (= currency-style "code"))
-                  (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                (cond-> (.format fmtr scaled-value)
-                  (not decimals) (strip-trailing-zeroes decimal))
-                (when (and currency? (= currency-style "name"))
-                  (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                (when suffix suffix))))
+          (map->NumericWrapper
+            {:num-value value
+             :num-str   (str (when prefix prefix)
+                             (when (and currency? (or (nil? currency-style)
+                                                      (= currency-style "symbol")))
+                               (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                             (when (and currency? (= currency-style "code"))
+                               (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                             (cond-> (.format fmtr scaled-value)
+                               (not decimals) (strip-trailing-zeroes decimal))
+                             (when (and currency? (= currency-style "name"))
+                               (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                             (when suffix suffix))}))
         value))))
 
 (s/defn format-number :- NumericWrapper
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
   ([n :- s/Num]
-   (NumericWrapper. (cl-format nil (if (integer? n) "~:d" "~,2f") n)))
+   (map->NumericWrapper {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
+                         :num-value n}))
   ([value column viz-settings]
    (let [fmttr (number-formatter column viz-settings)]
      (fmttr value))))

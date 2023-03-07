@@ -1,10 +1,10 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
@@ -20,10 +20,13 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -33,16 +36,14 @@
   "Schema for a valid table field ordering."
   (apply s/enum (map name table/field-orderings)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
   (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
@@ -55,17 +56,16 @@
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} body]
-  (api/check-500
-   (db/update! Table id
-               (u/select-keys-when body
-                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                 :present [:description :caveats :points_of_interest :visibility_type])))
+  (when-let [changes (not-empty (u/select-keys-when body
+                                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+    (api/check-500 (db/update! Table id changes)))
   (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-       (table/update-field-positions! updated-table)
-       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+        (table/update-field-positions! updated-table)
+        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -98,8 +98,8 @@
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankStringPlumatic)
-   entity_type             (s/maybe su/EntityTypeKeywordOrStringPlumatic)
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -113,9 +113,9 @@
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
-  {ids                     (su/non-empty [su/IntGreaterThanZeroPlumatic])
-   display_name            (s/maybe su/NonBlankStringPlumatic)
-   entity_type             (s/maybe su/EntityTypeKeywordOrStringPlumatic)
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
+   display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -307,9 +307,9 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields (s/maybe su/BooleanStringPlumatic)
-   include_hidden_fields (s/maybe su/BooleanStringPlumatic)
-   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
+  {include_sensitive_fields (s/maybe su/BooleanString)
+   include_hidden_fields (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
   (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
@@ -381,16 +381,16 @@
   [id]
   (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
-                                                      :id id)
-        moderated-status              (->> (db/query {:select   [:status]
-                                                      :from     [:moderation_review]
-                                                      :where    [:and
-                                                                 [:= :moderated_item_type "card"]
-                                                                 [:= :moderated_item_id id]
-                                                                 [:= :most_recent true]]
-                                                      :order-by [[:id :desc]]
-                                                      :limit    1}
-                                                     :id id)
+                                         :id id)
+        moderated-status              (->> (mdb.query/query {:select   [:status]
+                                                             :from     [:moderation_review]
+                                                             :where    [:and
+                                                                        [:= :moderated_item_type "card"]
+                                                                        [:= :moderated_item_id id]
+                                                                        [:= :most_recent true]]
+                                                             :order-by [[:id :desc]]
+                                                             :limit    1}
+                                                            :id id)
                                            first :status)]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
@@ -398,15 +398,13 @@
         (assoc-dimension-options (driver.u/database->driver database_id))
         remove-nested-pk-fk-semantic-types)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card__:id/fks"
+(api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
   []
   []) ; return empty array
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/fks"
+(api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (api/read-check Table id)
@@ -419,9 +417,7 @@
        :destination_id (:fk_target_field_id origin-field)
        :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rescan_values"
+(api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
@@ -436,8 +432,7 @@
          (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/discard_values"
+(api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
@@ -446,8 +441,7 @@
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/related"
+(api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Table :id id) api/read-check related/related))
@@ -456,7 +450,7 @@
 (api/defendpoint-schema PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
-  {field_order [su/IntGreaterThanZeroPlumatic]}
+  {field_order [su/IntGreaterThanZero]}
   (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

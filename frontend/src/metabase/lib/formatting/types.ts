@@ -16,7 +16,6 @@ export interface OptionsType {
   majorWidth?: number;
   markdown_template?: any;
   maximumFractionDigits?: number;
-  minimumFractionDigits?: number;
   noRange?: boolean;
   number_separators?: string;
   number_style?: string;
@@ -25,9 +24,9 @@ export interface OptionsType {
   rich?: boolean;
   suffix?: string;
   time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
-  weekday_enabled?: boolean;
   time_format?: string;
   time_style?: string;
   type?: string;
   view_as?: string | null;
+  weekday_enabled?: boolean;
 }

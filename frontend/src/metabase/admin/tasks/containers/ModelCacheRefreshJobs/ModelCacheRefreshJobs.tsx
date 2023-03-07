@@ -34,7 +34,7 @@ type JobTableItemProps = {
 };
 
 function JobTableItem({ job, onRefresh }: JobTableItemProps) {
-  const modelUrl = Urls.dataset({ id: job.card_id, name: job.card_name });
+  const modelUrl = Urls.model({ id: job.card_id, name: job.card_name });
   const collectionUrl = Urls.collection({
     id: job.collection_id,
     name: job.collection_name,

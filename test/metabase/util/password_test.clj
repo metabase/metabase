@@ -1,9 +1,11 @@
-(ns metabase.util.password-test
+(ns ^:mb/once metabase.util.password-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.password :as u.password]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

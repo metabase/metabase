@@ -8,7 +8,7 @@ on:
 jobs:
   pr_info:
     if: github.event.comment.body == '@metabase-bot run visual tests'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       pull_request_number: ${{ fromJson(steps.fetch_pr.outputs.data).head.number }}
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
@@ -64,15 +64,18 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: percy-issue-comment
+
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-      - run: ./bin/build
+      - run: ./bin/build.sh
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+        run: docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5
       - name: Percy Test
         run: yarn run test-visual-run
         env:

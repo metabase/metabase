@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -30,7 +29,17 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
-import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
+
+import {
+  SectionContainer,
+  SectionWarnings,
+  ChartSettingsRoot,
+  ChartSettingsMenu,
+  ChartSettingsPreview,
+  ChartSettingsListContainer,
+  ChartSettingsVisualizationContainer,
+  ChartSettingsFooterRoot,
+} from "./ChartSettings.styled";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
@@ -252,8 +261,15 @@ class ChartSettings extends Component {
   };
 
   render() {
-    const { className, question, addField, noPreview, dashboard, isDashboard } =
-      this.props;
+    const {
+      className,
+      question,
+      addField,
+      noPreview,
+      dashboard,
+      dashcard,
+      isDashboard,
+    } = this.props;
     const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
@@ -323,7 +339,7 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <SectionContainer>
+      <SectionContainer isDashboard={isDashboard}>
         <Radio
           value={currentSection}
           onChange={this.handleShowSection}
@@ -331,7 +347,7 @@ class ChartSettings extends Component {
           optionNameFn={v => v}
           optionValueFn={v => v}
           optionKeyFn={v => v}
-          variant="bubble"
+          variant="underlined"
         />
       </SectionContainer>
     );
@@ -354,63 +370,40 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className={cx(className, "flex flex-column")}>
-        {showSectionPicker && (
-          <div
-            className={cx("flex flex-no-shrink pl4 pb1", {
-              pt3: isDashboard,
-            })}
-          >
-            {sectionPicker}
-          </div>
-        )}
-        {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show pt2 pb4">
+      <ChartSettingsRoot className={className}>
+        <ChartSettingsMenu data-testid="chartsettings-sidebar">
+          {showSectionPicker && sectionPicker}
+          <ChartSettingsListContainer className="scroll-show">
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}
             />
-          </div>
-        ) : (
-          <div className="Grid flex-full">
-            <div
-              className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid="chartsettings-sidebar"
-            >
-              <ChartSettingsWidgetList
-                widgets={visibleWidgets}
-                extraWidgetProps={extraWidgetProps}
+          </ChartSettingsListContainer>
+        </ChartSettingsMenu>
+        {!noPreview && (
+          <ChartSettingsPreview>
+            <SectionWarnings warnings={this.state.warnings} size={20} />
+            <ChartSettingsVisualizationContainer>
+              <Visualization
+                className="spread"
+                rawSeries={rawSeries}
+                showTitle
+                isEditing
+                isDashboard
+                dashboard={dashboard}
+                dashcard={dashcard}
+                isSettings
+                showWarnings
+                onUpdateVisualizationSettings={this.handleChangeSettings}
+                onUpdateWarnings={warnings => this.setState({ warnings })}
               />
-            </div>
-            <div className="Grid-cell flex flex-column pt2">
-              <div className="mx4 flex flex-column">
-                <SectionWarnings
-                  className="mx2 align-self-end"
-                  warnings={this.state.warnings}
-                  size={20}
-                />
-              </div>
-              <div className="mx4 flex-full relative">
-                <Visualization
-                  className="spread"
-                  rawSeries={rawSeries}
-                  showTitle
-                  isEditing
-                  isDashboard
-                  dashboard={dashboard}
-                  isSettings
-                  showWarnings
-                  onUpdateVisualizationSettings={this.handleChangeSettings}
-                  onUpdateWarnings={warnings => this.setState({ warnings })}
-                />
-              </div>
-              <ChartSettingsFooter
-                onDone={this.handleDone}
-                onCancel={this.handleCancel}
-                onReset={onReset}
-              />
-            </div>
-          </div>
+            </ChartSettingsVisualizationContainer>
+            <ChartSettingsFooter
+              onDone={this.handleDone}
+              onCancel={this.handleCancel}
+              onReset={onReset}
+            />
+          </ChartSettingsPreview>
         )}
         <ChartSettingsWidgetPopover
           currentWidgetKey={
@@ -422,37 +415,31 @@ class ChartSettings extends Component {
           )}
           handleEndShowWidget={this.handleEndShowWidget}
         />
-      </div>
+      </ChartSettingsRoot>
     );
   }
 }
 
-const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
-  <div className={cx("py2 px4", className)}>
-    <div className="float-right">
-      <Button
-        className="ml2"
-        onClick={onCancel}
-        data-metabase-event="Chart Settings;Cancel"
-      >{t`Cancel`}</Button>
-      <Button
-        primary
-        className="ml2"
-        onClick={onDone}
-        data-metabase-event="Chart Settings;Done"
-      >{t`Done`}</Button>
-    </div>
-
+const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
+  <ChartSettingsFooterRoot>
     {onReset && (
       <Button
         borderless
         icon="refresh"
-        className="float-right ml2"
         data-metabase-event="Chart Settings;Reset"
         onClick={onReset}
       >{t`Reset to defaults`}</Button>
     )}
-  </div>
+    <Button
+      onClick={onCancel}
+      data-metabase-event="Chart Settings;Cancel"
+    >{t`Cancel`}</Button>
+    <Button
+      primary
+      onClick={onDone}
+      data-metabase-event="Chart Settings;Done"
+    >{t`Done`}</Button>
+  </ChartSettingsFooterRoot>
 );
 
 export default ChartSettings;

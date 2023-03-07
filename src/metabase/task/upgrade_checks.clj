@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -11,7 +10,10 @@
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- get-version-info []
   (let [version-info-url-key  (if config/ee-available? :mb-version-info-ee-url :mb-version-info-url)

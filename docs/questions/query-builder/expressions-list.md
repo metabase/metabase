@@ -22,7 +22,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [Share](#share)
   - [StandardDeviation](#standarddeviation)
   - [Sum](#sum)
-  - [SumIf](#sumif)
+  - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
 - [Functions](#functions)
   - [abs](#abs)
@@ -186,7 +186,7 @@ Syntax: `Sum(column)`
 
 Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
-### SumIf
+### [SumIf](./expressions/sumif.md)
 
 Sums up the specified column only for rows where the condition is true.
 
@@ -524,7 +524,7 @@ Returns a portion of the supplied text, specified by a starting position and a l
 
 Syntax: `substring(text, position, length)`
 
-Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
+Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
 Related: [regexextract](#regexextract), [replace](#replace).
 

@@ -13,6 +13,7 @@ function getVisualizationRaw(...args) {
 
 import {
   formatColumn,
+  numberFormatterForOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
 } from "metabase/lib/formatting";
@@ -26,6 +27,7 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  hidden,
   ...def
 } = {}) {
   return nestedSettings("column_settings", {
@@ -37,6 +39,7 @@ export function columnSettings({
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
+    hidden,
     ...def,
   });
 }
@@ -279,10 +282,10 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       options: [
-        { name: "Normal", value: "decimal" },
-        { name: "Percent", value: "percent" },
-        { name: "Scientific", value: "scientific" },
-        { name: "Currency", value: "currency" },
+        { name: t`Normal`, value: "decimal" },
+        { name: t`Percent`, value: "percent" },
+        { name: t`Scientific`, value: "scientific" },
+        { name: t`Currency`, value: "currency" },
       ],
     },
     getDefault: (column, settings) =>
@@ -402,6 +405,17 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       placeholder: t`dollars`,
     },
+  },
+  // Optimization: build a single NumberFormat object that is used by formatting.js
+  _numberFormatter: {
+    getValue: (column, settings) => numberFormatterForOptions(settings),
+    // NOTE: make sure to include every setting that affects the number formatter here
+    readDependencies: [
+      "number_style",
+      "currency_style",
+      "currency",
+      "decimals",
+    ],
   },
   _header_unit: {
     getValue: (column, settings) => {

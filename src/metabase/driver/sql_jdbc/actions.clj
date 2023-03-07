@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
@@ -19,10 +18,13 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db])
   (:import
    (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
@@ -78,7 +80,8 @@
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
-                         (hx/cast sql-type value)
+                         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                           (hx/cast sql-type value))
                          (try
                            (sql.qp/->honeysql driver [:value value field])
                            (catch Exception e
@@ -174,7 +177,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-deleted 1)
-            (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
+            (throw (ex-info (if (zero? rows-deleted)
+                              (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                              (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                             {::incorrect-number-deleted true
                              :number-deleted            rows-deleted
                              :query                     query
@@ -210,7 +215,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-updated 1)
-            (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
+            (throw (ex-info (if (zero? rows-updated)
+                              (tru "Sorry, the row you''re trying to update doesn''t exist")
+                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                             {::incorrect-number-updated true
                              :number-updated            rows-updated
                              :query                     query

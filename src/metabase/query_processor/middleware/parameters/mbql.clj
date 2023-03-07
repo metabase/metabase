@@ -10,6 +10,8 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+(set! *warn-on-reflection* true)
+
 (s/defn ^:private to-numeric :- s/Num
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
   or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more

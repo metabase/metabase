@@ -1,5 +1,4 @@
 import d3 from "d3";
-import Color from "color";
 
 export const getColorScale = (
   extent: [number, number],

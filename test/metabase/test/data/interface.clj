@@ -7,9 +7,9 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
-   [environ.core :refer [env]]
+   [environ.core :as env]
+   [hawk.init]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -19,15 +19,17 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
-   [metabase.test-runner.init :as test-runner.init]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
@@ -40,40 +42,40 @@
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                         su/NonBlankStringPlumatic
+  {:field-name                         su/NonBlankString
    :base-type                          (s/conditional
                                         #(and (map? %) (contains? % :natives))
-                                        {:natives {s/Keyword su/NonBlankStringPlumatic}}
+                                        {:natives {s/Keyword su/NonBlankString}}
                                         #(and (map? %) (contains? % :native))
-                                        {:native su/NonBlankStringPlumatic}
+                                        {:native su/NonBlankString}
                                         :else
-                                        su/FieldTypePlumatic)
+                                        su/FieldType)
    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
+   ;; datasets e.g. [[mt/with-actions-test-data]]
    (s/optional-key :not-null?)         (s/maybe s/Bool)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationTypePlumatic)
-   (s/optional-key :effective-type)    (s/maybe su/FieldTypePlumatic)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategyPlumatic)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
    (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)                (s/maybe su/KeywordOrStringPlumatic)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankStringPlumatic)})
+   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
 
 (def ^:private ValidFieldDefinition
   (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
 
 (def ^:private ValidTableDefinition
   (s/constrained
-   {:table-name                     su/NonBlankStringPlumatic
+   {:table-name                     su/NonBlankString
     :field-definitions              [ValidFieldDefinition]
     :rows                           [[s/Any]]
-    (s/optional-key :table-comment) (s/maybe su/NonBlankStringPlumatic)}
+    (s/optional-key :table-comment) (s/maybe su/NonBlankString)}
    (partial instance? TableDefinition)))
 
 (def ^:private ValidDatabaseDefinition
   (s/constrained
-   {:database-name     su/NonBlankStringPlumatic
+   {:database-name     su/NonBlankString
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
@@ -162,7 +164,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
+  (hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -208,7 +210,7 @@
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (-> (or *database-name-override* database-name)
       (str \_ table-name)
-      str/lower-case
+      u/lower-case-en
       (str/replace #"-" "_")
       (->>
         (take-last 30)
@@ -242,7 +244,7 @@
   [this table]
   (db/select-one Field
                  :table_id    (u/the-id table)
-                 :%lower.name (str/lower-case (:field-name this))
+                 :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
@@ -254,7 +256,7 @@
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
-    (or (table-with-name (str/lower-case (:table-name this)))
+    (or (table-with-name (u/lower-case-en (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
 (defmethod metabase-instance DatabaseDefinition
@@ -428,7 +430,7 @@
 
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  [(s/one su/NonBlankStringPlumatic "table name")
+  [(s/one su/NonBlankString "table name")
    (s/one [DatasetFieldDefinition] "fields")
    (s/one [[s/Any]] "rows")])
 
@@ -447,7 +449,7 @@
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
-  ([table-name :- su/NonBlankStringPlumatic, field-definition-maps, rows]
+  ([table-name :- su/NonBlankString, field-definition-maps, rows]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
@@ -456,7 +458,7 @@
 (s/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- su/NonBlankStringPlumatic & table-definitions]
+  [database-name :- su/NonBlankString & table-definitions]
   (s/validate
    DatabaseDefinition
    (map->DatabaseDefinition
@@ -508,7 +510,7 @@
 (s/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- su/NonBlankStringPlumatic]
+  [dataset-name :- su/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
@@ -536,7 +538,7 @@
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankStringPlumatic wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn
@@ -585,7 +587,7 @@
 
 (s/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
+  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
@@ -594,23 +596,23 @@
 
 (s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
+  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZeroPlumatic {su/NonBlankStringPlumatic s/Any}}
+(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZero {su/NonBlankString s/Any}}
   [{:keys [field-definitions rows]} :- TableDefinition]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(s/defn ^:private dbdef->table->id->row :- {su/NonBlankStringPlumatic {su/IntGreaterThanZeroPlumatic {su/NonBlankStringPlumatic s/Any}}}
+(s/defn ^:private dbdef->table->id->row :- {su/NonBlankString {su/IntGreaterThanZero {su/NonBlankString s/Any}}}
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- DatabaseDefinition]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
 (s/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
+  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -619,7 +621,7 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
+(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -644,7 +646,7 @@
 (s/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition, table-name :- su/NonBlankStringPlumatic]
+  [dataset-definition, table-name :- su/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
     (fn [dbdef]
       (assoc dbdef
@@ -660,18 +662,29 @@
 ;;; |                                                 Test Env Vars                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- db-test-env-var-keyword [driver env-var]
+  (keyword (format "mb-%s-test-%s" (name driver) (name env-var))))
+
 (defn db-test-env-var
   "Look up test environment var `env-var` for the given `driver` containing connection related parameters.
   If no `:default` param is specified and the var isn't found, throw.
 
-     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
+     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`
+
+  You can change this value at run time with [[db-test-env-var!]]."
   ([driver env-var]
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env
-        (keyword (format "mb-%s-test-%s" (name driver) (name env-var)))
-        default)))
+   (get env/env (db-test-env-var-keyword driver env-var) default)))
+
+(defn db-test-env-var!
+  "Update or the value of a test env var. A `nil` new-value removes the env var value."
+  [driver env-var new-value]
+  (if (some? new-value)
+    (alter-var-root #'env/env assoc (db-test-env-var-keyword driver env-var) (str new-value))
+    (alter-var-root #'env/env dissoc (db-test-env-var-keyword driver env-var)))
+  nil)
 
 (defn- to-system-env-var-str
   "Converts the clojure environment variable form (a keyword) to a stringified version that will be specified at the
@@ -682,7 +695,7 @@
   (-> env-var-kwd
       name
       (str/replace "-" "_")
-      str/upper-case))
+      u/upper-case-en))
 
 (defn db-test-env-var-or-throw
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
@@ -693,5 +706,5 @@
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
                                   (name driver)
-                                  (str/upper-case (str/replace (name driver) #"-" "_"))
+                                  (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))

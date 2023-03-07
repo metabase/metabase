@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.db.connection :as mdb.connection]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (def avg-exec-time
   "HoneySQL for a CTE to include the average execution time for each Card."
@@ -59,9 +59,11 @@
 
 (def dashboards-ids
   "HoneySQL for a CTE to enumerate the dashboards for a Card. We get the actual ID's"
-  [:dash_card {:select [:card_id [(common/group-concat (hx/cast
-                                                         (if (= (mdb.connection/db-type) :mysql) :char :text)
-                                                         :report_dashboard.name) "|") :name_str]]
+  [:dash_card {:select [:card_id [(common/group-concat (h2x/cast
+                                                        (if (= (mdb.connection/db-type) :mysql) :char :text)
+                                                        :report_dashboard.name)
+                                                       "|")
+                                  :name_str]]
                :from [:report_dashboardcard]
                :join [:report_dashboard [:= :report_dashboardcard.dashboard_id :report_dashboard.id]]
                :group-by [:card_id]}])
@@ -71,5 +73,5 @@
   [:card_views {:select   [[:model_id :card_id]
                            [:%count.* :count]]
                 :from     [:view_log]
-                :where    [:= :model (hx/literal "card")]
+                :where    [:= :model (h2x/literal "card")]
                 :group-by [:model_id]}])

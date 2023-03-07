@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card
@@ -30,13 +29,17 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time ZonedDateTime ZoneId)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -103,7 +106,38 @@
                (->> (mt/user-http-request :crowberto :get 200 "collection")
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
+                    sort))))
+
+      (testing "...or we are *admins* but exclude other user's collections"
+        (is (= ["Crowberto Corv's Personal Collection"]
+               (->> (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)
+                    (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
+                    (map :name)
                     sort)))))
+
+    (testing "You should only see your collection and public collections"
+      (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
+            crowberto-root (db/select-one Collection :personal_owner_id admin-user-id)]
+        (t2.with-temp/with-temp [Collection collection          {}
+                                 Collection {collection-id :id} {:name "Collection with Items"}
+                                 Collection _                   {:name            "subcollection"
+                                                                 :location        (format "/%d/" collection-id)
+                                                                 :authority_level "official"}
+                                 Collection _                   {:name     "Crowberto's Child Collection"
+                                                                 :location (collection/location-path crowberto-root)}]
+                                (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
+                                      crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                                      crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                                      luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+                                  (is (= (into (set (map :name (db/select Collection))) public-collections)
+                                         crowbertos))
+                                  (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                                         crowbertos-with-excludes))
+                                  (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+                                  (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+                                  (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
+                                         luckys))
+                                  (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
@@ -115,8 +149,8 @@
 
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection [collection-1  {:name "Collection 1"}]
-                        Collection [_             {:name "Collection 2"}]]
+        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                        Collection [_ {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
           (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
@@ -238,7 +272,47 @@
                 response (mt/user-http-request :rasta :get 200
                                                "collection/tree?exclude-archived=true")]
             (is (= [{:name "A" :children []}]
-                   (collection-tree-view ids response)))))))
+                   (collection-tree-view ids response))))))
+      (testing "Excludes other user collections"
+        (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
+              lucky-collection (collection/user->personal-collection (mt/user->id :lucky))]
+          (mt/with-temp* [Collection [ac {:name "Admin Child" :location (collection/location-path admin-collection)}]
+                          Collection [lc {:name "Lucky Child" :location (collection/location-path lucky-collection)}]
+                          Collection [a {:name "A"}]
+                          Collection [b {:name     "B"
+                                         :location (collection/location-path a)}]
+                          Collection [c {:name "C"}]]
+            (let [ids                   (set (map :id [admin-collection lucky-collection ac lc a b c]))
+                  admin-response        (mt/user-http-request :crowberto :get 200
+                                                              "collection/tree")
+                  admin-response-ex     (mt/user-http-request :crowberto :get 200
+                                                              "collection/tree?exclude-other-user-collections=true")
+                  non-admin-response    (mt/user-http-request :lucky :get 200
+                                                              "collection/tree")
+                  non-admin-response-ex (mt/user-http-request :lucky :get 200
+                                                              "collection/tree?exclude-other-user-collections=true")]
+              ;; By default, our admin can see everything
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Crowberto Corv's Personal Collection", :children [{:name "Admin Child", :children []}]}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
+                     (collection-tree-view ids admin-response)))
+              ;; When excluding other user collections, the admin only sees their own collections and shared collections
+              (is (=
+                   [{:name "A", :children [{:name "B", :children []}]}
+                    {:name "C", :children []}
+                    {:name "Crowberto Corv's Personal Collection", :children [{:name "Admin Child", :children []}]}]
+                   (collection-tree-view ids admin-response-ex)))
+              ;; A non admin only sees their own collections without the flag...
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
+                     (collection-tree-view ids non-admin-response)))
+              ;; ...as well as with the flag
+              (is (= [{:name "A", :children [{:name "B", :children []}]}
+                      {:name "C", :children []}
+                      {:name "Lucky Pigeon's Personal Collection", :children [{:name "Lucky Child", :children []}]}]
+                     (collection-tree-view ids non-admin-response-ex))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
       (with-french-user-and-personal-collection user collection
@@ -272,7 +346,11 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-view (map :id [parent-collection child-collection])
-                                       (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+                                       (mt/user-http-request :rasta :get 200 "collection/tree"))))
+          (is (= [{:name "Child", :children []}]
+                 (collection-tree-view (map :id [parent-collection child-collection])
+                                       (mt/user-http-request :rasta :get 200 "collection/tree"
+                                                             :exclude-other-user-collections true)))))))
 
     (testing "Namespace parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -417,14 +495,17 @@
          item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
-  (merge {:id              true
-          :description     nil
-          :can_write       (str/ends-with? collection-name "Personal Collection")
-          :model           "collection"
-          :authority_level nil
-          :entity_id       true
-          :name            collection-name}
-         extra-keypairs))
+  (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
+    (merge (cond->
+            {:id              true
+             :description     nil
+             :can_write       personal-collection
+             :model           "collection"
+             :authority_level nil
+             :entity_id       true
+             :name            collection-name}
+            personal-collection (assoc :personal_owner_id personal-collection))
+           extra-keypairs)))
 
 (deftest collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -438,19 +519,19 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :model               "card"
-                  :fully_parametrized  true}])
+                 [{:id                  card-id
+                   :name                (:name card)
+                   :collection_position nil
+                   :collection_preview  true
+                   :display             "table"
+                   :description         nil
+                   :entity_id           (:entity_id card)
+                   :moderated_status    "verified"
+                   :model               "card"
+                   :fully_parametrized  true}])
                (mt/obj->json->obj
-                (:data (mt/user-http-request :crowberto :get 200
-                                             (str "collection/" (u/the-id collection) "/items"))))))))
+                 (:data (mt/user-http-request :crowberto :get 200
+                                              (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [_ {:collection_id (u/the-id collection)}]
@@ -694,7 +775,7 @@
       (is (= [[:%lower.name :asc]]
              (api.collection/children-sort-clause nil app-db)))))
   (testing "Sorting by last-edited-at"
-    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+    (is (= [[:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
@@ -709,9 +790,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
-    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+    (is (= [[:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
-            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
@@ -858,9 +939,9 @@
   (testing "does a top-level Collection like A have the correct Children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is(= {:effective_ancestors []
-               :effective_location  "/"}
-              (api-get-collection-ancestors a))))
+        (is (= {:effective_ancestors []
+                :effective_location  "/"}
+               (api-get-collection-ancestors a))))
       (testing "children"
         (is (= (map collection-item ["B" "C"])
                (api-get-collection-children a))))))
@@ -868,7 +949,7 @@
   (testing "ok, does a second-level Collection have its parent and its children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -878,8 +959,8 @@
   (testing "what about a third-level Collection?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}
-                                      {:name "C", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}
+                                      {:name "C", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -890,7 +971,7 @@
                 "and say we are a child of A")
     (with-collection-hierarchy [a b d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -900,7 +981,7 @@
   (testing "for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection."
     (with-collection-hierarchy [b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false}]
+        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -910,7 +991,7 @@
     (testing "for C: if we remove D we should get E and F as effective children"
       (with-collection-hierarchy [a b c e f g]
         (testing "ancestors"
-          (is (= {:effective_ancestors [{:name "A", :id true, :can_write false}]
+          (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
                   :effective_location  "/A/"}
                  (api-get-collection-ancestors c))))
         (testing "children"
@@ -938,6 +1019,22 @@
         (is (= [(collection-item "B")]
                (api-get-collection-children a :archived true)))))))
 
+(deftest personal-collection-ancestors-test
+  (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
+    (let [root-owner-id   (u/the-id (test.users/fetch-user :rasta))
+          root-collection (db/select-one Collection :personal_owner_id root-owner-id)]
+      (mt/with-temp* [Collection [collection {:name     "Som Test Child Collection"
+                                              :location (collection/location-path root-collection)}]]
+        (is (= [{:metabase.models.collection.root/is-root? true,
+                 :authority_level                          nil,
+                 :name                                     "Our analytics",
+                 :id                                       false,
+                 :can_write                                true}
+                {:name              "Rasta Toucan's Personal Collection",
+                 :id                true,
+                 :personal_owner_id root-owner-id,
+                 :can_write         true}]
+               (:effective_ancestors (api-get-collection-ancestors collection))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/root                                              |
@@ -1018,13 +1115,14 @@
                          mt/boolean-ids-and-timestamps))))))))
 
     (testing "So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it..."
-      (is (= [{:name            "Rasta Toucan's Personal Collection"
-               :id              (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
-               :description     nil
-               :model           "collection"
-               :authority_level nil
-               :entity_id       (:entity_id (collection/user->personal-collection (mt/user->id :rasta)))
-               :can_write       true}]
+      (is (= [{:name              "Rasta Toucan's Personal Collection"
+               :id                (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
+               :description       nil
+               :model             "collection"
+               :authority_level   nil
+               :entity_id         (:entity_id (collection/user->personal-collection (mt/user->id :rasta)))
+               :personal_owner_id (:personal_owner_id (collection/user->personal-collection (mt/user->id :rasta)))
+               :can_write         true}]
              (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
@@ -1036,6 +1134,7 @@
                    :model           "collection"
                    :authority_level nil
                    :entity_id       (:entity_id collection)
+                   :personal_owner_id (:personal_owner_id collection)
                    :can_write       true}]
                  (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Taco Bell"))))))))
@@ -1048,6 +1147,7 @@
                  :model           "collection"
                  :authority_level nil
                  :entity_id       (:entity_id collection)
+                 :personal_owner_id (:personal_owner_id collection)
                  :can_write       true})]
              (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
@@ -1063,6 +1163,7 @@
                      :model           "collection"
                      :authority_level nil
                      :entity_id       (:entity_id collection)
+                     :personal_owner_id (:personal_owner_id collection)
                      :can_write       true}])
                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Personal Collection")))))))
@@ -1349,7 +1450,7 @@
                         :authority_level   (s/eq "official")
                         :id                s/Int
                         :location          (s/eq "/")
-                        :entity_id         (s/maybe su/NanoIdStringPlumatic)
+                        :entity_id         (s/maybe su/NanoIdString)
                         :namespace         (s/eq nil)
                         :created_at        java.time.temporal.Temporal}
                        (mt/user-http-request :crowberto :post 200 "collection"

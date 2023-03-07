@@ -597,11 +597,16 @@
     interval
     NumericExpressionArg))
 
+(def ^:private IntGreaterThanZeroOrNumericExpression
+  (s/if number?
+    helpers/IntGreaterThanZero
+    NumericExpressionArg))
+
 (defclause ^{:requires-features #{:expressions}} coalesce
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} substring
-  s StringExpressionArg, start NumericExpressionArg, length (optional NumericExpressionArg))
+  s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
@@ -927,7 +932,6 @@
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
-
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
@@ -936,8 +940,8 @@
    (partial is-clause? string-functions)   StringExpression
    (partial is-clause? boolean-functions)  BooleanExpression
    (partial is-clause? datetime-functions) DatetimeExpression
-   (partial is-clause? :case)                        case
-   :else                                             Field))
+   (partial is-clause? :case)              case
+   :else                                   Field))
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -1710,19 +1714,20 @@
   based on this information, don't do it!"
   {;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
    ;; used for permissions checking or anything like that so don't try to be sneaky
-   (s/optional-key :context)      (s/maybe Context)
-   (s/optional-key :executed-by)  (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-id)      (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
-   (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :context)                   (s/maybe Context)
+   (s/optional-key :executed-by)               (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-id)                   (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-name)                 (s/maybe helpers/NonBlankString)
+   (s/optional-key :dashboard-id)              (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :alias/escaped->original)   (s/maybe {s/Any s/Any})
+   (s/optional-key :pulse-id)                  (s/maybe helpers/IntGreaterThanZero)
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+   (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
                                             :cljs s/Any))})
 
 

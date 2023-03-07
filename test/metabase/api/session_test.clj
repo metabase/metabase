@@ -1,4 +1,4 @@
-(ns metabase.api.session-test
+(ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
   (:require
    [cheshire.core :as json]
@@ -26,6 +26,8 @@
    [toucan.db :as db])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
@@ -55,12 +57,12 @@
         (is (schema= SessionResponse
                      response))
         (testing "Login should record a LoginHistory item"
-          (is (schema= {:id                 su/IntGreaterThanZeroPlumatic
+          (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankStringPlumatic
-                        :ip_address         su/NonBlankStringPlumatic
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
                        (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
@@ -210,8 +212,8 @@
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankStringPlumatic
-                        :ip_address         su/NonBlankStringPlumatic
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
                        (db/select-one LoginHistory :id login-history-id))))))))
@@ -350,20 +352,20 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/user-readable-values-map :public)))
+      (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
+    (testing "Authenticated settings manager"
+      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+
     (testing "Authenticated super user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated)
-                         (setting/user-readable-values-map :admin))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
@@ -440,9 +442,9 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (mt/with-temp User [_ {:email    "ngoc@metabase.com"
                                :password "securedpassword"}]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                         :password "securedpassword"}))))))
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -469,8 +471,9 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

@@ -4,11 +4,11 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
@@ -32,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -40,6 +41,8 @@
    (java.io File IOException OutputStream)
    (java.time LocalTime)
    (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -65,6 +68,9 @@
       ;; :else                             url
 
 (defn- icon-bundle
+  "Bundle an icon.
+
+  The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
@@ -221,7 +227,7 @@
                                                       [:= :p.group_id :pg.id]
                                                       [:= :p.object db-details]]}]]
                          :group-by [:pgm.user_id]}
-                        db/query
+                        mdb.query/query
                         (mapv :user_id)))]
     (into
       []

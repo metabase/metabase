@@ -5,26 +5,27 @@
    [compojure.core :refer [GET PUT]]
    [metabase.api.common :as api]
    [metabase.models.user :refer [User]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [toucan.db :as db]))
 
 (def ^:private UserAttributes
-  (su/with-api-error-message (s/maybe {su/NonBlankStringPlumatic s/Any})
-    "value must be a valid user attributes map (name -> value)"))
+  (mu/with-api-error-message
+    [:map-of
+     :keyword
+     :any]
+    (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/attributes"
+(api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
-  {login_attributes UserAttributes}
+  {login_attributes [:maybe UserAttributes]}
   (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/attributes"
+(api/defendpoint GET "/attributes"
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
   existing Users and returns those. "
   []

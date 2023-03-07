@@ -12,6 +12,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (defn- print-rows-rff [_metadata]
   (fn
     ([] 0)
@@ -21,6 +23,7 @@
      acc)
 
     ([row-count row]
+     #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 

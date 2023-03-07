@@ -2,7 +2,6 @@
   "Code for running a query in the context of a specific Card."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -21,9 +20,12 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- query-magic-ttl
   "Compute a 'magic' cache TTL time (in seconds) for `query` by multipling its historic average execution times by the
@@ -152,7 +154,7 @@
 (s/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
-  [card-id :- su/IntGreaterThanZeroPlumatic parameters :- mbql.s/ParameterList]
+  [card-id :- su/IntGreaterThanZero parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters

@@ -106,7 +106,7 @@ export function getDefaultTimezone() {
 
 export function getNumericDateStyleFromSettings() {
   const dateStyle = getDateStyleFromSettings();
-  return dateStyle && /\//.test(dateStyle) ? dateStyle : "M/D/YYYY";
+  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
 }
 
 export function getRelativeTime(timestamp: string) {

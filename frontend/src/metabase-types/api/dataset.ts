@@ -21,6 +21,7 @@ export interface DatasetColumn {
   semantic_type?: string;
   remapped_from?: string;
   remapped_to?: string;
+  effective_type?: string;
   binning_info?: {
     bin_width?: number;
   };

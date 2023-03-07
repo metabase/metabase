@@ -2,7 +2,6 @@
   "Code for running a query in the context of a specific DashboardCard."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
@@ -15,6 +14,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -111,14 +111,14 @@
                    target)))
    dashboard-param-id->param))
 
-(s/defn ^:private resolve-params-for-query :- (s/maybe [su/MapPlumatic])
+(s/defn ^:private resolve-params-for-query :- (s/maybe [su/Map])
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
-  [dashboard-id   :- su/IntGreaterThanZeroPlumatic
-   card-id        :- su/IntGreaterThanZeroPlumatic
-   dashcard-id    :- su/IntGreaterThanZeroPlumatic
-   request-params :- (s/maybe [su/MapPlumatic])]
+  [dashboard-id   :- su/IntGreaterThanZero
+   card-id        :- su/IntGreaterThanZero
+   dashcard-id    :- su/IntGreaterThanZero
+   request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
         ;; ignore default values in request params as well. (#20516)

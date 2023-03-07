@@ -15,12 +15,12 @@
    [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:base-type                      (s/maybe su/FieldTypePlumatic)
-   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+  {:base-type                      (s/maybe su/FieldType)
+   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
    s/Keyword                       s/Any})
 
 (def ^:private FieldIDOrName->TypeInfo
-  {(s/cond-pre su/NonBlankStringPlumatic su/IntGreaterThanZeroPlumatic) (s/maybe FieldTypeInfo)})
+  {(s/cond-pre su/NonBlankString su/IntGreaterThanZero) (s/maybe FieldTypeInfo)})
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this

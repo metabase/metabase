@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.api.group-manager-test
+(ns ^:mb/once metabase-enterprise.advanced-permissions.api.group-manager-test
   "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
   (:require
    [clojure.set :refer [subset?]]
@@ -28,16 +28,32 @@
               (update-group [user status group]
                 (testing (format ", update group with %s user" (mt/user-descriptor user))
                   (let [new-name (mt/random-name)]
-                    (mt/user-http-request user :put status (format "permissions/group/%d" (:id group)) {:name new-name}))))]
+                    (mt/user-http-request user :put status (format "permissions/group/%d" (:id group)) {:name new-name}))))
+
+              (delete-group [user status group-manager?]
+                (testing (format ", delete group with %s user" (mt/user-descriptor user))
+                  (let [user-id (u/the-id (if (keyword? user) (mt/fetch-user user) user))]
+                    (mt/with-temp*
+                      [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
+                       PermissionsGroupMembership [_ {:group_id group-id, :user_id user-id}]]
+                      (when group-manager?
+                        (db/update-where! PermissionsGroupMembership {:user_id  user-id
+                                                                      :group_id group-id}
+                                          :is_group_manager true))
+                      (mt/user-http-request user
+                                            :delete status
+                                            (format "permissions/group/%d" group-id))))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}
             (get-groups user 403)
             (get-one-group user 403 group)
             (update-group user 403 group)
+            (delete-group user 403 false)
             (get-groups :crowberto 200)
             (get-one-group :crowberto 200 group)
-            (update-group :crowberto 200 group)))
+            (update-group :crowberto 200 group)
+            (delete-group :crowberto 204 false)))
 
         (testing "if `advanced-permissions` is enabled"
           (premium-features-test/with-premium-features #{:advanced-permissions}
@@ -45,9 +61,11 @@
               (get-groups user 403)
               (get-one-group user 403 group)
               (update-group user 403 group)
+              (delete-group user 403 false)
               (get-groups :crowberto 200)
               (get-one-group :crowberto 200 group)
-              (update-group :crowberto 200 group))
+              (update-group :crowberto 200 group)
+              (delete-group :crowberto 204 false))
 
             (testing "succeed if users access group that they are manager of"
               (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
@@ -56,8 +74,11 @@
               (testing "non-admin user can only view groups that are manager of"
                 (is (= #{(:id group)}
                        (set (map :id (get-groups user 200))))))
+
               (get-one-group user 200 group)
               (update-group user 200 group)
+              (delete-group user 204 true)
+
               (testing "admins could view all groups"
                 (is (= (db/select-field :name PermissionsGroup)
                        (set (map :name (get-groups :crowberto 200)))))))))))))

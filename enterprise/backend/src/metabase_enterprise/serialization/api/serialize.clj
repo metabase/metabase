@@ -24,9 +24,9 @@
   - The collections that they want to serialize (using selective serialization)"
   [:as {{:keys [collection_ids path]} :body}]
   {collection_ids (su/with-api-error-message
-                    (su/distinct (su/non-empty [su/IntGreaterThanZeroPlumatic]))
+                    (su/distinct (su/non-empty [su/IntGreaterThanZero]))
                     "Non-empty, distinct array of Collection IDs")
-   path           (su/with-api-error-message su/NonBlankStringPlumatic
+   path           (su/with-api-error-message su/NonBlankString
                     "Valid directory to serialize results to")}
   ;; Make sure all the specified collection IDs exist.
   (let [existing-collection-ids (db/select-ids Collection :id [:in (set collection_ids)])]
@@ -34,11 +34,7 @@
       (throw (ex-info (tru "Invalid Collection ID(s). These Collections do not exist: {0}"
                            (pr-str (set/difference (set collection_ids) (set existing-collection-ids))))
                       {:status-code 404}))))
-  (serialization.cmd/dump path
-                          {:v2                   true
-                           :selected-collections collection_ids
-                           :targets              (for [collection-id collection_ids]
-                                                   ["Collection" collection-id])})
+  (serialization.cmd/v2-dump path {:collections collection_ids})
   ;; TODO -- not 100% sure this response makes sense. We can change it later with something more meaningful maybe
   {:status :ok})
 

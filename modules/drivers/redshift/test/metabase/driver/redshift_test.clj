@@ -1,30 +1,46 @@
 (ns metabase.driver.redshift-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver.redshift :as redshift]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.redshift :as redshift.test]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver.redshift :as redshift]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.redshift :as redshift.test]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.random :as tu.random]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db])
+  (:import
+   (metabase.plugins.jdbc_proxy ProxyDriver)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;; tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest correct-driver-test
   (mt/test-driver :redshift
@@ -37,6 +53,13 @@
         (is (= "com.amazon.redshift.Driver"
                (.getName (class driver))))))))
 
+(deftest ^:parallel default-select-test
+  (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
+         (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
+                       [(h2x/identifier :table-alias "source")]]]}
+              (#'sql.qp/add-default-select :redshift)
+              (sql.qp/format-honeysql :redshift)))))
+
 (defn- query->native [query]
   (let [native-query (atom nil)
         check-sql-fn (fn [_ _ sql & _]
@@ -48,37 +71,42 @@
         (qp/process-query query))
       @native-query)))
 
+(defn- sql->lines [sql]
+  (str/split-lines (mdb.query/format-sql sql :redshift)))
+
 (deftest remark-test
-  (testing "single field user-specified value"
-    (let [expected (str/replace
-                    (str
-                     "-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,"
-                     "\"optional_account_id\":\"" (public-settings/site-uuid) "\","
-                     "\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */"
-                     " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
-                     "SELECT \"%schema%\".\"test_data_users\".\"id\" AS \"id\","
-                     " \"%schema%\".\"test_data_users\".\"name\" AS \"name\","
-                     " \"%schema%\".\"test_data_users\".\"last_login\" AS \"last_login\""
-                     " FROM \"%schema%\".\"test_data_users\""
-                     " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"id\" = 2"
-                     " OR \"%schema%\".\"test_data_users\".\"id\" = 3)"
-                     " LIMIT 2000")
-                    "%schema%" redshift.test/session-schema-name)]
-      (mt/test-driver :redshift
+  (testing "if I run a Redshift query, does it get a remark added to it?"
+    (mt/test-driver :redshift
+      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+                                 "SELECT"
+                                 "  \"{{schema}}\".\"test_data_users\".\"id\" AS \"id\","
+                                 "  \"{{schema}}\".\"test_data_users\".\"name\" AS \"name\","
+                                 "  \"{{schema}}\".\"test_data_users\".\"last_login\" AS \"last_login\""
+                                 "FROM"
+                                 "  \"{{schema}}\".\"test_data_users\""
+                                 "WHERE"
+                                 "  (\"{{schema}}\".\"test_data_users\".\"id\" = 1)"
+                                 "  OR (\"{{schema}}\".\"test_data_users\".\"id\" = 2)"
+                                 "  OR (\"{{schema}}\".\"test_data_users\".\"id\" = 3)"
+                                 "LIMIT"
+                                 "  2000"]]
+                         (-> line
+                             (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
+                             (str/replace #"\Q{{schema}}\E" redshift.test/session-schema-name)))]
         (is (= expected
-               (query->native
-                (assoc
-                 (mt/mbql-query users {:limit 2000})
-                 :parameters [{:type   "id"
-                               :target [:dimension [:field (mt/id :users :id) nil]]
-                               :value  ["1" "2" "3"]}]
-                 :info {:executed-by  1000
-                        :card-id      1234
-                        :dashboard-id 5678
-                        :context      :ad-hoc
-                        :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                   93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
-            "if I run a Redshift query, does it get a remark added to it?")))))
+               (sql->lines
+                (query->native
+                 (assoc
+                  (mt/mbql-query users {:limit 2000})
+                  :parameters [{:type   "id"
+                                :target [:dimension [:field (mt/id :users :id) nil]]
+                                :value  ["1" "2" "3"]}]
+                  :info {:executed-by  1000
+                         :card-id      1234
+                         :dashboard-id 5678
+                         :context      :ad-hoc
+                         :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                    93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))))))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.
 ;; See https://docs.aws.amazon.com/redshift/latest/dg/c-getting-started-using-spectrum.html
@@ -239,9 +267,7 @@
              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
                      {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}
                      {:name "raw_var",                     :database_type "varchar", :base_type :type/Text}]
-                    (map
-                     mt/derecordize
-                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
            (finally
              (redshift.test/execute! (str "DROP VIEW IF EXISTS %s;")
                                      qual-view-nm))))))))
@@ -250,8 +276,8 @@
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (str/lower-case (tu/random-name))
-            random-schema (str/lower-case (tu/random-name))
+      (let [temp-username (u/lower-case-en (tu.random/random-name))
+            random-schema (u/lower-case-en (tu.random/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (redshift.test/execute! (str "CREATE SCHEMA %s;"
@@ -330,3 +356,11 @@
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]
                        (mt/first-row (qp/process-query query))))))))))))
+
+(deftest interval-test
+  (mt/test-drivers #{:postgres :redshift}
+    (testing "Redshift Interval values should behave the same as postgres (#19501)"
+      (is (= ["0 years 0 mons 5 days 0 hours 0 mins 0.0 secs"]
+             (mt/first-row
+               (qp/process-query
+                 (mt/native-query {:query "select interval '5 days'"}))))))))

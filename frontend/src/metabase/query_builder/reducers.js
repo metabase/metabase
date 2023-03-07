@@ -23,7 +23,6 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  SET_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
   UPDATE_QUESTION,
   RUN_QUERY,
@@ -252,11 +251,15 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartSettings]: (state, { payload: initial }) => ({
+    [onOpenChartSettings]: (
+      state,
+      { payload: { initialChartSettings, showSidebarTitle = false } = {} },
+    ) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartSettingsSidebar: true,
-      initialChartSetting: initial,
+      initialChartSetting: initialChartSettings,
+      showSidebarTitle: showSidebarTitle,
     }),
     [onCloseChartSettings]: state => ({
       ...state,
@@ -354,8 +357,6 @@ export const card = handleActions(
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
     [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
-
-    [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 

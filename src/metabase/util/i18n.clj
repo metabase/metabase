@@ -3,15 +3,17 @@
   (:require
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (p/import-vars
  [i18n.impl
@@ -248,8 +250,6 @@
   [format-string format-string-pl n]
   `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 
-;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
-;; `str` by default
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]

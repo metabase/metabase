@@ -1,9 +1,8 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require
-   [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -25,6 +24,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common
@@ -95,15 +96,15 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (str/lower-case query) "%"))
+(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
   [query]
   [:or
-   [:like [:%lower.first_name] [(wildcard-query query)]]
-   [:like [:%lower.last_name] [(wildcard-query query)]]
-   [:like [:%lower.email] [(wildcard-query query)]]])
+   [:like :%lower.first_name (wildcard-query query)]
+   [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.email      (wildcard-query query)]])
 
 (defn- user-visible-columns
   "Columns of user table visible to current caller of API."
@@ -126,14 +127,14 @@
   - with include_deactivatved"
   [status query group_id include_deactivated]
   (cond-> {}
-        true (hh/merge-where (status-clause status include_deactivated))
-        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                               (when (segmented-user?)
-                                 [:= :core_user.id api/*current-user-id*])))
-        (some? query) (hh/merge-where (query-clause query))
-        (some? group_id) (hh/merge-right-join :permissions_group_membership
-                                              [:= :core_user.id :permissions_group_membership.user_id])
-        (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
+    true             (sql.helpers/where (status-clause status include_deactivated))
+    true             (sql.helpers/where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                          (when (segmented-user?)
+                                            [:= :core_user.id api/*current-user-id*])))
+    (some? query)    (sql.helpers/where (query-clause query))
+    (some? group_id) (sql.helpers/right-join :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_id) (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -154,18 +155,18 @@
   [status query group_id include_deactivated]
   {status                 (s/maybe s/Str)
    query                  (s/maybe s/Str)
-   group_id               (s/maybe su/IntGreaterThanZeroPlumatic)
-   include_deactivated    (s/maybe su/BooleanStringPlumatic)}
+   group_id               (s/maybe su/IntGreaterThanZero)
+   include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
     {:data   (cond-> (db/select
-                       (vec (cons User (user-visible-columns)))
-                       (cond-> (user-clauses status query group_id include_deactivated)
-                         (some? group_id) (hh/merge-order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                         (some? mw.offset-paging/*limit*)  (hh/limit mw.offset-paging/*limit*)
-                         (some? mw.offset-paging/*offset*) (hh/offset mw.offset-paging/*offset*)))
+                      (vec (cons User (user-visible-columns)))
+                      (cond-> (user-clauses status query group_id include_deactivated)
+                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                        true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                        (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
+                        (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
                (hydrate :personal_collection_id)
@@ -245,9 +246,9 @@
 (api/defendpoint-schema POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name             (s/maybe su/NonBlankStringPlumatic)
-   last_name              (s/maybe su/NonBlankStringPlumatic)
-   email                  su/EmailPlumatic
+  {first_name             (s/maybe su/NonBlankString)
+   last_name              (s/maybe su/NonBlankString)
+   email                  su/Email
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
@@ -301,14 +302,14 @@
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {email                  (s/maybe su/EmailPlumatic)
-   first_name             (s/maybe su/NonBlankStringPlumatic)
-   last_name              (s/maybe su/NonBlankStringPlumatic)
+  {email                  (s/maybe su/Email)
+   first_name             (s/maybe su/NonBlankString)
+   last_name              (s/maybe su/NonBlankString)
    user_group_memberships (s/maybe [user/UserGroupMembership])
    is_superuser           (s/maybe s/Bool)
    is_group_manager       (s/maybe s/Bool)
    login_attributes       (s/maybe user/LoginAttributes)
-   locale                 (s/maybe su/ValidLocalePlumatic)}
+   locale                 (s/maybe su/ValidLocale)}
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -333,12 +334,13 @@
       ;; implicitly prevent group manager from updating users' info
       (when (or (= id api/*current-user-id*)
                 api/*is-superuser?*)
-        (api/check-500
-         (db/update! User id (u/select-keys-when body
-                               :present (cond-> #{:first_name :last_name :locale}
-                                          api/*is-superuser?* (conj :login_attributes))
-                               :non-nil (cond-> #{:email}
-                                          api/*is-superuser?* (conj :is_superuser)))))
+        (when-let [changes (not-empty
+                            (u/select-keys-when body
+                              :present (cond-> #{:first_name :last_name :locale}
+                                         api/*is-superuser?* (conj :login_attributes))
+                              :non-nil (cond-> #{:email}
+                                         api/*is-superuser?* (conj :is_superuser))))]
+          (db/update! User id changes))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -382,7 +384,7 @@
 (api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
-  {password su/ValidPasswordPlumatic}
+  {password su/ValidPassword}
   (check-self-or-superuser id)
   (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of

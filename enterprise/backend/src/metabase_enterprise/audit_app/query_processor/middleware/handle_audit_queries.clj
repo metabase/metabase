@@ -59,16 +59,16 @@
         (throw
          (Exception.
           (str "results-keys and metadata-keys differ.\n"
-               "results-keys:" results-keys "\n"
-               "metadata-keys:" metadata-keys "\n"
-               "in results, but not metadata:" only-in-results "\n"
-               "in metadata, but not results:" only-in-metadata)))))))
+               "results-keys: " results-keys "\n"
+               "metadata-keys: " metadata-keys "\n"
+               "in results, but not metadata: " only-in-results "\n"
+               "in metadata, but not results: " only-in-metadata)))))))
 
 (defn- metadata->cols [metadata]
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/MapPlumatic]
+(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/Map]
                                                                  :metadata audit.i/ResultsMetadata}]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)

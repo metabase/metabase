@@ -13,9 +13,11 @@
    (java.io File)
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+             (decode [data]
+               (u.date/parse data)))
 
 (defn- build-settings [file]
   (let [settings (yaml/from-file file)]
@@ -70,7 +72,7 @@
 (def ^:private legal-top-level-paths
   "These are all the legal first segments of paths. This is used by ingestion to avoid `.git`, `.github`, `README.md`
   and other such extras."
-  #{"collections" "databases" "snippets" "settings.yaml"})
+  #{"actions" "collections" "databases" "snippets" "settings.yaml"})
 
 (defn- ingest-all [^File root-dir]
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.

@@ -1,8 +1,10 @@
 (ns metabase.models.setting-test
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
@@ -20,14 +22,14 @@
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
-  (deferred-tru "Test setting - this only shows up in dev (1)"))
+  "Test setting - this only shows up in dev (1)")
 
 (defsetting test-setting-2
-  (deferred-tru "Test setting - this only shows up in dev (2)")
+  "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
 (defsetting test-setting-3
-  (deferred-tru "Test setting - this only shows up in dev (3)")
+  "Test setting - this only shows up in dev (3)"
   :visibility :internal)
 
 (defsetting test-boolean-setting
@@ -36,7 +38,7 @@
   :type :boolean)
 
 (defsetting test-json-setting
-  (deferred-tru "Test setting - this only shows up in dev (4)")
+  "Test setting - this only shows up in dev (4)"
   :type :json)
 
 (defsetting test-csv-setting
@@ -265,8 +267,8 @@
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
 
-(deftest admin-writable-settings-test
-  (testing `setting/admin-writable-settings
+(deftest writable-settings-test
+  (testing `setting/writable-settings
     (mt/with-test-user :crowberto
       (test-setting-1! nil)
       (test-setting-2! "TOUCANS")
@@ -279,7 +281,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/admin-writable-settings))))
+                   (setting/writable-settings))))
 
       (testing "with a custom getter"
         (test-setting-1! nil)
@@ -293,7 +295,7 @@
                (some (fn [setting]
                        (when (re-find #"^test-setting-2$" (name (:key setting)))
                          setting))
-                     (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
+                     (setting/writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
 
       ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
       (testing "test settings"
@@ -311,7 +313,7 @@
                  :env_name       "MB_TEST_SETTING_2"
                  :description    "Test setting - this only shows up in dev (2)"
                  :default        "[Default Value]"}]
-               (for [setting (setting/admin-writable-settings)
+               (for [setting (setting/writable-settings)
                      :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                  setting)))))))
 
@@ -326,7 +328,7 @@
                   (some (fn [{:keys [key description]}]
                           (when (= :test-i18n-setting key)
                             description))
-                        (setting/admin-writable-settings)))]
+                        (setting/writable-settings)))]
           (is (= "Test setting - with i18n"
                  (description)))
           (mt/with-user-locale "zz"
@@ -450,9 +452,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (db/query {:select [:value]
-                 :from   [:setting]
-                 :where  [:= :key (name setting-key)]})
+  (-> (mdb.query/query {:select [:value]
+                        :from   [:setting]
+                        :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test
@@ -580,6 +582,63 @@
            (toucan-name)))))
 
 
+;;; ------------------------------------------------- Setting Visibility ------------------------------------------------
+
+(defsetting test-internal-setting
+  "test Setting"
+  :visibility :internal)
+
+(defsetting test-public-setting
+  (deferred-tru "test Setting")
+  :visibility :public)
+
+(defsetting test-authenticated-setting
+  (deferred-tru "test Setting")
+  :visibility :authenticated)
+
+(defsetting test-settings-manager-setting
+  (deferred-tru "test Setting")
+  :visibility :settings-manager)
+
+(defsetting test-admin-setting
+  (deferred-tru "test Setting")
+  :visibility :admin)
+
+(deftest can-read-setting-test
+  (testing "no authenticated user"
+    (mt/with-current-user nil
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    false
+                                  :test-settings-manager-setting false
+                                  :test-admin-setting            false}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
+  (testing "authenticated non-admin user"
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    true
+                                  :test-settings-manager-setting false
+                                  :test-admin-setting            false}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
+  (testing "non-admin user with advanced setting access"
+    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[setting expected] {:test-public-setting           true
+                                    :test-authenticated-setting    true
+                                    :test-settings-manager-setting true
+                                    :test-admin-setting            false}]
+          (testing setting
+            (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities)))))))))
+  (testing "admin user"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    true
+                                  :test-settings-manager-setting true
+                                  :test-admin-setting            true}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities)))))))))
+
 ;;; ------------------------------------------------- DB-local Settings ------------------------------------------------
 
 (defsetting ^:private test-database-local-only-setting
@@ -705,23 +764,24 @@
 (deftest database-local-settings-api-functions-test
   ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
   ;; with a `nil` value)
-  (doseq [[fn-name f] {`setting/admin-writable-settings
-                       (fn [k]
-                         (let [m (into {} (map (juxt :key :value)) (setting/admin-writable-settings))]
-                           (get m k ::not-present)))
+  (mt/with-test-user :crowberto
+    (doseq [[fn-name f] {`setting/writable-settings
+                         (fn [k]
+                           (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
+                             (get m k ::not-present)))
 
-                       `setting/user-readable-values-map
-                       (fn [k]
-                         (get (setting/user-readable-values-map :authenticated) k ::not-present))}]
-    (testing fn-name
-      (testing "should return Database-local-allowed Settings (site-wide-value only)"
-        (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
-          (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
-            (is (= 2
-                   (f :test-database-local-allowed-setting))))))
-      (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
-        (is (= ::not-present
-               (f :test-database-local-only-setting-with-default)))))))
+                         `setting/user-readable-values-map
+                         (fn [k]
+                           (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
+      (testing fn-name
+        (testing "should return Database-local-allowed Settings (site-wide-value only)"
+          (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
+            (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
+              (is (= 2
+                     (f :test-database-local-allowed-setting))))))
+        (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
+          (is (= ::not-present
+                 (f :test-database-local-only-setting-with-default))))))))
 
 
 ;;; ------------------------------------------------- User-local Settings ----------------------------------------------
@@ -962,3 +1022,14 @@
                  Exception
                  #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
                  (validate tag value)))))))))
+
+(deftest validate-description-translation-test
+  (with-redefs [metabase.models.setting/in-test? (constantly false)]
+    (testing "When not in a test, defsetting descriptions must be i18n'ed"
+      (try
+        (walk/macroexpand-all
+         `(defsetting ~'test-asdf-asdf-asdf
+            "untranslated description"))
+        (catch Exception e
+          (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
+                          (:cause (Throwable->map e)))))))))

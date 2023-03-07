@@ -5,7 +5,10 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
@@ -14,6 +17,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -30,6 +34,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -37,6 +42,8 @@
    [toucan.hydrate :refer [hydrate]])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -148,7 +155,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -156,7 +163,7 @@
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
-  {parameters    (s/maybe su/JSONStringPlumatic)
+  {parameters    (s/maybe su/JSONString)
    export-format api.dataset/ExportFormat}
   (run-query-for-card-with-public-uuid-async
    uuid
@@ -174,6 +181,7 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
+  {:pre [(even? (count conditions))]}
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
@@ -231,7 +239,7 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
@@ -245,8 +253,8 @@
 (api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
-  {dashcard-id su/IntGreaterThanZeroPlumatic
-   parameters su/JSONStringPlumatic}
+  {dashcard-id su/IntGreaterThanZero
+   parameters su/JSONString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
@@ -257,10 +265,9 @@
 (api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
+   `parameters` should be the mapped dashboard parameters with values."
   [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
-  {dashcard-id su/IntGreaterThanZeroPlumatic
+  {dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
@@ -289,10 +296,10 @@
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
   ;; just return an error if `format` is specified and it's anything other than `json`.
-  {url       su/NonBlankStringPlumatic
+  {url       su/NonBlankString
    format    (s/maybe (s/enum "json"))
-   maxheight (s/maybe su/IntStringPlumatic)
-   maxwidth  (s/maybe su/IntStringPlumatic)}
+   maxheight (s/maybe su/IntString)
+   maxwidth  (s/maybe su/IntString)}
   (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
         width  (if maxwidth  (Integer/parseInt maxwidth)  default-embed-max-width)]
     {:version "1.0"
@@ -300,6 +307,25 @@
      :width   width
      :height  height
      :html    (embed/iframe url width height)}))
+
+
+;;; ----------------------------------------------- Public Action ------------------------------------------------
+
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :visualization_settings
+    :parameters})
+
+(api/defendpoint GET "/action/:uuid"
+  "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
+  [uuid]
+  {uuid ms/UUIDString}
+  (validation/check-public-sharing-enabled)
+  (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+    (actions/check-actions-enabled! action)
+    (select-keys action action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -408,8 +434,8 @@
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
-  {value su/NonBlankStringPlumatic
-   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
@@ -418,8 +444,8 @@
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
-  {value su/NonBlankStringPlumatic
-   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
@@ -452,7 +478,7 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
   [uuid field-id remapped-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
@@ -462,12 +488,30 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
   [uuid field-id remapped-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/values"
+  "Fetch values for a parameter on a public card."
+  [uuid param-key]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
+  "Fetch values for a parameter on a public card containing `query`."
+  [uuid param-key query]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
@@ -493,7 +537,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -501,7 +545,7 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
@@ -510,6 +554,44 @@
      :dashcard-id   dashcard-id
      :export-format :api
      :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
+
+(def ^:private action-execution-throttle
+  "Rate limit at 1 action per second on a per action basis.
+   The goal of rate limiting should be to prevent very obvious abuse, but it should
+   be relatively lax so we don't annoy legitimate users."
+  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+
+(api/defendpoint POST "/action/:uuid/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [uuid :as {{:keys [parameters], :as _body} :body}]
+  {uuid       ms/UUIDString
+   parameters [:maybe [:map-of :keyword any?]]}
+  (let [throttle-message (try
+                           (throttle/check action-execution-throttle uuid)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :action-uuid])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body   throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        ;; Run this query with full superuser perms. We don't want the various perms checks
+        ;; failing because there are no current user perms; if this Dashcard is public
+        ;; you're by definition allowed to run it without a perms check anyway
+        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+          (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+            (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :public_form
+                                                                                     :type      (:type action)
+                                                                                     :action_id (:id action)})
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-action! action (update-keys parameters name))))))))
+
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

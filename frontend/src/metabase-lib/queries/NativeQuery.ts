@@ -6,6 +6,7 @@ import _ from "underscore";
 import slugg from "slugg";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
+import { ParameterValuesConfig } from "metabase-types/api";
 import {
   Card,
   DatasetQuery,
@@ -21,6 +22,7 @@ import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
 import Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/queries/TemplateTag";
@@ -151,7 +153,7 @@ export default class NativeQuery extends AtomicQuery {
     return Boolean(
       this.hasData() &&
         this.queryText().length > 0 &&
-        this.allTemplateTagsAreValid(),
+        this._allTemplateTagsAreValid(),
     );
   }
 
@@ -345,22 +347,13 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
 
-  hasReferencedQuestions() {
-    return this.templateTags().some(t => t.type === "card");
-  }
-
   referencedQuestionIds(): number[] {
     return this.templateTags()
       .filter(tag => tag.type === "card")
       .map(tag => tag["card-id"]);
   }
 
-  validate() {
-    const tagErrors = this.validateTemplateTags();
-    return tagErrors;
-  }
-
-  validateTemplateTags() {
+  private _validateTemplateTags() {
     return this.templateTags()
       .map(tag => {
         if (!tag["display-name"]) {
@@ -382,15 +375,26 @@ export default class NativeQuery extends AtomicQuery {
       );
   }
 
-  allTemplateTagsAreValid() {
-    const tagErrors = this.validateTemplateTags();
+  private _allTemplateTagsAreValid() {
+    const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name: string, tag: TemplateTag) {
+  setTemplateTag(name: string, tag: TemplateTag): NativeQuery {
     return this.setDatasetQuery(
-      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+      updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
+        ...tags,
+        [name]: tag,
+      })),
     );
+  }
+
+  setTemplateTagConfig(
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ): NativeQuery {
+    const newParameter = getTemplateTagParameter(tag, config);
+    return this.question().setParameter(tag.id, newParameter).query();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
@@ -477,7 +481,7 @@ export default class NativeQuery extends AtomicQuery {
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
-  _getUpdatedTemplateTags(queryText: string): TemplateTags {
+  private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     if (queryText && this.supportsNativeParameters()) {
       const tags = recognizeTemplateTags(queryText);
       const existingTemplateTags = this.templateTagsMap();

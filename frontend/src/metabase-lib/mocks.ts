@@ -16,12 +16,11 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Query from "metabase-lib/queries/Query";
-import { UiParameter } from "metabase-lib/parameters/types";
 
-type NativeSavedCard = SavedCard<NativeDatasetQuery>;
-type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
-type StructuredSavedCard = SavedCard<StructuredDatasetQuery>;
-type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
+export type NativeSavedCard = SavedCard<NativeDatasetQuery>;
+export type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
+export type StructuredSavedCard = SavedCard<StructuredDatasetQuery>;
+export type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
 
 const BASE_GUI_QUESTION: StructuredUnsavedCard = {
   display: "table",
@@ -53,6 +52,8 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: "",
   collection_id: null,
+  can_write: true,
+  result_metadata: [],
 };
 
 export function getQuestion(card: Partial<Card>) {
@@ -139,14 +140,3 @@ export function getComposedModel(
 
   return question;
 }
-
-export const createMockUiParameter = (
-  opts?: Partial<UiParameter>,
-): UiParameter => ({
-  id: "1",
-  name: "text",
-  type: "string/=",
-  slug: "text",
-  fields: [],
-  ...opts,
-});

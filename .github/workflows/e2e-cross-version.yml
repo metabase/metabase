@@ -6,7 +6,7 @@ on:
 
 jobs:
   cross-version-testing:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
       matrix:
@@ -58,8 +58,8 @@ jobs:
       run: |
         yarn cypress run \
           --browser chrome \
-          --config-file frontend/test/metabase/scenarios/cross-version/source/cross-version-source.config.js \
-          --spec frontend/test/metabase/scenarios/cross-version/source/**/*.cy.spec.js
+          --config-file e2e/test/scenarios/cross-version/source/shared/cross-version-source.config.js \
+          --spec e2e/test/scenarios/cross-version/source/**/*.cy.spec.js
     - name: Stop Metabase ${{ matrix.version.source }}
       run: docker stop metabase-${{ matrix.version.source }}
 
@@ -85,8 +85,8 @@ jobs:
       run: |
         yarn cypress run \
           --browser chrome \
-          --config-file frontend/test/metabase/scenarios/cross-version/target/cross-version-target.config.js \
-          --spec frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js
+          --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
+          --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v3
       if: failure()

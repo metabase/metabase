@@ -1,7 +1,6 @@
 (ns metabase.task.persist-refresh
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -25,12 +24,16 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException Trigger)))
+
+(set! *warn-on-reflection* true)
 
 (defn- job-context->job-type
   [job-context]
@@ -156,34 +159,34 @@
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
   persisted info records pointing to cards that are no longer models and archived cards/models."
   []
-  (->> (db/query {:select    [:p.*]
-                  :from      [[PersistedInfo :p]]
-                  :left-join [[Card :c] [:= :c.id :p.card_id]]
-                  :where     [:or
-                              [:and
-                               [:in :state prunable-states]
-                               ;; Buffer deletions for an hour if the
-                               ;; prune job happens soon after setting state.
-                               ;; 1. so that people have a chance to change their mind.
-                               ;; 2. if a query is running against the cache, it doesn't get ripped out.
-                               [:< :state_change_at
-                                (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                              [:= :c.dataset false]
-                              [:= :c.archived true]]})
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             {:select    [:p.*]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:or
+                          [:and
+                           [:in :state prunable-states]
+                           ;; Buffer deletions for an hour if the
+                           ;; prune job happens soon after setting state.
+                           ;; 1. so that people have a chance to change their mind.
+                           ;; 2. if a query is running against the cache, it doesn't get ripped out.
+                           [:< :state_change_at
+                            (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                          [:= :c.dataset false]
+                          [:= :c.archived true]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (->> (db/query {:select    [:p.* :c.dataset :c.archived :c.name]
-                  :from      [[PersistedInfo :p]]
-                  :left-join [[Card :c] [:= :c.id :p.card_id]]
-                  :where     [:and
-                              [:= :p.database_id database-id]
-                              [:in :p.state refreshable-states]
-                              [:= :c.archived false]
-                              [:= :c.dataset true]]})
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             {:select    [:p.* :c.dataset :c.archived :c.name]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:and
+                          [:= :p.database_id database-id]
+                          [:in :p.state refreshable-states]
+                          [:= :c.archived false]
+                          [:= :c.dataset true]]}))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -323,7 +326,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database cron-spec]
+(defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))

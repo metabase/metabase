@@ -16,6 +16,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.i18n.impl :as i18n.impl]))
 
+(set! *warn-on-reflection* true)
+
 (defn- abs-path
   [path]
   (.getAbsolutePath (io/file path)))

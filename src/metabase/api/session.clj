@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -21,18 +20,20 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.db :as db])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (s/defn ^:private record-login-history!
-  [session-id :- UUID user-id :- su/IntGreaterThanZeroPlumatic device-info :- request.u/DeviceInfo]
+  [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
   (db/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
@@ -45,19 +46,16 @@
     session-type))
 
 (def ^:private CreateSessionUserInfo
-  {:id         su/IntGreaterThanZeroPlumatic
+  {:id         su/IntGreaterThanZero
    :last_login s/Any
    s/Keyword   s/Any})
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (or
-                      (db/insert! Session
-                        :id      (str session-uuid)
-                        :user_id (u/the-id user))
-                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (db/select-one Session :id (str session-uuid))))]
+        session      (db/insert! Session
+                                 :id      (str session-uuid)
+                                 :user_id (u/the-id user))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -140,7 +138,7 @@
 (s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username :- su/NonBlankStringPlumatic password :- su/NonBlankStringPlumatic device-info :- request.u/DeviceInfo]
+  [username :- su/NonBlankString password :- su/NonBlankString device-info :- request.u/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication
@@ -167,8 +165,8 @@
 (api/defendpoint-schema POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
-  {username su/NonBlankStringPlumatic
-   password su/NonBlankStringPlumatic}
+  {username su/NonBlankString
+   password su/NonBlankString}
   (let [ip-address   (request.u/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
@@ -224,7 +222,7 @@
 (api/defendpoint-schema POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
-  {email su/EmailPlumatic}
+  {email su/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
@@ -256,8 +254,8 @@
 (api/defendpoint-schema POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
-  {token    su/NonBlankStringPlumatic
-   password su/ValidPasswordPlumatic}
+  {token    su/NonBlankString
+   password su/ValidPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (user/set-password! user-id password)
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
@@ -282,18 +280,13 @@
 (api/defendpoint-schema GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (merge
-   (setting/user-readable-values-map :public)
-   (when @api/*current-user*
-     (setting/user-readable-values-map :authenticated))
-   (when api/*is-superuser?*
-     (setting/user-readable-values-map :admin))))
+  (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
-  {token su/NonBlankStringPlumatic}
+  {token su/NonBlankString}
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google

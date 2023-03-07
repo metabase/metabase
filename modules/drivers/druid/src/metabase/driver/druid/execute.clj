@@ -13,6 +13,8 @@
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
   timestamps from Druid are already in UTC and don't need to be converted"

@@ -7,6 +7,8 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (defn- ->DataSource [s properties]
   (#'mdb.data-source/->DataSource s (some-> (not-empty properties) connection-pool/map->properties)))
 

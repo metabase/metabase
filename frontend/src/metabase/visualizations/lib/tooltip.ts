@@ -1,5 +1,6 @@
 import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { formatValue } from "metabase/lib/formatting";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 
 function getElementIndex(e: HTMLElement | null) {
   return (
@@ -47,7 +48,8 @@ export const formatValueForTooltip = ({
   column?: DatasetColumn;
   settings?: VisualizationSettings;
 }) => {
-  return formatValue(value, {
+  const nullableValue = formatNullable(value);
+  return formatValue(nullableValue, {
     ...(settings && settings.column && column
       ? settings.column(column)
       : { column }),

@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import { usePrevious, useMount } from "react-use";
 import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -10,9 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -179,7 +178,7 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
-  useOnMount(() => {
+  useMount(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
@@ -192,7 +191,7 @@ function SavedQuestionLeftSide(props) {
   const onHeaderChange = useCallback(
     name => {
       if (name && name !== question.displayName()) {
-        onSave(question.setDisplayName(name).card());
+        onSave(question.setDisplayName(name));
       }
     },
     [question, onSave],

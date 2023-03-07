@@ -1,7 +1,6 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.driver.common :as driver.common]
             [metabase.driver.druid.js :as druid.js]
             [metabase.mbql.schema :as mbql.s]
@@ -15,7 +14,10 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
@@ -198,7 +200,7 @@
    ;; if this is a case-insensitive search we'll lower-case the search pattern and add an extraction function to
    ;; lower-case the dimension values we're matching against
    :pattern      (cond-> pattern
-                   (not case-sensitive?) str/lower-case)
+                   (not case-sensitive?) u/lower-case-en)
    :extractionFn (when-not case-sensitive?
                    {:type :lower})})
 
