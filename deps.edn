@@ -132,7 +132,8 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.14"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.1"}             ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "4.19.1"              ; migration management (Java lib)
+  ;; TODO - MSB - Latest version is 4.19.1 but that breaks the tests
+  org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; TODO - MSB - Latest version is 3.1.2 - Check that this works
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
