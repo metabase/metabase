@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is]]
    [metabase.lib.field :as lib.field]
    [metabase.lib.test-metadata :as meta]
-   #?(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel field-from-database-metadata-test
   (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
