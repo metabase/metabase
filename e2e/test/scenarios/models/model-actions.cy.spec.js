@@ -1,5 +1,6 @@
 import {
   createAction,
+  describeEE,
   enableActionsForDB,
   fillActionQuery,
   modal,
@@ -152,7 +153,52 @@ describe("scenarios > models > actions", { tags: ["@actions"] }, () => {
   });
 
   describe("should allow to execute actions from the model page", () => {
-    ["normal", "readonly", "nodata"].forEach(user => {
+    ["normal", "readonly"].forEach(user => {
+      it(user, () => {
+        cy.get("@modelId").then(modelId => {
+          cy.signInAsNormalUser();
+          createAction({
+            ...SAMPLE_QUERY_ACTION,
+            model_id: modelId,
+          });
+          cy.signIn(user);
+          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.wait("@getModel");
+        });
+
+        runActionFor(SAMPLE_QUERY_ACTION.name);
+
+        modal().within(() => {
+          cy.findByLabelText(TEST_PARAMETER.name).type("1");
+          cy.button("Run").click();
+        });
+
+        cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
+          "be.visible",
+        );
+      });
+    });
+  });
+});
+
+describeEE("scenarios > models > actions", { tags: ["@actions"] }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    enableActionsForDB(SAMPLE_DB_ID);
+
+    cy.createQuestion(SAMPLE_ORDERS_MODEL, {
+      wrapId: true,
+      idAlias: "modelId",
+    });
+
+    cy.intercept("GET", "/api/card/*").as("getModel");
+    cy.intercept("PUT", "/api/action/*").as("updateAction");
+    cy.signOut();
+  });
+
+  describe("should allow to execute actions from the model page", () => {
+    ["sandboxed"].forEach(user => {
       it(user, () => {
         cy.get("@modelId").then(modelId => {
           cy.signInAsNormalUser();
