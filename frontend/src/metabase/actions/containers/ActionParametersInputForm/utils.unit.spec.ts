@@ -17,14 +17,28 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
       expect(result).toEqual("123");
     });
 
-    it("formats dates", () => {
-      const result = formatValue("2020-05-01T00:00:00Z", "date");
-      expect(result).toEqual("2020-05-01");
-    });
+    const timezones = ["-02:00", "-07:00", "+01:00", "+09:00"];
 
-    it("formats datetimes", () => {
-      const result = formatValue("2020-05-01T05:00:00Z", "datetime");
-      expect(result).toEqual("2020-05-01T05:00:00");
+    timezones.forEach(offset => {
+      describe(`with timezone ${offset}`, () => {
+        it("formats dates", () => {
+          const result = formatValue(`2020-05-01T00:00:00${offset}`, "date");
+          expect(result).toEqual("2020-05-01");
+        });
+
+        it("formats datetimes", () => {
+          const result = formatValue(
+            `2020-05-01T05:00:00${offset}`,
+            "datetime",
+          );
+          expect(result).toEqual("2020-05-01T05:00:00");
+        });
+
+        it("formats times", () => {
+          const result = formatValue(`05:25:30${offset}`, "time");
+          expect(result).toEqual("05:25:30");
+        });
+      });
     });
   });
 
