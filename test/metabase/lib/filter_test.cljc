@@ -65,7 +65,7 @@
   (gen/sample filter-expr-gen)
   nil)
 
-(deftest filter-creation
+(deftest ^:parallel filter-creation
   (checking "filters can be created"
     [filter-expr filter-expr-gen]
     (let [[op _options & args] filter-expr
@@ -80,7 +80,6 @@
         q2                          (lib/saved-question-query meta/saved-question)
         venues-category-id-metadata (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
         categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
-    (prn venues-category-id-metadata categories-id-metadata)
     (testing "without query/stage-number, return a function for later resolution"
       (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
