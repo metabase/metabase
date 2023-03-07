@@ -1,5 +1,4 @@
 (ns metabase.lib.util
-  "TODO -- this should probably be rolled into [[metabase.lib.query]]."
   (:require
    [clojure.set :as set]
    [metabase.lib.options :as lib.options]
@@ -7,6 +6,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
+;;; the near future.
 
 (defn- native-query->pipeline
   "Convert a `:type` `:native` QP MBQL query to a `:type` `:pipeline` pMBQL query. See docstring
@@ -20,19 +22,37 @@
                             (set/rename-keys (:native query) {:query :native}))]}
          (dissoc query :type :native)))
 
-(defn- inner-query->stages [{:keys [source-query], :as inner-query}]
-  (let [stages     (if source-query
-                     (inner-query->stages source-query)
-                     [])
-        stage-type (if (:native inner-query)
-                     :mbql.stage/native
-                     :mbql.stage/mbql)
+(declare inner-query->stages)
+
+(defn- join->pipeline [join]
+  (let [source (select-keys join [:source-table :source-query])
+        stages (inner-query->stages source)]
+    (-> join
+        (dissoc :source-table :source-query)
+        (assoc :lib/type :mbql/join
+               :stages stages)
+        lib.options/ensure-uuid)))
+
+(defn- joins->pipeline [joins]
+  (mapv join->pipeline joins))
+
+(defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
+  (let [previous-stages (if source-query
+                          (inner-query->stages source-query)
+                          [])
+        previous-stages (cond-> previous-stages
+                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+        stage-type      (if (:native inner-query)
+                          :mbql.stage/native
+                          :mbql.stage/mbql)
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
-        this-stage (merge (lib.options/ensure-uuid
-                           {:lib/type stage-type})
-                          (dissoc inner-query :source-query))]
-    (conj stages this-stage)))
+        this-stage      (merge (lib.options/ensure-uuid
+                                {:lib/type stage-type})
+                               (dissoc inner-query :source-query :source-metadata))
+        this-stage      (cond-> this-stage
+                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+    (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline
   "Convert a `:type` `:query` QP MBQL (i.e., MBQL as currently understood by the Query Processor, or the JS MLv1) to a
@@ -48,8 +68,11 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(mu/defn pipeline :- ::lib.schema/query
-  "Ensure that a `query` is a pMBQL `:pipeline` query."
+(mu/defn pipeline
+  "Ensure that a `query` is in the general shape of a pMBQL `:pipeline` query. This doesn't walk the query and fix
+  everything! The goal here is just to make sure we have `:stages` in the correct place and the like.
+  See [[metabase.lib.convert]] for functions that actually ensure all parts of the query match the pMBQL schema (they
+  use this function as part of that process.)"
   [query :- [:map [:type [:keyword]]]]
   (condp = (:type query)
     :pipeline query
@@ -70,16 +93,14 @@
                       {:num-stages (count stages)})))
     stage-number'))
 
-(defn has-stage?
-  "Whether the query has a stage with `stage-number`. Like everything else here, this handles negative indices as well,
-  e.g. `-1` is the last stage of the query, `-2` is the penultimate stage, etc."
+(defn previous-stage-number
+  "The index of the previous stage, if there is one."
   [{:keys [stages], :as _query} stage-number]
-  ;; TODO -- this is a little bit duplicated from the logic above... find a way to consolidate?
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
-    (and (not (neg? stage-number))
-         (< stage-number (count stages)))))
+    (when (pos? stage-number)
+      (dec stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
