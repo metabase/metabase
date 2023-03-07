@@ -56,7 +56,7 @@
 
 ;;; Presto API helpers
 
-(def presto-type->base-type
+(def ^:private ^{:arglists '([column-type])} presto-type->base-type
   "Function that returns a `base-type` for the given `presto-type` (can be a keyword or string)."
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"(?i)boolean"                    :type/Boolean]
@@ -89,25 +89,25 @@
   [_ hsql-form amount unit]
   (hx/call :date_add (hx/literal unit) amount hsql-form))
 
-(defn describe-catalog-sql
+(defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
   {:added "0.39.0"}
   [driver catalog]
   (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog)))
 
-(defn describe-schema-sql
+(defn- describe-schema-sql
   "The SHOW TABLES statement that will list all tables for the given `catalog` and `schema`."
   {:added "0.39.0"}
   [driver catalog schema]
   (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema)))
 
-(defn describe-table-sql
+(defn- describe-table-sql
   "The DESCRIBE  statement that will list information about the given `table`, in the given `catalog` and schema`."
   {:added "0.39.0"}
   [driver catalog schema table]
   (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table)))
 
-(def excluded-schemas
+(def ^:private excluded-schemas
   "The set of schemas that should be excluded when querying all schemas."
   #{"information_schema"})
 
@@ -153,7 +153,7 @@
   [_ x y]
   (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
-(def ^:dynamic *param-splice-style*
+(def ^:dynamic ^:private *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
   `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
   be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
@@ -612,6 +612,12 @@
                                  :base-type         (presto-type->base-type type)
                                  :database-position idx}))
                  (jdbc/reducible-query {:connection conn} sql))})))
+
+;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
+;;; implementation doesn't try to use it.
+(defmethod driver/describe-table-fks :presto-jdbc
+  [_driver _database _table]
+  nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            sql-jdbc implementations                                            |
