@@ -121,7 +121,7 @@ function _AddEditEmailSidebar({
             onChange={toggleSkipIfEmpty}
           />
         </div>
-        <div className="text-bold py2 flex justify-between align-center border-top">
+        <div className="text-bold py2 flex justify-between align-center border-top flex-wrap">
           <div className="flex align-center">
             <Heading>{t`Attach results`}</Heading>
             <Icon
@@ -131,12 +131,13 @@ function _AddEditEmailSidebar({
               tooltip={t`Attachments can contain up to 2,000 rows of data.`}
             />
           </div>
+
+          <EmailAttachmentPicker
+            cards={pulse.cards}
+            pulse={pulse}
+            setPulse={setPulse}
+          />
         </div>
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-        />
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
