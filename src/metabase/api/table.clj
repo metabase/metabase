@@ -48,7 +48,7 @@
   "Get `Table` with ID."
   [id include_editable_data_model]
   {id ms/Id
-   include_editable_data_model :boolean}
+   include_editable_data_model [:maybe :boolean]}
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
