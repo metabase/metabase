@@ -153,18 +153,13 @@
 ;;;
 ;;;    [:datetime-add <options> <date-time-expression> <amount> <date-time-interval-unit>]
 (mr/def ::datetime-add.date-time
-  [:schema
-   ;; FIXME
-   {:error/message ":datetime-add clause with a date time expression"
-    :error/fn      (constantly ":datetime-add clause with a date time expression")}
-   [:tuple
-    {:error/message ":datetime-add clause with a date time expression"
-     :error/fn      (constantly ":datetime-add clause with a date time expression")}
-    [:= :datetime-add]
-    ::common/options
-    #_expression [:ref ::date-time]
-    #_amount     [:ref ::integer]
-    #_unit       ::temporal-bucketing/unit.date-time.interval]])
+  [:tuple
+   {:error/message ":datetime-add clause with a date time expression"}
+   [:= :datetime-add]
+   ::common/options
+   #_expression [:ref ::date-time]
+   #_amount     [:ref ::integer]
+   #_unit       ::temporal-bucketing/unit.date-time.interval])
 
 ;;; Any expression that returns a `:type/DateTime`
 (mr/def ::date-time
@@ -176,7 +171,6 @@
 
 ;;; Any expression that returns some sort of temporal value `java.time.OffsetDateTime`
 (mr/def ::temporal
-  ;; TODO
   [:or
    {:error/message "expression returning a date, time, or date time"}
    ::date
