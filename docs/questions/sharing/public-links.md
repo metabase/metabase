@@ -49,7 +49,7 @@ To create a public link that people can use to download the results of a questio
 
 ## Custom destinations in public links 
 
-If you want to create a drill-down pathway on a public question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) on your parent dashboard that goes to the public link of a child question or dashboard.
+If you want to create a drill-down pathway on a public question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) on the parent dashboard that goes to the public link of a child question or dashboard.
 
 You can also pass filter values from the parent dashboard to the child question or dashboard:
 
@@ -60,7 +60,7 @@ You can also pass filter values from the parent dashboard to the child question 
   /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
   ```
 
-For example, if you have a parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a child dashboard that uses **Accounts** data:
+For example, if you have a public dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a child dashboard that uses **Accounts** data:
 
 ![Public link with custom destination](../images/public-link-custom-destination.png)
 
