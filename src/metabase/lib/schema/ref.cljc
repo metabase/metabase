@@ -23,7 +23,7 @@
   [:and
    ::field.options
    [:map
-    [:base-type ]]])
+    [:base-type ::base-type]]])
 
 ;;; `:field` clause
 (mr/def ::field.literal
@@ -35,7 +35,7 @@
 (mr/def ::field.id
   [:tuple
    [:= :field]
-   ::field.options
+   ::field.options ; TODO -- we should make `:base-type` required here too
    ::id/field])
 
 (mr/def ::field
