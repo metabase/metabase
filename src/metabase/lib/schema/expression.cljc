@@ -77,9 +77,9 @@
    (ref-of-base-type-with-temporal-unit :type/Time     ::temporal-bucketing/unit.time.extract)
    (ref-of-base-type-with-temporal-unit :type/DateTime ::temporal-bucketing/unit.date-time.extract)])
 
-;;; a `:*` clause that isn't an `::*.integer` (i.e., one or more clauses sub-expressions is a decimal expression)
-;;; returns a decimal number
-(mr/def ::*.decimal
+;;; a `:*` clause that isn't an `::*.integer` (i.e., one or more clauses sub-expressions is a non-integer-real expression)
+;;; returns a non-integer-real number
+(mr/def ::*.non-integer-real
   [:and
    [:schema
     [:cat
@@ -88,18 +88,14 @@
      [:* [:schema [:ref ::number]]]]]
    [:not ::*.integer]])
 
-;;; An expression that returns a number that includes a decimal place, including but not limited floats, doubles,
+;;; An expression that returns a number that includes a non-integer-real place, including but not limited floats, doubles,
 ;;; BigDecimals, SmallDecimals, MediumDecimals, etc! Basically any normal number that isn't an integer!
-;;;
-;;; TODO -- I'm not convinced this name is the best possible name, it seems like it can too easily be confused for a
-;;; literal `DECIMAL` type or the like when our intention is to include not just that but also Floats and Doubles...
-;;; but I can't think of a better name.
-(mr/def ::decimal
+(mr/def ::non-integer-real
   [:or
-   {:error/message "expression returning a number with a decimal place"}
+   {:error/message "expression returning a number with a non-integer-real place"}
    [:ref ::literal/floating-point]
-   [:ref ::*.decimal]
-   ;; for some crazy reason `:type/Float` is the common base type of all numbers with decimal places, not something
+   [:ref ::*.non-integer-real]
+   ;; for some crazy reason `:type/Float` is the common base type of all numbers with non-integer-real places, not something
    ;; smart like `:type/Decimal`
    (ref-of-base-type :type/Float)])
 
@@ -108,7 +104,7 @@
   [:or
    {:error/message "expression returning a number"}
    ::integer
-   ::decimal])
+   ::non-integer-real])
 
 ;;; `:datetime-add` with a Date expression:
 ;;;
@@ -157,18 +153,13 @@
 ;;;
 ;;;    [:datetime-add <options> <date-time-expression> <amount> <date-time-interval-unit>]
 (mr/def ::datetime-add.date-time
-  [:schema
-   ;; FIXME
-   {:error/message ":datetime-add clause with a date time expression"
-    :error/fn      (constantly ":datetime-add clause with a date time expression")}
-   [:tuple
-    {:error/message ":datetime-add clause with a date time expression"
-     :error/fn      (constantly ":datetime-add clause with a date time expression")}
-    [:= :datetime-add]
-    ::common/options
-    #_expression [:ref ::date-time]
-    #_amount     [:ref ::integer]
-    #_unit       ::temporal-bucketing/unit.date-time.interval]])
+  [:tuple
+   {:error/message ":datetime-add clause with a date time expression"}
+   [:= :datetime-add]
+   ::common/options
+   #_expression [:ref ::date-time]
+   #_amount     [:ref ::integer]
+   #_unit       ::temporal-bucketing/unit.date-time.interval])
 
 ;;; Any expression that returns a `:type/DateTime`
 (mr/def ::date-time
@@ -180,7 +171,6 @@
 
 ;;; Any expression that returns some sort of temporal value `java.time.OffsetDateTime`
 (mr/def ::temporal
-  ;; TODO
   [:or
    {:error/message "expression returning a date, time, or date time"}
    ::date

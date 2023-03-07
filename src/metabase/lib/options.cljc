@@ -71,6 +71,6 @@
   already have one."
   [x]
   (update-options x (fn [options-map]
-                                       (cond-> options-map
-                                         (not (:lib/uuid options-map))
-                                         (assoc :lib/uuid (str (random-uuid)))))))
+                      (cond-> options-map
+                        (not (:lib/uuid options-map))
+                        (assoc :lib/uuid (str (random-uuid)))))))
