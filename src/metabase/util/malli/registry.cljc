@@ -2,11 +2,15 @@
   (:refer-clojure :exclude [def])
   (:require
    [malli.core :as mc]
-   [malli.registry :as mr])
+   [malli.registry :as mr]
+   #?@(:clj ([malli.experimental.time :as malli.time])))
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private registry*
-  (atom (mc/default-schemas)))
+  (atom #?(:clj (merge
+                 (mc/default-schemas)
+                 (malli.time/schemas))
+           :cljs (mc/default-schemas))))
 
 (defonce ^:private registry (mr/mutable-registry registry*))
 

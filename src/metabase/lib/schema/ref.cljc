@@ -27,16 +27,16 @@
 
 ;;; `:field` clause
 (mr/def ::field.literal
-  [:catn
-   [:clause [:= :field]]
-   [:options ::field.literal.options]
-   [:name ::common/non-blank-string]])
+  [:tuple
+   [:= :field]
+   ::field.literal.options
+   ::common/non-blank-string])
 
 (mr/def ::field.id
-  [:catn
-   [:clause [:= :field]]
-   [:options ::field.options]
-   [:name ::id/field]])
+  [:tuple
+   [:= :field]
+   ::field.options
+   ::id/field])
 
 (mr/def ::field
   [:multi {:dispatch (fn [[_field _opts id-or-name]]
@@ -45,23 +45,25 @@
    [:dispatch-type/string ::field.literal]])
 
 (mr/def ::expression
-  [:catn
-   [:clause [:= :expression]]
-   [:options ::field.options]
-   [:name ::common/non-blank-string]])
+  [:tuple
+   [:= :expression]
+   ::field.options
+   ::common/non-blank-string])
 
 (mr/def ::aggregation
-  [:catn
-   [:clause [:= :aggregation]]
-   [:options ::field.options]
-   [:index ::common/int-greater-than-or-equal-to-zero]])
+  [:tuple
+   [:= :aggregation]
+   ::field.options
+   ::common/int-greater-than-or-equal-to-zero])
 
 (mr/def ::ref
   [:and
-   [:catn
-    [:clause [:enum :field :expression :aggregation]]
-    [:args   [:* any?]]]
-   [:multi {:dispatch #(keyword (first %))}
+   [:tuple
+    [:enum :field :expression :aggregation]
+    ::field.options
+    any?]
+   [:multi {:dispatch      #(keyword (first %))
+            :error/message ":field, :expression, :or :aggregation reference"}
     [:field ::field]
     [:aggregation ::aggregation]
     [:expression ::expression]]])

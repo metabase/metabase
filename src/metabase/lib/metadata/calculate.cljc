@@ -4,12 +4,14 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
    [malli.util :as mut]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
@@ -25,7 +27,14 @@
   (mut/merge
    lib.metadata/ColumnMetadata
    [:map
-    [:field_ref ::lib.schema.ref/field]]))
+    [:field_ref ::lib.schema.ref/ref]]))
+
+(defn- field-clause? [x]
+  (and (vector? x)
+       (= (first x) :field)))
+
+(def ^:private ^{:arglists '([x])} aggregation-clause?
+  (mc/validator ::lib.schema.aggregation/aggregation))
 
 (mu/defn ^:private join-with-alias :- [:maybe ::lib.schema.join/join]
   [query        :- ::lib.schema/query
@@ -44,10 +53,15 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    field-id-or-name]
-  (or (when (string? field-id-or-name)
-        (lib.metadata/stage-column query stage-number field-id-or-name))
-      (when (integer? field-id-or-name)
-        (lib.metadata/field query field-id-or-name))))
+  (try
+    (or (when (string? field-id-or-name)
+          (lib.metadata/stage-column query stage-number field-id-or-name))
+        (when (integer? field-id-or-name)
+          (lib.metadata/field query field-id-or-name)))
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error calculating metadata for Field {0}: {1}" (pr-str field-id-or-name) (ex-message e))
+                      {:query query, :stage-number stage-number, :field field-id-or-name}
+                      e)))))
 
 (mu/defn ^:private display-name-for-joined-field :- ::lib.schema.common/non-blank-string
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
@@ -67,7 +81,7 @@
     (str qualifier " → " field-display-name)))
 
 (defn- datetime-arithmetics?
-  "Helper for [[infer-expression-type query]]. Returns true if a given clause returns a :type/DateTime type."
+  "Helper for [[infer-expression-type]] query. Returns true if a given clause returns a :type/DateTime type."
   [clause]
   (mbql.match/match-one clause
     #{:datetime-add :datetime-subtract :relative-datetime}
@@ -88,25 +102,42 @@
   column."
   [:base_type :effective_type :coercion_strategy :semantic_type])
 
-;;; TODO -- used by QP stuff
-(defn infer-expression-type
+(mu/defn infer-expression-type :- [:map
+                                   [:base_type ::lib.schema.ref/base-type]]
   "Infer base-type/semantic-type information about an `expression` clause."
-  [query expression]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   expression   :- ::lib.schema.expression/expression]
   (cond
-    (string? expression)
+    (mc/validate ::lib.schema.expression/boolean expression)
+    {:base_type :type/Boolean}
+
+    (or (mc/validate ::lib.schema.expression/string expression)
+        (mbql.u/is-clause? mbql.s/string-functions expression))
     {:base_type :type/Text}
 
-    (number? expression)
+    (mc/validate ::lib.schema.expression/integer expression)
+    {:base_type :type/Integer}
+
+    ;; because I was probably on drugs when I came up with the type hierarchy in [[metabase.types]], the root base
+    ;; type for any number that has a decimal place is `:type/Float`, regardless of how floating that point is or
+    ;; isn't. Rather than try to unpack that whole thing right now, let's just continue using `:type/Float` to mean
+    ;; any number with a decimal place.
+    (mc/validate ::lib.schema.expression/decimal expression)
+    {:base_type :type/Float}
+
+    (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Number}
 
+    (mc/validate ::lib.schema.expression/temporal expression)
+    {:base_type :type/Temporal}
+
     (mbql.u/is-clause? :field expression)
-    (col-info-for-field-clause query {} expression)
+    (col-info-for-field-clause query stage-number expression)
 
     (mbql.u/is-clause? :coalesce expression)
-    (select-keys (infer-expression-type query (second expression)) type-info-columns)
-
-    (mbql.u/is-clause? :length expression)
-    {:base_type :type/BigInteger}
+    (select-keys (infer-expression-type query stage-number (second expression))
+                 type-info-columns)
 
     (mbql.u/is-clause? :case expression)
     (let [[_ clauses] expression]
@@ -117,7 +148,8 @@
                     (or (not (mbql.u/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
-           (select-keys (infer-expression-type query expression) type-info-columns)))
+           (select-keys (infer-expression-type query stage-number expression)
+                        type-info-columns)))
        clauses))
 
     (mbql.u/is-clause? :convert-timezone expression)
@@ -126,7 +158,7 @@
 
     (datetime-arithmetics? expression)
     ;; make sure converted_timezone survived if we do nested datetime operations
-    ;; FIXME: this does not preverse converted_timezone for cases nested expressions
+    ;; FIXME: this does not preserve converted_timezone for cases nested expressions
     ;; i.e:
     ;; {"expression" {"converted-exp" [:convert-timezone "created-at" "Asia/Ho_Chi_Minh"]
     ;;                "date-add-exp"  [:datetime-add [:expression "converted-exp"] 2 :month]}}
@@ -134,22 +166,31 @@
     ;; to ["date-add-exp"].
     ;; maybe this `infer-expression-type query` should takes an `stage` and look up the
     ;; source expresison as well?
-    (merge (select-keys (infer-expression-type query (second expression)) [:converted_timezone])
+    (merge (select-keys (infer-expression-type query stage-number (second expression))
+                        [:converted_timezone])
      {:base_type :type/DateTime})
-
-    (mbql.u/is-clause? mbql.s/string-functions expression)
-    {:base_type :type/Text}
-
-    (mbql.u/is-clause? mbql.s/numeric-functions expression)
-    {:base_type :type/Float}
-
     :else
     {:base_type :type/*}))
 
+(mu/defn ^:private expression-with-name :- ::lib.schema.expression/expression
+  [query           :- ::lib.schema/query
+   stage-number    :- :int
+   expression-name :- ::lib.schema.common/non-blank-string]
+  (let [{:keys [expressions]} (lib.util/query-stage query stage-number)]
+    (or (get expressions expression-name)
+        (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+          (expression-with-name query previous-stage-number expression-name))
+        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                        {:expression-name expression-name
+                         :found           (set (keys expressions))})))))
+
 (mu/defn ^:private col-info-for-expression :- ColumnMetadataWithFieldRef
-  [query stage-number [_ expression-name :as clause]]
+  [query                                :- ::lib.schema/query
+   stage-number                         :- :int
+   [_ _opts expression-name :as clause] :- ::lib.schema.ref/expression]
   (merge
-   (infer-expression-type query (mbql.u/expression-with-name (lib.util/query-stage query stage-number) expression-name))
+   (let [expression-definition (expression-with-name query stage-number expression-name)]
+     (infer-expression-type query stage-number expression-definition))
    {:lib/type        :metadata/field
     :name            expression-name
     :display_name    expression-name
@@ -250,7 +291,7 @@
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [query        :- ::lib.schema/query
    stage-number :- :int
-   clause]
+   clause       :- ::lib.schema.ref/ref]
   (mbql.u/match-one clause
     :expression
     (col-info-for-expression query stage-number &match)
@@ -325,14 +366,16 @@
 (mu/defn ^:private aggregation-arg-display-name :- ::lib.schema.common/non-blank-string
   "Name to use for an aggregation clause argument such as a Field when constructing the complete aggregation name."
   [query stage-number ag-arg]
-  (or (when (mbql.preds/Field? ag-arg)
+  (or (when (field-clause? ag-arg)
         (when-let [info (col-info-for-field-clause query stage-number ag-arg)]
           (some info [:display_name :name])))
       (aggregation-display-name query stage-number ag-arg)))
 
 (mu/defn aggregation-display-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate user-facing display name for an aggregation clause."
-  [query stage-number ag-clause]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   ag-clause    :- ::lib.schema.aggregation/aggregation]
   (mbql.u/match-one ag-clause
     [:aggregation-options _ (options :guard :display-name)]
     (:display-name options)
@@ -346,34 +389,37 @@
               (for [arg args]
                 (expression-arg-display-name (partial aggregation-arg-display-name query stage-number) arg)))
 
-    [:count]             (i18n/tru "Count")
-    [:case]              (i18n/tru "Case")
-    [:distinct    arg]   (i18n/tru "Distinct values of {0}"    (aggregation-arg-display-name query stage-number arg))
-    [:count       arg]   (i18n/tru "Count of {0}"              (aggregation-arg-display-name query stage-number arg))
-    [:avg         arg]   (i18n/tru "Average of {0}"            (aggregation-arg-display-name query stage-number arg))
+    [:count       _opts]       (i18n/tru "Count")
+    [:case        _opts]       (i18n/tru "Case")
+    [:distinct    _opts arg]   (i18n/tru "Distinct values of {0}"    (aggregation-arg-display-name query stage-number arg))
+    [:count       _opts arg]   (i18n/tru "Count of {0}"              (aggregation-arg-display-name query stage-number arg))
+    [:avg         _opts arg]   (i18n/tru "Average of {0}"            (aggregation-arg-display-name query stage-number arg))
     ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (i18n/tru "Count of {0}"              (aggregation-arg-display-name query stage-number arg))
-    [:cum-sum     arg]   (i18n/tru "Sum of {0}"                (aggregation-arg-display-name query stage-number arg))
-    [:stddev      arg]   (i18n/tru "SD of {0}"                 (aggregation-arg-display-name query stage-number arg))
-    [:sum         arg]   (i18n/tru "Sum of {0}"                (aggregation-arg-display-name query stage-number arg))
-    [:min         arg]   (i18n/tru "Min of {0}"                (aggregation-arg-display-name query stage-number arg))
-    [:max         arg]   (i18n/tru "Max of {0}"                (aggregation-arg-display-name query stage-number arg))
-    [:var         arg]   (i18n/tru "Variance of {0}"           (aggregation-arg-display-name query stage-number arg))
-    [:median      arg]   (i18n/tru "Median of {0}"             (aggregation-arg-display-name query stage-number arg))
-    [:percentile  arg p] (i18n/tru "{0}th percentile of {1}" p (aggregation-arg-display-name query stage-number arg))
+    [:cum-count   _opts arg]   (i18n/tru "Count of {0}"              (aggregation-arg-display-name query stage-number arg))
+    [:cum-sum     _opts arg]   (i18n/tru "Sum of {0}"                (aggregation-arg-display-name query stage-number arg))
+    [:stddev      _opts arg]   (i18n/tru "SD of {0}"                 (aggregation-arg-display-name query stage-number arg))
+    [:sum         _opts arg]   (i18n/tru "Sum of {0}"                (aggregation-arg-display-name query stage-number arg))
+    [:min         _opts arg]   (i18n/tru "Min of {0}"                (aggregation-arg-display-name query stage-number arg))
+    [:max         _opts arg]   (i18n/tru "Max of {0}"                (aggregation-arg-display-name query stage-number arg))
+    [:var         _opts arg]   (i18n/tru "Variance of {0}"           (aggregation-arg-display-name query stage-number arg))
+    [:median      _opts arg]   (i18n/tru "Median of {0}"             (aggregation-arg-display-name query stage-number arg))
+    [:percentile  _opts arg p] (i18n/tru "{0}th percentile of {1}" p (aggregation-arg-display-name query stage-number arg))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
     [:sum-where   arg _] (i18n/tru "Sum of {0} matching condition" (aggregation-arg-display-name query stage-number arg))
     [:share       _]     (i18n/tru "Share of rows matching condition")
     [:count-where _]     (i18n/tru "Count of rows matching condition")
 
-    (_ :guard mbql.preds/Field?)
+    (_ :guard field-clause?)
     (:display_name (col-info-for-field-clause query stage-number ag-clause))
 
     _
     (aggregation-name ag-clause)))
 
-(defn- ag->name-info [query stage-number ag]
+(mu/defn ^:private ag->name-info
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   ag           :- ::lib.schema.aggregation/aggregation]
   {:lib/type     :metadata/field
    :name         (aggregation-name ag)
    :display_name (aggregation-display-name query stage-number ag)})
@@ -394,20 +440,20 @@
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct}) & args]
+    [(_ :guard #{:count :distinct}) _opts & args]
     (merge
      (col-info-for-aggregation-clause query stage-number args)
      {:base_type     :type/BigInteger
       :semantic_type :type/Quantity}
      (ag->name-info query stage-number &match))
 
-    [:count-where _]
+    :count-where
     (merge
      {:base_type     :type/Integer
       :semantic_type :type/Quantity}
      (ag->name-info query stage-number &match))
 
-    [:share _]
+    :share
     (merge
      {:base_type     :type/Float
       :semantic_type :type/Share}
@@ -415,26 +461,34 @@
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
-    (_ :guard mbql.preds/Field?)
+    (_ :guard field-clause?)
     (select-keys (col-info-for-field-clause query stage-number &match) [:base_type :semantic_type :settings])
-    #{:expression :+ :- :/ :*}
+
+    :expression
+    (let [[_expression _opts expression-name :as _expression-ref] &match]
+      (merge (infer-expression-type query stage-number (expression-with-name query stage-number expression-name))
+             {:display_name expression-name}))
+
+    #{:+ :- :/ :*}
     (merge
-     (infer-expression-type query &match)
-     (when (mbql.preds/Aggregation? &match)
+     (infer-expression-type query stage-number &match)
+     (when (aggregation-clause? &match)
        (ag->name-info query stage-number &match)))
 
     ;; the type returned by a case statement depends on what its expressions are; we'll just return the type info for
     ;; the first expression for the time being. I guess it's possible the expression might return a string for one
     ;; case and a number for another, but I think in post cases it should be the same type for every clause.
-    [:case & _]
+    :case
     (merge
-     (infer-expression-type query &match)
+     (infer-expression-type query stage-number &match)
      (ag->name-info query stage-number &match))
 
     ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg & _]
+    [(_ :guard keyword?) _opts arg]
     (merge
+     (println "(col-info-for-aggregation-clause query stage-number arg):" (col-info-for-aggregation-clause query stage-number arg)) ; NOCOMMIT
      (col-info-for-aggregation-clause query stage-number arg)
+     (println "(ag->name-info query stage-number &match):" (ag->name-info query stage-number &match)) ; NOCOMMIT
      (ag->name-info query stage-number &match))))
 
 (mu/defn ^:private cols-for-fields :- [:sequential lib.metadata/ColumnMetadata]
@@ -479,8 +533,9 @@
 (mu/defn ^:private source-table-default-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Determine the Fields we'd normally return for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]."
-  [table-metadata :- lib.metadata/TableMetadata]
-  (when-let [field-metadatas (not-empty (:fields table-metadata))]
+  [query          :- ::lib.schema/query
+   table-metadata :- lib.metadata/TableMetadata]
+  (when-let [field-metadatas (not-empty (lib.metadata/fields query (:id table-metadata)))]
     (->> field-metadatas
          remove-hidden-default-fields
          sort-default-fields)))
@@ -508,10 +563,11 @@
                 (some-> previous-stage :lib.metadata/stage :columns))
               (when (integer? source-table)
                 (source-table-default-metadata
+                 query
                  (lib.metadata/table query source-table))))
             (fields-from-joins query stage-number joins))))
 
-(mu/defn stage-metadata :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn stage-metadata :- lib.metadata/StageMetadata
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
   aggregations/breakouts/fields, then return THOSE. Otherwise return the defaults based on the source Table or
   previous stage."

@@ -84,7 +84,11 @@
 
 ;; `:type/Float` means any number with a decimal place! It doesn't explicitly mean a 32-bit or 64-bit floating-point
 ;; number. That's why there's no `:type/Double`.
+;;
+;; TODO -- I know this doesn't make sense! We should fix it at some point. `:type/Decimal` should probably be the
+;; parent of `:type/Float`.
 (derive :type/Float :type/Number)
+
 ;; `:type/Decimal` means a column that is actually stored as an arbitrary-precision decimal type, e.g. `BigDecimal` or
 ;; `DECIMAL`. For fixed-precision columns, just use `:type/Float`
 (derive :type/Decimal :type/Float)

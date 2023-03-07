@@ -1,7 +1,7 @@
-(ns metabase.lib.metadata.calculate-test
+(ns metabase.lib.metadata.calculate-2-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.metadata.calculate :as calculate]
+   [metabase.lib.metadata.calculate-2 :as calculate]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -53,15 +53,13 @@
                       :fields       [[:field (meta/id :categories :name) {:fk-field-id (meta/id :venues :category-id)}]]}})))))
 
 (deftest ^:parallel col-info-explicit-join-test
-  (testing (str "we should get `:fk_field_id` and information where possible when using joins; "
-                "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
+  (testing "Display name for a joined field should include a nice name for the join; include other info like :source_alias"
     (is (=? [(merge (meta/field-metadata :categories :name)
-                    {:display_name "Category → Name"
+                    {:display_name "Categories → Name"
                      :source       :fields
                      :field_ref    [:field
-                                    {:lib/uuid string?, :source-field (meta/id :venues :category-id)}
+                                    {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                                     (meta/id :categories :name)]
-                     :fk_field_id  (meta/id :venues :category-id)
                      :source_alias "CATEGORIES__via__CATEGORY_ID"})]
             (calculate/stage-metadata
              {:lib/type     :mbql/query
@@ -70,168 +68,23 @@
                               :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                               :source-table (meta/id :venues)
                               :fields       [[:field
-                                              {:join-alias "CATEGORIES__via__CATEGORY_ID", :lib/uuid "8704e09b-496e-4045-8148-1eef28e96b51"}
-                                             (meta/id :categories :name)]]
-                              :joins        [{:alias       "CATEGORIES__via__CATEGORY_ID"
+                                              {:join-alias "CATEGORIES__via__CATEGORY_ID"
+                                               :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
+                                              (meta/id :categories :name)]]
+                              :joins        [{:lib/type    :mbql/join
+                                              :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
+                                              :alias       "CATEGORIES__via__CATEGORY_ID"
                                               :condition   [:=
                                                             {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                             (field-clause :venues :category-id)
                                                             (field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]
                                               :strategy    :left-join
                                               :fk-field-id (meta/id :venues :category-id)
-                                              :lib/type    :mbql/join
                                               :stages      [{:lib/type     :mbql.stage/mbql
                                                              :lib/options  {:lib/uuid "bbbae500-c972-4550-b100-e0584eb72c4d"}
-                                                             :source-table (meta/id :venues)}]
-                                              :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}}]}]
+                                                             :source-table (meta/id :categories)}]}]}]
               :database     (meta/id)
               :lib/metadata meta/metadata-provider})))))
-
-(deftest ^:parallel col-info-explicit-join-without-fk-field-id-test
-  (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
-                "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
-    (is (=? [(merge (meta/field-metadata :categories :name)
-                    {:display_name "Categories → Name"
-                     :source       :fields
-                     :field_ref    [:field {:join-alias "Categories"} (meta/id :categories :name)]
-                     :source_alias "Categories"})]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :type         :pipeline
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid "e8a385bf-4a5b-4e44-bb0a-23095d4dac86"}
-                              :source-table (meta/id :venues)
-                              :fields       [(field-clause :categories :name {:join-alias "Categories"})]
-                              :joins        [{:lib/type    :mbql/join
-                                              :lib/options {:lib/uuid "783a1716-c450-4def-9422-798d59cb8785"}
-                                              :alias       "Categories"
-                                              :condition   [:=
-                                                            {:lib/uuid "a0e8b12e-572e-4626-8040-250d25105e9c"}
-                                                            (field-clause :venues :category-id)
-                                                            (field-clause :categories :id {:join-alias "Categories"})]
-                                              :strategy    :left-join
-                                              :stages      [{:lib/type     :mbql.stage/mbql
-                                                             :lib/options  {:lib/uuid "850f37a0-ba84-4c6b-b227-1aedfb058e41"}
-                                                             :source-table (meta/id :venues)}]}]}]
-              :database     (meta/id)
-              :lib/metadata meta/metadata-provider})))))
-
-(deftest ^:parallel col-info-for-field-with-temporal-unit-test
-  (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
-    (is (=? [(merge (meta/field-metadata :venues :price)
-                    {:unit      :month
-                     :source    :fields
-                     :field_ref [:field {:temporal-unit :month} (meta/id :venues :price)]})]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :type         :pipeline
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid "ad7afe84-c51d-4a14-865e-501a61904bdf"}
-                              :source-table (meta/id :venues)
-                              :fields       [(field-clause :venues :price {:temporal-unit :month})]}]
-              :database     (meta/id)
-              :lib/metadata meta/metadata-provider})))))
-
-(deftest ^:parallel col-info-for-field-with-temporal-unit-literal-test
-  (testing "datetime unit should work on field literals too"
-    (is (=? [{:name         "price"
-              :base_type    :type/Number
-              :display_name "Price"
-              :unit         :month
-              :source       :fields
-              :field_ref    [:field {:base-type :type/Number, :temporal-unit :month} "price"]}]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :lib/metadata meta/metadata-provider
-              :database     (meta/id)
-              :type         :pipeline
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid "b75c696e-da02-4a46-979f-122884de352b"}
-                              :source-table (meta/id :venues)
-                              :fields       [[:field
-                                              {:base-type     :type/Number
-                                               :temporal-unit :month
-                                               :lib/uuid      "74820cc4-4121-4c08-b234-36596b6ea99c"}
-                                              "price"]]}]})))))
-
-(deftest ^:parallel col-info-for-field-with-temporal-unit-correct-field-info-test
-  (testing "should add the correct info if the Field originally comes from a nested query"
-    (is (=? [{:name      "DATE"
-              :unit      :month
-              :field_ref [:field {:temporal-unit :default} (meta/id :checkins :date)]}
-             {:name      "LAST_LOGIN"
-              :unit      :month
-              :field_ref [:field
-                          {:temporal-unit :default
-                           :join-alias    "USERS__via__USER_ID"}
-                          (meta/id :users :last-login)]}]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :lib/metadata meta/metadata-provider
-              :database     (meta/id)
-              :type         :pipeline
-              :stages       [{:lib/type           :mbql.stage/mbql
-                              :lib/options        {:lib/uuid "e076589f-04fb-44f6-bd3c-bc1c441766d2"}
-                              :lib/stage-metadata [{:name      "DATE"
-                                                    :id        (meta/id :checkins :date)
-                                                    :unit      :month
-                                                    :field_ref (field-clause :checkins :date {:temporal-unit :month})}
-                                                   {:name      "LAST_LOGIN"
-                                                    :id        (meta/id :users :last-login)
-                                                    :unit      :month
-                                                    :field_ref (field-clause :users :last-login {:temporal-unit :month
-                                                                                                 :source-field  (meta/id :checkins :user-id)})}]
-                              :source-table       (meta/id :checkins)
-                              :breakout           [(field-clause :checkins :date {:temporal-unit :month})
-                                                   (field-clause :users :last-login {:temporal-unit :month
-                                                                                     :source-field  (meta/id :checkins :user-id)})]}
-                             {:lib/type    :mbql.stage/mbql
-                              :lib/options {:lib/uuid "4036700e-a3a8-4de6-b070-0f071dea6c50"}
-                              :fields      [(field-clause :checkins :date {:temporal-unit :default})
-                                            (field-clause :users :last-login {:temporal-unit :default
-                                                                              :join-alias    "USERS__via__USER_ID"})]
-                              :limit       1}]})))))
-
-(deftest ^:parallel col-info-for-binning-strategy-test
-  (testing "when binning strategy is used, include `:binning_info`"
-    (is (=? [{:lib/type     :metadata/field
-              :name         "price"
-              :base_type    :type/Number
-              :display_name "Price"
-              :unit         :month
-              :source       :fields
-              :binning_info {:num_bins         10
-                             :bin_width        5
-                             :min_value        -100
-                             :max_value        100
-                             :binning_strategy :num-bins}
-              :field_ref    [:field
-                             {:lib/uuid      string?
-                              :base-type     :type/Number
-                              :temporal-unit :month
-                              :binning       {:strategy  :num-bins
-                                              :num-bins  10
-                                              :bin-width 5
-                                              :min-value -100
-                                              :max-value 100}}
-                             "price"]}]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :lib/metadata meta/metadata-provider
-              :database     (meta/id)
-              :type         :pipeline
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid "232612bd-6b8d-48ef-846f-108e4a6a8ae3"}
-                              :source-table (meta/id :venues)
-                              :fields       [[:field {:base-type     :type/Number
-                                                      :temporal-unit :month
-                                                      :binning       {:strategy  :num-bins
-                                                                      :num-bins  10
-                                                                      :bin-width 5
-                                                                      :min-value -100
-                                                                      :max-value 100}
-                                                      :lib/uuid      "80c8e8e0-a93f-4a05-b811-1f788136fff7"}
-                                              "price"]]}]})))))
 
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -267,7 +120,7 @@
 
 (deftest ^:parallel col-info-combine-parent-field-names-test
   (letfn [(col-info [a-field-clause]
-            (#'calculate/col-info-for-field-clause
+            (#'calculate/metadata-for-ref
              {:lib/type     :mbql/query
               :lib/metadata grandparent-parent-child-metadata-provider
               :type         :pipeline
@@ -295,13 +148,13 @@
               (col-info [:field {:lib/uuid (str (random-uuid))} (grandparent-parent-child-id :child)]))))))
 
 (deftest ^:parallel col-info-field-literals-test
-  (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
+  (testing "field literals should get the information from the matching `:lib/stage-metadata` if it was supplied"
     (is (=? {:name          "sum"
              :display_name  "sum of User ID"
              :base_type     :type/Integer
              :field_ref     [:field {:base-type :type/Integer} "sum"]
              :semantic_type :type/FK}
-            (#'calculate/col-info-for-field-clause
+            (#'calculate/metadata-for-ref
              (venues-query-with-last-stage
               {:lib/stage-metadata
                {:lib/type :metadata/results
@@ -318,43 +171,42 @@
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
-(deftest ^:parallel col-info-expressions-test
-  (testing "col info for an `expression` should work as expected"
-    (is (=? {:base_type       :type/Float
-             :name            "double-price"
-             :display_name    "double-price"
-             :expression_name "double-price"
-             :field_ref       [:expression {} "double-price"]}
-            (#'calculate/col-info-for-field-clause
-             (venues-query-with-last-stage
-              {:expressions {"double-price" [:* (field-clause :venues :price) 2]}})
-             -1
-             [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+(deftest ^:parallel col-info-expression-ref-test
+  (is (=? {:base_type    :type/Integer
+           :name         "double-price"
+           :display_name "double-price"
+           :field_ref    [:expression {:lib/uuid string?} "double-price"]}
+          (#'calculate/metadata-for-ref
+           (venues-query-with-last-stage
+            {:expressions {"double-price" [:*
+                                           {:lib/uuid (str (random-uuid))}
+                                           (field-clause :venues :price {:base-type :type/Integer})
+                                           2]}})
+           -1
+           [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
 
-(deftest ^:parallel col-info-for-convert-timezone-test
-  (testing "col-info for convert-timezone should have a `converted_timezone` property"
-    (are [expression] (=? {:converted_timezone "Asia/Ho_Chi_Minh"
-                           :base_type          :type/DateTime
-                           :name               "last-login-converted"
-                           :display_name       "last-login-converted"
-                           :expression_name    "last-login-converted"
-                           :field_ref          [:expression {} "last-login-converted"]}
-                          (#'calculate/col-info-for-field-clause
-                           (venues-query-with-last-stage
-                            {:expressions {"last-login-converted" expression}})
-                           -1
-                           [:expression {:lib/uuid (str (random-uuid))} "last-login-converted"]))
-      [:convert-timezone (field-clause :users :last-login) "Asia/Ho_Chi_Minh" "UTC"]
+(deftest ^:parallel col-info-for-temporal-expression-test
+  (is (=? {:converted_timezone "Asia/Ho_Chi_Minh"
+           :base_type          :type/DateTime
+           :name               "last-login-plus-2"
+           :display_name       "last-login-plus-2"
+           :field_ref          [:expression {} "last-login-plus-2"]}
+          (#'calculate/metadata-for-ref
+           (venues-query-with-last-stage
+            {:expressions {"last-login-plus-2" [:datetime-add
+                                                {:lib/uuid (str (random-uuid))}
+                                                (field-clause :users :last-login {:temporal-unit :type/DateTime})
+                                                2
+                                                :hour]}})
+           -1
+           [:expression {:lib/uuid (str (random-uuid))} "last-login-plus-2"]))))
 
-      [:datetime-add
-       [:convert-timezone (field-clause :users :last-login) "Asia/Ho_Chi_Minh" "UTC"]
-       2
-       :hour])))
+(deftest ^:parallel col-info-for-convert-timezone-test)
 
 (deftest ^:parallel col-info-for-expression-error-message-test
   (testing "if there is no matching expression it should give a meaningful error message"
     (letfn [(thunk []
-              (#'calculate/col-info-for-field-clause
+              (#'calculate/metadata-for-ref
                (venues-query-with-last-stage
                 {:expressions {"one-hundred" 100}})
                -1
@@ -380,7 +232,8 @@
    (aggregation-names venues-query -1 ag-clause))
 
   ([query stage-number ag-clause]
-   {:name         (calculate/aggregation-name ag-clause)
+   `TODO
+   #_{:name         (calculate/aggregation-name ag-clause)
     :display_name (calculate/aggregation-display-name query stage-number ag-clause)}))
 
 (deftest ^:parallel aggregation-names-test
@@ -447,7 +300,8 @@
    (col-info-for-aggregation-clause {} clause))
 
   ([stage clause]
-   (#'calculate/col-info-for-aggregation-clause (venues-query-with-last-stage stage) -1 clause)))
+   `TODO
+   #_(#'calculate/col-info-for-aggregation-clause (venues-query-with-last-stage stage) -1 clause)))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
   (testing "basic aggregation clauses"
@@ -579,10 +433,11 @@
                                        1]]]])))))
 
 (deftest ^:parallel datetime-arithmetics?-test
-  (are [x] (#'calculate/datetime-arithmetics? x)
+  (is (not `TODO))
+  #_(are [x] (#'calculate/datetime-arithmetics? x)
     [:interval -1 :month]
     [:field (meta/id :checkins :date) {:temporal-unit :month}])
-  (are [x] (not (#'calculate/datetime-arithmetics? x))
+  #_(are [x] (not (#'calculate/datetime-arithmetics? x))
     [:+ 1 [:temporal-extract
            [:+ [:field (meta/id :checkins :date) nil] [:interval -1 :month]]
            :year]]

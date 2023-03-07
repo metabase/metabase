@@ -1,6 +1,20 @@
 (ns metabase.lib.schema.aggregation
-  (:require [metabase.util.malli.registry :as mr]))
+  (:require
+   [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.expression :as expression]
+   [metabase.util.malli.registry :as mr]))
 
-;;; placeholder!
+(mr/def ::sum
+  [:tuple
+   [:= :sum]
+   ::common/options
+   [:ref ::expression/number]])
+
 (mr/def ::aggregation
-  any?)
+  [:or
+   ::sum
+   ;;; placeholder!
+   any?])
+
+(mr/def ::aggregations
+  [:sequential {:min 1} [:ref ::aggregation]])
