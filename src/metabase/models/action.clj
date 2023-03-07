@@ -7,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -287,20 +286,20 @@
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)
-      (update :creator_id serdes.util/export-user)
-      (update :model_id serdes.util/export-fk 'Card)
+      (update :creator_id serdes/export-user)
+      (update :model_id serdes/export-fk 'Card)
       (update :type name)
       (cond-> (= (:type action) :query)
-        (update :database_id serdes.util/export-fk-keyed 'Database :name))))
+        (update :database_id serdes/export-fk-keyed 'Database :name))))
 
 (defmethod serdes/load-xform "Action" [action]
   (-> action
       serdes/load-xform-basics
-      (update :creator_id serdes.util/import-user)
-      (update :model_id serdes.util/import-fk 'Card)
+      (update :creator_id serdes/import-user)
+      (update :model_id serdes/import-fk 'Card)
       (update :type keyword)
       (cond-> (= (:type action) "query")
-        (update :database_id serdes.util/import-fk-keyed 'Database :name))))
+        (update :database_id serdes/import-fk-keyed 'Database :name))))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

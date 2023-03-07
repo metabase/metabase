@@ -11,7 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -400,10 +399,10 @@
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
   (let [this  (serdes/path field)
         table (pop this)
-        fks   (some->> field :fk_target_field_id serdes.util/field->path)
+        fks   (some->> field :fk_target_field_id serdes/field->path)
         human (->> (:dimensions field)
                    (keep :human_readable_field_id)
-                   (map serdes.util/field->path)
+                   (map serdes/field->path)
                    set)]
     (cond-> (set/union #{table} human)
       fks   (set/union #{fks})
@@ -413,7 +412,7 @@
   (->> (for [dim dimensions]
          (-> (into (sorted-map) dim)
              (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes.util/export-field-fk)))
+             (update :human_readable_field_id serdes/export-field-fk)))
        (sort-by :created_at)))
 
 (defmethod serdes/extract-one "Field"
@@ -423,14 +422,14 @@
                 (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
-        (update :table_id           serdes.util/export-table-fk)
-        (update :fk_target_field_id serdes.util/export-field-fk))))
+        (update :table_id           serdes/export-table-fk)
+        (update :fk_target_field_id serdes/export-field-fk))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes.util/import-table-fk)
-      (update :fk_target_field_id serdes.util/import-field-fk)))
+      (update :table_id           serdes/import-table-fk)
+      (update :fk_target_field_id serdes/import-field-fk)))
 
 (defmethod serdes/load-find-local "Field"
   [path]
@@ -450,7 +449,7 @@
   (-> field
       serdes/path
       drop-last
-      serdes.util/storage-table-path-prefix
+      serdes/storage-table-path-prefix
       (concat ["fields" (:name field)])))
 
 (serdes/register-ingestion-path!

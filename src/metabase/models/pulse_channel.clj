@@ -6,7 +6,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -367,13 +366,13 @@
                                                   :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
                                                   :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
     (-> (serdes/extract-one-basics "PulseChannel" channel)
-        (update :pulse_id   serdes.util/export-fk 'Pulse)
+        (update :pulse_id   serdes/export-fk 'Pulse)
         (assoc  :recipients recipients))))
 
 (defmethod serdes/load-xform "PulseChannel" [channel]
   (-> channel
       serdes/load-xform-basics
-      (update :pulse_id serdes.util/import-fk 'Pulse)))
+      (update :pulse_id serdes/import-fk 'Pulse)))
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails

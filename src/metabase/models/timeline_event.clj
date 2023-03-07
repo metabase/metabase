@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]
@@ -104,7 +103,7 @@
 (defmethod serdes/load-xform "TimelineEvent" [event]
   (-> event
       serdes/load-xform-basics
-      (update :timeline_id serdes.util/import-fk 'Timeline)
-      (update :creator_id  serdes.util/import-user)
+      (update :timeline_id serdes/import-fk 'Timeline)
+      (update :creator_id  serdes/import-user)
       (update :timestamp   u.date/parse)
       (update :created_at  #(if (string? %) (u.date/parse %) %))))

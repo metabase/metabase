@@ -23,7 +23,6 @@
    [java-time :as t]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -469,7 +468,7 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes.util/import-field-fk field-ref))
+        (assoc :field_id (serdes/import-field-fk field-ref))
         (update :type keyword))))
 
 (defmethod serdes/load-find-local "FieldValues" [path]
@@ -493,7 +492,7 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field        (last (drop-last hierarchy))
-        table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
+        table-prefix (serdes/storage-table-path-prefix (drop-last 2 hierarchy))]
     (concat table-prefix
             ["fields" (str (:id field) field-values-slug)])))
 

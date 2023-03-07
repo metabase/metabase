@@ -12,7 +12,6 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -248,7 +247,7 @@
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes.util/storage-table-path-prefix (serdes/path table))
+  (concat (serdes/storage-table-path-prefix (serdes/path table))
           [(:name table)]))
 
 (serdes/register-ingestion-path!

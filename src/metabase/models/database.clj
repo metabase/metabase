@@ -10,7 +10,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -306,7 +305,7 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes.util/export-user)
+    true                 (update :creator_id serdes/export-user)
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
@@ -326,7 +325,7 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes.util/import-user)))
+      (update :creator_id serdes/import-user)))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]

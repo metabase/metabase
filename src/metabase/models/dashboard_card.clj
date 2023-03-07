@@ -11,7 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -279,13 +278,13 @@
          col]))))
 
 (def ^:private link-card-models
-  (set (keys serdes.util/link-card-model->toucan-model)))
+  (set (keys serdes/link-card-model->toucan-model)))
 
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
   {:select (select-clause-for-link-card-model model)
-   :from   (t2/table-name (serdes.util/link-card-model->toucan-model model))
+   :from   (t2/table-name (serdes/link-card-model->toucan-model model))
    :where  (if (coll? id-or-ids)
              [:in :id id-or-ids]
              [:= :id id-or-ids])})
@@ -320,7 +319,7 @@
             model-and-id->info
             (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
                 (update-vals (fn [{model :model :as instance}]
-                               (if (mi/can-read? (t2/instance (serdes.util/link-card-model->toucan-model model) instance))
+                               (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
                                  instance
                                  {:restricted true}))))]
         (map (fn [card]
@@ -343,9 +342,9 @@
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes.util/import-fk 'Card)
-      (update :action_id              serdes.util/import-fk 'Action)
-      (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :card_id                serdes/import-fk 'Card)
+      (update :action_id              serdes/import-fk 'Action)
+      (update :dashboard_id           serdes/import-fk 'Dashboard)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
-      (update :parameter_mappings     serdes.util/import-parameter-mappings)
-      (update :visualization_settings serdes.util/import-visualization-settings)))
+      (update :parameter_mappings     serdes/import-parameter-mappings)
+      (update :visualization_settings serdes/import-visualization-settings)))

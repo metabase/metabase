@@ -4,7 +4,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
@@ -79,14 +78,14 @@
 (defmethod serdes/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
   (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes.util/export-user)
-      (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
+      (update :creator_id serdes/export-user)
+      (update :collection_id #(when % (serdes/export-fk % 'Collection)))))
 
 (defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes/load-xform-basics
-      (update :creator_id serdes.util/import-user)
-      (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
+      (update :creator_id serdes/import-user)
+      (update :collection_id #(when % (serdes/import-fk % 'Collection)))))
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]

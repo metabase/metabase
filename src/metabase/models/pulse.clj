@@ -26,7 +26,6 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
@@ -593,15 +592,15 @@
 (defmethod serdes/extract-one "Pulse"
   [_model-name _opts pulse]
   (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
-    true                   (update :creator_id    serdes.util/export-user)))
+    (:collection_id pulse) (update :collection_id serdes/export-fk 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/export-fk 'Dashboard)
+    true                   (update :creator_id    serdes/export-user)))
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes.util/import-user)
-      (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
+      true                   (update :creator_id    serdes/import-user)
+      (:collection_id pulse) (update :collection_id serdes/import-fk 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes/import-fk 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

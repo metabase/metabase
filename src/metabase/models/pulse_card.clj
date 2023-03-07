@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -61,16 +60,16 @@
 (defmethod serdes/extract-one "PulseCard"
   [_model-name _opts card]
   (cond-> (serdes/extract-one-basics "PulseCard" card)
-    true                      (update :card_id            serdes.util/export-fk 'Card)
-    true                      (update :pulse_id           serdes.util/export-fk 'Pulse)
-    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/export-fk 'DashboardCard)))
+    true                      (update :card_id            serdes/export-fk 'Card)
+    true                      (update :pulse_id           serdes/export-fk 'Pulse)
+    (:dashboard_card_id card) (update :dashboard_card_id  serdes/export-fk 'DashboardCard)))
 
 (defmethod serdes/load-xform "PulseCard" [card]
   (cond-> (serdes/load-xform-basics card)
-    true                      (update :card_id            serdes.util/import-fk 'Card)
-    true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
+    true                      (update :card_id            serdes/import-fk 'Card)
+    true                      (update :pulse_id           serdes/import-fk 'Pulse)
     true                      (dissoc :dashboard_id)
-    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
+    (:dashboard_card_id card) (update :dashboard_card_id  serdes/import-fk 'DashboardCard)))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
 (defmethod serdes/dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]

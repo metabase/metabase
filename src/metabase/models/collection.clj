@@ -16,7 +16,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -973,7 +972,7 @@
         serdes/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc)
-        (update :personal_owner_id serdes.util/import-user))))
+        (update :personal_owner_id serdes/import-user))))
 
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]

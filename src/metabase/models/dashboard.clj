@@ -22,7 +22,6 @@
    [metabase.models.revision :as revision]
    [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
@@ -435,10 +434,10 @@
   [dashcard]
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes.util/export-fk 'Card)
-      (update :action_id              serdes.util/export-fk 'Action)
-      (update :parameter_mappings     serdes.util/export-parameter-mappings)
-      (update :visualization_settings serdes.util/export-visualization-settings)))
+      (update :card_id                serdes/export-fk 'Card)
+      (update :action_id              serdes/export-fk 'Action)
+      (update :parameter_mappings     serdes/export-parameter-mappings)
+      (update :visualization_settings serdes/export-visualization-settings)))
 
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
@@ -447,20 +446,20 @@
                (hydrate dash :ordered_cards))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
-        (update :parameters        serdes.util/export-parameters)
-        (update :collection_id     serdes.util/export-fk Collection)
-        (update :creator_id        serdes.util/export-user)
-        (update :made_public_by_id serdes.util/export-user))))
+        (update :parameters        serdes/export-parameters)
+        (update :collection_id     serdes/export-fk Collection)
+        (update :creator_id        serdes/export-user)
+        (update :made_public_by_id serdes/export-user))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes/load-xform-basics
       ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
-      (update :collection_id     serdes.util/import-fk Collection)
-      (update :parameters        serdes.util/import-parameters)
-      (update :creator_id        serdes.util/import-user)
-      (update :made_public_by_id serdes.util/import-user)))
+      (update :collection_id     serdes/import-fk Collection)
+      (update :parameters        serdes/import-parameters)
+      (update :creator_id        serdes/import-user)
+      (update :made_public_by_id serdes/import-user)))
 
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard
@@ -477,8 +476,8 @@
 
 (defn- serdes-deps-dashcard
   [{:keys [card_id parameter_mappings visualization_settings]}]
-  (->> (mapcat serdes.util/mbql-deps parameter_mappings)
-       (concat (serdes.util/visualization-settings-deps visualization_settings))
+  (->> (mapcat serdes/mbql-deps parameter_mappings)
+       (concat (serdes/visualization-settings-deps visualization_settings))
        (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
@@ -487,7 +486,7 @@
   (->> (map serdes-deps-dashcard ordered_cards)
        (reduce set/union)
        (set/union #{[{:model "Collection" :id collection_id}]})
-       (set/union (serdes.util/parameters-deps parameters))))
+       (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]

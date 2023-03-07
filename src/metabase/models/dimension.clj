@@ -5,7 +5,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
    [toucan.models :as models]))
 
@@ -36,5 +35,5 @@
   (-> dim
       serdes/load-xform-basics
       ;; No need to handle :field_id, it was just added as the raw ID by the caller; see Field's load-one!
-      (update            :human_readable_field_id serdes.util/import-field-fk)
+      (update            :human_readable_field_id serdes/import-field-fk)
       (update            :created_at              u.date/parse)))
