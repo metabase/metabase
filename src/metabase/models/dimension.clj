@@ -25,8 +25,8 @@
 
 (defmethod serdes.hash/identity-hash-fields Dimension
   [_dimension]
-  [(serdes.hash/hydrated-hash :field "<none>")
-   (serdes.hash/hydrated-hash :human_readable_field "<none>")
+  [(serdes.hash/hydrated-hash :field)
+   (serdes.hash/hydrated-hash :human_readable_field)
    :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

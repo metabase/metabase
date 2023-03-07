@@ -54,14 +54,14 @@
                                               :deps-chain expanding
                                               :error      ::not-found}
                                              e))))
-                deps     (serdes/serdes-dependencies ingested)
+                deps     (serdes/dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj path)
                              (load-deps deps)
                              (update :seen conj path)
                              (update :expanding disj path))
                 ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
-                rebuilt-path    (serdes/serdes-path ingested)
+                rebuilt-path    (serdes/path ingested)
                 local-or-nil    (serdes/load-find-local rebuilt-path)]
             (try
               (serdes/load-one! ingested local-or-nil)

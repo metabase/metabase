@@ -216,7 +216,7 @@
      (db/select-one-field :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/serdes-dependencies "Table" [table]
+(defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes/generate-path "Table" [_ table]
@@ -249,7 +249,7 @@
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes.util/storage-table-path-prefix (serdes/serdes-path table))
+  (concat (serdes.util/storage-table-path-prefix (serdes/path table))
           [(:name table)]))
 
 (serdes/register-ingestion-path!

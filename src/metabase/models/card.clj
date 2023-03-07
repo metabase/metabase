@@ -402,7 +402,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :collection) :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
@@ -468,7 +468,7 @@
       (update :visualization_settings serdes.util/import-visualization-settings)
       (update :result_metadata        import-result-metadata)))
 
-(defmethod serdes/serdes-dependencies "Card"
+(defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)

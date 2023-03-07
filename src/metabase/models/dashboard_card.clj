@@ -57,7 +57,7 @@
 
 (defmethod serdes.hash/identity-hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
+  [(serdes.hash/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes.hash/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)

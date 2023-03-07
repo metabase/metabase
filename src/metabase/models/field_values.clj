@@ -455,16 +455,16 @@
     (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 
-(defmethod serdes/serdes-dependencies "FieldValues" [fv]
+(defmethod serdes/dependencies "FieldValues" [fv]
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
-  [(pop (serdes/serdes-path fv))])
+  [(pop (serdes/path fv))])
 
 (defmethod serdes/extract-one "FieldValues" [_model-name _opts fv]
   (-> (serdes/extract-one-basics "FieldValues" fv)
       (dissoc :field_id)))
 
 (defmethod serdes/load-xform "FieldValues" [fv]
-  (let [[db schema table field :as field-ref] (map :id (pop (serdes/serdes-path fv)))
+  (let [[db schema table field :as field-ref] (map :id (pop (serdes/path fv)))
         field-ref (if field
                     field-ref
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
@@ -492,7 +492,7 @@
 (defmethod serdes/storage-path "FieldValues" [fv _]
   ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
   ;; don't have their own directories.
-  (let [hierarchy    (serdes/serdes-path fv)
+  (let [hierarchy    (serdes/path fv)
         field        (last (drop-last hierarchy))
         table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
     (concat table-prefix

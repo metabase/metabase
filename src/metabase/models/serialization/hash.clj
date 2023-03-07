@@ -81,7 +81,7 @@
 (defn hydrated-hash
   "Many entities reference other entities. Using the autoincrementing ID is not portable, so we use the identity hash
   of the referenced entity. This is a helper for writing [[identity-hash-fields]]."
-  ([hydration-key] (hydrated-hash hydration-key nil))
+  ([hydration-key] (hydrated-hash hydration-key "<none>"))
   ([hydration-key default]
    (fn [entity]
      (let [hydrated-value (get (hydrate entity hydration-key) hydration-key)]

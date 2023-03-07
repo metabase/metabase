@@ -160,7 +160,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :collection) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -483,7 +483,7 @@
        (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
-(defmethod serdes/serdes-dependencies "Dashboard"
+(defmethod serdes/dependencies "Dashboard"
   [{:keys [collection_id ordered_cards parameters]}]
   (->> (map serdes-deps-dashcard ordered_cards)
        (reduce set/union)

@@ -400,5 +400,5 @@
     chan))
 
 ;; Depends on the Pulse.
-(defmethod serdes/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]
+(defmethod serdes/dependencies "PulseChannel" [{:keys [pulse_id]}]
   [[{:model "Pulse" :id pulse_id}]])

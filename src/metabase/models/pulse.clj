@@ -156,7 +156,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Pulse
   [_pulse]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :collection) :created_at])
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -604,6 +604,6 @@
       (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
       (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
 
-(defmethod serdes/serdes-dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
+(defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
                   (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

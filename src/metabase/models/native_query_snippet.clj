@@ -42,7 +42,7 @@
 
 (defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
   [_snippet]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]
@@ -89,7 +89,7 @@
       (update :creator_id serdes.util/import-user)
       (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
 
-(defmethod serdes/serdes-dependencies "NativeQuerySnippet"
+(defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
   (if collection_id
     [[{:model "Collection" :id collection_id}]]

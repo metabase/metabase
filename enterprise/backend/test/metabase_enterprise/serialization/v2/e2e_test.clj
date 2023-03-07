@@ -294,7 +294,7 @@
           (testing "ingest and load"
             (ts/with-dest-db
               (testing "ingested set matches extracted set"
-                (let [extracted-set (set (map (comp #'ingest/strip-labels serdes/serdes-path) @extraction))]
+                (let [extracted-set (set (map (comp #'ingest/strip-labels serdes/path) @extraction))]
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
@@ -574,7 +574,7 @@
                         [{:model "Database" :id "Linked database"}
                          {:model "Schema"   :id "Public"}
                          {:model "Table"    :id "Linked table"}]}
-                    (set (serdes/serdes-dependencies extracted-dashboard))))
+                    (set (serdes/dependencies extracted-dashboard))))
 
                (storage/store! (seq extraction) dump-dir)))
 

@@ -284,7 +284,7 @@
             (db/select-reducible 'Action)))
 
 (defmethod serdes.hash/identity-hash-fields Action [_action]
-  [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :model) :created_at])
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)
@@ -312,13 +312,13 @@
   (log/tracef "Inserting Action: %s" (pr-str ingested))
   (insert! ingested))
 
-(defmethod serdes/serdes-dependencies "Action" [action]
+(defmethod serdes/dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
     (when (= (:type action) "query")
       [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/serdes-path last)]
+  (let [{:keys [id label]} (-> action serdes/path last)]
     ["actions" (serdes/storage-leaf-file-name id label)]))
 
 (serdes/register-ingestion-path!

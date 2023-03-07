@@ -61,7 +61,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Timeline
   [_timeline]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :collection) :created_at])
 
 ;;;; serialization
 (defmethod serdes/extract-query "Timeline" [_model-name opts]
@@ -102,7 +102,7 @@
                                        {:model "TimelineEvent" :id (u.date/format (t/offset-date-time (:timestamp event)))}])]
         (serdes/load-one! event local)))))
 
-(defmethod serdes/serdes-dependencies "Timeline" [{:keys [collection_id]}]
+(defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
 
 (serdes/register-ingestion-path! "Timeline" (serdes/ingestion-matcher-collected "collections" "Timeline"))

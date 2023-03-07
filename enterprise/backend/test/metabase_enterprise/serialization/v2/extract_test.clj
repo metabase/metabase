@@ -264,7 +264,7 @@
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]
                      [{:model "Collection" :id coll-eid}]}
-                   (set (serdes/serdes-dependencies ser))))))
+                   (set (serdes/dependencies ser))))))
 
         (let [ser (serdes/extract-one "Card" {} (db/select-one 'Card :id c2-id))]
           (is (schema= {:serdes/meta         (s/eq [{:model "Card" :id c2-eid :label "second_question"}])
@@ -295,7 +295,7 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]}
-                   (set (serdes/serdes-dependencies ser))))))
+                   (set (serdes/dependencies ser))))))
 
         (let [ser (serdes/extract-one "Card" {} (db/select-one 'Card :id c3-id))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c3-eid :label "third_question"}])
@@ -342,7 +342,7 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (db/select-one 'Card :id c5-id))]
@@ -365,7 +365,7 @@
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card"       :id c4-eid}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards include their Dashcards"
         (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id other-dash-id))]
@@ -406,7 +406,7 @@
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]
                      [{:model "Collection" :id dave-coll-eid}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
      (testing "Dashboards with parameters where the source is a card"
        (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
@@ -426,7 +426,7 @@
                   [{:model "Database", :id "My Database"}
                    {:model "Table",    :id "Schemaless Table"}
                    {:model "Field",    :id "Some Field"}]}
-                (set (serdes/serdes-dependencies ser))))))
+                (set (serdes/dependencies ser))))))
 
      (testing "Cards with parameters where the source is a card"
        (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
@@ -446,7 +446,7 @@
                   [{:model "Database", :id "My Database"}
                    {:model "Table",    :id "Schemaless Table"}
                    {:model "Field",    :id "Some Field"}]}
-                (set (serdes/serdes-dependencies ser))))))
+                (set (serdes/dependencies ser))))))
 
      (testing "collection filtering based on :user option"
        (testing "only unowned collections are returned with no user"
@@ -529,7 +529,7 @@
           (testing "which depend on just the table"
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
         (let [ser (serdes/extract-one "Field" {} (db/select-one Field :id fk-id))]
@@ -564,7 +564,7 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Customers"}
                       {:model "Field"      :id "name"}]}
-                   (set (serdes/serdes-dependencies ser))))))))))
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest metrics-test
   (mt/with-empty-h2-app-db
@@ -601,7 +601,7 @@
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes/serdes-dependencies ser))))))))))
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db
@@ -635,7 +635,7 @@
 
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes/serdes-dependencies ser)))))))
+                     (set (serdes/dependencies ser)))))))
 
         (testing "or can be outside collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s2-id))]
@@ -650,7 +650,7 @@
             (is (not (contains? ser :id)))
 
             (testing "and has no deps"
-              (is (empty? (serdes/serdes-dependencies ser))))))))))
+              (is (empty? (serdes/dependencies ser))))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db
@@ -685,7 +685,7 @@
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes/serdes-dependencies ser)))))))
+                     (set (serdes/dependencies ser)))))))
 
         (testing "with events"
           (let [ser   (serdes/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
@@ -705,7 +705,7 @@
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes/serdes-dependencies ser)))))))))))
+                     (set (serdes/dependencies ser)))))))))))
 
 (deftest segments-test
   (mt/with-empty-h2-app-db
@@ -743,7 +743,7 @@
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes/serdes-dependencies ser))))))))))
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db
@@ -779,7 +779,7 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes/serdes-dependencies ser)))))))))))))
+                         (set (serdes/dependencies ser)))))))))))))
 
 (deftest http-action-test
   (mt/with-empty-h2-app-db
@@ -815,7 +815,7 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes/serdes-dependencies ser)))))))))))))
+                         (set (serdes/dependencies ser)))))))))))))
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db
@@ -855,7 +855,7 @@
                 (testing "depends on the Model and Database"
                   (is (= #{[{:model "Database" :id "My Database"}]
                            [{:model "Card" :id card-eid-1}]}
-                         (set (serdes/serdes-dependencies ser)))))))))))))
+                         (set (serdes/dependencies ser)))))))))))))
 
 (deftest field-values-test
   (mt/with-empty-h2-app-db
@@ -897,7 +897,7 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
           (is (= #{}
@@ -947,7 +947,7 @@
 
           (testing "has no deps"
             (is (= #{}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "pulse with just collection"
         (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-coll-id))]
@@ -964,7 +964,7 @@
 
           (testing "depends on the collection"
             (is (= #{[{:model "Collection" :id coll-eid}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "pulse with just dashboard"
         (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-dash-id))]
@@ -981,7 +981,7 @@
 
           (testing "depends on the dashboard"
             (is (= #{[{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "pulse with both collection and dashboard"
         (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-both-id))]
@@ -999,7 +999,7 @@
           (testing "depends on the collection and dashboard"
             (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Dashboard"  :id dash-eid}]}
-                   (set (serdes/serdes-dependencies ser))))))))))
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest pulse-cards-test
   (mt/with-empty-h2-app-db
@@ -1052,7 +1052,7 @@
           (testing "depends on the pulse and card"
             (is (= #{[{:model "Pulse" :id pulse-eid}]
                      [{:model "Card"  :id card1-eid}]}
-                   (set (serdes/serdes-dependencies ser))))))
+                   (set (serdes/dependencies ser))))))
 
         (let [ser (serdes/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc2-pulse-id))]
           (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
@@ -1066,7 +1066,7 @@
           (testing "depends on the pulse and card"
             (is (= #{[{:model "Pulse" :id pulse-eid}]
                      [{:model "Card"  :id card1-eid}]}
-                   (set (serdes/serdes-dependencies ser)))))))
+                   (set (serdes/dependencies ser)))))))
 
       (testing "dashboard sub cards"
         (let [ser (serdes/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc1-sub-id))]
@@ -1082,7 +1082,7 @@
             (is (= #{[{:model "Pulse" :id sub-eid}]
                      [{:model "Card"  :id card1-eid}]
                      [{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes/serdes-dependencies ser))))))))))
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest cards-test
  (mt/with-empty-h2-app-db
@@ -1132,7 +1132,7 @@
                   [{:model "Database"   :id "My Database"}
                    {:model "Table"      :id "Schemaless Table"}
                    {:model "Field"      :id "A Field"}]}
-                (set (serdes/serdes-dependencies ser)))))))))
+                (set (serdes/dependencies ser)))))))))
 
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db
@@ -1279,7 +1279,7 @@
                    [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
                    [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
-                      (map serdes/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "middle dashboard"
@@ -1287,7 +1287,7 @@
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
                    [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
-                      (map serdes/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "grandchild dashboard"
@@ -1295,7 +1295,7 @@
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
                    [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
-                      (map serdes/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "a dashboard that has parameter source is another card"
@@ -1306,7 +1306,7 @@
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                (->> (extract/extract-subtrees {:targets [["Dashboard" dash4-id]]})
-                    (map serdes/serdes-path)
+                    (map serdes/path)
                     set)))))
 
       (testing "selecting a collection gets all its contents"
@@ -1328,17 +1328,17 @@
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
                    (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
-                        (map serdes/serdes-path)
+                        (map serdes/path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
                    (->> (extract/extract-subtrees {:targets [["Collection" coll2-id]]})
-                        (map serdes/serdes-path)
+                        (map serdes/path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
                    (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
-                        (map serdes/serdes-path)
+                        (map serdes/path)
                         set))))
 
           (testing "select a collection where a dashboard contains parameter's source is card from another collection"
@@ -1350,7 +1350,7 @@
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
-                      (map serdes/serdes-path)
+                      (map serdes/path)
                       set)))))))))
 
 (deftest foreign-key-field-test

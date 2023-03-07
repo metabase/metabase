@@ -74,7 +74,7 @@
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
-(defmethod serdes/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
+(defmethod serdes/dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
     (if-let [[dash-id _] dashboard_card_id]

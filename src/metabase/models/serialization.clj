@@ -356,7 +356,7 @@
   [ingested]
   (-> ingested :serdes/meta last :model))
 
-(defn serdes-path
+(defn path
   "Given an exported or imported entity with a `:serdes/meta` key on it, return the abstract path (not a filesystem
   path)."
   [entity]
@@ -384,7 +384,7 @@
     (when model
       (lookup-by-id model id))))
 
-(defmulti serdes-dependencies
+(defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
@@ -393,7 +393,7 @@
   {:arglists '([ingested])}
   ingested-model)
 
-(defmethod serdes-dependencies :default [_]
+(defmethod dependencies :default [_]
   [])
 
 (defmulti load-xform
@@ -541,7 +541,7 @@
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
   [entity {:keys [collections]}]
-  (let [{:keys [model id label]} (-> entity serdes-path last)]
+  (let [{:keys [model id label]} (-> entity path last)]
     (concat ["collections"]
             (get collections (:collection_id entity)) ;; This can be nil, but that's fine - that's the root collection.
             [(lower-plural model) (storage-leaf-file-name id label)])))

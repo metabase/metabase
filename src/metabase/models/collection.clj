@@ -976,7 +976,7 @@
         (assoc :location loc)
         (update :personal_owner_id serdes.util/import-user))))
 
-(defmethod serdes/serdes-dependencies "Collection"
+(defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
     [[{:model "Collection" :id parent_id}]]

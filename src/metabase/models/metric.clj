@@ -44,7 +44,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Metric
   [_metric]
-  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
+  [:name (serdes.hash/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -86,12 +86,12 @@
       (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-mbql)))
 
-(defmethod serdes/serdes-dependencies "Metric" [{:keys [definition table_id]}]
+(defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
 (defmethod serdes/storage-path "Metric" [metric _ctx]
-  (let [{:keys [id label]} (-> metric serdes/serdes-path last)]
+  (let [{:keys [id label]} (-> metric serdes/path last)]
     (-> metric
         :table_id
         serdes.util/table->path

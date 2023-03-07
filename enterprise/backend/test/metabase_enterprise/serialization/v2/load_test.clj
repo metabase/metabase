@@ -44,7 +44,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes/serdes-path entity))
+                          [(no-labels (serdes/path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -812,7 +812,7 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes/serdes-path)
+                          (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 

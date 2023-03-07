@@ -396,10 +396,10 @@
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
 
-(defmethod serdes/serdes-dependencies "Field" [field]
+(defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  (let [this  (serdes/serdes-path field)
+  (let [this  (serdes/path field)
         table (pop this)
         fks   (some->> field :fk_target_field_id serdes.util/field->path)
         human (->> (:dimensions field)
@@ -449,7 +449,7 @@
 
 (defmethod serdes/storage-path "Field" [field _]
   (-> field
-      serdes/serdes-path
+      serdes/path
       drop-last
       serdes.util/storage-table-path-prefix
       (concat ["fields" (:name field)])))

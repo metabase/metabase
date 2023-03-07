@@ -86,12 +86,12 @@
       (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-mbql)))
 
-(defmethod serdes/serdes-dependencies "Segment" [{:keys [definition table_id]}]
+(defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes/serdes-path last)]
+  (let [{:keys [id label]} (-> segment serdes/path last)]
     (-> segment
         :table_id
         serdes.util/table->path
