@@ -24,10 +24,10 @@ const SAMPLE_ORDERS_MODEL = {
 
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
-  name: "Total",
-  slug: "total",
+  name: "ID",
+  slug: "id",
   type: "number/=",
-  target: ["variable", ["template-tag", "total"]],
+  target: ["variable", ["template-tag", "id"]],
 });
 
 const TEST_TEMPLATE_TAG = {
@@ -277,37 +277,44 @@ describe(
       });
     });
 
-    it("should respect permissions", () => {
-      cy.get("@modelId").then(modelId => {
-        cy.request("POST", "/api/action", {
-          ...SAMPLE_QUERY_ACTION,
-          model_id: modelId,
+    describe("permissions", () => {
+      beforeEach(() => {
+        cy.get("@modelId").then(modelId => {
+          cy.request("POST", "/api/action", {
+            ...SAMPLE_QUERY_ACTION,
+            model_id: modelId,
+          });
         });
+      });
+
+      it("should respect permissions of the readonly user", () => {
         cy.signIn("readonly");
-        cy.visit(`/model/${modelId}/detail/actions`);
-        cy.wait("@getModel");
-      });
-
-      openActionMenuFor(SAMPLE_QUERY_ACTION.name);
-      popover().within(() => {
-        cy.findByText("Archive").should("not.exist");
-        cy.findByText("View").click();
-      });
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
-
-        cy.button("Save").should("not.exist");
-        cy.button("Update").should("not.exist");
-
-        assertQueryEditorDisabled();
-
-        cy.findByRole("form").within(() => {
-          cy.icon("gear").should("not.exist");
+        cy.get("@modelId").then(modelId => {
+          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.wait("@getModel");
         });
 
-        cy.findByLabelText("Action settings").click();
-        cy.findByLabelText("Success message").should("be.disabled");
+        openActionMenuFor(SAMPLE_QUERY_ACTION.name);
+        popover().within(() => {
+          cy.findByText("Archive").should("not.exist");
+          cy.findByText("View").click();
+        });
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+          cy.button("Save").should("not.exist");
+          cy.button("Update").should("not.exist");
+
+          assertQueryEditorDisabled();
+
+          cy.findByRole("form").within(() => {
+            cy.icon("gear").should("not.exist");
+          });
+
+          cy.findByLabelText("Action settings").click();
+          cy.findByLabelText("Success message").should("be.disabled");
+        });
       });
     });
   },
