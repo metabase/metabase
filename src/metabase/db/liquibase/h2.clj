@@ -25,7 +25,11 @@ String jsonStringValue(String s, String key) {
     if (obj instanceof JSONObject) {
         JSONObject jsonObject = (JSONObject) obj;
         if (jsonObject.containsKey(key)) {
-            return jsonObject.get(key).toString();
+            if (jsonObject.get(key) != null) {
+                return jsonObject.get(key).toString();
+            } else {
+                return null;
+            }
         } else {
             return null;
         }
@@ -33,7 +37,11 @@ String jsonStringValue(String s, String key) {
         JSONArray jsonArray = (JSONArray) obj;
         int keyInt = Integer.parseInt(key);
         if (keyInt < jsonArray.size() && keyInt >= 0) {
-            return jsonArray.get(keyInt).toString();
+            if (jsonArray.get(keyInt) != null) {
+                return jsonArray.get(keyInt).toString();
+            } else {
+                return null;
+            }
         } else {
             return null;
         }
