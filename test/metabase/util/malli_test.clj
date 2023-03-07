@@ -166,3 +166,41 @@
          (#'mu/->malli-io-link nil :string)))
   (is (= "https://malli.io?schema=%3Astring%0A&value=nil%0A"
          (#'mu/->malli-io-link :string nil))))
+
+(deftest mu-fn-test
+  (testing "metadata attached"
+    (let [bar (mu/fn :- string? [x :- [:map [:x int?] [:y int?]]] (str x))]
+      (is (= [:=> [:cat [:map [:x int?] [:y int?]]] string?]
+             (:schema (meta bar))))))
+
+  (testing "invalid input"
+    (let [bar (mu/fn [x :- [:map [:x int?] [:y int?]]] (str x))]
+      (is (= [{:x ["missing required key, received: nil"]
+               :y ["missing required key, received: nil"]}]
+             (:humanized
+               (try (bar {})
+                    (catch Exception e (ex-data e)))))
+          "when we pass bar an invalid shape mu/fn throws")))
+
+  (testing "invalid output"
+    (let [baz (mu/fn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})]
+      (is (= {:x ["should be an int, received: \"3\""]
+              :y ["missing required key, received: nil"]}
+             (:humanized
+               (try (baz)
+                    (catch Exception e (ex-data e)))))
+          "when baz returns an invalid form um/defn throws")))
+
+  (testing "partial input schema"
+    (let [bar (mu/fn [x :- int? y] (str x ": " (pr-str y)))]
+      (is (= "3: {:a 1}"
+             (bar 3 {:a 1})))
+      (is (= "0: []"
+             (bar 0 [])))
+      (is (= [["should be an int, received: \"3\""]]
+             (:humanized
+               (try (bar "3" {})
+                    (catch Exception e (ex-data e)))))
+          "when we pass bar an invalid shape mu/fn throws")
+      (is (= [:=> [:cat int? :any] :any]
+             (:schema (meta bar)))))))

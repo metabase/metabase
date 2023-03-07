@@ -36,6 +36,10 @@
    [:clause [:= :field/unresolved]]
    [:info [:fn map?]]])
 
+;; A function that builds a field reference, given a query and stage number.
+(mr/def ::field.builder
+  [:=> [:cat :metabase.lib.schema/query int?] ::field])
+
 (mr/def ::expression
   [:catn
    [:clause [:= :expression]]

@@ -3,6 +3,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -79,7 +80,7 @@
   [:field/unresolved (assoc options :temporal-unit unit)])
 
 (mu/defn field :- [:or
-                   fn?
+                   ::lib.schema.ref/field.builder
                    ::lib.schema.ref/field]
   "Create a `:field` clause. With one or two args: return a function with the signature
 
@@ -87,10 +88,14 @@
 
   that can be called later to resolve to a `:field` clause. With three args: return a `:field` clause right away."
   ([x]
-   (fn [query stage-number]
+   (mu/fn :- ::lib.schema.ref/field
+     [query :- ::lib.schema/query
+      stage-number :- int?]
      (->field query stage-number x)))
   ([table x]
-   (fn [query stage-number]
+   (mu/fn :- ::lib.schema.ref/field
+     [query :- ::lib.schema/query
+      stage-number :- int?]
      (resolve-field query stage-number table x)))
   ([query stage-number x]
    (->field query stage-number x)))

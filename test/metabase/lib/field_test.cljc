@@ -14,16 +14,17 @@
     (lib/field nil "ID")))
 
 (deftest ^:parallel field-from-database-metadata-test
-  (let [field-metadata (lib.metadata/field-metadata meta/metadata "VENUES" "ID")]
+  (let [field-metadata (lib.metadata/field-metadata meta/metadata "VENUES" "ID")
+        base-query     (lib/query meta/metadata "VENUES")]
     (is (some? field-metadata))
     (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-            (lib/field {:lib/metadata meta/metadata} -1 field-metadata)))
+            (lib/field base-query -1 field-metadata)))
     (let [f (lib/field field-metadata)]
       (is (fn? f))
       (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-              (f {:lib/metadata meta/metadata} -1)))
+              (f base-query -1)))
       (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
-              (#'lib.field/->field {:lib/metadata meta/metadata} -1 f))))))
+              (#'lib.field/->field base-query -1 f))))))
 
 (deftest ^:parallel field-from-results-metadata-test
   (let [field-metadata (lib.metadata/field-metadata meta/results-metadata "ID")]

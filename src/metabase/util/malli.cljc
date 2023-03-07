@@ -1,5 +1,4 @@
-(ns metabase.util.malli
-  (:refer-clojure :exclude [defn])
+(ns metabase.util.malli (:refer-clojure :exclude [defn fn])
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
@@ -74,17 +73,29 @@
      [_id]))
 
 #?(:clj
-   (core/defn- -defn [target schema args]
-     (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
+   (core/defn- -parse-defn-like [schema args]
+     (let [{:keys [arities return] :as parsed} (mc/parse schema args)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
-           parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
-           ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
-           single (= :single (key arities))
-           parglists (if single
-                       (->> arities val parse vector)
-                       (->> arities val :arities (map parse)))
-           raw-arglists (map :raw-arglist parglists)
-           schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+           parse         (core/fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
+           ->schema      (core/fn [{:keys [schema]}] [:=> schema (:schema return :any)])
+           single        (= :single (key arities))
+           parglists     (if single
+                           (->> arities val parse vector)
+                           (->> arities val :arities (map parse)))]
+       (merge (select-keys parsed [:arities :doc :meta :name :return])
+              {:parglists    parglists
+               :raw-arglists (map :raw-arglist parglists)
+               :schema       (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+               :single       single}))))
+
+#?(:clj
+   (core/defn- -emit-arglists [parglists]
+     (for [{:keys [arglist prepost body]} parglists]
+       `(~arglist ~prepost ~@body))))
+
+#?(:clj
+   (core/defn- -defn [target schema args]
+     (let [{:keys [arities doc meta name parglists raw-arglists return schema single]} (-parse-defn-like schema args)
            annotated-doc (str/trim
                            (str "Inputs: " (if single
                                              (pr-str (first (mapv :raw-arglist parglists)))
@@ -101,7 +112,7 @@
                                  :raw-arglists (list 'quote raw-arglists)
                                  :schema schema
                                  :validate! id)
-                         ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                         ~@(-emit-arglists parglists)
                          ~@(when-not single (some->> arities val :meta vector)))]
        (case target
          :clj  `(let [defn# ~inner-defn]
@@ -123,6 +134,55 @@
      ;; So we use it here and pass :clj or :cljs to [[-defn]].
      (-defn (macros/case :clj :clj :cljs :cljs)
             mx/SchematizedParams args)))
+
+#?(:clj
+   (core/defn- -fn [schema args]
+     (let [{:keys [arities meta name parglists raw-arglists schema single]} (-parse-defn-like schema args)
+           name (or name (gensym "mu-fn"))]
+       `(with-meta
+          (mc/-instrument
+            {:schema ~schema
+             :report explain-fn-fail!}
+            (core/fn
+              ~name
+              ~@(-emit-arglists parglists)
+              ~@(when-not single (some->> arities val :meta vector))))
+          ~(assoc meta
+                  :raw-arglists (list 'quote raw-arglists)
+                  :schema schema)))))
+
+;; TODO: This should be upstreamed into `malli.experimental` with the `defn` schema.
+#?(:clj
+   (def ^:private SchematizedParamsAnonymous
+     (mc/schema
+       [:schema
+        {:registry {"Schema" any?
+                    "Separator" [:= :-]
+                    "Args" [:vector :any]
+                    "PrePost" [:map
+                               [:pre {:optional true} [:sequential any?]]
+                               [:post {:optional true} [:sequential any?]]]
+                    "Arity" [:catn
+                             [:args "Args"]
+                             [:prepost [:? "PrePost"]]
+                             [:body [:* :any]]]
+                    "Params" [:catn
+                              [:name [:? symbol?]]
+                              [:return [:? [:catn
+                                            [:- "Separator"]
+                                            [:schema "Schema"]]]]
+                              [:arities [:altn
+                                         [:single "Arity"]
+                                         [:multiple [:catn
+                                                     [:arities [:+ [:schema "Arity"]]]
+                                                     [:meta [:? :map]]]]]]]}}
+        "Params"])))
+
+#?(:clj
+   (defmacro fn
+     "Like [[defn]], but defines an anonymous function. Instrumentation is emitted automatically in JVM Clojure."
+     [& args]
+     (-fn SchematizedParamsAnonymous args)))
 
 (def ^:private Schema
   [:and any?
@@ -153,4 +213,4 @@
                           ;; override generic description in api docs and :errors key in API's response
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (fn [_ _] specific-error-message))))
+                          :error/fn    (core/fn [_ _] specific-error-message))))
