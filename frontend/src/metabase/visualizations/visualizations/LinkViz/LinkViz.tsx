@@ -15,7 +15,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
 
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
-import { EntityDisplay, UrlLinkDisplay } from "./EntityDisplay";
+import {
+  EntityDisplay,
+  UrlLinkDisplay,
+  RestrictedEntityDisplay,
+} from "./EntityDisplay";
 import { settings } from "./LinkVizSettings";
 
 import {
@@ -26,6 +30,7 @@ import {
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
+import { WrappedUnrestrictedLinkEntity } from "./types";
 
 const MODELS_TO_SEARCH = [
   "card",
@@ -93,12 +98,12 @@ function LinkViz({
     if (isRestrictedLinkEntity(entity)) {
       return (
         <EditLinkCardWrapper>
-          <EntityDisplay entity={entity} />
+          <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
     }
 
-    const wrappedEntity = Search.wrapEntity({
+    const wrappedEntity: WrappedUnrestrictedLinkEntity = Search.wrapEntity({
       ...entity,
       database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,

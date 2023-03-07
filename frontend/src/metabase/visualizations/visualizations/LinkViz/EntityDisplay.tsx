@@ -1,34 +1,21 @@
 import React from "react";
 import { t } from "ttag";
 
-import type { LinkEntity, UnrestrictedLinkEntity } from "metabase-types/api";
-import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
-
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 
 import { EntityDisplayContainer, LeftContainer } from "./EntityDisplay.styled";
+import { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
   entity,
   showDescription = false,
 }: {
-  entity: LinkEntity;
+  entity: WrappedUnrestrictedLinkEntity;
   showDescription?: boolean;
 }) => {
-  if (entity && isRestrictedLinkEntity(entity)) {
-    return (
-      <EntityDisplayContainer>
-        <LeftContainer>
-          <Icon name="key" color={color("text-light")} />
-          <Ellipsified>{t`Sorry, you don't have permission to see this link.`}</Ellipsified>
-        </LeftContainer>
-      </EntityDisplayContainer>
-    );
-  }
-
   return (
     <EntityDisplayContainer>
       <LeftContainer>
@@ -46,7 +33,17 @@ export const EntityDisplay = ({
   );
 };
 
+export const RestrictedEntityDisplay = () => (
+  <EntityDisplayContainer>
+    <LeftContainer>
+      <Icon name="key" color={color("text-light")} />
+      <Ellipsified>{t`Sorry, you don't have permission to see this link.`}</Ellipsified>
+    </LeftContainer>
+  </EntityDisplayContainer>
+);
+
 export const UrlLinkDisplay = ({ url }: { url?: string }) => {
+  // show a question mark icon for the empty state
   const urlIcon = isEmpty(url) ? "question" : "link";
 
   return (
@@ -59,7 +56,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   );
 };
 
-function getSearchIconName(entity: UnrestrictedLinkEntity) {
+function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
   const entityIcon = entity.getIcon?.() ?? { name: "link" };
 
   // we need to change this icon to make it match the icon in the search results
