@@ -89,10 +89,10 @@ export function ActionComponent({
         action?.visualization_settings?.fields ||
         generateFieldSettingsFromParameters(action?.parameters ?? []);
 
-      const params = {
-        ...setNumericValues(dashcardParamValues, fieldSettings),
-        ...parameterMap,
-      };
+      const params = setNumericValues(
+        { ...dashcardParamValues, ...parameterMap },
+        fieldSettings,
+      );
 
       return executeRowAction({
         dashboard,
