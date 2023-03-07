@@ -34,7 +34,7 @@ For more information about the option to **Embed this item in an application**, 
 
 Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-### Public link to export question results in CSV, XLSX, JSON
+## Public link to export question results in CSV, XLSX, JSON
 
 The export option is only available for questions, not dashboards.
 
