@@ -1,6 +1,9 @@
 (ns metabase.db.custom-migrations
   (:require
    [clojure.set :as set]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.task :as task]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -43,8 +46,8 @@
   [n]
   (log/info "No rollback for: " n))
 
-(defmacro defmigration
-  "Define a custom migration."
+(defmacro define-migration
+  "Define a custom migration without a reverse migration."
   [name migration-body]
   `(define-reversible-migration ~name ~migration-body (no-op ~(str name))))
 
@@ -91,3 +94,7 @@
   (t2.execute/query-one {:delete-from :permissions
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
+
+(define-migration RemoveAbandonmentEmailTask
+  (task/delete-task! (jobs/key "metabase.task.abandonment-emails.job")
+                     (triggers/key "metabase.task.abandonment-emails.trigger")))

@@ -14300,6 +14300,15 @@ databaseChangeLog:
             constraintName: fk_action_model_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v47.00-005
+      author: calherries
+      comment: Added 0.47.0 - Delete abandonment email task
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

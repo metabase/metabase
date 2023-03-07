@@ -15,7 +15,6 @@
    [clojure.string :as str]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
-   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -140,7 +139,7 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)"
   []
-  (when (= (mdb/db-type) :postgres)
+  (when (= (mdb.connection/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
 (defn- init-scheduler!
