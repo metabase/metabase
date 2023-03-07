@@ -52,7 +52,7 @@ export const getInitialValues = (
   );
 };
 
-function stripTZInfo(dateOrTimeString: string) {
+export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)
   return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
 }

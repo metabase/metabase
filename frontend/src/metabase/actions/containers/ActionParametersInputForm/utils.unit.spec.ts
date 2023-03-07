@@ -1,6 +1,28 @@
-import { getChangedValues, formatValue } from "./utils";
+import { getChangedValues, formatValue, stripTZInfo } from "./utils";
 
 describe("actions > containers > ActionParametersInputForm > utils", () => {
+  describe("stripTZInfo", () => {
+    it("should strip timezone info from dateTimes", () => {
+      const result = stripTZInfo("2020-05-01T03:30:00-02:00");
+      expect(result.format()).toEqual("2020-05-01T03:30:00Z");
+    });
+
+    it("should strip timezone info from times", () => {
+      const result = stripTZInfo("2020-05-01T03:30:00+08:00");
+      expect(result.format()).toEqual("2020-05-01T03:30:00Z");
+    });
+
+    it("should not do anything to strings without time info", () => {
+      const result = stripTZInfo("2020-05-01");
+      expect(result.format()).toEqual("2020-05-01T00:00:00Z");
+    });
+
+    it("should not do anything to strings without timezone info", () => {
+      const result = stripTZInfo("2020-05-01T03:30:00");
+      expect(result.format()).toEqual("2020-05-01T03:30:00Z");
+    });
+  });
+
   describe("formatValue", () => {
     it("ignores null values", () => {
       const result = formatValue(null);
