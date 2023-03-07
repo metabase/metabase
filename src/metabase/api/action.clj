@@ -119,20 +119,20 @@
   [id :as {action :body}]
   {id     pos-int?
    action [:map
-           [:archived               [:maybe boolean?]]
-           [:database_id            [:maybe pos-int?]]
-           [:dataset_query          [:maybe map?]]
-           [:description            [:maybe :string]]
-           [:error_handle           [:maybe json-query-schema]]
-           [:kind                   [:maybe implicit-action-kind]]
-           [:model_id               [:maybe pos-int?]]
-           [:name                   [:maybe :string]]
-           [:parameter_mappings     [:maybe map?]]
-           [:parameters             [:maybe [:sequential map?]]]
-           [:response_handle        [:maybe json-query-schema]]
-           [:template               [:maybe http-action-template]]
-           [:type                   [:maybe supported-action-type]]
-           [:visualization_settings [:maybe map?]]]}
+           [:archived               {:optional true} [:maybe :boolean]]
+           [:database_id            {:optional true} [:maybe pos-int?]]
+           [:dataset_query          {:optional true} [:maybe :map]]
+           [:description            {:optional true} [:maybe :string]]
+           [:error_handle           {:optional true} [:maybe json-query-schema]]
+           [:kind                   {:optional true} [:maybe implicit-action-kind]]
+           [:model_id               {:optional true} [:maybe pos-int?]]
+           [:name                   {:optional true} [:maybe :string]]
+           [:parameter_mappings     {:optional true} [:maybe :map]]
+           [:parameters             {:optional true} [:maybe [:sequential :map]]]
+           [:response_handle        {:optional true} [:maybe json-query-schema]]
+           [:template               {:optional true} [:maybe http-action-template]]
+           [:type                   {:optional true} [:maybe supported-action-type]]
+           [:visualization_settings {:optional true} [:maybe :map]]]}
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
