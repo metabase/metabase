@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -12,7 +13,6 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
@@ -20,6 +20,12 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(def ^:private ColumnMetadataWithFieldRef
+  (mut/merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:field_ref ::lib.schema.ref/field]]))
 
 (mu/defn ^:private join-with-alias :- [:maybe ::lib.schema.join/join]
   [query        :- ::lib.schema/query
@@ -140,17 +146,18 @@
     :else
     {:base_type :type/*}))
 
-(defn- col-info-for-expression
+(mu/defn ^:private col-info-for-expression :- ColumnMetadataWithFieldRef
   [query stage-number [_ expression-name :as clause]]
   (merge
    (infer-expression-type query (mbql.u/expression-with-name (lib.util/query-stage query stage-number) expression-name))
-   {:name            expression-name
+   {:lib/type        :metadata/field
+    :name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
     :field_ref       (lib.options/ensure-uuid clause)}))
 
-(mu/defn ^:private col-info-for-field-clause*
+(mu/defn ^:private col-info-for-field-clause* :- ColumnMetadataWithFieldRef
   [query                          :- ::lib.schema/query
    stage-number                   :- :int
    [_ opts id-or-name :as clause] :- ::lib.schema.ref/field]
@@ -169,7 +176,8 @@
                                                 opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (lib.options/ensure-uuid clause)}
+    (cond-> {:lib/type  :metadata/field
+             :field_ref (lib.options/ensure-uuid clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 
@@ -177,9 +185,9 @@
       (assoc :options namespaced-options)
 
       (string? id-or-name)
-      (or (field-metadata query stage-number id-or-name)
-          {:name         id-or-name
-           :display_name (humanization.impl/name->human-readable-name :simple id-or-name)})
+      (merge (or (field-metadata query stage-number id-or-name)
+                 {:name         id-or-name
+                  :display_name (humanization.impl/name->human-readable-name :simple id-or-name)}))
 
       (integer? id-or-name)
       (merge (let [{parent-id :parent_id, :as field} (field-metadata query stage-number id-or-name)]
@@ -238,10 +246,7 @@
                            (let [opts (dissoc opts :join-alias)]
                              [clause opts x]))))))
 
-(mu/defn ^:private col-info-for-field-clause :- [:and
-                                                 lib.metadata/ColumnMetadata
-                                                 [:map
-                                                  [:field_ref ::lib.schema.ref/field]]]
+(mu/defn ^:private col-info-for-field-clause :- ColumnMetadataWithFieldRef
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -471,7 +476,7 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
-(mu/defn ^:private source-table-default-metadata :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private source-table-default-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Determine the Fields we'd normally return for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]."
   [table-metadata :- lib.metadata/TableMetadata]

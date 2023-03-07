@@ -36,21 +36,23 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
-(defn- inner-query->stages [{:keys [source-query], :as inner-query}]
-  (let [stages     (if source-query
-                     (inner-query->stages source-query)
-                     [])
-        stage-type (if (:native inner-query)
-                     :mbql.stage/native
-                     :mbql.stage/mbql)
+(defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
+  (let [previous-stages (if source-query
+                          (inner-query->stages source-query)
+                          [])
+        previous-stages (cond-> previous-stages
+                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+        stage-type      (if (:native inner-query)
+                          :mbql.stage/native
+                          :mbql.stage/mbql)
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
-        this-stage (merge (lib.options/ensure-uuid
-                           {:lib/type stage-type})
-                          (dissoc inner-query :source-query))
-        this-stage (cond-> this-stage
-                     (seq (:joins this-stage)) (update :joins joins->pipeline))]
-    (conj stages this-stage)))
+        this-stage      (merge (lib.options/ensure-uuid
+                                {:lib/type stage-type})
+                               (dissoc inner-query :source-query :source-metadata))
+        this-stage      (cond-> this-stage
+                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+    (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline
   "Convert a `:type` `:query` QP MBQL (i.e., MBQL as currently understood by the Query Processor, or the JS MLv1) to a

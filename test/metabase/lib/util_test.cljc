@@ -82,6 +82,20 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel pipeline-source-metadata-test
+  (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
+    (is (=? {:lib/type :mbql/query
+             :type     :pipeline
+             :stages   [{:lib/type           :mbql.stage/mbql
+                         :source-table       (meta/id :venues)
+                         :lib/stage-metadata [(meta/field-metadata :venues :id)]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib.util/pipeline
+             {:database (meta/id)
+              :type     :query
+              :query    {:source-query    {:source-table (meta/id :venues)}
+                         :source-metadata [(meta/field-metadata :venues :id)]}})))))
+
 (deftest ^:parallel query-stage-test
   (is (=? {:lib/type     :mbql.stage/mbql
            :source-table 1}
