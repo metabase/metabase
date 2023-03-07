@@ -139,15 +139,11 @@
                      :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[minute-str "minute"]
-                   [hour-str "hour"]
-                   [day-str "day"]
+                  [[day-str "day"]
                    [(deferred-tru "Week") "week"]
                    [(deferred-tru "Month") "month"]
                    [(deferred-tru "Quarter") "quarter"]
                    [(deferred-tru "Year") "year"]
-                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-                   [(deferred-tru "Hour of Day") "hour-of-day"]
                    [(deferred-tru "Day of Week") "day-of-week"]
                    [(deferred-tru "Day of Month") "day-of-month"]
                    [(deferred-tru "Day of Year") "day-of-year"]
