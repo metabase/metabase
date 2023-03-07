@@ -2,8 +2,8 @@ import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Tooltip from "metabase/core/components/Tooltip";
+import { isNotNull } from "metabase/core/utils/types";
 import { HelpText } from "metabase-lib/expressions/types";
-import { HELPER_TEXT_ARGUMENTS_PLACEHOLDER } from "./ExpressionEditorTextfield/helper-text-strings";
 import {
   Container,
   ExampleBlock,
@@ -29,9 +29,6 @@ const ExpressionEditorHelpText = ({
   }
 
   const { description, structure, args } = helpText;
-  const [leftText, rightText = ""] = structure.split(
-    HELPER_TEXT_ARGUMENTS_PLACEHOLDER,
-  );
 
   return (
     <TippyPopover
@@ -48,8 +45,9 @@ const ExpressionEditorHelpText = ({
           >
             <div>{description}</div>
             <FunctionHelpCode data-testid="expression-helper-popover-arguments">
-              {leftText}
-              {args.map(({ name, description }, index) => (
+              {structure}
+              {isNotNull(args) && "("}
+              {args?.map(({ name, description }, index) => (
                 <span key={name}>
                   <Tooltip tooltip={description} placement="bottom-start">
                     <FunctionHelpCodeArgument>{name}</FunctionHelpCodeArgument>
@@ -57,7 +55,7 @@ const ExpressionEditorHelpText = ({
                   {index + 1 < args.length && ", "}
                 </span>
               ))}
-              {rightText}
+              {isNotNull(args) && ")"}
             </FunctionHelpCode>
             <ExampleBlock>
               <ExampleTitleText>{t`Example`}</ExampleTitleText>
