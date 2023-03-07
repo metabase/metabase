@@ -586,6 +586,7 @@
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
    metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
+   metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
