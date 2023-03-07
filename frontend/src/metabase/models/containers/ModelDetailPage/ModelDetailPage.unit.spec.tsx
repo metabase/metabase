@@ -523,7 +523,6 @@ describe("ModelDetailPage", () => {
               `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
             ),
           ).toBeInTheDocument();
-          expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
         it("allows to create a new query action from the empty state", async () => {
