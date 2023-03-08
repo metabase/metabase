@@ -17,7 +17,7 @@
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
    (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing SelfDescribing$Builder2)
-   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter HttpClientAdapter)
+   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
    (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
    (org.apache.http.client.config CookieSpecs RequestConfig)
    (org.apache.http.impl.client HttpClients)
