@@ -404,7 +404,6 @@
             ;; Ensure that the "created at" column was picked up, which will trigger plots over time
             (is (= expected-time-labels
                    (set/intersection card-names expected-time-labels)))
-            (map (comp :name :card) ordered_cards)
             ;; Ensure that the state field was picked up as a geographic dimension
             (is (= expected-geo-labels
                    (set/intersection card-names expected-geo-labels)))))))))

@@ -468,16 +468,18 @@
                         :max-cardinality max_cardinality}
                        (-> context :source :fields))))))
 
-(defn- make-binding
-  [context [identifier definition]]
-  (->> definition
-       (field-candidates context)
-       (map #(->> (merge % definition)
-                  vector ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
-                  (assoc definition :matches)
-                  (hash-map (name identifier))))))
+(defn- score-bindings
+  "Assign a value to each potential binding. Takes a seq of potential bindings and returns a seq of vectors in the shape
+  of [score binding], where score is a 3 element vector."
+  [definitions]
+  (letfn [(score [a]
+            (let [[_ definition] a]
+              [(reduce + (map (comp count ancestors) (:field_type definition)))
+               (count definition)
+               (:score definition)]))]
+    (map (juxt (comp score first) identity) definitions)))
 
-(def ^:private ^{:arglists '([definitions])} most-specific-definition
+(defn- most-specific-definition
   "Return the most specific definition among `definitions`.
    Specificity is determined based on:
    1) how many ancestors `field_type` has (if field_type has a table prefix,
@@ -485,13 +487,20 @@
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
       `links_to`, ...) are used;
    3) if there is still a tie, `score`."
-  (comp last (partial sort-by (comp (fn [[_ definition]]
-                                      [(transduce (map (comp count ancestors))
-                                                  +
-                                                  (:field_type definition))
-                                       (count definition)
-                                       (:score definition)])
-                                    first))))
+  [definitions]
+  (let [scored-bindings (score-bindings definitions)]
+    (second (last (sort-by first scored-bindings)))))
+
+(defn- candidate-bindings
+  "For every field in a given context determine all potential dimensions each field may map to.
+  This will return a map of field id (or name) to collection of potential matching dimensions."
+  [context dimensions]
+  (let [all-bindings (for [dimension dimensions
+                           :let [[identifier definition] (first dimension)]
+                           candidate (field-candidates context definition)]
+                       {(name identifier)
+                        (assoc definition :matches [(merge candidate definition)])})]
+    (group-by (comp id-or-name first :matches val first) all-bindings)))
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
@@ -499,9 +508,7 @@
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
   [context dimensions]
-  (->> dimensions
-       (mapcat (comp (partial make-binding context) first))
-       (group-by (comp id-or-name first :matches val first))
+  (->> (candidate-bindings context dimensions)
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
@@ -509,27 +516,6 @@
                              0  (update a :matches concat (:matches b))
                              -1 b))
               {})))
-
-[{"Country" {:field_type [:entity/GenericTable :type/Country], :score 100}}
- {"State" {:field_type [:entity/GenericTable :type/State], :score 100}}
- {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
- {"Source" {:field_type [:entity/GenericTable :type/Source], :score 100}}
- {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category], :score 75, :max_cardinality 10}}
- {"Singleton" {:field_type [:entity/GenericTable :type/Category], :score 100, :max_cardinality 1}}
- {"Date" {:field_type [:entity/GenericTable :type/Date], :score 50}}
- {"Time" {:field_type [:entity/GenericTable :type/Time], :score 50}}
- {"Timestamp" {:field_type [:type/DateTime], :score 60}}
- {"JoinDate" {:field_type [:entity/GenericTable :type/JoinDate], :score 50}}
- {"CreateDate" {:field_type [:type/CreationDate], :score 80}}
- {"JoinTime" {:field_type [:entity/GenericTable :type/JoinTime], :score 50}}
- {"CreateTime" {:field_type [:type/CreationTime], :score 80}}
- {"JoinTimestamp" {:field_type [:entity/GenericTable :type/JoinTimestamp], :score 50}}
- {"CreateTimestamp" {:field_type [:type/CreationTimestamp], :score 80}}
- {"FK" {:field_type [:type/FK], :score 100}}
- {"Long" {:field_type [:entity/GenericTable :type/Longitude], :score 100}}
- {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
- {"Birthdate" {:field_type [:type/Birthdate], :score 100}}
- {"ZIP" {:field_type [:type/ZipCode], :score 100}}]
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -667,11 +653,6 @@
         matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
                                          (comp #(filter-tables % (:tables context)) rules/->entity))
                                 used-dimensions)]
-    (when (some #(str/starts-with? % "GenericCategory") used-dimensions)
-      (tap> {:cont-dimensions (:dimensions context)
-             :card-dimensions dimensions})
-      #_(tap> {:ud used-dimensions
-             :md matched-dimensions}))
     (->> matched-dimensions
          (apply math.combo/cartesian-product)
          (map (partial zipmap used-dimensions))
@@ -816,98 +797,15 @@
      :query-filter (filters/inject-refinement (:query-filter root)
                                               (:cell-query root))}))
 
-(def distinct-dimensions
-  (distinct
-   (for [category ["comparison" "field" "metric" "question" "table"]
-         rules    (rules/get-rules [category])
-         dimension (:dimensions rules)]
-     dimension)))
-
-(def distinct-metrics
-  (distinct
-   (for [category ["comparison" "field" "metric" "question" "table"]
-         rules    (rules/get-rules [category])
-         metric (:metrics rules)]
-     metric)))
-
 (s/defn ^:private make-context
   [{:keys [source] :as root}, rule :- rules/Rule]
   {:pre [source]}
-  ;(tap> (select-keys rule [:metrics :dimensions :filters]))
-  (let [base-context (make-base-context root)
-        dimensions (bind-dimensions base-context (:dimensions rule))
-        dimensions2 (bind-dimensions base-context distinct-dimensions)]
-    (tap> [:some (second dimensions)])
-    (tap> [:all (second dimensions2)])
+  (let [base-context (make-base-context root)]
     (as-> base-context context
-      (assoc context :dimensions dimensions2)
-      ;(assoc context :dimensions (bind-dimensions context distinct-dimensions))
-      (assoc context :metrics (resolve-overloading context distinct-metrics))
+      (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
+      (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
       (inject-root context (:entity root)))))
-
-(comment
-  (map
-   (comp (partial into [:dimension]) first)
-   [{"GenericCategorySmall" 2}
-    ])
-
-  (for [category ["comparison" "field" "metric" "question" "table"]
-        rules    (rules/get-rules [category])]
-    (:rule rules))
-
-  (->> (rules/get-rules ["comparison"])
-       (map :rule)
-       ;(mapcat :cards)
-       ;(group-by ffirst)
-       )
-
-  (->> (rules/get-rules ["field"])
-       (map :rule)
-       ;(mapcat :cards)
-       ;(group-by ffirst)
-       )
-
-  ;; Single
-  (->> (rules/get-rules ["metric"])
-       (map :rule)
-       ;(mapcat :cards)
-       ;(group-by ffirst)
-       )
-
-  ;; Single
-  (->> (rules/get-rules ["question"])
-       (map :rule)
-       ;(mapcat :cards)
-       ;(group-by ffirst)
-       )
-
-  ;; OK, so why does the GenericCategorySmall dimension not match on the CountByCategoryMedium card when the
-  ;; GenericCategoryMedium dimension does match?
-  ;; 6, but is GenericTable all that matters
-  (for [{rule-name :rule :keys [cards] :as rule} (rules/get-rules ["table"])
-        :when (= "GenericTable" rule-name)
-        card cards
-        :let [[identifier {:keys [group] :as desc}] (first card)]
-        :when (= "General" group)
-        ]
-    card
-    ;(mapcat :cards)
-       ;(group-by ffirst)
-       )
-
-  ;; These are the conflicts on dimensions
-  (let [dims (for [category  ["comparison" "field" "metric" "question" "table"]
-                   rules     (rules/get-rules [category])
-                   dimension (:dimensions rules)
-                   :let [[identifier dim] (first dimension)]]
-               (assoc dim :identifier identifier))]
-    (->> dims
-         distinct
-         (group-by :identifier)
-         (remove (fn [[_k v]] (= 1 (count v))))))
-
-  )
 
 (defn- make-cards
   "Create cards from the context using the provided template cards.
@@ -947,7 +845,6 @@
   (log/debugf "Applying rule '%s'" rule-name)
   (let [context   (make-context root rule)
         cards     (make-cards context rule)]
-    (tap> cards)
     (when (or (not-empty cards)
               (-> rule :cards nil?))
       [(assoc (make-dashboard root rule context)
