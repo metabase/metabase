@@ -97,53 +97,57 @@ describe("FormFieldEditor", () => {
     expect(queryIcon("grabber2")).not.toBeInTheDocument();
   });
 
-  it("formats value options when switching between field and input types", async () => {
-    const initialSettings: FieldSettings = {
+  describe("field values", () => {
+    const TEST_STRING_FIELD_SETTINGS: FieldSettings = {
       ...getDefaultFieldSettings(),
       fieldType: "string",
       inputType: "select",
       valueOptions: ["1", "2", "3", "not-a-number"],
     };
-    const { onChange } = setup({ fieldSettings: initialSettings });
 
-    userEvent.click(screen.getByLabelText("Field settings"));
-    const popover = await screen.findByRole("tooltip");
+    it("keeps value options when switching between input types", async () => {
+      const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
+      userEvent.click(screen.getByLabelText("Field settings"));
+      const popover = await screen.findByRole("tooltip");
 
-    userEvent.click(
-      await within(popover).findByRole("radio", { name: "Text" }),
-    );
-    expect(onChange).toHaveBeenLastCalledWith({
-      ...initialSettings,
-      inputType: "string",
+      userEvent.click(within(popover).getByRole("radio", { name: "Text" }));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          inputType: "string",
+        }),
+      );
+
+      userEvent.click(
+        within(popover).getByRole("radio", { name: "Inline select" }),
+      );
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          inputType: "radio",
+        }),
+      );
     });
 
-    userEvent.click(
-      await within(popover).findByRole("radio", { name: "Inline select" }),
-    );
-    await waitFor(() =>
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...initialSettings,
-        inputType: "radio",
-      }),
-    );
+    it("cleans value options when switching between field types", async () => {
+      const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
 
-    userEvent.click(screen.getByText("Category"));
-    await waitFor(() =>
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...initialSettings,
-        fieldType: "category",
-        inputType: "radio",
-      }),
-    );
+      userEvent.click(screen.getByText("Category"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "category",
+        }),
+      );
 
-    userEvent.click(screen.getByText("Number"));
-    await waitFor(() =>
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...initialSettings,
-        fieldType: "number",
-        inputType: "radio",
-        valueOptions: [1, 2, 3],
-      }),
-    );
+      userEvent.click(screen.getByText("Number"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "number",
+          valueOptions: [1, 2, 3],
+        }),
+      );
+    });
   });
 });
