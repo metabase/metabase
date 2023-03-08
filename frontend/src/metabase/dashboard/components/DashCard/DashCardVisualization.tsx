@@ -203,12 +203,21 @@ function DashCardVisualization({
         result={mainSeries}
         params={parameterValuesBySlug}
         dashcardId={dashcard.id}
+        dashboardId={dashboard.id}
         token={isEmbed ? dashcard.dashboard_id : undefined}
         icon="ellipsis"
         iconSize={17}
       />
     );
-  }, [series, isEmbed, isPublic, isEditing, dashcard, parameterValuesBySlug]);
+  }, [
+    series,
+    isEmbed,
+    isPublic,
+    isEditing,
+    dashcard,
+    parameterValuesBySlug,
+    dashboard,
+  ]);
 
   return (
     <WrappedVisualization
