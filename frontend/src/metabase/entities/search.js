@@ -7,6 +7,7 @@ import { ObjectUnionSchema } from "metabase/schema";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
+import Actions from "./actions";
 import Bookmarks from "./bookmarks";
 import Collections from "./collections";
 import Dashboards from "./dashboards";
@@ -91,6 +92,7 @@ export default createEntity({
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (
+      Actions.actionShouldInvalidateLists(action) ||
       Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
