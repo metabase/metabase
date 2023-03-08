@@ -557,7 +557,7 @@
   {:extra-paths ["bin/build/test"]
 
    :extra-deps
-   {org.clojure/data.json {:mvn/version "2.0.2"}}}
+   {org.clojure/data.json {:mvn/version "2.4.0"}}}
 
   ;;; Run tests for the build scripts:
   ;;;
