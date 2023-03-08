@@ -98,5 +98,4 @@
 (define-migration DeleteAbandonmentEmailTask
   (task/start-scheduler!)
   (task/delete-task! (jobs/key "metabase.task.abandonment-emails.job")
-                     (triggers/key "metabase.task.abandonment-emails.trigger"))
-  (task/stop-scheduler!))
+                     (triggers/key "metabase.task.abandonment-emails.trigger")))
