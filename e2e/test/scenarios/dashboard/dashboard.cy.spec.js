@@ -541,6 +541,19 @@ describe("scenarios > dashboard", () => {
 
     cy.findByText("Orders").should("be.visible");
   });
+
+  it("should allow removing a card and undoing", () => {
+    visitDashboard(1);
+
+    cy.icon("pencil").click();
+    cy.findByTestId("dashcard").realHover();
+    cy.icon("close").click();
+    cy.findByText("Orders").should("not.exist");
+
+    cy.findByText("Undo").click();
+    saveDashboard();
+    cy.findByText("Orders").should("be.visible");
+  });
 });
 
 function checkOptionsForFilter(filter) {

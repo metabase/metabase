@@ -314,7 +314,7 @@ class View extends React.Component {
         <NativeQueryEditor
           {...this.props}
           viewHeight={height}
-          isOpen={!card.dataset_query.native.query || isDirty}
+          isOpen={query.isEmpty() || isDirty}
           datasetQuery={card && card.dataset_query}
         />
       </NativeQueryEditorContainer>

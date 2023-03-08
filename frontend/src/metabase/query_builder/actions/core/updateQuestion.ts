@@ -198,9 +198,8 @@ export const updateQuestion = (
       );
     }
 
-    const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
-    if (newDatasetQuery.type === "native") {
+    if (newQuestion.isNative()) {
       const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
     }
