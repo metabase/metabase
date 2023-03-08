@@ -39,10 +39,15 @@
    ::id/field])
 
 (mr/def ::field
-  [:multi {:dispatch (fn [[_field _opts id-or-name]]
-                       (lib.dispatch/dispatch-value id-or-name))}
-   [:dispatch-type/integer ::field.id]
-   [:dispatch-type/string ::field.literal]])
+  [:and
+   [:tuple
+    [:= :field]
+    ::field.options
+    [:or ::id/field ::common/non-blank-string]]
+   [:multi {:dispatch (fn [[_field _opts id-or-name]]
+                        (lib.dispatch/dispatch-value id-or-name))}
+    [:dispatch-type/integer ::field.id]
+    [:dispatch-type/string ::field.literal]]])
 
 (mr/def ::expression
   [:tuple

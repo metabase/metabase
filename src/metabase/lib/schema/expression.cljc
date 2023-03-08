@@ -93,7 +93,7 @@
 (mr/def ::non-integer-real
   [:or
    {:error/message "expression returning a number with a non-integer-real place"}
-   [:ref ::literal/floating-point]
+   [:ref ::literal/non-integer-real]
    [:ref ::*.non-integer-real]
    ;; for some crazy reason `:type/Float` is the common base type of all numbers with non-integer-real places, not something
    ;; smart like `:type/Decimal`
@@ -201,14 +201,15 @@
 
 ;;; Any sort of expression at all.
 (mr/def ::expression
-  [:or
-   ::boolean
-   ::string
-   ::number
-   ::temporal
-   [:ref ::ref/ref]
-   ;; this is here for now until we fill this schema out with all of the possibilities.
-   any?])
+  [:maybe
+   [:or
+    ::boolean
+    ::string
+    ::number
+    ::temporal
+    [:ref ::ref/ref]
+    ;; this is here for now until we fill this schema out with all of the possibilities.
+    any?]])
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
