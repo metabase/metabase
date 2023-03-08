@@ -47,20 +47,21 @@ To create a public link that people can use to download the results of a questio
 
 ![Public export](../images/public-export.png)
 
-## Custom destinations in public links 
+## Simulating drill-through using custom destinations
 
-If you want to create a drill-down pathway on a public question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) on the parent dashboard that goes to the public link of a child question or dashboard.
+If you want to mimic [drill-through](https://www.metabase.com/learn/questions/drill-through) behaviour from a parent dashboard to a child dashboard:
 
-You can also pass filter values from the parent dashboard to the child question or dashboard:
-
-1. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on your child dashboard.
-2. On the parent dashboard, create a custom destination set to the child dashboard's public link.
-3. At the end of the child dashboard's public link, add a query parameter for the filter:
+1. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the child dashboard.
+2. Copy the child dashboard's public link.
+2. Create a [custom destination](../../dashboards/interactive) on the parent dashboard.
+4. Set the custom destination to the child dashboard's public link.
+5. Optional: Pass a filter value from the parent dashboard to the child dashboard by adding a query parameter to the end of the destination URL:
   ```
   /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
   ```
+  ```
 
-For example, if you have a public dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a child dashboard that uses **Accounts** data:
+For example, if you have a public parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a public child dashboard that uses **Accounts** data:
 
 ![Public link with custom destination](../images/public-link-custom-destination.png)
 
