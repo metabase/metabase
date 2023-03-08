@@ -272,7 +272,6 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
-    requireWriteback: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -895,7 +894,6 @@ export class UnconnectedDataSelector extends Component {
       onChangeField: this.onChangeField,
 
       // misc
-      requireWriteback: this.props.requireWriteback,
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
