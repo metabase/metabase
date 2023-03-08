@@ -3,10 +3,8 @@
    [clojure.test :refer :all]
    [metabase.models
     :refer [Card
-            Collection
             Dashboard
             DashboardCard
-            Database
             Pulse
             PulseCard
             PulseChannel
