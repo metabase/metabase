@@ -47,18 +47,20 @@ To create a public link that people can use to download the results of a questio
 
 ![Public export](../images/public-export.png)
 
-## Simulating drill-through using custom destinations
+## Simulating drill-through with public links
 
-If you want to mimic [drill-through](https://www.metabase.com/learn/questions/drill-through) behaviour from a parent dashboard to a child dashboard:
+Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/drill-through) won't work in public links because public links don't give people access to your raw data.
 
-1. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the child dashboard.
-2. Copy the child dashboard's public link.
-2. Create a [custom destination](../../dashboards/interactive.md) on the parent dashboard.
-4. Set the custom destination to the child dashboard's public link.
-5. Optional: Pass a filter value from the parent dashboard to the child dashboard by adding a query parameter to the end of the destination URL:
+You can mimic drill-through on public dashboard by setting up a [custom click behaviour](../../dashboards/interactive.md) that sends people from one public link to another public link:
+
+1. Create a second dashboard to act as the destination dashboard.
+2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the destination dashboard.
+3. Copy the destination dashboard's public link.
+4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
+5. Set the custom destination to the destination dashboard's public link.
+6. Optional: pass a filter value from the main dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
   ```
   /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
-  ```
   ```
 
 For example, if you have a public parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a public child dashboard that uses **Accounts** data:
