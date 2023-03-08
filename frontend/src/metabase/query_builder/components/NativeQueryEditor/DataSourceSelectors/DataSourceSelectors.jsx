@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { getNativeQueryLanguage } from "metabase/lib/engine";
+
+import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
-import { getNativeQueryLanguage } from "metabase/lib/engine";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool.isRequired,
@@ -60,7 +62,14 @@ const DataSourceSelectors = ({
   requireWriteback = false,
 }) => {
   const database = query.database();
-  const databases = query.metadata().databasesList({ savedQuestions: false });
+
+  const databases = useMemo(() => {
+    const databases = query.metadata().databasesList({ savedQuestions: false });
+    if (!requireWriteback) {
+      return databases;
+    }
+    return databases.filter(database => checkDatabaseActionsEnabled(database));
+  }, [query, requireWriteback]);
 
   if (!isNativeEditorOpen || databases.length === 0) {
     return <Placeholder query={query} />;
