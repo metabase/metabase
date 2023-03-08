@@ -25,16 +25,16 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-auto-incremented true}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-auto-incremented false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-auto-incremented false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-auto-incremented false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-auto-incremented false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-auto-incremented false}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true}
+            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false}
+            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false}
+            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
-  (testing "a non-pk field with auto-increment should be have metabase_field.database_auto_incremented=true"
+  (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
                          "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
@@ -47,20 +47,20 @@
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
       (is (= {:fields #{{:base-type                 :type/Integer
-                         :database-auto-incremented true
+                         :database-is-auto-increment true
                          :database-position         0
                          :database-required         false
                          :database-type             "INTEGER"
                          :name                      "id"
                          :pk?                       true}
                         {:base-type                 :type/Integer
-                         :database-auto-incremented true
+                         :database-is-auto-increment true
                          :database-position         1
                          :database-required         false
                          :database-type             "INTEGER"
                          :name                      "count"}
                         {:base-type                 :type/Integer
-                         :database-auto-incremented false
+                         :database-is-auto-increment false
                          :database-position         2
                          :database-required         true
                          :database-type             "INTEGER"

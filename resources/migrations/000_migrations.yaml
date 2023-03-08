@@ -14309,7 +14309,7 @@ databaseChangeLog:
             tableName: metabase_field
             columns:
               - column:
-                  name: database_auto_incremented
+                  name: database_is_auto_increment
                   type: boolean
                   remarks: Indicates this field is auto incremented
                   defaultValueBoolean: false

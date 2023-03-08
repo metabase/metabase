@@ -25,16 +25,16 @@
          old-semantic-type             :semantic-type
          old-database-position         :database-position
          old-database-name             :name
-         old-database-auto-incremented :database-auto-incremented
+         old-database-is-auto-increment :database-is-auto-increment
          old-db-required               :database-required} metabase-field
         {new-database-type             :database-type
          new-base-type                 :base-type
          new-field-comment             :field-comment
          new-database-position         :database-position
          new-database-name             :name
-         new-database-auto-incremented :database-auto-incremented
+         new-database-is-auto-increment :database-is-auto-increment
          new-db-required               :database-required} field-metadata
-        new-database-auto-incremented              (boolean new-database-auto-incremented)
+        new-database-is-auto-increment              (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
@@ -61,7 +61,7 @@
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
-        new-db-auto-incremented? (not= old-database-auto-incremented new-database-auto-incremented)
+        new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
         new-db-required? (not= old-db-required new-db-required)
 
         ;; calculate combined updates
@@ -104,9 +104,9 @@
          (when new-db-auto-incremented?
            (log/info (trs "Database auto incremented of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
-                          old-database-auto-incremented
-                          new-database-auto-incremented))
-           {:database_auto_incremented new-database-auto-incremented})
+                          old-database-is-auto-increment
+                          new-database-is-auto-increment))
+           {:database_is_auto_increment new-database-is-auto-increment})
          (when new-db-required?
            (log/info (trs "Database required of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)

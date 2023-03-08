@@ -102,7 +102,7 @@
              no-default?        (contains? #{nil "NULL" "null"} default)
              nullable           (.getInt rs "NULLABLE")
              not-nullable?      (= 0 nullable)
-             ;; IS_AUTOINCREMENT could returns nil
+             ;; IS_AUTOINCREMENT could return nil
              auto-increment     (.getString rs "IS_AUTOINCREMENT")
              auto-increment?    (= "YES" auto-increment)
              no-auto-increment? (= "NO" auto-increment)
@@ -111,7 +111,7 @@
          (merge
            {:name                      column-name
             :database-type             (.getString rs "TYPE_NAME")
-            :database-auto-incremented auto-increment?
+            :database-is-auto-increment auto-increment?
             :database-required         required?}
            (when-let [remarks (.getString rs "REMARKS")]
              (when-not (str/blank? remarks)
@@ -156,7 +156,7 @@
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                  (let [semantic-type (calculated-semantic-type driver column-name database-type)]
                    (merge
-                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-auto-incremented])
+                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
                     {:base-type         (database-type->base-type-or-warn driver database-type)
                      :database-position i}
                     (when semantic-type

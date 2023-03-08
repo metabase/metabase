@@ -813,19 +813,19 @@
                              :pk?                       true
                              :database-position         0
                              :database-required         true
-                             :database-auto-incremented false}
+                             :database-is-auto-increment false}
                             {:name                      "status"
                              :database-type             "bird_status"
                              :base-type                 :type/PostgresEnum
                              :database-position         1
                              :database-required         true
-                             :database-auto-incremented false}
+                             :database-is-auto-increment false}
                             {:name                      "type"
                              :database-type             "bird type"
                              :base-type                 :type/PostgresEnum
                              :database-position         2
                              :database-required         true
-                             :database-auto-incremented false}}}
+                             :database-is-auto-increment false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

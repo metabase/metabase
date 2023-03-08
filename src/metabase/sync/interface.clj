@@ -34,7 +34,7 @@
    (s/optional-key :nested-fields)             #{(s/recursive #'TableMetadataField)}
    (s/optional-key :nfc-path)                  [s/Any]
    (s/optional-key :custom)                    {s/Any s/Any}
-   (s/optional-key :database-auto-incremented) s/Bool
+   (s/optional-key :database-is-auto-increment) s/Bool
    (s/optional-key :database-required)         s/Bool
    ;; for future backwards compatability, when adding things
    s/Keyword                                   s/Any})

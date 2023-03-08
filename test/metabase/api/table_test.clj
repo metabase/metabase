@@ -75,7 +75,7 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_auto_incremented])))
+     :database_required :database_is_auto_increment])))
 
 (defn- fk-field-details [field]
   (-> (field-details field)
@@ -158,7 +158,7 @@
                                      :visibility_type  "normal"
                                      :has_field_values "none"
                                      :database_required false
-                                     :database_auto_incremented true)
+                                     :database_is_auto_increment true)
                               (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
@@ -174,7 +174,7 @@
                                      :position                 1
                                      :database_position        1
                                      :database_required        false
-                                     :database_auto_incremented false)
+                                     :database_is_auto_increment false)
                               (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -189,7 +189,7 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false
-                                     :database_auto_incremented false)
+                                     :database_is_auto_increment false)
                               (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
@@ -203,7 +203,7 @@
                                      :position          3
                                      :database_position 3
                                      :database_required false
-                                     :database_auto_incremented false)]
+                                     :database_is_auto_increment false)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
@@ -228,7 +228,7 @@
                                      :effective_type   "type/BigInteger"
                                      :has_field_values "none"
                                      :database_required false
-                                     :database_auto_incremented true)
+                                     :database_is_auto_increment true)
                               (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
@@ -241,7 +241,7 @@
                                      :position          1
                                      :database_position 1
                                      :database_required false
-                                     :database_auto_incremented false)
+                                     :database_is_auto_increment false)
                               (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -255,7 +255,7 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false
-                                     :database_auto_incremented false)]
+                                     :database_is_auto_increment false)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
           "Make sure that getting the User table does *not* include password info"))))
@@ -456,7 +456,7 @@
                               :effective_type    "type/BigInteger"
                               :has_field_values  "none"
                               :database_required false
-                              :database_auto_incremented true})
+                              :database_is_auto_increment true})
                             (merge
                              (field-details (db/select-one Field :id (mt/id :categories :name)))
                              {:table_id                  (mt/id :categories)
@@ -472,7 +472,7 @@
                               :database_position         1
                               :position                  1
                               :database_required         true
-                              :database_auto_incremented false})]
+                              :database_is_auto_increment false})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 

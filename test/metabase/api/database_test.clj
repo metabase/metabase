@@ -370,7 +370,7 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
-                                                             :database_auto_incremented true})
+                                                             :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (db/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -384,7 +384,7 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
-                                                             :database_auto_incremented false})]
+                                                             :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)

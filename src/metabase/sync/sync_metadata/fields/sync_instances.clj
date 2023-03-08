@@ -41,7 +41,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type database-auto-incremented database-required base-type effective-type coercion-strategy
+      (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
@@ -69,7 +69,7 @@
           :description               field-comment
           :position                  database-position
           :database_position         database-position
-          :database_auto_incremented (or database-auto-incremented false)
+          :database_is_auto_increment (or database-is-auto-increment false)
           :database_required         (or database-required false)
           :visibility_type           (or visibility-type :normal)})))))
 
