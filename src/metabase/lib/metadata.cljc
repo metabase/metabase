@@ -5,6 +5,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;; Column vs Field?
@@ -132,21 +133,28 @@
   "Get metadata about a specific Field in the Database we're querying."
   ([metadata-provider
     field-id          :- ::lib.schema.id/field]
-   (some (fn [table-metadata]
-           (some (fn [field-metadata]
-                   (when (= (:id field-metadata) field-id)
-                     field-metadata))
-                 (fields metadata-provider (:id table-metadata))))
-         (tables metadata-provider)))
+   (or (some (fn [table-metadata]
+               (some (fn [field-metadata]
+                       (when (= (:id field-metadata) field-id)
+                         field-metadata))
+                     (fields metadata-provider (:id table-metadata))))
+             (tables metadata-provider))
+       (throw (ex-info (i18n/tru "Failed to resolve Field {0}" (pr-str field-id))
+                       {:field             field-id
+                        :metadata-provider metadata-provider}))))
 
   ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
   ([metadata-provider
     table-id          :- ::lib.schema.id/table
     field-name        :- ::lib.schema.common/non-blank-string]
-   (some (fn [field-metadata]
-           (when (= (:name field-metadata) field-name)
-             field-metadata))
-         (fields metadata-provider table-id)))
+   (or (some (fn [field-metadata]
+               (when (= (:name field-metadata) field-name)
+                 field-metadata))
+             (fields metadata-provider table-id))
+       (throw (ex-info (i18n/tru "Failed to resolve Table {0} Field {1}" (pr-str table-id) (pr-str field-name))
+                       {:table-id          table-id
+                        :field-name        field-name
+                        :metadata-provider metadata-provider}))))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]

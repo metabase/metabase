@@ -50,7 +50,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages))))
-    (update-vals ->pMBQL m)))
+    (update-vals m ->pMBQL)))
 
 (defmethod ->pMBQL :field
   [[_field x y]]
@@ -61,6 +61,10 @@
                                (not (:lib/uuid options))
                                (assoc :lib/uuid (str (random-uuid))))]
     [:field options id-or-name]))
+
+(defmethod ->pMBQL :aggregation-options
+  [[_aggregation-options aggregation options]]
+  (lib.options/update-options (->pMBQL aggregation) merge options))
 
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's

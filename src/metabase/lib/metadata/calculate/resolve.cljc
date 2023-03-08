@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [ref])
   (:require
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -14,10 +14,19 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+(def Query
+  "We don't need a full query to calculate stuff. Just a skeletal query with a metadata provider and stages."
+  [:map
+   [:lib/type [:= :mbql/query]]
+   [:lib/metadata [:fn
+                   {:error/message "Instance of metabase.lib.metadata.protocols/DatabaseMetadataProvider"}
+                   lib.metadata.protocols/database-metadata-provider?]]
+   [:stages [:sequential :map]]])
+
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query          :- ::lib.schema/query
+  [query          :- Query
    _stage-number  :- :int
    field-id       :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
@@ -25,7 +34,7 @@
 (mu/defn ^:private resolve-field-name :- lib.metadata/ColumnMetadata
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
-  [query         :- ::lib.schema/query
+  [query         :- Query
    stage-number  :- :int
    column-name   :- ::lib.schema.common/non-blank-string]
   (or (some (fn [column]
@@ -42,7 +51,7 @@
 
 (mu/defn field-metadata :- lib.metadata/ColumnMetadata
   "Resolve metadata for a `:field` ref."
-  [query                                        :- ::lib.schema/query
+  [query                                        :- Query
    stage-number                                 :- :int
    [_field _opts id-or-name, :as _field-clause] :- ::lib.schema.ref/field]
   (if (integer? id-or-name)
@@ -51,7 +60,7 @@
 
 (mu/defn join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
-  [query        :- ::lib.schema/query
+  [query        :- Query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
   (or (some (fn [join-map]
@@ -65,7 +74,7 @@
 
 (mu/defn aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `index`."
-  [query        :- ::lib.schema/query
+  [query        :- Query
    stage-number :- :int
    index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
   (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)]
@@ -79,7 +88,7 @@
 (mu/defn expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
-  [query           :- ::lib.schema/query
+  [query           :- Query
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]

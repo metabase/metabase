@@ -5,7 +5,6 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculate.resolve :as calculate.resolve]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
@@ -26,8 +25,8 @@
 
 (mu/defn display-name :- ::lib.schema.common/non-blank-string
   "Calculate a nice human-friendly display name for something."
-  [query                                    :- ::lib.schema/query
-   stage-number                             :- :int
+  [query        :- calculate.resolve/Query
+   stage-number :- :int
    x]
   (or
    ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
@@ -53,8 +52,8 @@
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
-  [query                                    :- ::lib.schema/query
-   stage-number                             :- :int
+  [query        :- calculate.resolve/Query
+   stage-number :- :int
    x]
   (or
    ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
@@ -92,7 +91,7 @@
       ;; handle card__<id> source tables.
       (let [[_ card-id-str] (re-matches #"^card__(\d+)$" source-table)]
         (i18n/tru "Saved Question #{0}" card-id-str)))
-    (i18n/tru "Native Query")))
+    (i18n/tru "Native calculate.resolve/Query")))
 
 (defmethod display-name* :metadata/field
   [query stage-number {field-display-name :display_name, field-name :name, join-alias :source_alias, :as _field-metadata}]

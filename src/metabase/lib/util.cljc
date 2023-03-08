@@ -36,7 +36,9 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
-(defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
+(defn inner-query->stages
+  "Convert a legacy MBQL 'inner-query' to a sequence of pMBQL stages."
+  [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])

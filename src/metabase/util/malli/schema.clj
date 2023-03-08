@@ -10,7 +10,8 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,11 +30,13 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
-;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
-    [:string {:min 1}]
+    [:and
+     [:string {:min 1}]
+     [:fn
+      (complement str/blank?)]]
     (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero

@@ -4,7 +4,10 @@
 
   The various QP Store functions & macros in this namespace are primarily meant to help write QP Middleware tests, so
   you can test a given piece of middleware without having to worry about putting things in the QP Store
-  yourself (since this is usually done by other middleware in the first place)."
+  yourself (since this is usually done by other middleware in the first place).
+
+  TODO - I don't think we different QP test util namespaces? We should roll this namespace
+  into [[metabase.query-processor-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -12,33 +15,92 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.add-implicit-joins
+    :as qp.add-implicit-joins]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store.interface :as qp.store.interface]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [potemkin :as p]
+   [pretty.core :as pretty]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
-;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
-;; `metabase.query-processor-test`
+(defn- everything-store-database [parent-store]
+  (or (qp.store.interface/database parent-store)
+      (let [db (data/db)]
+        (qp.store.interface/store-database! parent-store db)
+        db)))
 
-(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:tables table-id])
-      (do
-        (qp.store/fetch-and-store-tables! [table-id])
-        (qp.store/table table-id))))
+(defn- check-everything-store-database [store]
+  (assert (= (:id (qp.store.interface/database store)) (data/id))
+          (str "with-everything-store currently does not support switching drivers."
+               \newline
+               "Make sure you call with-driver *before* with-everything-store.")))
 
-(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:fields field-id])
-      (do
-        (qp.store/fetch-and-store-fields! [field-id])
-        (qp.store/field field-id))))
+(defn- everything-store-table [parent-store table-id]
+  (check-everything-store-database parent-store)
+  (or (qp.store.interface/table parent-store table-id)
+      (let [table (t2/select-one Table table-id)]
+        (qp.store.interface/store-table! parent-store table)
+        table)))
+
+(defn- everything-store-tables [cache]
+  (or (:tables @cache)
+      (let [tables (db/select Table :db_id (data/id))]
+        (swap! cache assoc :tables tables)
+        tables)))
+
+(defn- everything-store-field [parent-store field-id]
+  (check-everything-store-database parent-store)
+  (or (qp.store.interface/field parent-store field-id)
+      (let [field (t2/select-one Field field-id)]
+        (qp.store.interface/store-field! parent-store field-id)
+        field)))
+
+(defn- everything-store-fields [cache]
+  (or (:fields @cache)
+      (let [fields (t2/select
+                    Field
+                    {:select    (for [column-kw qp.store.interface/field-columns-to-fetch]
+                                  [(keyword (str "field." (name column-kw)))
+                                   column-kw])
+                     :from      [[:metabase_field :field]]
+                     :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
+                     :where     [:= :table.db_id (data/id)]})]
+        (swap! cache assoc :fields fields)
+        fields)))
+
+;;; The EverythingStore just wraps a different store and ensures methods like `table`, `field`, and `database` always
+;;; return something, even if it wasn't stored in the store, to prevent the QP store from throwing errors to facilitate
+;;; testing.
+(p/defrecord+ EverythingStore [parent-store cache]
+  qp.store.interface/QPStore
+  (database [_this]
+    (everything-store-database parent-store))
+  (store-database! [_this database]
+    (qp.store.interface/store-database! parent-store database))
+  (tables [_this]
+    (everything-store-tables cache))
+  (table [_this table-id]
+    (everything-store-table parent-store table-id))
+  (store-table! [_this table]
+    (qp.store.interface/store-table! parent-store table))
+  (fields [_this]
+    (everything-store-fields cache))
+  (field [_this field-id]
+    (everything-store-field parent-store field-id))
+  (store-field! [_this field]
+    (qp.store.interface/store-field! parent-store field))
+  (misc-value [_this ks not-found]
+    (qp.store.interface/misc-value parent-store ks not-found))
+  (store-misc-value! [_this ks new-value]
+    (qp.store.interface/store-misc-value! parent-store ks new-value))
+
+  pretty/PrettyPrintable
+  (pretty [_this]
+    (list `->EverythingStore parent-store)))
 
 (def ^:dynamic ^:private *already-have-everything-store?* false)
 
@@ -47,12 +109,11 @@
   [thunk]
   (if *already-have-everything-store?*
     (thunk)
-    (binding [*already-have-everything-store?* true
-              qp.store/*table*                 everything-store-table
-              qp.store/*field*                 everything-store-field]
+    (binding [*already-have-everything-store?* true]
       (qp.store/with-store
-        (qp.store/fetch-and-store-database! (data/id))
-        (thunk)))))
+        (binding [qp.store/*store* (->EverythingStore qp.store/*store* (atom {}))]
+          (qp.store.interface/store-database! qp.store/*store* (data/db))
+          (thunk))))))
 
 (defmacro with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
