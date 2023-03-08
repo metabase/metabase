@@ -11,7 +11,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.mbql.util :as mbql.u])
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal]))
-  #?(:cljs (:require-macros [com.gfredericks.test.chuck.clojure-test])))
+  #?(:cljs (:require-macros [com.gfredericks.test.chuck.clojure-test]
+                            [metabase.mbql.util])))
 
 (defn- field-metadata-gen
   [[_ id-or-name]]
