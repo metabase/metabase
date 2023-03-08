@@ -4,7 +4,11 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import type { FieldSettings, FieldType } from "metabase-types/api";
+import type {
+  FieldSettings,
+  FieldType,
+  FieldValueOptions,
+} from "metabase-types/api";
 
 import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
 import {
@@ -33,6 +37,15 @@ export interface FormFieldEditorProps {
   onChange: (settings: FieldSettings) => void;
 }
 
+function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
+  if (fieldType === "number") {
+    return values
+      .map(value => Number(value))
+      .filter(value => !Number.isNaN(value));
+  }
+  return values.map(value => String(value));
+}
+
 function FormFieldEditor({
   field,
   fieldSettings,
@@ -43,31 +56,26 @@ function FormFieldEditor({
   const inputTypeOptions = useMemo(getInputTypes, []);
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
-    const currentInputType = fieldSettings.inputType;
+    const { inputType, valueOptions } = fieldSettings;
+
     const inputTypesForNextFieldType = inputTypeOptions[nextFieldType].map(
       option => option.value,
     );
 
     // Allows to preserve dropdown/radio input types across number/string/category field types
-    const nextInputType = inputTypesForNextFieldType.includes(currentInputType)
-      ? currentInputType
+    const nextInputType = inputTypesForNextFieldType.includes(inputType)
+      ? inputType
       : inputTypesForNextFieldType[0];
 
-    const shouldResetOptions =
-      nextFieldType !== fieldSettings.fieldType ||
-      !inputTypeHasOptions(nextInputType);
-
-    const defaultValueOptions = inputTypeHasOptions(nextInputType)
-      ? []
+    const nextValueOptions = inputTypeHasOptions(nextInputType)
+      ? cleanOptionValues(valueOptions || [], nextFieldType)
       : undefined;
 
     onChange({
       ...fieldSettings,
       fieldType: nextFieldType,
       inputType: nextInputType,
-      valueOptions: shouldResetOptions
-        ? defaultValueOptions
-        : fieldSettings.valueOptions,
+      valueOptions: nextValueOptions,
     });
   };
 

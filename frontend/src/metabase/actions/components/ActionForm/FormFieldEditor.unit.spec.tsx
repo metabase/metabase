@@ -97,12 +97,12 @@ describe("FormFieldEditor", () => {
     expect(queryIcon("grabber2")).not.toBeInTheDocument();
   });
 
-  it("clears field value options on a need", async () => {
+  it("formats value options when switching between field and input types", async () => {
     const initialSettings: FieldSettings = {
       ...getDefaultFieldSettings(),
-      fieldType: "number",
+      fieldType: "string",
       inputType: "select",
-      valueOptions: [1, 2, 3],
+      valueOptions: ["1", "2", "3", "not-a-number"],
     };
     const { onChange } = setup({ fieldSettings: initialSettings });
 
@@ -110,11 +110,11 @@ describe("FormFieldEditor", () => {
     const popover = await screen.findByRole("tooltip");
 
     userEvent.click(
-      await within(popover).findByRole("radio", { name: "Number" }),
+      await within(popover).findByRole("radio", { name: "Text" }),
     );
     expect(onChange).toHaveBeenLastCalledWith({
       ...initialSettings,
-      inputType: "number",
+      inputType: "string",
     });
 
     userEvent.click(
@@ -127,13 +127,22 @@ describe("FormFieldEditor", () => {
       }),
     );
 
-    userEvent.click(screen.getByText("Text"));
+    userEvent.click(screen.getByText("Category"));
     await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith({
         ...initialSettings,
-        fieldType: "string",
+        fieldType: "category",
         inputType: "radio",
-        valueOptions: [],
+      }),
+    );
+
+    userEvent.click(screen.getByText("Number"));
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...initialSettings,
+        fieldType: "number",
+        inputType: "radio",
+        valueOptions: [1, 2, 3],
       }),
     );
   });
