@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is]]
    [metabase.lib.core :as lib]
+   [metabase.lib.dev :as lib.dev]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -40,3 +41,16 @@
                        :source-table (meta/id :venues)}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (dissoc :lib/metadata)))))
+
+(deftest ^:parallel ->=-test
+  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        f (lib.dev/->= venues-category-id-metadata categories-id-metadata)]
+    (is (fn? f))
+    (is (=? [:=
+             {:lib/uuid uuid?}
+             [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
+             [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
+            (f {:lib/metadata meta/metadata} -1)))))

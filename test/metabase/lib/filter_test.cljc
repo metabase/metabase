@@ -4,6 +4,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.walk :as walk]
    [com.gfredericks.test.chuck.clojure-test :as chuck.test :refer [checking]]
+   [malli.core :as mc]
    [malli.generator :as mg]
    [metabase.lib.core :as lib]
    [metabase.lib.dev :as lib.dev]
@@ -79,27 +80,5 @@
       (is (some? f))
       (when f
         (is (fn? f))
-        (is (some? (apply f {:lib/metadata meta/metadata} -1 args)))))))
-
-(deftest ^:parallel filter-test
-  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")]
-    (testing "without query/stage-number, return a function for later resolution"
-      (let [f (lib.dev/->= venues-category-id-metadata categories-id-metadata)]
-        (is (fn? f))
-        (is (=? [:=
-                 {:lib/uuid uuid?}
-                 [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
-                (f {:lib/metadata meta/metadata} -1)))))
-    (testing "with query/stage-number, return clause right away"
-      (is (=? [:=
-               {:lib/uuid uuid?}
-               [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-               [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
-              (lib/= {:lib/metadata meta/metadata}
-                     -1
-                     venues-category-id-metadata
-                     categories-id-metadata))))))
+        (is (mc/validate ::schema.filter/filter
+                         (apply f {:lib/metadata meta/metadata} -1 args)))))))
