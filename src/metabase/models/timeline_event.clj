@@ -1,7 +1,7 @@
 (ns metabase.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
@@ -102,9 +102,9 @@
 
 ;;;; serialization
 ;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].
-(defmethod serdes.base/load-xform "TimelineEvent" [event]
+(defmethod serdes/load-xform "TimelineEvent" [event]
   (-> event
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       (update :timeline_id serdes.util/import-fk 'Timeline)
       (update :creator_id  serdes.util/import-user)
       (update :timestamp   u.date/parse)

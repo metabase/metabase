@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [toucan.db :as db]
@@ -140,7 +140,7 @@
                 "Slashes in directory names get escaped"))
 
           (testing "the Field was properly exported"
-            (is (= (-> (into {} (serdes.base/extract-one "Field" {} (db/select-one 'Field :id (:id website))))
+            (is (= (-> (into {} (serdes/extract-one "Field" {} (db/select-one 'Field :id (:id website))))
                        (update :created_at      u.date/format)
                        (dissoc :serdes/meta))
                    (-> (yaml/from-file (io/file dump-dir

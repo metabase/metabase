@@ -10,7 +10,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
@@ -373,7 +373,7 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes.base/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+(defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
                    (db/select-one 'Table :id table_id))
         db    (when table
@@ -387,19 +387,19 @@
                     {:model "Table"    :id table}
                     {:model "Field"    :id field}])))
 
-(defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
+(defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
-(defmethod serdes.base/extract-query "Field" [_model-name _opts]
+(defmethod serdes/extract-query "Field" [_model-name _opts]
   (let [dimensions (->> (db/select Dimension)
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
 
-(defmethod serdes.base/serdes-dependencies "Field" [field]
+(defmethod serdes/parents "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  (let [this  (serdes.base/serdes-path field)
+  (let [this  (serdes/path field)
         table (pop this)
         fks   (some->> field :fk_target_field_id serdes.util/field->path)
         human (->> (:dimensions field)
@@ -417,44 +417,44 @@
              (update :human_readable_field_id serdes.util/export-field-fk)))
        (sort-by :created_at)))
 
-(defmethod serdes.base/extract-one "Field"
+(defmethod serdes/extract-one "Field"
   [_model-name _opts field]
   (let [field (if (contains? field :dimensions)
                 field
                 (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
-    (-> (serdes.base/extract-one-basics "Field" field)
+    (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes.util/export-table-fk)
         (update :fk_target_field_id serdes.util/export-field-fk))))
 
-(defmethod serdes.base/load-xform "Field"
+(defmethod serdes/load-xform "Field"
   [field]
-  (-> (serdes.base/load-xform-basics field)
+  (-> (serdes/load-xform-basics field)
       (update :table_id           serdes.util/import-table-fk)
       (update :fk_target_field_id serdes.util/import-field-fk)))
 
-(defmethod serdes.base/load-find-local "Field"
+(defmethod serdes/load-find-local "Field"
   [path]
-  (let [table (serdes.base/load-find-local (pop path))]
+  (let [table (serdes/load-find-local (pop path))]
     (db/select-one Field :name (-> path last :id) :table_id (:id table))))
 
-(defmethod serdes.base/load-one! "Field" [ingested maybe-local]
-  (let [field ((get-method serdes.base/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
+(defmethod serdes/load-one! "Field" [ingested maybe-local]
+  (let [field ((get-method serdes/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
     (doseq [dim (:dimensions ingested)]
       (let [local (db/select-one Dimension :entity_id (:entity_id dim))
             dim   (assoc dim
                          :field_id    (:id field)
                          :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
-        (serdes.base/load-one! dim local)))))
+        (serdes/load-one! dim local)))))
 
-(defmethod serdes.base/storage-path "Field" [field _]
+(defmethod serdes/storage-path "Field" [field _]
   (-> field
-      serdes.base/serdes-path
+      serdes/path
       drop-last
       serdes.util/storage-table-path-prefix
       (concat ["fields" (:name field)])))
 
-(serdes.base/register-ingestion-path!
+(serdes/register-ingestion-path!
   "Field"
   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
   ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
@@ -463,7 +463,7 @@
                 schema "schemas"
                 table  "tables"
                 field  "fields"}   (and (#{6 8} (count path))
-                                        (serdes.base/ingestion-matcher-pairs
+                                        (serdes/ingestion-matcher-pairs
                                           path [["databases" "schemas" "tables" "fields"]
                                                 ["databases" "tables" "fields"]]))]
       (filterv identity [{:model "Database" :id db}

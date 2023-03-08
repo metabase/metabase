@@ -365,10 +365,10 @@
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card"       :id c4-eid}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "Dashboards include their Dashcards"
-        (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id other-dash-id))]
+        (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id other-dash-id))]
           (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash :label "dave_s_dash"}])
                         :entity_id              (s/eq other-dash)
                         :ordered_cards
@@ -406,10 +406,10 @@
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]
                      [{:model "Collection" :id dave-coll-eid}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
      (testing "Dashboards with parameters where the source is a card"
-       (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
+       (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
          (is (schema= {:parameters
                         (s/eq [{:id                   "abc"
                                 :name                 "CATEGORY"
@@ -426,10 +426,10 @@
                   [{:model "Database", :id "My Database"}
                    {:model "Table",    :id "Schemaless Table"}
                    {:model "Field",    :id "Some Field"}]}
-                (set (serdes.base/serdes-dependencies ser))))))
+                (set (serdes/parents ser))))))
 
      (testing "Cards with parameters where the source is a card"
-       (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
+       (let [ser (serdes/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
          (is (schema= {:parameters
                        (s/eq [{:id                   "abc"
                                :name                 "CATEGORY"
@@ -446,38 +446,38 @@
                   [{:model "Database", :id "My Database"}
                    {:model "Table",    :id "Schemaless Table"}
                    {:model "Field",    :id "Some Field"}]}
-                (set (serdes.base/serdes-dependencies ser))))))
+                (set (serdes/parents ser))))))
 
      (testing "collection filtering based on :user option"
        (testing "only unowned collections are returned with no user"
          (is (= ["Some Collection"]
-                (->> (serdes.base/extract-all "Collection" {:collection-set #{coll-id}})
+                (->> (serdes/extract-all "Collection" {:collection-set #{coll-id}})
                      (into [])
                      (map :name)))))
        (testing "unowned collections and the personal one with a user"
          (is (= #{coll-eid mark-coll-eid}
                 (->> {:collection-set (extract/collection-set-for-user mark-id)}
-                     (serdes.base/extract-all "Collection")
+                     (serdes/extract-all "Collection")
                      (by-model "Collection"))))
          (is (= #{coll-eid dave-coll-eid}
                 (->> {:collection-set (extract/collection-set-for-user dave-id)}
-                     (serdes.base/extract-all "Collection")
+                     (serdes/extract-all "Collection")
                      (by-model "Collection"))))))
 
      (testing "dashboards are filtered based on :user"
        (testing "dashboards in unowned collections are always returned"
          (is (= #{dash-eid}
                 (->> {:collection-set #{coll-id}}
-                     (serdes.base/extract-all "Dashboard")
+                     (serdes/extract-all "Dashboard")
                      (by-model "Dashboard"))))
          (is (= #{dash-eid}
                 (->> {:collection-set (extract/collection-set-for-user mark-id)}
-                     (serdes.base/extract-all "Dashboard")
+                     (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))
        (testing "dashboards in personal collections are returned for the :user"
          (is (= #{dash-eid other-dash param-dash}
                 (->> {:collection-set (extract/collection-set-for-user dave-id)}
-                     (serdes.base/extract-all "Dashboard")
+                     (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))))))
 
 (deftest dimensions-test
@@ -511,7 +511,7 @@
                                                               :field_id fk-id
                                                               :human_readable_field_id cust-name}]]
       (testing "dimensions without foreign keys are inlined into their Fields"
-        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id email-id))]
+        (let [ser (serdes/extract-one "Field" {} (db/select-one Field :id email-id))]
           (is (schema= {:serdes/meta   (s/eq [{:model "Database" :id "My Database"}
                                               {:model "Table"    :id "Schemaless Table"}
                                               {:model "Field"    :id "email"}])
@@ -529,10 +529,10 @@
           (testing "which depend on just the table"
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id fk-id))]
+        (let [ser (serdes/extract-one "Field" {} (db/select-one Field :id fk-id))]
           (is (schema= {:serdes/meta        (s/eq [{:model "Database" :id "My Database"}
                                                    {:model "Schema"   :id "PUBLIC"}
                                                    {:model "Table"    :id "Orders"}
@@ -564,7 +564,7 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Customers"}
                       {:model "Field"      :id "name"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes/parents ser))))))))))
 
 (deftest metrics-test
   (mt/with-empty-h2-app-db
@@ -582,7 +582,7 @@
                                                               {:source-table no-schema-id
                                                                :aggregation [[:sum [:field field-id nil]]]}}]]
       (testing "metrics"
-        (let [ser (serdes.base/extract-one "Metric" {} (db/select-one 'Metric :id m1-id))]
+        (let [ser (serdes/extract-one "Metric" {} (db/select-one 'Metric :id m1-id))]
           (is (schema= {:serdes/meta (s/eq [{:model "Metric" :id m1-eid :label "my_metric"}])
                         :table_id    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id  (s/eq "ann@heart.band")
@@ -601,7 +601,7 @@
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes/parents ser))))))))))
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db
@@ -622,7 +622,7 @@
                                                                       :creator_id    ann-id}]]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
-          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s1-id))]
+          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s1-id))]
             (is (schema= {:serdes/meta   (s/eq [{:model "NativeQuerySnippet"
                                                  :id s1-eid
                                                  :label "snippet_1"}])
@@ -635,10 +635,10 @@
 
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser)))))))
+                     (set (serdes/parents ser)))))))
 
         (testing "or can be outside collections"
-          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s2-id))]
+          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s2-id))]
             (is (schema= {:serdes/meta                    (s/eq [{:model "NativeQuerySnippet"
                                                                   :id s2-eid
                                                                   :label "snippet_2"}])
@@ -650,7 +650,7 @@
             (is (not (contains? ser :id)))
 
             (testing "and has no deps"
-              (is (empty? (serdes.base/serdes-dependencies ser))))))))))
+              (is (empty? (serdes/parents ser))))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db
@@ -674,7 +674,7 @@
                                                                       :timeline_id   line-id}]]
       (testing "timelines"
         (testing "with no events"
-          (let [ser (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id empty-id))]
+          (let [ser (serdes/extract-one "Timeline" {} (db/select-one 'Timeline :id empty-id))]
             (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id empty-eid :label "empty_timeline"}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
@@ -685,10 +685,10 @@
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser)))))))
+                     (set (serdes/parents ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
+          (let [ser   (serdes/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
                 stamp "2020-04-11T00:00:00Z"]
             (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid :label "populated_timeline"}])
                           :collection_id (s/eq coll-eid)
@@ -705,7 +705,7 @@
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser)))))))))))
+                     (set (serdes/parents ser)))))))))))
 
 (deftest segments-test
   (mt/with-empty-h2-app-db
@@ -723,7 +723,7 @@
                                                                            :aggregation [[:count]]
                                                                            :filter [:< [:field field-id nil] 18]}}]]
       (testing "segment"
-        (let [ser (serdes.base/extract-one "Segment" {} (db/select-one 'Segment :id s1-id))]
+        (let [ser (serdes/extract-one "Segment" {} (db/select-one 'Segment :id s1-id))]
           (is (schema= {:serdes/meta (s/eq [{:model "Segment" :id s1-eid :label "my_segment"}])
                         :table_id    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id  (s/eq "ann@heart.band")
@@ -743,7 +743,7 @@
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes/parents ser))))))))))
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db
@@ -766,7 +766,7 @@
                                                :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "implicit action"
-              (let [ser (serdes.base/extract-one "Action" {} action)]
+              (let [ser (serdes/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
                               :type        (s/eq "implicit")
@@ -779,7 +779,7 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+                         (set (serdes/parents ser)))))))))))))
 
 (deftest http-action-test
   (mt/with-empty-h2-app-db
@@ -802,7 +802,7 @@
                                                :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes.base/extract-one "Action" {} action)]
+              (let [ser (serdes/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
                               :type        (s/eq "http")
@@ -815,7 +815,7 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+                         (set (serdes/parents ser)))))))))))))
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db
@@ -839,7 +839,7 @@
                                                :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes.base/extract-one "Action" {} action)]
+              (let [ser (serdes/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta   (s/eq [{:model "Action"
                                                      :id    (:entity_id action)
                                                      :label "my_action"}])
@@ -855,7 +855,7 @@
                 (testing "depends on the Model and Database"
                   (is (= #{[{:model "Database" :id "My Database"}]
                            [{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+                         (set (serdes/parents ser)))))))))))))
 
 (deftest field-values-test
   (mt/with-empty-h2-app-db
@@ -880,7 +880,7 @@
                                               "Diner" "Indian" "Italian" "Japanese" "Mexican" "Middle Eastern" "Pizza"
                                               "Seafood" "Steakhouse" "Tea Room" "Winery"]}]]
       (testing "field values"
-        (let [ser (serdes.base/extract-one "FieldValues" {} (db/select-one 'FieldValues :id fv-id))]
+        (let [ser (serdes/extract-one "FieldValues" {} (db/select-one 'FieldValues :id fv-id))]
           (is (schema= {:serdes/meta (s/eq [{:model "Database" :id "My Database"}
                                             {:model "Table"    :id "Schemaless Table"}
                                             {:model "Field"    :id "Some Field"}
@@ -897,7 +897,7 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
           (is (= #{}
@@ -933,7 +933,7 @@
                                                               :collection_id coll-id
                                                               :dashboard_id  dash-id}]]
       (testing "pulse with neither collection nor dashboard"
-        (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-none-id))]
+        (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-none-id))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
                                                                 :id    p-none-eid
                                                                 :label "pulse_w_o_collection_or_dashboard"}])
@@ -947,10 +947,10 @@
 
           (testing "has no deps"
             (is (= #{}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "pulse with just collection"
-        (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-coll-id))]
+        (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-coll-id))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
                                                                 :id    p-coll-eid
                                                                 :label "pulse_with_only_collection"}])
@@ -964,10 +964,10 @@
 
           (testing "depends on the collection"
             (is (= #{[{:model "Collection" :id coll-eid}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "pulse with just dashboard"
-        (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-dash-id))]
+        (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-dash-id))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
                                                                 :id    p-dash-eid
                                                                 :label "pulse_with_only_dashboard"}])
@@ -981,10 +981,10 @@
 
           (testing "depends on the dashboard"
             (is (= #{[{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "pulse with both collection and dashboard"
-        (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-both-id))]
+        (let [ser (serdes/extract-one "Pulse" {} (db/select-one 'Pulse :id p-both-id))]
           (is (schema= {:serdes/meta   (s/eq [{:model "Pulse"
                                                :id    p-both-eid
                                                :label "pulse_with_both_collection_and_dashboard"}])
@@ -999,7 +999,7 @@
           (testing "depends on the collection and dashboard"
             (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Dashboard"  :id dash-eid}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes/parents ser))))))))))
 
 (deftest pulse-cards-test
   (mt/with-empty-h2-app-db
@@ -1040,7 +1040,7 @@
                                                                   :position          1
                                                                   :dashboard_card_id dashcard-id}]]
       (testing "legacy pulse cards"
-        (let [ser (serdes.base/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc1-pulse-id))]
+        (let [ser (serdes/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc1-pulse-id))]
           (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
                                                                    {:model "PulseCard" :id pc1-pulse-eid}])
                         :card_id                            (s/eq card1-eid)
@@ -1052,9 +1052,9 @@
           (testing "depends on the pulse and card"
             (is (= #{[{:model "Pulse" :id pulse-eid}]
                      [{:model "Card"  :id card1-eid}]}
-                   (set (serdes.base/serdes-dependencies ser))))))
+                   (set (serdes/parents ser))))))
 
-        (let [ser (serdes.base/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc2-pulse-id))]
+        (let [ser (serdes/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc2-pulse-id))]
           (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
                                                                    {:model "PulseCard" :id pc2-pulse-eid}])
                         :card_id                            (s/eq card1-eid)
@@ -1066,10 +1066,10 @@
           (testing "depends on the pulse and card"
             (is (= #{[{:model "Pulse" :id pulse-eid}]
                      [{:model "Card"  :id card1-eid}]}
-                   (set (serdes.base/serdes-dependencies ser)))))))
+                   (set (serdes/parents ser)))))))
 
       (testing "dashboard sub cards"
-        (let [ser (serdes.base/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc1-sub-id))]
+        (let [ser (serdes/extract-one "PulseCard" {} (db/select-one 'PulseCard :id pc1-sub-id))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id sub-eid}
                                                                {:model "PulseCard" :id pc1-sub-eid}])
                         :card_id                        (s/eq card1-eid)
@@ -1082,7 +1082,7 @@
             (is (= #{[{:model "Pulse" :id sub-eid}]
                      [{:model "Card"  :id card1-eid}]
                      [{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes/parents ser))))))))))
 
 (deftest cards-test
  (mt/with-empty-h2-app-db
@@ -1116,7 +1116,7 @@
                                                                :values_source_config {:card_id     card-id-1
                                                                                       :value_field [:field field-id nil]}}]}]]
      (testing "Cards with parameter's source is another question"
-       (let [ser (serdes.base/extract-one "Card" {} (db/select-one Card :id card-id-2))]
+       (let [ser (serdes/extract-one "Card" {} (db/select-one Card :id card-id-2))]
          (is (= [{:id                   "abc",
                   :type                 :category,
                   :name                 "CATEGORY",
@@ -1132,7 +1132,7 @@
                   [{:model "Database"   :id "My Database"}
                    {:model "Table"      :id "Schemaless Table"}
                    {:model "Field"      :id "A Field"}]}
-                (set (serdes.base/serdes-dependencies ser)))))))))
+                (set (serdes/parents ser)))))))))
 
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db
@@ -1279,7 +1279,7 @@
                    [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
                    [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
-                      (map serdes.base/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "middle dashboard"
@@ -1287,7 +1287,7 @@
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
                    [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
-                      (map serdes.base/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "grandchild dashboard"
@@ -1295,7 +1295,7 @@
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
                    [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
-                      (map serdes.base/serdes-path)
+                      (map serdes/path)
                       set))))
 
         (testing "a dashboard that has parameter source is another card"
@@ -1306,7 +1306,7 @@
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                (->> (extract/extract-subtrees {:targets [["Dashboard" dash4-id]]})
-                    (map serdes.base/serdes-path)
+                    (map serdes/path)
                     set)))))
 
       (testing "selecting a collection gets all its contents"
@@ -1328,17 +1328,17 @@
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
                    (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
-                        (map serdes.base/serdes-path)
+                        (map serdes/path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
                    (->> (extract/extract-subtrees {:targets [["Collection" coll2-id]]})
-                        (map serdes.base/serdes-path)
+                        (map serdes/path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
                    (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
-                        (map serdes.base/serdes-path)
+                        (map serdes/path)
                         set))))
 
           (testing "select a collection where a dashboard contains parameter's source is card from another collection"
@@ -1350,7 +1350,7 @@
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
-                      (map serdes.base/serdes-path)
+                      (map serdes/path)
                       set)))))))))
 
 (deftest foreign-key-field-test
@@ -1369,5 +1369,5 @@
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
                (->> (db/select-one Field :id fk-id)
-                    (serdes.base/extract-one "Field" {})
+                    (serdes/extract-one "Field" {})
                     :fk_target_field_id)))))))
