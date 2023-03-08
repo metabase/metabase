@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression
   (:require
+   [clojure.walk :as walk]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.filter :as filter]
    [metabase.lib.schema.literal :as literal]
@@ -28,7 +29,7 @@
   (defclause op
     [:vcatn [:str [:schema [:ref ::string]]]]))
 
-(doseq [op [::year ::month ::day ::hour ::minute ::second ::quarter]]
+(doseq [op [::get-year ::get-month ::get-day ::get-hour ::get-minute ::get-second ::get-quarter]]
   (defclause op
     [:vcatn [:datetime [:schema [:ref ::temporal]]]]))
 
@@ -45,7 +46,7 @@
    [:datetime2 [:schema [:ref ::temporal]]]
    [:unit [:enum "year" "month" "day" "hour" "second" "millisecond" "quarter"]]])
 
-(defclause ::week
+(defclause ::get-week
   [:vcatn
    [:datetime [:schema [:ref ::temporal]]]
    [:mode [:maybe [:enum "ISO" "US" "Instance"]]]])
@@ -73,8 +74,29 @@
        [:pred [:schema [:ref ::boolean]]]
        [:expr [:schema [:ref ::expression]]]]])
 
-(defclause ::coalesce
-  [:+ [:catn [:expr [:schema [:ref ::expression]]]]])
+(defn- deftypedclause [op args]
+  (let [nspace (namespace op)
+        base-op (name op)]
+    (doseq [typ ["boolean" "integer" "floating-point" "string" "temporal"]
+            :let [typed-op (keyword nspace (str base-op "." typ))
+                  return-type (keyword nspace typ)
+                  typed-args (walk/postwalk (fn [n] (if (= n ::_RETURN_TYPE)
+                                                      return-type
+                                                      n))
+                                            args)]]
+      (mr/def typed-op
+        [:vcatn
+         [:clause [:= (keyword base-op)]]
+         [:options ::common/options]
+         (into [:args] typed-args)]))))
+
+(deftypedclause ::case
+  [:args [:+ [:catn
+              [:pred [:schema [:ref ::boolean]]]
+              [:expr [:schema [:ref ::_RETURN_TYPE]]]]]])
+
+(deftypedclause ::coalesce
+  [:+ [:catn [:expr [:schema [:ref ::_RETURN_TYPE]]]]])
 
 (defclause ::concat
   [:+ [:catn [:str [:schema [:ref ::string]]]]])
@@ -90,6 +112,8 @@
 ;;; An expression that we can filter on, or do case statements on, etc.
 (mr/def ::boolean
   [:or
+   ::case.boolean
+   ::coalesce.boolean
    ::literal/boolean
    [:schema [:ref ::filter/filter]]
    ;; TODO base-type fields
@@ -107,6 +131,8 @@
    ::replace
    ::substring
    ::concat
+   ::case.string
+   ::coalesce.string
    ::literal/string
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
@@ -121,9 +147,12 @@
    ;; string -> int
    ::length
    ;; temporal -> int
-   ::year ::month ::day ::hour ::minute ::second ::quarter ::week
+   ::get-year ::get-month ::get-day ::get-hour ::get-minute ::get-second ::get-quarter ::get-week
    ::datetime-diff
 
+   ;; TODO should be number?
+   ::case.integer
+   ::coalesce.integer
    ::literal/integer
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
@@ -131,6 +160,9 @@
 ;;; An expression that returns a floating-point number.
 (mr/def ::floating-point
   [:or
+   ;; TODO should be number?
+   ::case.floating-point
+   ::coalesce.floating-point
    ::literal/floating-point
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
@@ -152,6 +184,9 @@
    ::datetime-add
    ::datetime-subtract
    ::convert-timezone
+
+   ::case.temporal
+   ::coalesce.floating-point
    ::literal/temporal
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
@@ -178,18 +213,22 @@
    [:schema [:ref ::number]]
    [:schema [:ref ::string]]
    [:schema [:ref ::boolean]]
-   [:schema [:ref ::temporal]]
-   ;; These can return any type, so while they may be ::orderable, that's not guaranteed
-   ::case
-   ::coalesce])
+   [:schema [:ref ::temporal]]])
 
 (comment
-  (require '[malli.core :as mc]
-           '[malli.generator :as mg])
+  [
+   :*
+   :+
+   :-
+   :/
+   :absolute-datetime
+   :not
+   :now
 
-  (let [schema ::case
-        sample (mg/sample schema {:size 10})]
-    sample
-    (not-empty (remove #(mc/validate schema %) sample)))
-
-  nil)
+   :relative-datetime
+   :temporal-extract
+   :time
+   :value
+   :var
+   ]
+  )
