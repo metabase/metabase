@@ -34,7 +34,7 @@
                        (.retryOnResult (make-predicate retry-on-result-pred))
                        retry-on-exception-pred
                        (.retryOnException (make-predicate retry-on-exception-pred)))]
-    (Retry/of retry-name (.build retry-config))))
+    (Retry/of retry-name ^RetryConfig (.build retry-config))))
 
 (defn decorate
   "Returns a function accepting the same arguments as `f` but retrying on error
