@@ -58,12 +58,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
       {
-        title: t`Activity`,
-        icon: null,
-        link: "/activity",
-        event: `Navbar;Profile Dropdown;Activity ${tag}`,
-      },
-      {
         title: t`Help`,
         icon: null,
         link:

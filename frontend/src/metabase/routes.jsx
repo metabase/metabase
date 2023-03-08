@@ -12,8 +12,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.tsx";
 
-import ActivityApp from "metabase/home/containers/ActivityApp";
-
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
@@ -221,8 +219,6 @@ export const getRoutes = store => (
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
         </Route>
-
-        <Route path="activity" component={ActivityApp} />
 
         <Route
           path="dashboard/:slug"
