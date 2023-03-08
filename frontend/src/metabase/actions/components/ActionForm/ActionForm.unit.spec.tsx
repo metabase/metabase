@@ -338,13 +338,11 @@ describe("Actions > ActionForm", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      expect(
-        await screen.findByText(/this field is required/i),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("disables form submission when no fields are changed", async () => {
+    it("allows form submission when all fields are optional", async () => {
       const { onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
@@ -369,11 +367,11 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
 
     it("cannot type a string in a numeric field", async () => {
