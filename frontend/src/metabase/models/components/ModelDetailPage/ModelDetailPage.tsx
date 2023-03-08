@@ -76,7 +76,10 @@ function ModelDetailPage({
           </TabList>
           <TabPanel value="usage">
             <TabPanelContent>
-              <ModelUsageDetails model={model} />
+              <ModelUsageDetails
+                model={model}
+                hasNewQuestionLink={hasDataPermissions}
+              />
             </TabPanelContent>
           </TabPanel>
           <TabPanel value="schema">
