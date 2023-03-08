@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -11,7 +12,8 @@ import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+
+import { groupActionsByModelId, sortGroupedActions } from "./utils";
 
 import {
   ActionsList,
@@ -25,10 +27,12 @@ import {
 
 export default function ActionPicker({
   models,
+  actions,
   onClick,
   currentAction,
 }: {
   models: Card[];
+  actions: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
@@ -38,12 +42,20 @@ export default function ActionPicker({
       [models],
     ) ?? [];
 
+  const actionsByModel = useMemo(() => {
+    const groupedActions = groupActionsByModelId(actions);
+    const sortedGroupedActions = sortGroupedActions(groupedActions);
+
+    return sortedGroupedActions;
+  }, [actions]);
+
   return (
     <div className="scroll-y">
       {sortedModels.map(model => (
-        <ConnectedModelActionPicker
+        <ModelActionPicker
           key={model.id}
           model={model}
+          actions={actionsByModel[model.id] ?? []}
           onClick={onClick}
           currentAction={currentAction}
         />
@@ -142,17 +154,15 @@ function ModelActionPicker({
   );
 }
 
-const ConnectedModelActionPicker = Actions.loadList({
-  query: (state: State, props: { model: { id: number | null } }) => ({
-    "model-id": props?.model?.id,
+export const ConnectedActionPicker = _.compose(
+  Search.loadList({
+    query: () => ({
+      models: ["dataset"],
+    }),
+    loadingAndErrorWrapper: true,
+    listName: "models",
   }),
-  loadingAndErrorWrapper: false,
-})(ModelActionPicker);
-
-export const ConnectedActionPicker = Search.loadList({
-  query: () => ({
-    models: ["dataset"],
+  Actions.loadList({
+    loadingAndErrorWrapper: false,
   }),
-  loadingAndErrorWrapper: true,
-  listName: "models",
-})(ActionPicker);
+)(ActionPicker);
