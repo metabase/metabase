@@ -10,7 +10,7 @@
            :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
+                       :lib/options {:lib/uuid uuid?}
                        :native      "SELECT * FROM VENUES;"}]}
           (-> (lib/native-query meta/metadata-provider meta/results-metadata "SELECT * FROM VENUES;")
               (dissoc :lib/metadata)))))
@@ -20,7 +20,7 @@
            :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
+                       :lib/options {:lib/uuid uuid?}
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
                                     {:dataset_query   {:database (meta/id)
@@ -33,12 +33,12 @@
            :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
+                       :lib/options  {:lib/uuid uuid?}
                        :source-table (meta/id :venues)}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}
+                       :lib/options {:lib/uuid uuid?}}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}]}
+                       :lib/options {:lib/uuid uuid?}}]}
           (lib/query meta/metadata-provider {:database (meta/id)
                                              :type     :query
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))

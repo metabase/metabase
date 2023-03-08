@@ -6,5 +6,5 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel field-from-database-metadata-test
-  (is (=? [:field (meta/id :venues :id) {:lib/uuid string?}]
+  (is (=? [:field (meta/id :venues :id) {:lib/uuid uuid?}]
           (lib.field/field {:lib/metadata meta/metadata-provider} (meta/field-metadata :venues :id)))))

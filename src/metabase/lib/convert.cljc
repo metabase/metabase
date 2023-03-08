@@ -49,7 +49,7 @@
                                [x y])
         options              (cond-> options
                                (not (:lib/uuid options))
-                               (assoc :lib/uuid (str (random-uuid))))]
+                               (assoc :lib/uuid (random-uuid)))]
     [:field options id-or-name]))
 
 (defmulti ->legacy-MBQL
