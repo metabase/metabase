@@ -13,40 +13,17 @@
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal]))
   #?(:cljs (:require-macros [com.gfredericks.test.chuck.clojure-test])))
 
-(deftest ^:parallel equals-test
-  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")]
-    (testing "without query/stage-number, return a function for later resolution"
-      (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
-        (is (fn? f))
-        (is (=? [:=
-                 {:lib/uuid uuid?}
-                 [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
-                (f {:lib/metadata meta/metadata} -1)))))
-    (testing "with query/stage-number, return clause right away"
-      (is (=? [:=
-               {:lib/uuid uuid?}
-               [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-               [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
-              (lib/= {:lib/metadata meta/metadata}
-                     -1
-                     venues-category-id-metadata
-                     categories-id-metadata))))))
-
 (defn- field-metadata-gen
   [[_ id-or-name]]
   (if (integer? id-or-name)
     (gen/let [[table fields] (gen/elements (for [table (:tables meta/metadata)]
                                              [(:name table) (map :name (:fields table))]))
               field (gen/elements fields)]
-      (-> (lib/query meta/metadata table)
-          (lib.metadata/field table field)))
+      (-> (lib/query-for-table-name meta/metadata-provider table)
+          (lib.metadata/field nil table field)))
     (gen/let [field (gen/elements (map :name (:columns meta/results-metadata)))]
-      (-> (lib/saved-question-query meta/saved-question)
-          (lib.metadata/field field)))))
+      (-> (lib/saved-question-query meta/metadata-provider meta/saved-question)
+          (lib.metadata/stage-column -1 field)))))
 
 (def ^:private filter-expr-gen
   (gen/let [filter-shape (gen/such-that #(-> % first (= :field) not)
@@ -103,10 +80,10 @@
         (is (some? (apply f {:lib/metadata meta/metadata} -1 args)))))))
 
 (deftest ^:parallel filter-test
-  (let [q1                          (lib/query meta/metadata "CATEGORIES")
-        q2                          (lib/saved-question-query meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 "VENUES" "CATEGORY_ID")
-        categories-id-metadata      (lib.metadata/field q2 "ID")]
+  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")]
     (testing "without query/stage-number, return a function for later resolution"
       (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
