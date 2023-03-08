@@ -111,8 +111,8 @@
 
 (def ^:private emitter-config
   "Returns an instance of a Snowplow emitter config"
-  (let [emitter-config* (delay
-                  (.batchSize (EmitterConfiguration.) 1))]
+  (let [emitter-config* (delay (-> (EmitterConfiguration.)
+                                   (.batchSize 1)))]
      (fn [] @emitter-config*)))
 
 (def ^:private tracker
