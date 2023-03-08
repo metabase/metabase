@@ -53,7 +53,7 @@ If you want to mimic [drill-through](https://www.metabase.com/learn/questions/dr
 
 1. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the child dashboard.
 2. Copy the child dashboard's public link.
-2. Create a [custom destination](../../dashboards/interactive) on the parent dashboard.
+2. Create a [custom destination](../../dashboards/interactive.md) on the parent dashboard.
 4. Set the custom destination to the child dashboard's public link.
 5. Optional: Pass a filter value from the parent dashboard to the child dashboard by adding a query parameter to the end of the destination URL:
   ```
