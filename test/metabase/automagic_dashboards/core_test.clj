@@ -209,6 +209,79 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
+(deftest ensure-field-dimension-bindings-test
+  (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :query    {:source-table (mt/id :products)
+                                       :fields       [[:field (mt/id :products :category) nil]
+                                                      [:field (mt/id :products :price) nil]]},
+                            :type     :query}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [card {:table_id        (mt/id :products)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
+            (let [root               (#'magic/->root card)
+                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  base-context       (#'magic/make-base-context root)
+                  candidate-bindings (#'magic/candidate-bindings base-context dimensions)
+                  bindset            #(->> % candidate-bindings (map ffirst) set)]
+              (is (= #{"GenericCategoryMedium"} (bindset (mt/id :products :category))))
+              (is (= #{"GenericNumber"} (bindset (mt/id :products :price))))))))))
+  (testing "A model that spans 3 tables should use all fields, provide correct candidate bindings,
+            and choose the best-match candidate."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :orders)
+                                       :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]
+                                                                      [:field (mt/id :people :longitude) {:join-alias "People - User"}]
+                                                                      [:field (mt/id :people :latitude) {:join-alias "People - User"}]]
+                                                       :source-table (mt/id :people)
+                                                       :condition    [:=
+                                                                      [:field (mt/id :orders :user_id) nil]
+                                                                      [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                                       :alias        "People - User"}
+                                                      {:fields       [[:field (mt/id :products :price) {:join-alias "Products"}]]
+                                                       :source-table (mt/id :products)
+                                                       :condition    [:=
+                                                                      [:field (mt/id :orders :product_id) nil]
+                                                                      [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                                       :alias        "Products"}]
+                                       :fields       [[:field (mt/id :orders :created_at) nil]]}}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [card {:table_id        (mt/id :products)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
+            (let [root               (#'magic/->root card)
+                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  base-context       (#'magic/make-base-context root)
+                  candidate-bindings (#'magic/candidate-bindings base-context dimensions)
+                  bindset            #(->> % candidate-bindings (map ffirst) set)
+                  boundval            #(->> % candidate-bindings (#'magic/most-specific-definition) ffirst)]
+              (is (= #{"State"} (bindset (mt/id :people :state))))
+              (is (= "State" (boundval (mt/id :people :state))))
+              (is (= #{"GenericNumber" "Long"} (bindset (mt/id :people :longitude))))
+              (is (= "Long" (boundval (mt/id :people :longitude))))
+              (is (= #{"GenericNumber" "Lat"} (bindset (mt/id :people :latitude))))
+              (is (= "Lat" (boundval (mt/id :people :latitude))))
+              (is (= #{"GenericNumber"} (bindset (mt/id :products :price))))
+              (is (= "GenericNumber" (boundval (mt/id :products :price))))
+              (is (= #{"CreateTimestamp" "Timestamp"} (bindset (mt/id :orders :created_at))))
+              (is (= "CreateTimestamp" (boundval (mt/id :orders :created_at)))))))))))
+
 (defn- ensure-card-sourcing
   "Ensure that destination data is only derived from source data.
   This is a check against a card being generated that presents results unavailable to it with respect to its source data."

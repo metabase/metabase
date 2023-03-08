@@ -469,15 +469,22 @@
                        (-> context :source :fields))))))
 
 (defn- score-bindings
-  "Assign a value to each potential binding. Takes a seq of potential bindings and returns a seq of vectors in the shape
-  of [score binding], where score is a 3 element vector."
-  [definitions]
+  "Assign a value to each potential binding.
+  Takes a seq of potential bindings and returns a seq of vectors in the shape
+  of [score binding], where score is a 3 element vector. This is computed as:
+     1) Number of ancestors `field_type` has (if field_type has a table prefix,
+        ancestors for both table and field are counted);
+     2) Number of fields in the definition, which would include additional filters
+        (`named`, `max_cardinality`, `links_to`, ...) etc.;
+     3) The manually assigned score for the binding definition
+  "
+  [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
               [(reduce + (map (comp count ancestors) (:field_type definition)))
                (count definition)
                (:score definition)]))]
-    (map (juxt (comp score first) identity) definitions)))
+    (map (juxt (comp score first) identity) candidate-binding-values)))
 
 (defn- most-specific-definition
   "Return the most specific definition among `definitions`.
@@ -487,8 +494,8 @@
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
       `links_to`, ...) are used;
    3) if there is still a tie, `score`."
-  [definitions]
-  (let [scored-bindings (score-bindings definitions)]
+  [candidate-binding-values]
+  (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
 (defn- candidate-bindings
@@ -798,6 +805,13 @@
                                               (:cell-query root))}))
 
 (s/defn ^:private make-context
+  "Create a rule-oriented context for this item, consisting of its source data
+   along with detected metrics, dimensions, and filters.
+
+   Note that the 'rule' aspect of this function means the dimensions defined in
+   the rule are used to match to the source data fields.
+
+   This data structure is used to generate cards."
   [{:keys [source] :as root}, rule :- rules/Rule]
   {:pre [source]}
   (let [base-context (make-base-context root)]
