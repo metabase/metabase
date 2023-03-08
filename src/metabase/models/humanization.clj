@@ -60,7 +60,7 @@
 (defn- set-humanization-strategy! [new-value]
   (let [new-strategy (keyword (or new-value :simple))]
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
-    (when-not (get-method name->human-readable-name new-strategy)
+    (when-not (get-method u.humanization/name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
                     new-strategy (keys (methods name->human-readable-name))))))
