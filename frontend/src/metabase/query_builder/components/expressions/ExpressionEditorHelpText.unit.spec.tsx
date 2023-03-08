@@ -8,7 +8,7 @@ import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
-const database = createMockDatabase();
+const DATABASE = createMockDatabase();
 
 describe("ExpressionEditorHelpText", () => {
   it("should render expression function info and example", async () => {
@@ -38,10 +38,34 @@ describe("ExpressionEditorHelpText", () => {
     ).toBeInTheDocument();
   });
 
+  it("should handle expression function without arguments", async () => {
+    setup({ helpText: getHelpText("cum-count", DATABASE, "UTC") });
+
+    // have to wait for TippyPopover to render content
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("expression-helper-popover"),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
+
+    const exampleCodeEl = screen.getByTestId(
+      "expression-helper-popover-arguments",
+    );
+    expect(
+      within(exampleCodeEl).getByText("CumulativeCount"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("The additive total of rows across a breakout."),
+    ).toBeInTheDocument();
+  });
+
   it("should render function arguments with tooltip", async () => {
     const {
       props: { helpText },
-    } = setup({ helpText: getHelpText("concat", database, "UTC") });
+    } = setup({ helpText: getHelpText("concat", DATABASE, "UTC") });
 
     // have to wait for TippyPopover to render content
     await waitFor(() => {
@@ -72,7 +96,7 @@ function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   const props: ExpressionEditorHelpTextProps = {
     helpText:
       additionalProps?.helpText ||
-      getHelpText("datetime-diff", database, "UTC"),
+      getHelpText("datetime-diff", DATABASE, "UTC"),
     width: 397,
     target,
     ...additionalProps,

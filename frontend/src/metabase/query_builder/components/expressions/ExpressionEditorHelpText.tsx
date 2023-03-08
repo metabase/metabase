@@ -2,7 +2,6 @@ import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Tooltip from "metabase/core/components/Tooltip";
-import { isNotNull } from "metabase/core/utils/types";
 import { HelpText } from "metabase-lib/expressions/types";
 import {
   Container,
@@ -46,16 +45,22 @@ const ExpressionEditorHelpText = ({
             <div>{description}</div>
             <FunctionHelpCode data-testid="expression-helper-popover-arguments">
               {structure}
-              {isNotNull(args) && "("}
-              {args?.map(({ name, description }, index) => (
-                <span key={name}>
-                  <Tooltip tooltip={description} placement="bottom-start">
-                    <FunctionHelpCodeArgument>{name}</FunctionHelpCodeArgument>
-                  </Tooltip>
-                  {index + 1 < args.length && ", "}
-                </span>
-              ))}
-              {isNotNull(args) && ")"}
+              {args != null && (
+                <>
+                  (
+                  {args.map(({ name, description }, index) => (
+                    <span key={name}>
+                      <Tooltip tooltip={description} placement="bottom-start">
+                        <FunctionHelpCodeArgument>
+                          {name}
+                        </FunctionHelpCodeArgument>
+                      </Tooltip>
+                      {index + 1 < args.length && ", "}
+                    </span>
+                  ))}
+                  )
+                </>
+              )}
             </FunctionHelpCode>
             <ExampleBlock>
               <ExampleTitleText>{t`Example`}</ExampleTitleText>

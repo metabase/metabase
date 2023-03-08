@@ -62,6 +62,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.findByTestId("expression-helper-popover-arguments")
       .findByText("text")
       .realHover();
+
     cy.findByText("The column with values to convert to lower case.").should(
       "be.visible",
     );
