@@ -324,85 +324,16 @@
   (extract-one-basics model-name entity))
 
 (defmulti descendants
-  "Captures the notion that eg. a dashboard \"contains\" its cards.
-  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
-  or requires to be executed.
-  Dispatches on the model name.
+  "Returns set of `[model-name database-id]` pairs for all entities contained or used by this entity. e.g. the Dashboard
+   implementation should return pairs for all DashboardCard entities it contains, etc.
 
-  For example:
-  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
-  - a `Dashboard` contains its `DashboardCard`s;
-  - each `DashboardCard` contains its `Card`;
-  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
-  - a `NativeQuerySnippet` similarly might derive from others;
-
-  A transitive closure over [[descendants]] should thus give a complete \"subtree\", such as a complete
-  `Collection` and all its contents.
-
-  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
-  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
-
-  What about [[serdes-dependencies]]?
-  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[descendants]] finds
-  all entities that are \"part\" of the given entity.
-
-  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
-  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
-  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
-  `Card`. [[descendants]] points *down* to contents, children, and components."
+   Dispatched on model-name."
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 
 (defmethod descendants :default [_ _]
   nil)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Deserialization Process                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; Deserialization is split into two stages, mirroring serialization. They are called ingestion and loading.
-;;; Ingestion turns whatever serialized form (eg. a tree of YAML files) was produced by storage into Clojure maps with
-;;; `:serdes/meta` maps. Loading imports those entities into the appdb, updating and inserting rows as needed.
-;;;
-;;; Ingestion:
-;;; Ingestion is intended to be a black box, like storage above. [[Ingestable]] is a protocol to allow easy [[reify]]
-;;; usage for testing in-memory deserialization.
-;;;
-;;; Factory functions consume some details (like a file path) and return an [[Ingestable]], with its two methods:
-;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` paths in any order.
-;;; - `(ingest-one ingestable meta-path)` ingests a single entity into memory, returning it as a map.
-;;;
-;;; This two-stage design avoids needing all the data in memory at once, where that's practical with the underlying
-;;; storage media (eg. files).
-;;;
-;;; Loading:
-;;; Loading tries to find corresponding entities in the destination appdb by entity ID or identity hash, and update
-;;; those rows rather than duplicating.
-;;; The entry point is [[metabase-enterprise.serialization.v2.load/load-metabase]]. The top-level process works like
-;;; this:
-;;; - `(ingest-list ingestable)` gets the `:serdes/meta` "path" for every exported entity in arbitrary order.
-;;;     - `(ingest-one meta-map opts)` is called on each first to ingest the value into memory, then
-;;;     - `(serdes-dependencies ingested)` to get a list of other paths that need to be loaded first.
-;;;         - The default is an empty list.
-;;;     - The idea of dependencies is eg. a database must be loaded before its tables, a table before its fields, a
-;;;       collection's ancestors before the collection itself.
-;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
-;;; - Having found an entity it can really load, check for any existing one:
-;;;     - `(load-find-local path)` returns the corresponding entity, or nil.
-;;; - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
-;;;       Toucan entity corresponding to the incoming map.
-;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
-;;;       It returns the primary key of the new or existing entity, which is necessary to resolve foreign keys between
-;;;       imported entities.
-;;;     - The table of "local" entities found by the prescan is updated to include newly loaded ones.
-;;;
-;;;
-;;; `load-one!` has a default implementation that works for most models:
-;;; - Call `(load-xform ingested)` to massage the map as needed.
-;;;     - This is the spot to override, for example to convert a foreign key from portable entity ID into a database ID.
-;;; - Then, call either:
-;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
-;;;     - `(load-insert! ingested)` if the entity is new.
-;;;   Both of these have the obvious defaults of [[jdbc/update!]] or [[jdbc/insert!]].
 (defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
@@ -566,13 +497,6 @@
     (db/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Storage                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; These storage multimethods take a second argument known as the context. This is a good place for a particular
-;;; storage implementation to include some precomputed information, or options.
-;;; In particular, it should include a table of collection IDs to path fragments that is precomputed by the host.
-;;; [[storage-base-context]] computes that, since many things go in a collections tree.
 (def ^:private max-label-length 100)
 
 (defn- truncate-label [s]
@@ -599,18 +523,7 @@
             [(lower-plural model) (storage-leaf-file-name id label)])))
 
 (defmulti storage-path
-  "Computes the complete storage path for a given entity.
-  `(storage-path entity ctx)`
-  Dispatches on the model name, eg. \"Dashboard\".
-
-  Returns a list of strings giving the path, with the final entry being the file name with no extension.
-
-  The default implementation works for entities which are:
-  - Part of the regular (not snippet) collections tree, per a :collection_id field; and
-  - Stored as `foos/1234abc_slug.extension` underneath their collection
-  eg. Cards, Dashboards, Timelines
-
-  The default logic is captured by [[storage-default-collection-path]] so it can be reused."
+  "Returns a seq of storage path components for a given entity. Dispatches on model name."
   {:arglists '([entity ctx])}
   (fn [entity _] (ingested-model entity)))
 
@@ -943,7 +856,6 @@
                                        (dissoc entity
                                                :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
                                                ::mb.viz/param-mapping-source :snippet-id))))))
-
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
