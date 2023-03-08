@@ -2,19 +2,19 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import EmptyState from "metabase/components/EmptyState";
+
+import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
+import { setActionForDashcard } from "metabase/dashboard/actions";
+
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
-
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
-import { setActionForDashcard } from "metabase/dashboard/actions";
-import EmptyState from "metabase/components/EmptyState";
 import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
-
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
