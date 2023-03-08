@@ -10,7 +10,8 @@
    [metabase.lib.schema.filter :as schema.filter]
    [metabase.lib.test-metadata :as meta]
    [metabase.mbql.util :as mbql.u])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal]))
+  #?(:cljs (:require-macros [com.gfredericks.test.chuck.clojure-test])))
 
 (deftest ^:parallel equals-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
@@ -65,14 +66,40 @@
   (gen/sample filter-expr-gen)
   nil)
 
+(def ^:private filter-creation-function
+  "Map filter clause types to the corresponding creation function.
+  To be extended whenever a new filter clause type is defined."
+  {:and              lib/and
+   :or               lib/or
+   :not              lib/not
+   :=                lib/=
+   :!=               lib/!=
+   :<                lib/<
+   :<=               lib/<=
+   :>                lib/>
+   :>=               lib/>=
+   :between          lib/between
+   :inside           lib/inside
+   :is-null          lib/is-null
+   :not-null         lib/not-null
+   :is-empty         lib/is-empty
+   :not-empty        lib/not-empty
+   :starts-with      lib/starts-with
+   :ends-with        lib/ends-with
+   :contains         lib/contains
+   :does-not-contain lib/does-not-contain
+   :time-interval    lib/time-interval
+   :segment          lib/segment
+   :case             lib/case})
+
 (deftest ^:parallel filter-creation
   (checking "filters can be created"
     [filter-expr filter-expr-gen]
     (let [[op _options & args] filter-expr
-          f (resolve (symbol (namespace ::lib/x) (name op)))]
+          f (filter-creation-function op)]
       (is (some? f))
       (when f
-        (is (fn? (deref f)))
+        (is (fn? f))
         (is (some? (apply f {:lib/metadata meta/metadata} -1 args)))))))
 
 (deftest ^:parallel filter-test
