@@ -27,7 +27,7 @@ function cleanOptions(options: ValueOptions, fieldType: FieldType) {
   return options;
 }
 
-function validateOptions(options: ValueOptions, fieldType: FieldType) {
+function getValidationError(options: ValueOptions, fieldType: FieldType) {
   if (fieldType === "number") {
     const isValid = options.every(option => !Number.isNaN(option));
     return isValid ? undefined : t`Invalid number format`;
@@ -64,7 +64,7 @@ export const OptionPopover = ({
   const handleSave = (closePopover: () => void) => {
     setError(null);
     const nextOptions = cleanOptions(textToOptions(text), fieldType);
-    const error = validateOptions(nextOptions, fieldType);
+    const error = getValidationError(nextOptions, fieldType);
     if (error) {
       setError(error);
     } else {
