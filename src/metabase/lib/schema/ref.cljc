@@ -14,6 +14,7 @@
   [:merge
    ::common/options
    [:map
+    ;; this schema is delaying the type check so that we are less dependant on the order namespaces are loaded
     [:base-type {:optional true} [:fn {:gen/gen (gen/elements (descendants :type/*))} #(isa? % :type/*)]]
     [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
 
