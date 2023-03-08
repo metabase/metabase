@@ -109,12 +109,10 @@
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))))
 
-(mt/mbql-query users {:limit 1})
-
 (deftest disable-implicit-actions-if-needed-test
-  (testing "when updating a model to include any clauses will disable implicit actions if exists\n"
-    (testing "happy paths\n"
-      (mt/with-actions-enabled
+  (mt/with-actions-enabled
+    (testing "when updating a model to include any clauses will disable implicit actions if exists\n"
+      (testing "happy paths\n"
         (let [query (mt/mbql-query users)]
           (doseq [query-change [{:limit       1}
                                 {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}

@@ -322,7 +322,7 @@
   meaning there are no clauses such as(filter, limit, breakout...)"
   [{dataset-query :dataset_query :as _card}]
   (and (= :query (:type dataset-query))
-       (every? #(nil? (get-in query [:query %])) [:expressions :filter :limit :breakout :aggregation :joins])))
+       (every? #(nil? (get-in dataset-query [:query %])) [:expressions :filter :limit :breakout :aggregation :joins])))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
@@ -367,7 +367,7 @@
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
       ;; Archive associated actions
-      (when (and (not (:dataset changes))
+      (when (and (false? (:dataset changes))
                  (:dataset old-card-info))
         (t2/update! 'Action {:model_id id} {:archived true}))
       ;; Make sure any native query template tags match the DB in the query.
