@@ -1,7 +1,9 @@
 (ns metabase.lib.core
+  "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
+  version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [remove replace =])
   (:require
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.dev :as lib.dev]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.order-by :as lib.order-by]
@@ -9,7 +11,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.shared.util.namespaces :as shared.ns]))
 
-(comment lib.field/keep-me
+(comment lib.dev/keep-me
          lib.filter/keep-me
          lib.join/keep-me
          lib.order-by/keep-me
@@ -17,8 +19,9 @@
          lib.temporal-bucket/keep-me)
 
 (shared.ns/import-fns
- [lib.field
-  field]
+ [lib.dev
+  field
+  query-for-table-name]
  [lib.filter
   =]
  [lib.join
@@ -30,7 +33,6 @@
   order-by-clause
   order-bys]
  [lib.query
-  metadata
   native-query
   query
   saved-question-query]

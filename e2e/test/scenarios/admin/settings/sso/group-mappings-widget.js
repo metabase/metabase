@@ -21,6 +21,8 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   cy.findByText(/remove all group members/i).click();
   cy.button("Remove mapping and members").click();
 
+  cy.wait(["@clearGroup", "@clearGroup"]);
+
   cy.visit("/admin/people/groups");
   cy.findByText("data").should("not.exist");
   cy.findByText("nosql").should("not.exist");
@@ -81,7 +83,15 @@ const addGroupsToMapping = (mappingName, groups) => {
       cy.findByText("Default").click();
     });
 
-  groups.forEach(group => cy.findByText(group).click());
+  groups.forEach(group => {
+    cy.findByText(group).click();
+
+    cy.findByText(group)
+      .closest(".List-section")
+      .within(() => {
+        cy.icon("check");
+      });
+  });
 };
 
 const checkThatGroupHasNoMembers = name => {

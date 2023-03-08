@@ -74,6 +74,9 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
       cy.intercept("GET", "/api/setting").as("getSettings");
       cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+      cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
+        "clearGroup",
+      );
     });
 
     it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
