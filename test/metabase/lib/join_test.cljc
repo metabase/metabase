@@ -22,8 +22,8 @@
                                                      {:lib/uuid string?}
                                                      [:field (meta/id :venues :category-id) {:lib/uuid string?}]
                                                      [:field (meta/id :categories :id) {:lib/uuid string?}]]}]}]}
-          (-> (lib/query meta/metadata "VENUES")
-              (lib/join (lib/query meta/metadata "CATEGORIES")
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
                         (lib/= (lib/field "VENUES" "CATEGORY_ID")
                                (lib/field "CATEGORIES" "ID")))
               (dissoc :lib/metadata)))))
@@ -44,18 +44,18 @@
                                                      {:lib/uuid string?}
                                                      [:field (meta/id :venues :category-id) {:lib/uuid string?}]
                                                      [:field (meta/id :categories :id) {:lib/uuid string?}]]}]}]}
-          (-> (lib/query meta/metadata "CATEGORIES")
-              (lib/join (lib/saved-question-query meta/saved-question)
+          (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+              (lib/join (lib/saved-question-query meta/metadata-provider meta/saved-question)
                         (lib/= (lib/field "VENUES" "CATEGORY_ID")
                                (lib/field "CATEGORIES" "ID")))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel join-condition-field-metadata-test
   (testing "Should be able to use raw Field metadatas in the join condition"
-    (let [q1                          (lib/query meta/metadata "CATEGORIES")
-          q2                          (lib/saved-question-query meta/saved-question)
-          venues-category-id-metadata (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
-          categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
+    (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+          q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+          venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+          categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
       (testing "lib/join-clause: return a function that can be resolved later"
         (let [f (lib/join-clause q2 (lib/= venues-category-id-metadata categories-id-metadata))]
           (is (fn? f))
