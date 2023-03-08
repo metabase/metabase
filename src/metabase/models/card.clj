@@ -176,6 +176,11 @@
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
 
+(defn- disable-implicit-action-if-needed
+  [{dataset-query :dataset_query :as _card}]
+  (when dataset-query
+    nil))
+
 (defn- maybe-normalize-query [card]
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
@@ -317,12 +322,28 @@
         (when-not (= parameters new-parameters)
           (db/update! model po-id {:parameters new-parameters}))))))
 
+(defn- model-supports-implicit-actions?
+  [{dataset-query :dataset_query :as _card}]
+  (let [query (:query dataset-query)]
+    (and (= :query (:type query))
+         (every? #(nil? (get query %)) [:expressions :filter :limit :breakout :aggregation :joins]))))
+
+(defn- disable-implicit-action-for-model
+  "Delete all implicit actions of a model if exists."
+  [model-id]
+  (t2/delete! 'Action :id [:in {:select [:action.id]
+                                :from [:action]
+                                :join [:implicit_action
+                                       [:= :action.id :implicit_action.action_id]]
+                                :where [:= :action.model_id model-id]}]))
+
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :dataset)
+                                  (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -344,6 +365,11 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; update a model
+      (when (and (:dataset_query changes)
+                 (:dataset old-card-info)
+                 (not (model-supports-implicit-actions? changes)))
+        (disable-implicit-action-for-model id))
       ;; Archive associated actions
       (when (and (not (:dataset changes))
                  (:dataset old-card-info))
@@ -359,6 +385,7 @@
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
+
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
