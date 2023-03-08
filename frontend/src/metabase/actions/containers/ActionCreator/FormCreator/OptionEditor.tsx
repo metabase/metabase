@@ -5,7 +5,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
-import type { FieldType } from "metabase-types/api";
+import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
   OptionEditorContainer,
@@ -14,20 +14,18 @@ import {
   TextArea,
 } from "./OptionEditor.styled";
 
-export type ValueOptions = (string | number)[];
-
-const optionsToText = (options: ValueOptions) => options.join("\n");
-const textToOptions = (text: string): ValueOptions =>
+const optionsToText = (options: FieldValueOptions) => options.join("\n");
+const textToOptions = (text: string): FieldValueOptions =>
   text.split("\n").map(option => option.trim());
 
-function cleanOptions(options: ValueOptions, fieldType: FieldType) {
+function cleanOptions(options: FieldValueOptions, fieldType: FieldType) {
   if (fieldType === "number") {
     return options.map(option => Number(option));
   }
   return options;
 }
 
-function getValidationError(options: ValueOptions, fieldType: FieldType) {
+function getValidationError(options: FieldValueOptions, fieldType: FieldType) {
   if (fieldType === "number") {
     const isValid = options.every(option => !Number.isNaN(option));
     return isValid ? undefined : t`Invalid number format`;
@@ -37,8 +35,8 @@ function getValidationError(options: ValueOptions, fieldType: FieldType) {
 
 export interface OptionEditorProps {
   fieldType: FieldType;
-  options: ValueOptions;
-  onChange: (options: ValueOptions) => void;
+  options: FieldValueOptions;
+  onChange: (options: FieldValueOptions) => void;
 }
 
 export const OptionPopover = ({

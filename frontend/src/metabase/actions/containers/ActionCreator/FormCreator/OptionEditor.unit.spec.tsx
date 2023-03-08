@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
-import type { FieldType } from "metabase-types/api";
-import { OptionPopover, OptionEditorProps, ValueOptions } from "./OptionEditor";
+import type { FieldType, FieldValueOptions } from "metabase-types/api";
+import { OptionPopover, OptionEditorProps } from "./OptionEditor";
 
 async function baseSetup({
   fieldType = "string",
@@ -15,7 +15,7 @@ async function baseSetup({
       <OptionPopover
         fieldType={fieldType}
         options={options}
-        onChange={(nextOptions: ValueOptions) => {
+        onChange={(nextOptions: FieldValueOptions) => {
           setOptions(nextOptions);
           onChange(nextOptions);
         }}
@@ -37,7 +37,7 @@ async function baseSetup({
 const DEFAULT_STRING_OPTIONS = ["foo", "bar"];
 const DEFAULT_NUMBER_OPTIONS = [-5, 0, 5];
 
-type TestCase = [FieldType, ValueOptions];
+type TestCase = [FieldType, FieldValueOptions];
 
 describe("OptionEditor", () => {
   describe.each<TestCase>([
