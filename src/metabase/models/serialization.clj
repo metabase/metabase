@@ -30,26 +30,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              :serdes/meta                                                      |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
-;;; about the serialized entity. The value is always a vector of maps that give a "path" to the entity. This is not a
-;;; filesystem path; rather it defines the nesting of some entities inside others.
-;;;
-;;; Most paths are a single layer:
-;;; `[{:model "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}]`
-;;; `:model` and `:id` are required; `:label` is optional.
-;;;
-;;; But for some entities, it can be deeper. For example Fields belong to Tables, which are in Schemas (which don't
-;;; really exist in appdb, but are reflected here for namespacing of table names), which are in Databases:
-;;; `[{:model "Database" :id "my_db"}
-;;;   {:model "Schema"   :id "PUBLIC"}
-;;;   {:model "Table"    :id "Users"}
-;;;   {:model "Field"    :id "email"}]`
-;;;
-;;; Many of the multimethods are keyed on the `:model` field of the leaf entry (the last).
-
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
 
@@ -62,14 +42,6 @@
 
 (defmethod entity-id :default [_ {:keys [entity_id]}]
   entity_id)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Identity Hashes                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; Generated entity_id values have lately been added to most exported models, but they only get populated on newly
-;;; created entities. Since we can't rely on entity_id being present, we need a content-based definition of identity for
-;;; all exported models.
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
@@ -112,45 +84,12 @@
   `(generate-path \"ModelName\" entity)`
 
   The path is a vector of maps, root first and this entity itself last. Each map looks like:
-  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`
-
-  Some entities stand alone, while some are naturally nested inside others. For example, fields belong in tables, which
-  belong in databases. Further, since these use eg. column names as entity IDs, they can collide if all the fields get
-  poured into one namespace (like a directory of YAML files).
-
-  Finally, it's often useful to delete the databases from an export, since the receiving end has its own different, but
-  compatible, database definitions. (For example, staging and prod instances of Metabase.) It's convenient for human
-  understanding and editing to group fields under tables under databases.
-
-  Therefore we provide an abstract path on the entities, which will generally be stored in a directory tree.
-  (This is not strictly required - for a different medium like protobufs the path might be encoded some other way.)
-
-  The path is reconstructed by ingestion and used as the key to read entities with `ingest-one`, and to match
-  against existing entities.
-
-  The default implementation is a single level, using the model name provided and the ID from either
-  [[entity-id]] or [[identity-hash]], and any `:name` field as the `:label`.
-  This default implementation is factored out as [[maybe-labeled]] for reuse.
-
-  Implementation notes:
-  - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
-    be reconstructed from the rest of the data.
-  - The primary key might still be attached, during extraction.
-  - `:label` is optional
-  - The logic to guess the leaf part of the path is in [[infer-self-path]], for use in overriding."
+  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`"
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
 (defn infer-self-path
-  "Implements the default logic from [[generate-path]] that guesses the `:id` of this entity. Factored out
-  so it can be called by implementors of [[generate-path]].
-
-  The guesses are:
-  - [[entity-id]]
-  - [[identity-hash]] after looking up the Toucan entity by primary key
-
-  Returns `{:model \"ModelName\" :id \"id-string\"}`; throws if the inference fails, since it indicates a programmer
-  error and not a runtime one."
+  "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
@@ -175,63 +114,6 @@
   ;; This default works for most models, but needs overriding for nested ones.
   (maybe-labeled model-name entity :name))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Serialization Process                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; Serialization happens in two stages: extraction and storage. These are independent and deliberately decoupled.
-;;; The result of extraction is a reducible stream of Clojure maps with `:serdes/meta` keys on them (see above).
-;;; In particular, extraction does not care about file formats or other such things.
-;;;
-;;; Storage takes the stream from extraction and actually stores it or sends it. Traditionally we have serialized to a
-;;; directory tree full of YAML files, and that's the only storage approach implemented here. But since the process is
-;;; decoupled, we or a user could write their own storage layer, using JSON or protocol buffers or any other format.
-;;;
-;;; Both extraction and storage are written as a set of multimethods, with defaults for the common path.
-;;; Note that extraction is controlled by a map of options and settings, detailed below.
-;;;
-;;; Extraction:
-;;; - Top-level serialization code [[metabase-enterprise.serialization.v2.extract/extract-metabase]] has a list of
-;;;   models to be exported.
-;;;     - A test enforces that all models are either exported, or explicitly excluded, so new ones can't be forgotten.
-;;; - It calls `(extract-all "ModelName" opts)` for each model.
-;;;     - The default for this calls `(extract-query "ModelName" opts)`, getting back a reducible stream of entities.
-;;;     - For each entity in that stream, it calls `(extract-one "ModelName" entity)`, which converts the map from the
-;;;       database to a portable map with `:serdes/meta` on it. Eg. no database IDs as foreign keys.
-;;; - The default [[extract-all]] should work for most models (overrride [[extract-query]] and [[extract-one]] instead),
-;;;   but it can be overridden if needed.
-;;;
-;;; The end result of extraction is a reducible stream of Clojure maps; this is passed to storage directly, along with
-;;; the map of options.
-;;;
-;;; Options currently supported by extraction:
-;;; - `:user 6` giving the primary key for a user whose personal collections should be extracted.
-;;;
-;;; Storage:
-;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
-;;; effects like writing to the disk or network, and return nothing.
-;;;
-;;; Not all storage solutions use directory structure, but for those that do, [[storage-path]] should give the path as
-;;; a list of strings: `["foo" "bar" "some_file"]`. Note the lack of a file extension on the last segment - that
-;;; is deliberately left off so that no filename surgery is required to support eg. both JSON and YAML output.
-;;;
-;;; By convention, models are named as plural and in lower case:
-;;; `["collections" "1234ABC_my_collection" "dashboards" "8765def_health_metrics"]`.
-;;;
-;;; As a final remark, note that some entities have their own directories and some do not. For example a Field is
-;;; simply a file, while a Table has a directory. So a Table's itself is
-;;; `["databases" "some-db" "schemas" "PUBLIC" "tables" "Customer" "Customer"]`
-;;; so that's a directory called `Customer` with a file called (for YAML output) `Customer.yaml` in it.
-;;;
-;;; Selective Serialization:
-;;; Sometimes we want to export a "subtree" instead of the complete appdb. At the simplest, we might serialize a single
-;;; question. Moving up, it might be a Dashboard and all its questions, or a Collection and all its content Cards and
-;;; Dashboards.
-;;; There's a relation to be captured here: the *descendants* of an entity are the ones it semantically "contains" (or
-;;; those it needs in order to be executed, such as when questions depend on each other, or NativeQuerySnippets are
-;;; referenced by a SQL question.
-;;;
-;;; (descendants entity) returns a set of such descendants for the given entity (in its exported form); see that
-;;; multimethod for more details.
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
