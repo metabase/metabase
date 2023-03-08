@@ -5,6 +5,8 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 
@@ -70,7 +72,9 @@ export function ActionDashcardSettings({
                 </ActionSettingsHeader>
                 <ExplainerText>
                   {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
-                  <BrandLinkWithLeftMargin to="https://www.metabase.com/docs/actions/custom">
+                  <BrandLinkWithLeftMargin
+                    href={MetabaseSettings.docsUrl("dashboards/actions")}
+                  >
                     {t`Learn more.`}
                   </BrandLinkWithLeftMargin>
                 </ExplainerText>
