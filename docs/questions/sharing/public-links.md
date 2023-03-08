@@ -58,7 +58,7 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 3. Copy the destination dashboard's public link.
 4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
 5. Set the custom destination to the destination dashboard's public link.
-6. Optional: pass a filter value from the main dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
+6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
   ```
   /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
   ```
