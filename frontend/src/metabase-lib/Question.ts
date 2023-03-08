@@ -34,8 +34,8 @@ import * as QUERY from "metabase-lib/queries/utils/query";
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  DashboardApi,
   CardApi,
+  DashboardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
@@ -490,8 +490,13 @@ class QuestionInner {
 
   canWriteActions(): boolean {
     const database = this.database();
-    const hasActionsEnabled = database != null && database.hasActionsEnabled();
-    return this.canWrite() && hasActionsEnabled;
+
+    return (
+      this.canWrite() &&
+      database != null &&
+      database.canWrite() &&
+      database.hasActionsEnabled()
+    );
   }
 
   supportsImplicitActions(): boolean {
