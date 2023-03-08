@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import * as Errors from "metabase/core/utils/errors";
+
 import type {
   ActionFormSettings,
   ActionFormOption,
@@ -17,7 +19,6 @@ import type {
 } from "metabase/actions/types";
 
 import { sortActionParams, isEditableField } from "metabase/actions/utils";
-import { isEmpty } from "metabase/lib/validate";
 
 const getOptionsFromArray = (
   options: (number | string)[],
@@ -96,21 +97,29 @@ export const getForm = (
   };
 };
 
-const getFieldValidationType = (fieldSettings: FieldSettings) => {
-  switch (fieldSettings.inputType) {
+const getFieldValidationType = ({
+  inputType,
+  defaultValue,
+}: FieldSettings): Yup.AnySchema => {
+  switch (inputType) {
     case "number":
-      return Yup.number();
+      return Yup.number()
+        .nullable()
+        .default(defaultValue != null ? Number(defaultValue) : null);
     case "boolean":
-      return Yup.boolean();
+      return Yup.boolean()
+        .nullable()
+        .default(defaultValue != null ? Boolean(defaultValue) : false);
     case "date":
     case "datetime":
     case "time":
-      // for dates, cast empty strings to null
-      return Yup.string().transform((value, originalValue) =>
-        originalValue?.length ? value : null,
-      );
+      return Yup.string()
+        .nullable()
+        .default(defaultValue != null ? String(defaultValue) : null);
     default:
-      return Yup.string();
+      return Yup.string()
+        .nullable()
+        .default(defaultValue != null ? String(defaultValue) : null);
   }
 };
 
@@ -118,24 +127,16 @@ export const getFormValidationSchema = (
   parameters: WritebackParameter[] | Parameter[],
   fieldSettings: FieldSettingsMap = {},
 ) => {
-  const requiredMessage = t`This field is required`;
-
   const schema = Object.values(fieldSettings)
     .filter(fieldSetting =>
       // only validate fields that are present in the form
       parameters.find(parameter => parameter.id === fieldSetting.id),
     )
     .map(fieldSetting => {
-      let yupType: Yup.AnySchema = getFieldValidationType(fieldSetting);
+      let yupType = getFieldValidationType(fieldSetting);
 
       if (fieldSetting.required) {
-        yupType = yupType.required(requiredMessage);
-      } else {
-        yupType = yupType.nullable();
-      }
-
-      if (!isEmpty(fieldSetting.defaultValue)) {
-        yupType = yupType.default(fieldSetting.defaultValue);
+        yupType = yupType.required(Errors.required);
       }
 
       return [fieldSetting.id, yupType];
