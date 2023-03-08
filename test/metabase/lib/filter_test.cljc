@@ -1,13 +1,12 @@
 (ns metabase.lib.filter-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is]]
    [clojure.test.check.generators :as gen]
    [clojure.walk :as walk]
    [com.gfredericks.test.chuck.clojure-test :as chuck.test :refer [checking]]
    [malli.core :as mc]
    [malli.generator :as mg]
    [metabase.lib.core :as lib]
-   [metabase.lib.dev :as lib.dev]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.filter :as schema.filter]
    [metabase.lib.test-metadata :as meta]
