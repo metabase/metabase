@@ -9,6 +9,7 @@ import type {
   InputComponentType,
   Parameter,
   WritebackParameter,
+  FieldType,
 } from "metabase-types/api";
 import type {
   ActionFormProps,
@@ -41,6 +42,12 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   radio: "radio",
 };
 
+function getSampleOptions(fieldType: FieldType) {
+  return fieldType === "number"
+    ? getOptionsFromArray([1, 2, 3])
+    : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
+}
+
 export const getFormField = (
   parameter: Parameter,
   fieldSettings: FieldSettings,
@@ -70,7 +77,7 @@ export const getFormField = (
   if (inputTypeHasOptions(fieldSettings.inputType)) {
     fieldProps.options = fieldSettings.valueOptions?.length
       ? getOptionsFromArray(fieldSettings.valueOptions)
-      : [];
+      : getSampleOptions(fieldSettings.fieldType);
   }
 
   return fieldProps;
