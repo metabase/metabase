@@ -27,7 +27,6 @@ const PopulatedDataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
-  requireWriteback: PropTypes.bool,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -35,7 +34,6 @@ const DatabaseSelectorPropTypes = {
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
-  requireWriteback: PropTypes.bool,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -97,7 +95,6 @@ const PopulatedDataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
-  requireWriteback = false,
 }) => {
   const dataSourceSelectors = [];
 
@@ -114,7 +111,6 @@ const PopulatedDataSourceSelectors = ({
         key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
-        requireWriteback={requireWriteback}
       />,
     );
   } else if (database) {
@@ -144,13 +140,7 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
-const DatabaseSelector = ({
-  database,
-  databases,
-  readOnly,
-  setDatabaseId,
-  requireWriteback = false,
-}) => (
+const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
   <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
     <DatabaseDataSelector
       databases={databases}
@@ -158,7 +148,6 @@ const DatabaseSelector = ({
       setDatabaseFn={setDatabaseId}
       isInitiallyOpen={database == null}
       readOnly={readOnly}
-      requireWriteback={requireWriteback}
     />
   </div>
 );
