@@ -1005,5 +1005,8 @@ function getIframeBody(selector = "iframe") {
 }
 
 function openColumnSettings(columnName) {
-  sidebar().findByText(columnName).siblings(".Icon-ellipsis").click();
+  sidebar()
+    .findByText(columnName)
+    .siblings("[data-testid$=settings-button]")
+    .click();
 }
