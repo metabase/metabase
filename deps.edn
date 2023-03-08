@@ -389,6 +389,8 @@
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
+               ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
+               ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
                :exclude-namespaces [metabase.analytics.snowplow]}}
 
   ;; clojure -T:whitespace-linter
