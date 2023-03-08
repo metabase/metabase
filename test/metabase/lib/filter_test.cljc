@@ -19,7 +19,7 @@
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")]
     (testing "without query/stage-number, return a function for later resolution"
-      (let [f (lib/= venues-category-id-metadata categories-id-metadata)]
+      (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
         (is (=? [:=
                  {:lib/uuid uuid?}
@@ -43,10 +43,10 @@
                                              [(:name table) (map :name (:fields table))]))
               field (gen/elements fields)]
       (-> (lib/query meta/metadata table)
-          (lib.metadata/field-metadata table field)))
+          (lib.metadata/field table field)))
     (gen/let [field (gen/elements (map :name (:columns meta/results-metadata)))]
       (-> (lib/saved-question-query meta/saved-question)
-          (lib.metadata/field-metadata field)))))
+          (lib.metadata/field field)))))
 
 (def ^:private filter-expr-gen
   (gen/let [filter-shape (gen/such-that #(-> % first (= :field) not)
@@ -105,8 +105,8 @@
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata "CATEGORIES")
         q2                          (lib/saved-question-query meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field-metadata q1 "VENUES" "CATEGORY_ID")
-        categories-id-metadata      (lib.metadata/field-metadata q2 "ID")]
+        venues-category-id-metadata (lib.metadata/field q1 "VENUES" "CATEGORY_ID")
+        categories-id-metadata      (lib.metadata/field q2 "ID")]
     (testing "without query/stage-number, return a function for later resolution"
       (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
