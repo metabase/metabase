@@ -120,8 +120,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": ORDERS.id,
           filter: [
             operator,
@@ -129,7 +129,7 @@ describe("QuickFilterDrill", () => {
             DEFAULT_NUMERIC_CELL_VALUE,
           ],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -150,12 +150,12 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, joinedFieldRef, cellValue],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -182,8 +182,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-query": AGGREGATED_QUERY,
           filter: [
             operator,
@@ -191,7 +191,7 @@ describe("QuickFilterDrill", () => {
             cellValue,
           ],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -222,12 +222,12 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
           filter: [operator, fieldRef, cellValue],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -249,12 +249,12 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, ORDERS.CREATED_AT.reference(), CELL_VALUE],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -277,12 +277,12 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.NAME.reference(), CELL_VALUE],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });
@@ -303,12 +303,12 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const operator = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.ZIP.reference(), cellValue],
         });
-        expect(card.display).toBe("table");
+        expect(question.display()).toBe("table");
       });
     });
   });

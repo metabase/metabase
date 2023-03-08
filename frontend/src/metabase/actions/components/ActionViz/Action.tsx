@@ -84,13 +84,13 @@ export function ActionComponent({
 
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) => {
+      const action = dashcard.action;
+      const fieldSettings =
+        action?.visualization_settings?.fields ||
+        generateFieldSettingsFromParameters(action?.parameters ?? []);
+
       const params = {
-        ...setNumericValues(
-          dashcardParamValues,
-          generateFieldSettingsFromParameters(
-            dashcard?.action?.parameters ?? [],
-          ),
-        ),
+        ...setNumericValues(dashcardParamValues, fieldSettings),
         ...parameterMap,
       };
 

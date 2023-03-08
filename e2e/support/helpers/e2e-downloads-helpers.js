@@ -12,11 +12,25 @@ const xlsx = require("xlsx");
  * @param {function} callback
  */
 export function downloadAndAssert(
-  { fileType, questionId, raw, logResults, publicUid } = {},
+  {
+    fileType,
+    questionId,
+    raw,
+    logResults,
+    publicUid,
+    dashcardId,
+    dashboardId,
+  } = {},
   callback,
 ) {
   const downloadClassName = `.Icon-${fileType}`;
-  const endpoint = getEndpoint(fileType, questionId, publicUid);
+  const endpoint = getEndpoint(
+    fileType,
+    questionId,
+    publicUid,
+    dashcardId,
+    dashboardId,
+  );
   const isPublicDownload = !!publicUid;
   const method = isPublicDownload ? "GET" : "POST";
 
@@ -78,7 +92,11 @@ export function assertSheetRowsCount(expectedCount) {
   };
 }
 
-function getEndpoint(fileType, questionId, publicUid) {
+function getEndpoint(fileType, questionId, publicUid, dashcardId, dashboardId) {
+  if (dashcardId != null && dashboardId != null) {
+    return `api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${questionId}/query/${fileType}`;
+  }
+
   if (publicUid) {
     return `/public/question/${publicUid}.${fileType}**`;
   }

@@ -6,7 +6,9 @@ import { waitFor } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
+  createMockActionDashboardCard,
   createMockActionParameter,
+  createMockFieldSettings,
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
@@ -173,6 +175,61 @@ describe("Actions > ActionViz > ActionComponent", () => {
       expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("should format dashboard filter values for numeric parameters", async () => {
+      const parameter = createMockActionParameter({
+        id: "parameter_1",
+        name: "parameter_1",
+        type: "number/=",
+        target: ["variable", ["template-tag", "1"]],
+      });
+
+      const action = createMockQueryAction({
+        name: "My Awesome Action",
+        database_id: 2,
+        parameters: [parameter],
+        visualization_settings: {
+          fields: {
+            [parameter.id]: createMockFieldSettings({
+              fieldType: "number",
+              inputType: "number",
+            }),
+          },
+        },
+      });
+
+      setupExecutionEndpoint();
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          id: 456,
+          dashboard_id: 123,
+          card_id: 777, // action model id
+          action,
+          card: defaultProps.dashcard.card,
+          parameter_mappings: [
+            {
+              parameter_id: "dash-param-1",
+              target: ["variable", ["template-tag", "1"]],
+            },
+          ],
+        }),
+        parameterValues: { "dash-param-1": "44" },
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Click me" }));
+
+      await waitFor(async () => {
+        const call = fetchMock.lastCall(
+          "path:/api/dashboard/123/dashcard/456/execute",
+        );
+        expect(await call?.request?.json()).toEqual({
+          modelId: 777,
+          parameters: {
+            parameter_1: 44,
+          },
+        });
+      });
     });
   });
 

@@ -56,19 +56,19 @@
   (fn [mbql-clause-or-map _new-options]
     (lib.dispatch/dispatch-value mbql-clause-or-map)))
 
-(defn- default-mbql-clause-with-options [x options]
+(defn- default-mbql-clause-with-options [x new-options]
   (if (map? (second x))
-    (assoc (vec x) 1 options)
-    (into [(first x) options] (rest x))))
+    (assoc (vec x) 1 new-options)
+    (into [(first x) new-options] (rest x))))
 
 (defmethod with-options :default
-  [x options]
+  [x new-options]
   (cond
     (mbql-clause? x)
-    (default-mbql-clause-with-options x options)
+    (default-mbql-clause-with-options x new-options)
 
     (and (map? x) (:lib/type x))
-    (assoc x :lib/options options)
+    (assoc x :lib/options new-options)
 
     :else
     (throw (ex-info (i18n/tru "Don''t know how to set options for {0}" (pr-str x))
@@ -87,6 +87,7 @@
   "Check that `mbql-clause-or-map` has a `:lib/uuid` in its [[options]]; generate a UUID and add it if it does not
   already have one."
   [mbql-clause-or-map]
-  (update-options mbql-clause-or-map (fn [options]
-                                       (cond-> options
-                                         (not (:lib/uuid options)) (assoc :lib/uuid (str (random-uuid)))))))
+  (update-options mbql-clause-or-map (fn [options-map]
+                                       (cond-> options-map
+                                         (not (:lib/uuid options-map))
+                                         (assoc :lib/uuid (str (random-uuid)))))))

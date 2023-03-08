@@ -4,15 +4,17 @@
    [metabase.models
     :refer [Card
             Collection
-            Database
             Dashboard
             DashboardCard
+            Database
             Pulse
             PulseCard
             PulseChannel
             PulseChannelRecipient
             Table
             User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings :as public-settings]
    [metabase.pulse]
@@ -41,7 +43,8 @@
                                            :position 0}
                                           pulse-card)]
                   DashboardCard [_ (merge {:dashboard_id (u/the-id dashboard)
-                                           :card_id (u/the-id card)}
+                                           :row          0
+                                           :card_id      (u/the-id card)}
                                           dashcard)]
                   PulseChannel  [{pc-id :id} (case channel
                                                :email
@@ -176,25 +179,25 @@
                                          :description   "Linked Dashboard desc"
                                          :collection_id coll-id}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    0
+                                         :row                    1
                                          :visualization_settings (link-card-viz-setting "collection" coll-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    1
+                                         :row                    2
                                          :visualization_settings (link-card-viz-setting "database" db-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    2
+                                         :row                    3
                                          :visualization_settings (link-card-viz-setting "table" table-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    3
+                                         :row                    4
                                          :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    4
+                                         :row                    5
                                          :visualization_settings (link-card-viz-setting "card" card-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    5
+                                         :row                    6
                                          :visualization_settings (link-card-viz-setting "dataset" model-id)}
        DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    6
+                                         :row                    7
                                          :visualization_settings {:virtual_card {:display "link"}
                                                                   :link         {:url "https://metabase.com"}}}]
       (thunk {:collection-owner-id rasta-id
@@ -628,18 +631,40 @@
       (is (= [{:text "Doohickey and Gizmo"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
+(deftest no-native-perms-test
+  (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
+           query permissions (#28947)"
+    (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
+          original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
+      (try
+        (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
+                        Card      [{card-id :id} {:name          "Products (SQL)"
+                                                  :dataset_query (mt/native-query
+                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
+                        DashboardCard [_ {:dashboard_id dashboard-id
+                                          :card_id      card-id}]]
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                     first :result :data :rows))))
+        (finally
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
+
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
     (t2.with-temp/with-temp
       [Dashboard     {dashboard-id :id
                       :as dashboard}   {:name "Dashboard"}
        DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:text "Markdown"}}
+                                        :visualization_settings {:text "Markdown"}
+                                        :row                    1}
        DashboardCard _                 {:dashboard_id           dashboard-id
                                         :visualization_settings {:virtual_card {:display "link"}
-                                                                 :link         {:url "https://metabase.com"}}}
+                                                                 :link         {:url "https://metabase.com"}}
+                                        :row                    2}
        DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:virtual_card {:display "action"}}}]
+                                        :visualization_settings {:virtual_card {:display "action"}}
+                                        :row                    3}]
       (is (= [{:text "Markdown"}
               {:text "### [https://metabase.com](https://metabase.com)"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
