@@ -41,3 +41,13 @@ export function setupActionsEndpoints(
 
   actions.forEach(action => setupActionEndpoints(action));
 }
+
+export function setupActionListEndpoint(actions: WritebackAction[]) {
+  fetchMock.get(
+    {
+      url: "path:/api/action",
+      overwriteRoutes: false,
+    },
+    actions,
+  );
+}
