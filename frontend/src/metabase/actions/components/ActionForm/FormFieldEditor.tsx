@@ -43,21 +43,28 @@ function FormFieldEditor({
   const inputTypeOptions = useMemo(getInputTypes, []);
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
-    // When field type changes, we automatically set the first available input type
-    const [nextInputType] = inputTypeOptions[nextFieldType];
+    const currentInputType = fieldSettings.inputType;
+    const inputTypesForNextFieldType = inputTypeOptions[nextFieldType].map(
+      option => option.value,
+    );
+
+    // Allows to preserve dropdown/radio input types across number/string/category field types
+    const nextInputType = inputTypesForNextFieldType.includes(currentInputType)
+      ? currentInputType
+      : inputTypesForNextFieldType[0];
 
     const shouldResetOptions =
       nextFieldType !== fieldSettings.fieldType ||
-      !inputTypeHasOptions(nextInputType.value);
+      !inputTypeHasOptions(nextInputType);
 
-    const defaultValueOptions = inputTypeHasOptions(nextInputType.value)
+    const defaultValueOptions = inputTypeHasOptions(nextInputType)
       ? []
       : undefined;
 
     onChange({
       ...fieldSettings,
       fieldType: nextFieldType,
-      inputType: nextInputType.value,
+      inputType: nextInputType,
       valueOptions: shouldResetOptions
         ? defaultValueOptions
         : fieldSettings.valueOptions,

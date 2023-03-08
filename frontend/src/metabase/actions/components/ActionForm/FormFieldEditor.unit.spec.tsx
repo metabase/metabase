@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import {
   render,
@@ -21,20 +21,31 @@ const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
 
 function setup({
   field = DEFAULT_FIELD,
-  fieldSettings = getDefaultFieldSettings(),
+  fieldSettings: initialFieldSettings = getDefaultFieldSettings(),
   isEditable = true,
   onChange = jest.fn(),
 }: Partial<FormFieldEditorProps> = {}) {
-  render(
-    <FormProvider initialValues={{}} onSubmit={jest.fn()}>
+  function WrappedFormFieldEditor() {
+    const [fieldSettings, setFieldSettings] = useState(initialFieldSettings);
+    return (
       <FormFieldEditor
         field={field}
         fieldSettings={fieldSettings}
         isEditable={isEditable}
-        onChange={onChange}
+        onChange={nextFieldSettings => {
+          onChange(nextFieldSettings);
+          setFieldSettings(nextFieldSettings);
+        }}
       />
+    );
+  }
+
+  render(
+    <FormProvider initialValues={{}} onSubmit={jest.fn()}>
+      <WrappedFormFieldEditor />
     </FormProvider>,
   );
+
   return { onChange };
 }
 
@@ -121,8 +132,8 @@ describe("FormFieldEditor", () => {
       expect(onChange).toHaveBeenLastCalledWith({
         ...initialSettings,
         fieldType: "string",
-        inputType: "string",
-        valueOptions: undefined,
+        inputType: "radio",
+        valueOptions: [],
       }),
     );
   });
