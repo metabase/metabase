@@ -39,12 +39,12 @@ function FormFieldEditor({
   isEditable,
   onChange,
 }: FormFieldEditorProps) {
-  const fieldTypes = useMemo(getFieldTypes, []);
-  const inputTypes = useMemo(getInputTypes, []);
+  const fieldTypeOptions = useMemo(getFieldTypes, []);
+  const inputTypeOptions = useMemo(getInputTypes, []);
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
     // When field type changes, we automatically set the first available input type
-    const [nextInputType] = inputTypes[nextFieldType];
+    const [nextInputType] = inputTypeOptions[nextFieldType];
 
     const shouldResetOptions =
       nextFieldType !== fieldSettings.fieldType ||
@@ -83,7 +83,7 @@ function FormFieldEditor({
               <Subtitle>{t`Field type`}</Subtitle>
               <Radio
                 value={fieldSettings.fieldType}
-                options={fieldTypes}
+                options={fieldTypeOptions}
                 aria-label={t`Field type`}
                 variant="bubble"
                 onChange={handleChangeFieldType}
