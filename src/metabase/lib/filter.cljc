@@ -67,10 +67,3 @@
 (metabase.lib.filter/deffilter time-interval [x amount unit])
 (metabase.lib.filter/deffilter segment [segment-id])
 (metabase.lib.filter/deffilter case [& pred-exprs])
-
-;; TODO move to the dev namespace
-(mu/defn ->= :- fn?
-  "Return function creating an `=` filter clause."
-  ([x y]
-   (fn [query stage-number]
-     (= query stage-number x y))))

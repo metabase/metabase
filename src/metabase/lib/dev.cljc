@@ -3,6 +3,7 @@
   in QB code."
   (:require
    [metabase.lib.field :as lib.field]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -47,3 +48,9 @@
     table-name                 :- ::lib.schema.common/non-blank-string]
    (let [table-metadata (lib.metadata/table database-metadata-provider schema-name table-name)]
      (lib.query/query database-metadata-provider table-metadata))))
+
+(mu/defn ->= :- fn?
+  "Return function creating an `=` filter clause."
+  [x y]
+  (fn [query stage-number]
+    (lib.filter/= query stage-number x y)))

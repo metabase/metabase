@@ -6,6 +6,7 @@
    [com.gfredericks.test.chuck.clojure-test :as chuck.test :refer [checking]]
    [malli.generator :as mg]
    [metabase.lib.core :as lib]
+   [metabase.lib.dev :as lib.dev]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.filter :as schema.filter]
    [metabase.lib.test-metadata :as meta]
@@ -86,7 +87,7 @@
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")]
     (testing "without query/stage-number, return a function for later resolution"
-      (let [f (lib/->= venues-category-id-metadata categories-id-metadata)]
+      (let [f (lib.dev/->= venues-category-id-metadata categories-id-metadata)]
         (is (fn? f))
         (is (=? [:=
                  {:lib/uuid uuid?}

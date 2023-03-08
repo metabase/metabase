@@ -37,8 +37,7 @@
   contains does-not-contain
   time-interval
   segment
-  case
-  ->=]
+  case]
  [lib.join
   join
   join-clause
