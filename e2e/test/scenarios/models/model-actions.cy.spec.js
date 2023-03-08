@@ -5,6 +5,8 @@ import {
   restore,
   fillActionQuery,
   createAction,
+  navigationSidebar,
+  openNavigationSidebar,
 } from "e2e/support/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -83,7 +85,7 @@ describe(
       cy.intercept("PUT", "/api/action/*").as("updateAction");
     });
 
-    it("should allow to view, create, edit, and archive model actions", () => {
+    it("should allow CRUD operations on model actions", () => {
       cy.get("@modelId").then(id => {
         cy.visit(`/model/${id}/detail`);
         cy.wait("@getModel");
@@ -145,6 +147,24 @@ describe(
       cy.findByText("Create").should("not.exist");
       cy.findByText("Update").should("not.exist");
       cy.findByText("Delete").should("not.exist");
+
+      openNavigationSidebar();
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
+      popover().findByText("View archive").click();
+
+      getArchiveListItem("Delete Order").within(() => {
+        cy.icon("unarchive").click({ force: true });
+      });
+      cy.findByText("Delete Order").should("not.exist");
+      cy.findByRole("button", { name: "Undo" }).click();
+      cy.findByText("Delete Order").should("be.visible");
+      getArchiveListItem("Delete Order").within(() => {
+        cy.icon("trash").click({ force: true });
+      });
+      cy.findByTestId("Delete Order").should("not.exist");
+      cy.findByRole("button", { name: "Undo" }).should("not.exist");
     });
 
     it("should allow to create an action with the New button", () => {
@@ -367,4 +387,8 @@ function disableSharingFor(actionName) {
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
+}
+
+function getArchiveListItem(itemName) {
+  return cy.findByTestId(`archive-item-${itemName}`);
 }

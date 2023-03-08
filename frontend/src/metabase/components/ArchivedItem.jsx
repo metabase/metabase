@@ -24,7 +24,10 @@ const ArchivedItem = ({
   onToggleSelected,
   showSelect,
 }) => (
-  <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover">
+  <div
+    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+    data-testid={`archive-item-${name}`}
+  >
     <Swapper
       defaultElement={
         <ItemIconContainer>
