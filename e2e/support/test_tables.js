@@ -126,3 +126,25 @@ export const composite_pk_table = async dbClient => {
 
   return null;
 }
+
+export const no_pk_table = async dbClient => {
+  const tableName = "no_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.string("name");
+    table.integer("score");
+  });
+
+  await dbClient(tableName).insert([
+    { name: "Duck", score: 10 },
+    { name: "Horse", score: 20 },
+    { name: "Cow", score: 30 },
+    { name: "Pig", score: 40 },
+    { name: "Chicken", score: 50 },
+    { name: "Rabbit", score: 60 },
+  ]);
+
+  return null;
+}

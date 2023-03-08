@@ -275,7 +275,7 @@ function changeSorting(columnName, direction) {
 }
 
 ['postgres', 'mysql'].forEach(dialect => {
-  describe.only(`Object Detail > composite keys (${dialect})`, { tags: ['@external'] }, () => {
+  describe(`Object Detail > composite keys (${dialect})`, { tags: ['@external'] }, () => {
     const TEST_TABLE = "composite_pk_table";
 
     beforeEach(() => {
@@ -286,7 +286,7 @@ function changeSorting(columnName, direction) {
       cy.wait(300)
     });
 
-    it('can show object detail modal for composite keys', () => {
+    it('can show object detail modal for items with composite keys', () => {
       getTableId({ name: TEST_TABLE }).then(tableId => {
         cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
       });
@@ -295,7 +295,38 @@ function changeSorting(columnName, direction) {
 
       cy.findByRole('dialog').within(() => {
         cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
       });
+
+
+    });
+  });
+
+  describe(`Object Detail > no primary keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "no_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase(WRITABLE_DB_ID);
+      cy.wait(300);
+    });
+
+    it('can show object detail modal for items with no primary key', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
+      });
+
     });
   });
 });
