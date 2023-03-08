@@ -35,6 +35,7 @@ import {
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
+  UNDO_REMOVE_CARD_FROM_DASH,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -214,6 +215,10 @@ const dashcards = handleActions(
     [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
       ...state,
       [dashcardId]: { ...state[dashcardId], isRemoved: true },
+    }),
+    [UNDO_REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
+      ...state,
+      [dashcardId]: { ...state[dashcardId], isRemoved: false },
     }),
     [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
       ...state,
