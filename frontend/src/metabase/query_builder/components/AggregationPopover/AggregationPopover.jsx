@@ -9,8 +9,8 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import ExpressionWidget from "../expressions/ExpressionWidget";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
-import ExpressionPopover from "../ExpressionPopover";
 
 import {
   ExpressionPopoverRoot,
@@ -329,30 +329,26 @@ export default class AggregationPopover extends Component {
     if (editingAggregation) {
       return (
         <ExpressionPopoverRoot>
-          <ExpressionPopover
-            title={CUSTOM_SECTION_NAME}
+          <ExpressionWidget
+            name={AGGREGATION.getName(this.state.aggregation)}
             query={query}
             expression={aggregation}
             startRule="aggregation"
-            onChange={parsedExpression =>
-              this.setState({
-                aggregation: AGGREGATION.setContent(
-                  this.state.aggregation,
-                  parsedExpression,
-                ),
-                error: null,
-              })
-            }
-            onBack={this.onClearAggregation}
-            onDone={() => this.commitAggregation(this.state.aggregation)}
-            name={AGGREGATION.getName(this.state.aggregation)}
-            onChangeName={name =>
-              this.setState({
-                aggregation: name
-                  ? AGGREGATION.setName(aggregation, name)
-                  : aggregation,
-              })
-            }
+            withName
+            title={CUSTOM_SECTION_NAME}
+            onChangeExpression={(name, expression) => {
+              let newAggregation = AGGREGATION.setContent(
+                this.state.aggregation,
+                expression,
+              );
+              newAggregation = name
+                ? AGGREGATION.setName(newAggregation, name)
+                : aggregation;
+
+              this.commitAggregation(newAggregation);
+            }}
+            onClose={this.onClearAggregation}
+            reportTimezone={"UTC"} // TODO: Add reportTimezone
           />
         </ExpressionPopoverRoot>
       );

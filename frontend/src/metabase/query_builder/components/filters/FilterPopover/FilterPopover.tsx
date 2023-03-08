@@ -6,8 +6,9 @@ import { usePrevious } from "react-use";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { Expression } from "metabase-types/types/Query";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -146,17 +147,22 @@ export default function FilterPopover({
     onResize?.();
   };
 
+  const handleExpressionChange = (name: string, expression: Expression) => {
+    if (Array.isArray(expression)) {
+      handleUpdateAndCommit(expression);
+    }
+  };
+
   if (editingFilter) {
     return (
-      <ExpressionPopover
-        title={CUSTOM_SECTION_NAME}
+      <ExpressionWidget
         query={query}
-        expression={filter ? filter.raw() : null}
+        expression={filter?.raw() as Expression}
+        reportTimezone={"UTC"} // TODO: Add reportTimezone
         startRule="boolean"
-        isValid={filter && filter.isValid()}
-        onChange={handleFilterChange}
-        onDone={handleUpdateAndCommit}
-        onBack={() => setEditingFilter(false)}
+        title={CUSTOM_SECTION_NAME}
+        onChangeExpression={handleExpressionChange}
+        onClose={() => setEditingFilter(false)}
       />
     );
   }
@@ -245,8 +251,6 @@ export default function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
             ml="auto"
             onClick={() => handleCommit()}
           >

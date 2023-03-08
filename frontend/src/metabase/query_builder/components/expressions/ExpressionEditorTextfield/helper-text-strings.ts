@@ -25,6 +25,9 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   }
 };
 
+const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
+  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+
 const helperTextStrings: HelpTextConfig[] = [
   {
     name: "count",
@@ -948,6 +951,3 @@ const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
 
   return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
 };
-
-const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
-  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");

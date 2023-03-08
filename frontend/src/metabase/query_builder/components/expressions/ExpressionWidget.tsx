@@ -6,8 +6,10 @@ import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/types/Query";
+import Icon from "metabase/components/Icon";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
@@ -29,7 +31,11 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
 export interface ExpressionWidgetProps {
   query: StructuredQuery;
   expression: Expression | undefined;
-  name: string | undefined;
+  name?: string;
+  withName?: boolean;
+  startRule?: string;
+
+  title?: string;
 
   reportTimezone: string;
 
@@ -43,6 +49,9 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     query,
     name: initialName,
     expression: initialExpression,
+    withName = false,
+    startRule,
+    title,
     reportTimezone,
     onChangeExpression,
     onRemoveExpression,
@@ -57,7 +66,8 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const helpTextTargetRef = useRef(null);
 
-  const isValid = !!name && !error && isExpression(expression);
+  const isValid =
+    (withName ? !!name : true) && !error && isExpression(expression);
 
   const handleCommit = () => {
     if (isValid && isNotNull(expression)) {
@@ -68,6 +78,13 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   return (
     <Container>
+      {/* TODO: refactor to styled */}
+      <div className="text-medium p1 py2 border-bottom flex align-center">
+        <a className="cursor-pointer flex align-center" onClick={onClose}>
+          <Icon name="chevronleft" size={18} />
+          <h3 className="inline-block pl1">{title}</h3>
+        </a>
+      </div>
       <ExpressionFieldWrapper>
         <FieldTitle>
           {t`Expression`}
@@ -90,6 +107,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
             expression={expression}
+            startRule={startRule}
             name={name}
             query={query}
             reportTimezone={reportTimezone}
@@ -101,21 +119,23 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           />
         </div>
       </ExpressionFieldWrapper>
-      <FieldWrapper>
-        <FieldTitle>{t`Name`}</FieldTitle>
-        <Input
-          type="text"
-          value={name}
-          placeholder={t`Something nice and descriptive`}
-          fullWidth
-          onChange={event => setName(event.target.value)}
-          onKeyPress={e => {
-            if (e.key === "Enter") {
-              handleCommit();
-            }
-          }}
-        />
-      </FieldWrapper>
+      {withName && (
+        <FieldWrapper>
+          <FieldTitle>{t`Name`}</FieldTitle>
+          <Input
+            type="text"
+            value={name}
+            placeholder={t`Something nice and descriptive`}
+            fullWidth
+            onChange={event => setName(event.target.value)}
+            onKeyPress={e => {
+              if (e.key === "Enter") {
+                handleCommit();
+              }
+            }}
+          />
+        </FieldWrapper>
+      )}
 
       <Divider />
       <Footer>
