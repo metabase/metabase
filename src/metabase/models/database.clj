@@ -343,12 +343,3 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(serdes/register-ingestion-path!
-  "Database"
-  ;; ["databases" "my-db" "my-db"]
-  (fn [[a b c :as path]]
-    (when (and (= (count path) 3)
-               (= a "databases")
-               (= b c))
-      [{:model "Database" :id c}])))

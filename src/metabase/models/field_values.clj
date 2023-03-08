@@ -495,23 +495,3 @@
         table-prefix (serdes/storage-table-path-prefix (drop-last 2 hierarchy))]
     (concat table-prefix
             ["fields" (str (:id field) field-values-slug)])))
-
-(serdes/register-ingestion-path!
-  "FieldValues"
-  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
-  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]
-  (fn [path]
-    (when-let [{db     "databases"
-                schema "schemas"
-                table  "tables"
-                field  "fields"}   (and (#{6 8} (count path))
-                                        (str/ends-with? (last path) field-values-slug)
-                                        (serdes/ingestion-matcher-pairs
-                                          path [["databases" "schemas" "tables" "fields"]
-                                                ["databases" "tables" "fields"]]))]
-      (filterv identity [{:model "Database" :id db}
-                         (when schema {:model "Schema" :id schema})
-                         {:model "Table" :id table}
-                         {:model "Field" :id (subs field 0 (- (count field) (count field-values-slug)))}
-                         ;; FieldValues is always just ID 0, since there's at most one as part of the field.
-                         {:model "FieldValues" :id "0"}]))))

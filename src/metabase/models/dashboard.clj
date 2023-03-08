@@ -506,5 +506,3 @@
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
-
-(serdes/register-ingestion-path! "Dashboard" (serdes/ingestion-matcher-collected "collections" "Dashboard"))

@@ -249,19 +249,3 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))
           [(:name table)]))
-
-(serdes/register-ingestion-path!
-  "Table"
-  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "customers"]
-  ;; ["databases" "my-db" "tables" "customers" "customers"]
-  ;; Note that the last 2 must match, they're the table's directory and its file.
-  (fn [path]
-    (when-let [{db     "databases"
-                schema "schemas"
-                table  "tables"}   (and (#{5 7} (count path))
-                                        (apply = (take-last 2 path))
-                                        (serdes/ingestion-matcher-pairs path [["databases" "schemas" "tables"]
-                                                                                   ["databases" "tables"]]))]
-      (filterv identity [{:model "Database" :id db}
-                         (when schema {:model "Schema" :id schema})
-                         {:model "Table" :id table}]))))

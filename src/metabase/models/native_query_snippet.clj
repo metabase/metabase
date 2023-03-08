@@ -101,12 +101,3 @@
         file   (last basis)
         colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
-
-(serdes/register-ingestion-path!
-  "NativeQuerySnippet"
-  (fn [path]
-    (when-let [[id slug] (and (= (first path) "snippets")
-                              (serdes/split-leaf-file-name (last path)))]
-      (cond-> {:model "NativeQuerySnippet" :id id}
-        slug (assoc :label slug)
-        true vector))))

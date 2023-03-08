@@ -451,20 +451,3 @@
       drop-last
       serdes/storage-table-path-prefix
       (concat ["fields" (:name field)])))
-
-(serdes/register-ingestion-path!
-  "Field"
-  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
-  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
-  (fn [path]
-    (when-let [{db     "databases"
-                schema "schemas"
-                table  "tables"
-                field  "fields"}   (and (#{6 8} (count path))
-                                        (serdes/ingestion-matcher-pairs
-                                          path [["databases" "schemas" "tables" "fields"]
-                                                ["databases" "tables" "fields"]]))]
-      (filterv identity [{:model "Database" :id db}
-                         (when schema {:model "Schema" :id schema})
-                         {:model "Table" :id table}
-                         {:model "Field" :id field}]))))

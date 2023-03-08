@@ -500,5 +500,3 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
-
-(serdes/register-ingestion-path! "Card" (serdes/ingestion-matcher-collected "collections" "Card"))

@@ -318,15 +318,3 @@
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
     ["actions" (serdes/storage-leaf-file-name id label)]))
-
-(serdes/register-ingestion-path!
- "Action"
-  ;; ["actions" "my-action"]
- (fn [path]
-   (when-let [[id slug] (and (= (first path) "actions")
-                             ;; TODO: make action a directory with itself
-                             ;; (apply = (take-last 2 path))
-                             (serdes/split-leaf-file-name (last path)))]
-     (cond-> {:model "Action" :id id}
-       slug (assoc :label slug)
-       true vector))))
