@@ -93,24 +93,20 @@
   (let [tracker-config* (delay (TrackerConfiguration. "sp" "metabase"))]
     (fn [] @tracker-config*)))
 
-(def ^:private http-client-adapter-config
-  "Returns instance of a Snowplow http client adapter"
-  (let [http-client-adapter-config* (delay
-                                     (let [request-config (-> (RequestConfig/custom)
-                                                              ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
-                                                              ;; header in request response (PR #24579)
-                                                              (.setCookieSpec CookieSpecs/STANDARD)
-                                                              (.build))
-                                           client (-> (HttpClients/custom)
-                                                      (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                                                      (.setDefaultRequestConfig request-config)
-                                                      (.build))]
-                                       (ApacheHttpClientAdapter. (snowplow-url) client)))]
-    (fn [] @http-client-adapter-config*)))
-
 (def ^:private network-config
   "Returns instance of a Snowplow network config"
-  (let [network-config* (delay (NetworkConfiguration. ^HttpClientAdapter (http-client-adapter-config)))]
+  (let [network-config* (delay
+                         (let [request-config (-> (RequestConfig/custom)
+                                                  ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                                                  ;; header in request response (PR #24579)
+                                                  (.setCookieSpec CookieSpecs/STANDARD)
+                                                  (.build))
+                               client (-> (HttpClients/custom)
+                                          (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                          (.setDefaultRequestConfig request-config)
+                                          (.build))
+                               http-client-adapter (ApacheHttpClientAdapter. (snowplow-url) client)]
+                           (NetworkConfiguration. http-client-adapter)))]
     (fn [] @network-config*)))
 
 (def ^:private emitter-config
