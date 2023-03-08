@@ -49,7 +49,7 @@
 (defmacro define-migration
   "Define a custom migration without a reverse migration."
   [name & migration-body]
-  `(define-reversible-migration ~name ~migration-body (no-op ~(str name))))
+  `(define-reversible-migration ~name (do ~@migration-body) (no-op ~(str name))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
