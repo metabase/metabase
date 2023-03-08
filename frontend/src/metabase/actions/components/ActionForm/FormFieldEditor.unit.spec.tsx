@@ -129,7 +129,7 @@ describe("FormFieldEditor", () => {
       );
     });
 
-    it("cleans value options when switching between field types", async () => {
+    it("handles value options when switching between field types", async () => {
       const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
 
       userEvent.click(screen.getByText("Category"));
@@ -146,6 +146,16 @@ describe("FormFieldEditor", () => {
           ...TEST_STRING_FIELD_SETTINGS,
           fieldType: "number",
           valueOptions: [1, 2, 3],
+        }),
+      );
+
+      userEvent.click(screen.getByText("Date"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "date",
+          inputType: "date",
+          valueOptions: undefined,
         }),
       );
     });
