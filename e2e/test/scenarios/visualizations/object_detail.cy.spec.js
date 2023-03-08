@@ -5,9 +5,13 @@ import {
   openPeopleTable,
   openProductsTable,
   visitQuestionAdhoc,
+  resetTestTable,
+  resyncDatabase,
+  getTableId,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -269,3 +273,29 @@ function changeSorting(columnName, direction) {
   });
   cy.wait("@dataset");
 }
+
+['postgres', 'mysql'].forEach(dialect => {
+  describe.only(`Object Detail > composite keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "composite_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase(WRITABLE_DB_ID);
+      cy.wait(300)
+    });
+
+    it('can show object detail modal for composite keys', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+      });
+    });
+  });
+});
