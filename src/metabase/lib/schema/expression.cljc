@@ -191,12 +191,13 @@
 
 ;;; Any type of expression that can appear in an `:=` or `!=`. I guess this is currently everything?
 (mr/def ::equality-comparable
-  [:or
-   ::boolean
-   ::string
-   ::number
-   ::temporal
-   [:ref ::ref/ref]])
+  [:maybe
+   [:or
+    ::boolean
+    ::string
+    ::number
+    ::temporal
+    [:ref ::ref/ref]]])
 
 ;;; Any sort of expression at all.
 (mr/def ::expression

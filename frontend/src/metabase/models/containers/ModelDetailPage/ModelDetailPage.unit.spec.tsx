@@ -127,9 +127,9 @@ const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
-const TEST_DATABASE_READONLY = createMockDatabase({
-  id: 2,
-  native_permissions: "read",
+const TEST_DATABASE_WITH_ACTIONS_READONLY = createMockDatabase({
+  ...TEST_DATABASE_WITH_ACTIONS,
+  native_permissions: "none",
 });
 
 function getStructuredModel(card?: Partial<StructuredSavedCard>) {
@@ -729,6 +729,13 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
         });
 
+        it("doesn't show a new question link", async () => {
+          await setup({ model: getModel(), databases: [], tab: "usage" });
+          expect(
+            screen.queryByText(/Create a new question/i),
+          ).not.toBeInTheDocument();
+        });
+
         it("doesn't allow running actions", async () => {
           const model = getModel();
           const actions = [
@@ -740,21 +747,21 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
-        it("doesn't allow to run an action if its database has no write permissions", async () => {
+        it("doesn't allow to run an action if its database has actions disabled", async () => {
           const action = createMockQueryAction({
-            database_id: TEST_DATABASE_READONLY.id,
+            database_id: TEST_DATABASE.id,
           });
 
           await setupActions({
             model: getModel(),
-            databases: [TEST_DATABASE_WITH_ACTIONS, TEST_DATABASE_READONLY],
+            databases: [TEST_DATABASE],
             actions: [action],
           });
 
           expect(screen.queryByLabelText("Run")).not.toBeInTheDocument();
         });
 
-        it("allows to run an action if its database has write permissions", async () => {
+        it("allows to run an action if its database has actions enabled", async () => {
           const action = createMockQueryAction({
             database_id: TEST_DATABASE_WITH_ACTIONS.id,
           });
@@ -762,6 +769,20 @@ describe("ModelDetailPage", () => {
           await setupActions({
             model: getModel(),
             databases: [TEST_DATABASE_WITH_ACTIONS],
+            actions: [action],
+          });
+
+          expect(screen.getByLabelText("Run")).toBeInTheDocument();
+        });
+
+        it("allows to run an action without native query access", async () => {
+          const action = createMockQueryAction({
+            database_id: TEST_DATABASE_WITH_ACTIONS_READONLY.id,
+          });
+
+          await setupActions({
+            model: getModel(),
+            databases: [TEST_DATABASE_WITH_ACTIONS_READONLY],
             actions: [action],
           });
 
