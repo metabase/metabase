@@ -18,6 +18,10 @@ export const FunctionHelpCode = styled.div`
   font-family: ${monospaceFontFamily};
 `;
 
+export const FunctionHelpCodeArgument = styled.span`
+  color: ${color("brand")};
+`;
+
 export const ExampleBlock = styled.div`
   color: ${color("text-light")};
 `;

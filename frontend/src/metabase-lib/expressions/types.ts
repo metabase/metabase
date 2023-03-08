@@ -2,7 +2,7 @@ import type { Database } from "metabase-types/api/database";
 
 export interface HelpText {
   name: string;
-  args: HelpTextArg[];
+  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: string;
   example: string;
   structure: string;
@@ -11,9 +11,8 @@ export interface HelpText {
 
 export interface HelpTextConfig {
   name: string;
-  args: HelpTextArg[];
+  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone: string) => string;
-  example: string;
   structure: string;
   docsPage?: string;
 }
@@ -21,4 +20,5 @@ export interface HelpTextConfig {
 export interface HelpTextArg {
   name: string;
   description: string;
+  example: string;
 }
