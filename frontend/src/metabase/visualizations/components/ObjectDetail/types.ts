@@ -48,5 +48,5 @@ export interface ObjectDetailProps {
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
-  className: string;
+  className?: string;
 }
