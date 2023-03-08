@@ -57,11 +57,12 @@
   [model-id]
   {model-id [:maybe pos-int?]}
   (letfn [(actions-for [models]
-            (when (seq models)
+            (if (seq models)
               (hydrate (action/select-actions models
                                               :model_id [:in (map :id models)]
                                               :archived false)
-                       :creator)))]
+                       :creator)
+              []))]
     (if model-id
       (let [model (api/read-check Card model-id)]
         ;; We don't check the permissions on the actions, we assume they are
