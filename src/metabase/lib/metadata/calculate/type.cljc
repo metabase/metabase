@@ -23,15 +23,15 @@
   (or (some (fn [[expression-type-schema base-type]]
               (when (mc/validate expression-type-schema expr)
                 base-type))
-            [[::lib.schema.expression/boolean   :type/Boolean]
-             [::lib.schema.expression/string    :type/Text]
-             [::lib.schema.expression/integer   :type/Integer]
-             [::lib.schema.expression/decimal   :type/Float]
-             [::lib.schema.expression/number    :type/Number]
-             [::lib.schema.expression/date      :type/Date]
-             [::lib.schema.expression/time      :type/Time]
-             [::lib.schema.expression/date-time :type/DateTime]
-             [::lib.schema.expression/temporal  :type/Temporal]])
+            [[::lib.schema.expression/boolean          :type/Boolean]
+             [::lib.schema.expression/string           :type/Text]
+             [::lib.schema.expression/integer          :type/Integer]
+             [::lib.schema.expression/non-integer-real :type/Float]
+             [::lib.schema.expression/number           :type/Number]
+             [::lib.schema.expression/date             :type/Date]
+             [::lib.schema.expression/time             :type/Time]
+             [::lib.schema.expression/date-time        :type/DateTime]
+             [::lib.schema.expression/temporal         :type/Temporal]])
       :type/*))
 
 (mu/defn base-type :- ::lib.schema.ref/base-type
