@@ -1,6 +1,5 @@
 (ns metabase.db.custom-migrations-test
-  "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
-  of these than we should... but that doesn't mean we can't write them for our new ones :)"
+  "Tests to make sure the custom migrations work as expected."
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.jobs :as jobs]
