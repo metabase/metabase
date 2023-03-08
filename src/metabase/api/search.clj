@@ -476,7 +476,7 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
-  {table-db-id [:maybe ms/Id]}
+  {table-db-id [:maybe ms/PositiveInt]}
   (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

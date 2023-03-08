@@ -252,7 +252,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
-  {id ms/Id}
+  {id ms/PositiveInt}
   (check-perms-and-return-field-values id))
 
 ;; match things like GET /field%2Ccreated_at%2options

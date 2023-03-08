@@ -22,7 +22,7 @@
 (api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
-  {id ms/Id
+  {id ms/PositiveInt
    login_attributes [:maybe UserAttributes]}
   (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))

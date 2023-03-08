@@ -953,7 +953,7 @@ saved later when it is ready."
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [card-id param-key]
-  {card-id   ms/Id
+  {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key))
 
@@ -965,7 +965,7 @@ saved later when it is ready."
 
   Currently limited to first 1000 results."
   [card-id param-key query]
-  {card-id   ms/Id
+  {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))

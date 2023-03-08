@@ -19,8 +19,8 @@
 
 (mu/defn query-execution-logs
   "Query to fetch the rows within the specified `month` of `year` from the `query_execution` table."
-  [year :- ms/IntGreaterThanZero
-   month :- ms/IntGreaterThanZero]
+  [year :- ms/PositiveInt
+   month :- ms/PositiveInt]
   (let [date-part (fn [part-key part-value]
                     (if (= (mdb.connection/db-type) :postgres)
                       [:= [:date_part [:inline (name part-key)] :started_at] [:inline part-value]]
