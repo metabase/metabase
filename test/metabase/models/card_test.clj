@@ -13,7 +13,9 @@
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -107,6 +109,69 @@
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))))
 
+(mt/mbql-query users {:limit 1})
+
+(deftest disable-implicit-actions-if-needed-test
+  (testing "when updating a model to include any clauses will disable implicit actions if exists\n"
+    (testing "happy paths\n"
+      (mt/with-actions-enabled
+        (let [query (mt/mbql-query users)]
+          (doseq [query-change [{:limit       1}
+                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
+                                {:filter      [:> (mt/$ids $users.id) 2]}
+                                {:breakout    [(mt/$ids !month.users.last_login)]}
+                                {:aggregation [[:count]]}
+                                {:joins       [{:fields       :all
+                                                :source-table (mt/id :checkins)
+                                                :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                                :alias        "People"}]}]]
+            (testing (format "when adding %s to the query" (first (keys query-change)))
+              (mt/with-actions [{model-id :id}           {:dataset true :dataset_query query}
+                                {action-id-1 :action-id} {:type :implicit
+                                                          :kind "row/create"}
+                                {action-id-2 :action-id} {:type :implicit
+                                                          :kind "row/update"}]
+                ;; make sure we have thing exists to start with
+                (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (t2/update! 'Card :id model-id {:dataset_query (update query :query merge query-change)})
+                ;; should be gone by now
+                (is (= 0 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (is (= 0 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]])))))))))
+
+    (testing "unhappy paths\n"
+      (testing "should not attempt to delete if it's not a model"
+        (t2.with-temp/with-temp [Card {id :id} {:dataset       false
+                                                :dataset_query (mt/mbql-query users)}]
+          (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
+                                                                  (throw (ex-info "Should not be called" {})))]
+            (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
+
+      (testing "only disable implicit actions, not http and query"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {implicit-id :action-id} {:type :implicit}
+                          {http-id :action-id}     {:type :http}
+                          {query-id :action-id}    {:type :query}]
+          ;; make sure we have thing exists to start with
+          (is (= 3 (t2/count 'Action :id [:in [implicit-id http-id query-id]])))
+
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (not (t2/exists? 'Action :id implicit-id)))
+          (is (t2/exists? 'Action :id http-id))
+          (is (t2/exists? 'Action :id query-id))))
+
+      (testing "should not disable if change source table"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {action-id-1 :action-id} {:type :implicit
+                                                    :kind "row/create"}
+                          {action-id-2 :action-id} {:type :implicit
+                                                    :kind "row/update"}]
+          ;; make sure we have thing exists to start with
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          ;; change source from users to categories
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query categories)})
+          ;; actions still exists
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          (is (= 2 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
