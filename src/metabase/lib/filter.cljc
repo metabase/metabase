@@ -4,7 +4,8 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
    metabase.lib.options
-   metabase.lib.schema.filter)
+   metabase.lib.schema.filter
+   #?(:clj [metabase.util.malli :as mu]))
   #?(:cljs (:require-macros [metabase.lib.filter])))
 
 (defmulti ^:private ->filter-arg
