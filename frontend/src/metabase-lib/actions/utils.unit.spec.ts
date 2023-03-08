@@ -24,7 +24,7 @@ describe("canRunAction", () => {
     expect(canRunAction(action, [database])).toBe(false);
   });
 
-  it("should be able to run an acton if the database has actions enabled", () => {
+  it("should be able to run an action if the database has actions enabled", () => {
     const database = new Database(
       createMockDatabase({
         native_permissions: "read",
