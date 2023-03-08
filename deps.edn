@@ -75,7 +75,7 @@
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   joda-time/joda-time                       {:mvn/version "2.12.2"}
-  kixi/stats                                {:mvn/version "0.5.5"               ; Various statistic measures implemented as transducers
+  kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
