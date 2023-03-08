@@ -42,8 +42,10 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
     <AccountHeaderRoot data-testid="account-header">
       <HeaderSection>
         <HeaderAvatar user={user} />
-        {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
-        <HeaderSubtitle>{user.email}</HeaderSubtitle>
+        {userFullName && (
+          <HeaderTitle data-testid="user-fullname">{userFullName}</HeaderTitle>
+        )}
+        <HeaderSubtitle data-testid="user-email">{user.email}</HeaderSubtitle>
       </HeaderSection>
       <Radio
         value={path}

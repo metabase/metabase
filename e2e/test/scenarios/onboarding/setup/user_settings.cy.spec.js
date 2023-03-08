@@ -1,5 +1,6 @@
-import { restore, popover, getFullName } from "e2e/support/helpers";
+import { restore, getFullName } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import { AccountSettingsPage } from "e2e/pages/account-settings-page";
 
 const { normal } = USERS;
 
@@ -14,36 +15,36 @@ describe("user > settings", () => {
   });
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
-    cy.visit("/account/profile");
-    cy.findByText(fullName);
-    cy.findByLabelText("First name").clear();
-    cy.findByLabelText("Last name").clear();
-    cy.button("Update").click();
+    const page = AccountSettingsPage.visit();
+
+    page.header.verifyFullname(fullName);
+    page.profileForm.fill({ firstName: "", lastName: "" }).submit();
 
     cy.reload();
 
-    cy.findByLabelText("First name").should("be.empty");
-    cy.findByLabelText("Last name").should("be.empty");
+    page.profileForm.verifyValues({ firstName: "", lastName: "" });
   });
 
   it("should show user details with disabled submit button", () => {
-    cy.visit("/account/profile");
-    cy.findByTestId("account-header").within(() => {
-      cy.findByText(fullName);
-      cy.findByText(email);
-    });
-    cy.findByDisplayValue(first_name);
-    cy.findByDisplayValue(last_name);
-    cy.findByDisplayValue(email);
-    cy.button("Update").should("be.disabled");
+    const page = AccountSettingsPage.visit();
+
+    page.header.verifyFullname(fullName).verifyEmail(email);
+    page.profileForm
+      .verifyValues({
+        firstName: first_name,
+        lastName: last_name,
+        email,
+      })
+      .verifySubmitDisabled();
   });
 
   it("should update the user without fetching memberships", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
-    cy.visit("/account/profile");
-    cy.findByDisplayValue(first_name).click().clear().type("John");
-    cy.findByText("Update").click();
-    cy.findByDisplayValue("John");
+    const page = AccountSettingsPage.visit();
+    page.profileForm
+      .fill({ firstName: "John" })
+      .submit()
+      .verifyValues({ firstName: "John" });
 
     // It is hard and unreliable to assert that something didn't happen in Cypress
     // This solution was the only one that worked out of all others proposed in this SO topic: https://stackoverflow.com/a/59302542/8815185
@@ -107,12 +108,12 @@ describe("user > settings", () => {
   it("should be able to change a language (metabase#22192)", () => {
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
 
-    cy.visit("/account/profile");
+    const page = AccountSettingsPage.visit();
+    page.profileForm
+      .verifyValues({ language: "Use site default" })
+      .fill({ language: "Indonesian" })
+      .submit();
 
-    cy.findByText("Use site default").click();
-    popover().within(() => cy.findByText("Indonesian").click());
-
-    cy.button("Update").click();
     cy.wait("@updateUserSettings");
 
     // Assert that the page reloaded with the new language
