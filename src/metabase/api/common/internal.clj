@@ -282,7 +282,11 @@
 ;;; |                                          AUTO-COERCION                                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def defendpoint-transformer "Transformer used on values " (mtx/transformer (mtx/string-transformer) (mtx/json-transformer)))
+(def defendpoint-transformer
+  "Transformer used on values coming over the API via defendpoint."
+  (mtx/transformer
+   (mtx/string-transformer)
+   (mtx/json-transformer)))
 
 (defn- extract-symbols [x]
   (let [*symbols (atom [])]
