@@ -49,9 +49,9 @@ To create a public link that people can use to download the results of a questio
 
 ## Simulating drill-through with public links
 
-Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/drill-through) won't work in public links because public links don't give people access to your raw data.
+Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
 
-You can mimic drill-through on public dashboard by setting up a [custom click behaviour](../../dashboards/interactive.md) that sends people from one public link to another public link:
+You can simulate drill-through on a public dashboard by setting up a [custom click behaviour](../../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
 2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the destination dashboard.
@@ -63,7 +63,7 @@ You can mimic drill-through on public dashboard by setting up a [custom click be
   /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
   ```
 
-For example, if you have a public parent dashboard with **Invoices** data, you can pass the **Plan** name (on click) to a public child dashboard that uses **Accounts** data:
+For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
 
 ![Public link with custom destination](../images/public-link-custom-destination.png)
 
