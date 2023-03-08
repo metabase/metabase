@@ -58,10 +58,10 @@
     x
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number (or stage-number -1)
-         order-by     (cond-> (->order-by-clause query stage-number x)
+         new-order-by (cond-> (->order-by-clause query stage-number x)
                         direction (with-direction direction))]
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                        (conj (vec order-bys) order-by))))))
+                                                                        (conj (vec order-bys) new-order-by))))))
 
 (mu/defn order-bys :- [:sequential ::lib.schema.order-by/order-by]
   "Get the order-by clauses in a query."

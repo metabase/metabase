@@ -5,7 +5,9 @@
   This is captured and hardcoded to make it easy to test the new Metabase lib in ClojureScript land without relying on
   an application database and REST API to provide the metadata. One downside is that changes to the REST API response
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
-  these things if that happens and Metabase lib is meant to consume it.")
+  these things if that happens and Metabase lib is meant to consume it."
+  (:require
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
@@ -781,6 +783,10 @@
    :refingerprint               nil
    :points_of_interest          nil
    :lib/type                    :metadata/database})
+
+(def metadata-provider
+  "[[metabase.lib.metadata.protocols/DatabaseMetadataProvider]] using the test [[metadata]]."
+  (lib.metadata.protocols/->SimpleGraphDatabaseMetadataProvider metadata))
 
 (def results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
