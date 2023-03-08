@@ -318,10 +318,11 @@
           (db/update! model po-id {:parameters new-parameters}))))))
 
 (defn- model-supports-implicit-actions?
+  "A model with implicit action supported iff they are a raw table,
+  meaning there are no clauses such as(filter, limit, breakout...)"
   [{dataset-query :dataset_query :as _card}]
-  (let [query (:query dataset-query)]
-    (and (= :query (:type dataset-query))
-         (every? #(nil? (get query %)) [:expressions :filter :limit :breakout :aggregation :joins]))))
+  (and (= :query (:type dataset-query))
+       (every? #(nil? (get-in query [:query %])) [:expressions :filter :limit :breakout :aggregation :joins])))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
