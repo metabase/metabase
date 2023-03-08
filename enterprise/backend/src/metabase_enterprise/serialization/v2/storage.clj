@@ -25,8 +25,7 @@
 
 (defn- store-entity! [opts entity]
   (log/info (trs "Storing {0}" (serdes/log-path-str (:serdes/meta entity))))
-  (spit-yaml (file opts entity)
-             (dissoc entity :serdes/meta)))
+  (spit-yaml (file opts entity) entity))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
   (let [as-map (into (sorted-map)
