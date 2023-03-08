@@ -14303,7 +14303,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-086
       author: calherries
-      comment: Added 0.46.0 - Delete abandonment email task
+      comment: Added 0.46.0 - Delete the abandonment email task
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
