@@ -5,6 +5,7 @@
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as http-action]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models :refer [Action Card Database]]
@@ -77,7 +78,9 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
-  (api/write-check Action action-id)
+  (let [action (api/write-check Action action-id)]
+    (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
+                                                                            :action_id action-id}))
   (db/delete! Action :id action-id)
   api/generic-204-no-content)
 
@@ -110,6 +113,9 @@
       (actions/check-actions-enabled-for-database!
        (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
+    (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
+                                                                            :action_id      action-id
+                                                                            :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
       ;; db/insert! does not return a value when used with h2
@@ -137,7 +143,11 @@
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
-  (action/select-action :id id))
+  (let [{:keys [parameters type] :as action} (action/select-action :id id)]
+    (snowplow/track-event! ::snowplow/action-updated api/*current-user-id* {:type           type
+                                                                            :action_id      id
+                                                                            :num_parameters (count parameters)})
+    action))
 
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
@@ -174,8 +184,10 @@
   [id :as {{:keys [parameters], :as _body} :body}]
   {id         ms/PositiveInt
    parameters [:maybe [:map-of :keyword any?]]}
-  (-> (action/select-action :id id :archived false)
-      (api/check-404)
-      (actions.execution/execute-action! (update-keys parameters name))))
+  (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
+    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
+                                                                             :type      type
+                                                                             :action_id id})
+    (actions.execution/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

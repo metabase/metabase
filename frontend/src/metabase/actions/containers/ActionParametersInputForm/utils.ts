@@ -25,15 +25,15 @@ export const formatValue = (
   value: string | number | null,
   inputType?: InputSettingType,
 ) => {
-  if (!isEmpty(value)) {
+  if (!isEmpty(value) && typeof value === "string") {
     if (inputType === "date" && moment(value).isValid()) {
-      return moment(value).utc(false).format("YYYY-MM-DD");
+      return moment(stripTZInfo(value)).format("YYYY-MM-DD");
     }
     if (inputType === "datetime" && moment(value).isValid()) {
-      return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
+      return moment(stripTZInfo(value)).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (inputType === "time") {
-      return String(value).replace(/z/gi, "");
+      return moment(stripTZInfo(`2020-01-10T${value}`)).format("HH:mm:ss");
     }
   }
   return value;
@@ -51,3 +51,8 @@ export const getInitialValues = (
     ]),
   );
 };
+
+export function stripTZInfo(dateOrTimeString: string) {
+  // strip everything after a trailing tz (e.g. +08:00)
+  return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
+}

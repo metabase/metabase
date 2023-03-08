@@ -109,6 +109,23 @@ describe("HomeContent", () => {
     expect(screen.getByText("XraySection")).toBeInTheDocument();
   });
 
+  it("should not render x-rays for the installer when there is no question and dashboard if the x-rays feature is disabled", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        first_login: "2020-01-10T00:00:00Z",
+      }),
+      databases: [createMockDatabase()],
+      recentItems: [createMockRecentItem()],
+      isXrayEnabled: false,
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.queryByText("XraySection")).not.toBeInTheDocument();
+  });
+
   it("should render nothing if there are no databases", () => {
     const props = getProps({
       user: createMockUser({
@@ -146,5 +163,6 @@ const getProps = (opts?: Partial<HomeContentProps>): HomeContentProps => ({
   databases: [],
   recentItems: [],
   popularItems: [],
+  isXrayEnabled: true,
   ...opts,
 });

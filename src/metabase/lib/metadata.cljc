@@ -1,11 +1,32 @@
 (ns metabase.lib.metadata
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+;;; Column vs Field?
+;;;
+;;; Lately I've been using `Field` to only mean a something that lives in the application database, i.e. something
+;;; that is associated with row in the `Field` table and has an `:id`. I'm using `Column` as a more generic term that
+;;; includes not only `Field`s but also the columns returned by a stage of a query, e.g. `SELECT count(*) AS count`
+;;; returns a `Column` called `count`, but it's not a `Field` because it's not associated with an actual Field in the
+;;; application database.
+;;;
+;;; Column = any column returned by a query or stage of a query
+;;; Field  = a Column that is associated with a capital-F Field in the application database, i.e. has an `:id`
+;;;
+;;; All Fields are Columns, but not all Columns are Fields.
+;;;
+;;; Also worth a mention: we also have `Dimension`s, associated with the `dimension` table in the application
+;;; database, which can act like psuedo-Fields or affect how we treat normal Fields. For example, Dimensions are used
+;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
+;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
+;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
+;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
+;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
 (def ColumnMetadata
   "Malli schema for a valid map of column metadata, which can mean one of two things:
@@ -31,7 +52,9 @@
    [:id ::lib.schema.id/table]
    [:name ::lib.schema.common/non-blank-string]
    [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:fields [:sequential ColumnMetadata]]])
+   ;; This is now optional! If the [[DatabaseMetadataProvider]] provides it, great, but if not we can always make the
+   ;; subsequent request to fetch fields separately.
+   [:fields {:optional true} [:sequential ColumnMetadata]]])
 
 (def DatabaseMetadata
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
@@ -39,15 +62,100 @@
   [:map
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
-   [:tables [:sequential TableMetadata]]])
+   ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
+   [:tables {:optional true} [:sequential TableMetadata]]])
 
-{:database 1
- :type     :pipeline
- :stages   [{:lib/type :mbql.stage/mbql
-             :native   "SELECT id, name FROM VENUES;"}]}
+(def DatabaseMetadataProvider
+  "Schema for something that satisfies the [[lib.metadata.protocols/DatabaseMetadataProvider]] protocol."
+  [:fn lib.metadata.protocols/database-metadata-provider?])
 
-{:columns [{:name "id", :base-type :type/Integer}
-           {:name "name", :base-type :type/Text}]}
+(defmulti ^:private ->database-metadata-provider*
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value)
+
+(defmethod ->database-metadata-provider* :default
+  [x]
+  x)
+
+(defmethod ->database-metadata-provider* :mbql/query
+  [query]
+  (->database-metadata-provider* (:lib/metadata query)))
+
+(mu/defn ^:private ->database-metadata-provider :- DatabaseMetadataProvider
+  [x :- some?]
+  (if (lib.metadata.protocols/database-metadata-provider? x)
+    x
+    (->database-metadata-provider* x)))
+
+(mu/defn database :- DatabaseMetadata
+  "Get metadata about the Database we're querying."
+  [metadata-provider]
+  (lib.metadata.protocols/database (->database-metadata-provider metadata-provider)))
+
+(mu/defn tables :- [:sequential TableMetadata]
+  "Get metadata about all Tables for the Database we're querying."
+  [metadata-provider]
+  (lib.metadata.protocols/tables (->database-metadata-provider metadata-provider)))
+
+(mu/defn table :- TableMetadata
+  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
+  ([metadata-provider
+    table-id          :- ::lib.schema.id/table]
+   (some (fn [table-metadata]
+           (when (= (:id table-metadata) table-id)
+             table-metadata))
+         (tables metadata-provider)))
+
+  ([metadata-provider
+    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
+    table-name        :- ::lib.schema.common/non-blank-string]
+   (some (fn [table-metadata]
+           (when (and (or (nil? table-schema)
+                          (= (:schema table-metadata) table-schema))
+                      (= (:name table-metadata) table-name))
+             table-metadata))
+         (tables metadata-provider))))
+
+(mu/defn fields :- [:sequential ColumnMetadata]
+  "Get metadata about all the Fields belonging to a specific Table."
+  ([metadata-provider
+    table-id          :- ::lib.schema.id/table]
+   (lib.metadata.protocols/fields (->database-metadata-provider metadata-provider) table-id))
+
+  ([metadata-provider
+    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
+    table-name        :- ::lib.schema.common/non-blank-string]
+   (fields metadata-provider
+           (:id (table metadata-provider table-schema table-name)))))
+
+(mu/defn field :- ColumnMetadata
+  "Get metadata about a specific Field in the Database we're querying."
+  ([metadata-provider
+    field-id          :- ::lib.schema.id/field]
+   (some (fn [table-metadata]
+           (some (fn [field-metadata]
+                   (when (= (:id field-metadata) field-id)
+                     field-metadata))
+                 (fields metadata-provider (:id table-metadata))))
+         (tables metadata-provider)))
+
+  ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
+  ([metadata-provider
+    table-id          :- ::lib.schema.id/table
+    field-name        :- ::lib.schema.common/non-blank-string]
+   (some (fn [field-metadata]
+           (when (= (:name field-metadata) field-name)
+             field-metadata))
+         (fields metadata-provider table-id)))
+
+  ([metadata-provider
+    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
+    table-name        :- ::lib.schema.common/non-blank-string
+    field-name        :- ::lib.schema.common/non-blank-string]
+   (let [table-metadata (table metadata-provider table-schema table-name)]
+     (field metadata-provider (:id table-metadata) field-name))))
+
+;;;; Stage metadata
 
 (def StageMetadata
   "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
@@ -81,125 +189,37 @@
    [:lib/type [:= :metadata/results]]
    [:columns [:sequential ColumnMetadata]]])
 
-(defmulti ^:private database-metadata*
-  {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+(mu/defn stage :- [:maybe StageMetadata]
+  "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative
+  index.
 
-(defmethod database-metadata* :mbql/query
-  [query]
-  (:lib/metadata query))
-
-(mu/defn database-metadata :- [:maybe DatabaseMetadata]
-  "Fetch Database metadata from something, e.g. an 'outer' MBQL query. Returns `nil` if not metadata is available."
-  [x]
-  (database-metadata* x))
-
-(defmulti ^:private table-metadata*
-  "Implementation for [[table-metadata]]."
-  {:arglists '([metadata table-name-or-id])}
-  (fn [metadata _table-name-or-id]
-    (lib.dispatch/dispatch-value metadata)))
-
-(defmethod table-metadata* :metadata/database
-  [database-metadata table-name-or-id]
-  (some (if (integer? table-name-or-id)
-          (fn [table]
-            (when (= (:id table) table-name-or-id)
-              table))
-          (fn [table]
-            (when (= (:name table) table-name-or-id)
-              table)))
-        (:tables database-metadata)))
-
-(defmethod table-metadata* :mbql/query
-  [query table-name-or-id]
-  (table-metadata* (:lib/metadata query) table-name-or-id))
-
-(mu/defn table-metadata :- TableMetadata
-  "Get metadata for a specific Table from some `metadata` source (probably Database metadata).
-
-  Returns `nil` if no matching Metadata could be found."
-  [metadata table]
-  (or (table-metadata* metadata table)
-      (throw (ex-info (i18n/tru "Could not resolve Table {0}" (pr-str table))
-                      {:metadata metadata
-                       :table    table}))))
-
-;;; TODO -- consider whether this should dispatch on Field type as well so it's easier to write different
-;;; implementations for Field IDs vs String names vs Keywords etc
-
-(defmulti ^:private field-metadata*
-  "Implementation for [[field-metadata]]."
-  {:arglists '([metadata table field])}
-  (fn [metadata _table _field]
-    (lib.dispatch/dispatch-value metadata)))
-
-(defmethod field-metadata* :metadata/database
-  [database-metadata table-name-or-id field]
-  (assert (some? table-name-or-id)
-          (i18n/tru "Table name or ID is required to fetch a Field from Database metadata"))
-  (field-metadata* (table-metadata database-metadata table-name-or-id) nil field))
-
-(defmethod field-metadata* :metadata/table
-  [table-metadata _table field-id-or-name]
-  (or (some (if (integer? field-id-or-name)
-              (fn [field]
-                (when (= (:id field) field-id-or-name)
-                  field))
-              (fn [field]
-                (when (= (:name field) field-id-or-name)
-                  field)))
-            (:fields table-metadata))
-      ;;; TODO -- not sure it makes sense this that would throw an error while [[field-metadata]] is currently allowed
-      ;;; to return `nil`, and while the other implementations of this do not
-      (throw (ex-info (i18n/tru "Could not find Field {0} in Table {1}"
-                                (pr-str field-id-or-name)
-                                (pr-str (:name table-metadata)))
-                      {:metadata table-metadata
-                       :field    field-id-or-name}))))
-
-;;; TODO -- should this throw an error?
-(defmethod field-metadata* :metadata/results
-  [results-metadata _table field-id-or-name]
-  (some (if (integer? field-id-or-name)
-          (fn [field]
-            (when (= (:id field) field-id-or-name)
-              field))
-          (fn [field]
-            (when (= (:name field) field-id-or-name)
-              field)))
-        (:columns results-metadata)))
-
-(defmethod field-metadata* :mbql/query
-  [query table field]
-  (field-metadata* (:lib/metadata query) table field))
-
-;;; TODO -- a little weird that this can return `nil` but [[table-metadata]] can't... but we have real cases where it
-;;; makes sense that this might return `nil`, unlike for Tables
-
-;;; TODO -- what about nested Fields??
-(mu/defn field-metadata :- [:maybe ColumnMetadata]
-  "Get metadata for a specific Field from some `metadata` source, which might be Database metadata, Table metadata, or
-  source query/results metadata. `table` is optional; if you specify it and pass Database metadata,
-  this will first find the appropriate [[table-metadata]] for that Table, then find the Field metadata in that Table
-  metadata.
-
-  Returns `nil` if no matching metadata could be found."
-  ([metadata :- [:map
-                 [:lib/type [:keyword]]]
-    field    :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
-   (field-metadata metadata nil field))
-
-  ([metadata  :- [:map
-                  [:lib/type [:keyword]]]
-    table     :- [:maybe [:or ::lib.schema.common/non-blank-string ::lib.schema.id/table]]
-    field     :- [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]
-   (field-metadata* metadata table field)))
-
-;;; TODO -- this should probably be guaranteed to never return `nil`
-(mu/defn stage-metadata :- [:maybe StageMetadata]
-  "Fetch the stage metadata for a specific `stage-number` of a `query`."
-  [query stage-number :- :int]
-  ;; TODO -- is there any situation where we'd want to do something different? i.e. should we have a `stage-metadata*`
-  ;; method
+  Currently, only returns metadata if it is explicitly attached to a stage; in the future we will probably dynamically
+  calculate this stuff if possible based on DatabaseMetadata and previous stages. Stay tuned!"
+  [query        :- :map
+   stage-number :- :int]
   (:lib/stage-metadata (lib.util/query-stage query stage-number)))
+
+(mu/defn stage-column :- [:maybe ColumnMetadata]
+  "Metadata about a specific column returned by a specific stage of the query, e.g. perhaps the first stage of the
+  query has an expression `num_cans`, then
+
+    (lib.metadata/stage-column-metadata query stage \"num_cans\")
+
+  should return something like
+
+    {:name \"num_cans\", :base-type :type/Integer, ...}
+
+  This is currently a best-effort thing and will only return information about columns if stage metadata is attached
+  to a particular stage. In the near term future this should be better about calculating that metadata dynamically and
+  returning correct info here."
+  ([query       :- :map
+    column-name :- ::lib.schema.common/non-blank-string]
+   (stage-column query -1 column-name))
+
+  ([query        :- :map
+    stage-number :- :int
+    column-name  :- ::lib.schema.common/non-blank-string]
+   (some (fn [column]
+           (when (= (:name column) column-name)
+             column))
+         (:columns (stage query stage-number)))))

@@ -2,16 +2,20 @@
   "Public API for sending Pulses."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.serialization.util :as serdes.util]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
@@ -29,7 +33,8 @@
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -48,24 +53,27 @@
      (dissoc parameter :default))))
 
 (defn- execute-dashboard-subscription-card
-  [owner-id dashboard dashcard card-or-id parameters]
+  "Returns subscription result for a card.
+
+  This function should be executed under pulse's creator permissions."
+  [dashboard dashcard card-or-id parameters]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
-          result  (mw.session/with-current-user owner-id
-                    (qp.dashboard/run-query-for-dashcard-async
-                     :dashboard-id  (u/the-id dashboard)
-                     :card-id       card-id
-                     :dashcard-id   (u/the-id dashcard)
-                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                     :export-format :api
-                     :parameters    parameters
-                     :middleware    {:process-viz-settings? true
-                                     :js-int-to-string?     false}
-                     :run           (fn [query info]
-                                      (qp/process-query-and-save-with-max-results-constraints!
-                                       (assoc query :async? false)
-                                       info))))]
+          result  (qp.dashboard/run-query-for-dashcard-async
+                   :dashboard-id  (u/the-id dashboard)
+                   :card-id       card-id
+                   :dashcard-id   (u/the-id dashcard)
+                   :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                   :export-format :api
+                   :parameters    parameters
+                   :middleware    {:process-viz-settings? true
+                                   :js-int-to-string?     false}
+                   :run           (fn [query info]
+                                    (qp/process-query-and-save-with-max-results-constraints!
+                                     (assoc query :async? false)
+                                     info)))]
       {:card     card
        :dashcard dashcard
        :result   result})
@@ -80,21 +88,65 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
-(defn- virtual-card-of-type?
-  "Check if dashcard is a virtual with type `ttype`.
+(defn virtual-card-of-type?
+  "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
-  There are currently 3 types of virtual card: text, action, link."
+  There are currently 3 types of virtual card: \"text\", \"action\", \"link\"."
   [dashcard ttype]
-  (and (map? dashcard)
-       (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))))
+  (when (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))
+    dashcard))
+
+(defn- link-card-entity->url
+  [{:keys [db_id id model] :as _entity}]
+  (case model
+    "card"       (urls/card-url id)
+    "dataset"    (urls/card-url id)
+    "collection" (urls/collection-url id)
+    "dashboard"  (urls/dashboard-url id)
+    "database"   (urls/database-url id)
+    "table"      (urls/table-url db_id id)))
+
+(defn- link-card->text
+  [{:keys [entity url] :as _link-card}]
+  (let [url-link-card? (some? url)]
+    {:text (str (format
+                  "### [%s](%s)"
+                  (if url-link-card? url (:name entity))
+                  (if url-link-card? url (link-card-entity->url entity)))
+                (when-let [description (if url-link-card? nil (:description entity))]
+                  (format "\n%s" description)))}))
+
+(defn- dashcard-link-card->content
+  "Convert a dashcard that is a link card to pulse content.
+
+  This function should be executed under pulse's creator permissions."
+  [dashcard]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (let [link-card (get-in dashcard [:visualization_settings :link])]
+    (cond
+      (some? (:url link-card))
+      (link-card->text link-card)
+
+      ;; if link card link to an entity, update the setting because
+      ;; the info in viz-settings might be out-of-date
+      (some? (:entity link-card))
+      (let [{:keys [model id]} (:entity link-card)
+            instance           (t2/select-one
+                                 (serdes.util/link-card-model->toucan-model model)
+                                 (dashboard-card/link-card-info-query-for-model model id))]
+        (when (mi/can-read? instance)
+          (link-card->text (assoc link-card :entity instance)))))))
 
 (defn- dashcard->content
-  "Given a dashcard returns its content based on its type."
-  [dashcard {pulse-creator-id :creator_id, :as pulse} dashboard]
+  "Given a dashcard returns its content based on its type.
+
+  The result will follow the pulse's creator permissions."
+  [dashcard pulse dashboard]
+  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) parameters))
+      (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
     (virtual-card-of-type? dashcard "action")
@@ -102,7 +154,7 @@
 
     ;; link cards
     (virtual-card-of-type? dashcard "link")
-    nil
+    (dashcard-link-card->content dashcard)
 
     ;; text cards has existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
@@ -113,15 +165,18 @@
           :visualization_settings))))
 
 (defn- execute-dashboard
-  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [pulse dashboard & {:as _options}]
+  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
+
+  The gerenerated contents will follow the pulse's creator permissions."
+  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
-    (for [dashcard ordered-dashcards
-          :let  [content (dashcard->content dashcard pulse dashboard)]
-          :when (some? content)]
-      content)))
+    (mw.session/with-current-user pulse-creator-id
+      (doall (for [dashcard ordered-dashcards
+                   :let  [content (dashcard->content dashcard pulse dashboard)]
+                   :when (some? content)]
+               content)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -155,7 +210,7 @@
         (str "…"))
     mrkdwn))
 
-(defn create-slack-attachment-data
+(defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [channel-id (slack/files-channel)]

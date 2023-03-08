@@ -4,7 +4,7 @@ title: Introduction to actions
 
 # Introduction to actions
 
-> For now, actions are only available for PostgreSQL and MySQL
+> For now, actions are only available for PostgreSQL, MySQL, and H2 
 
 ![Example action](./images/example-action.png)
 
@@ -20,6 +20,8 @@ Here are a few ideas for what you can do with actions:
 - Mark the customer you’re viewing in a dashboard as a VIP.
 - Let team members remove redundant data.
 
+Actions are associated with [models](../data-modeling/models.md), but actions operate on the raw tables that back those models (actions don't directly affect models).
+
 ## Enabling actions
 
 To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. 
@@ -28,7 +30,7 @@ For actions to work, the database user account (the account you're using to conn
 
 ## Who can use actions
 
-Actions are associated with models, so you'll need to have created (or access to) at least one model before you can start using actions.
+Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start using actions.
 
 - **To create or edit an action**, a person must be in a group with Native query editing privileges for the relevant database.
 -  **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).

@@ -13,7 +13,7 @@ export const DisplayLinkCardWrapper = styled.div`
 `;
 
 export const EditLinkCardWrapper = styled.div`
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -31,9 +31,10 @@ export const CardLink = styled(Link)`
   min-width: 0;
   gap: 0.5rem;
   align-items: center;
+  font-weight: bold;
+
   &:hover {
     color: ${color("brand")};
-    text-decoration: underline;
   }
 `;
 

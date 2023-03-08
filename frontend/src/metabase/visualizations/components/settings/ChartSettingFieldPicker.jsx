@@ -7,6 +7,7 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,
+  SettingsButton,
   ChartSettingFieldPickerRoot,
   FieldPickerColorPicker,
 } from "./ChartSettingFieldPicker.styled";
@@ -73,8 +74,9 @@ const ChartSettingFieldPicker = ({
         hiddenIcons
       />
       {columnKey && (
-        <SettingsIcon
-          name="ellipsis"
+        <SettingsButton
+          onlyIcon
+          icon="ellipsis"
           onClick={e => {
             onShowWidget(
               {
@@ -89,9 +91,11 @@ const ChartSettingFieldPicker = ({
         />
       )}
       {onRemove && (
-        <SettingsIcon
+        <SettingsButton
           data-testid={`remove-${value}`}
-          name="close"
+          icon="close"
+          iconSize={14}
+          onlyIcon
           onClick={onRemove}
         />
       )}

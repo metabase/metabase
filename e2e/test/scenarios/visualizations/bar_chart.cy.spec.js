@@ -224,4 +224,39 @@ describe("scenarios > visualizations > bar chart", () => {
       getDraggableElements().eq(3).should("have.text", "Gadget");
     });
   });
+
+  it("supports up to 100 series (metabase#28796)", () => {
+    visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["and", ["<", ["field", ORDERS.ID, null], 101]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", ORDERS.ID],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "SUBTOTAL"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.get("[data-testid^=draggable-item]").should("have.length", 100);
+
+    cy.findByText("ID is less than 101").click();
+    cy.findByDisplayValue("101").type("{backspace}2");
+    cy.findByText("Update filter").click();
+
+    cy.findByText(
+      "This chart type doesn't support more than 100 series of data.",
+    );
+    cy.get("[data-testid^=draggable-item]").should("have.length", 0);
+  });
 });
