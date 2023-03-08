@@ -50,7 +50,7 @@
                                        "json_bit → 1234" "json_bit → 1234123412314"
                                        "json_bit → boop" "json_bit → doop" "json_bit → genres"
                                        "json_bit → noop" "json_bit → published" "json_bit → title"
-                                       "json_bit → zoop" })]
+                                       "json_bit → zoop"})]
                 (is (= model-columns (t2/select-one-fn (comp set
                                                              (partial map :name)
                                                              :result_metadata)
@@ -133,4 +133,12 @@
           (is (thrown-with-msg?
                Exception
                #"Actions must be made with models, not cards"
-               (t2/update! Action action-id {:archived false}))))))))
+               (t2/update! Action action-id {:archived false})))))
+      ;; Ngoc: I know this seems like a silly test but we actually made a mistake
+      ;; in the pre-update because `nil` is considered falsy. So have this test
+      ;; here to make sure we don't made that mistake again
+      (testing "Don't archive actions if updates a model dataset_query"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (is (false? (t2/select-one-fn :archived Action action-id)))
+          (t2/update! Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (false? (t2/select-one-fn :archived Action action-id))))))))
