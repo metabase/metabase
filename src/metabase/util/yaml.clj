@@ -1,16 +1,33 @@
 (ns metabase.util.yaml
   (:refer-clojure :exclude [load])
   (:require
+   [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]
-   [yaml.core :as yaml])
+   [metabase.util.log :as log])
   (:import
    (java.nio.file Files Path)))
 
 (set! *warn-on-reflection* true)
+
+(defn- fix-values
+  "Returns x with lazy seqs and ordered maps from YAML replaced with vectors and hash-maps as expected by
+   most consumers of from-file."
+  [x]
+  (cond
+    (map? x)        (zipmap (keys x) (map fix-values (vals x)))
+    (sequential? x) (mapv fix-values x)
+    :else           x))
+
+(defn from-file
+  "Returns YAML parsed from file/file-like/path f, with options passed to clj-yaml parser"
+  [f & options]
+  (when (.exists (io/file f))
+    (fix-values
+     (apply yaml/parse-string (slurp (io/file f)) options))))
 
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."

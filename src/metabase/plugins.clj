@@ -1,5 +1,6 @@
 (ns metabase.plugins
   (:require
+   [clj-yaml.core :as yaml]
    [clojure.core.memoize :as memoize]
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
@@ -10,8 +11,7 @@
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]
-   [yaml.core :as yaml])
+   [metabase.util.log :as log])
   (:import
    (java.io File)
    (java.nio.file Files Path)))
@@ -119,7 +119,7 @@
 
 (when (or config/is-dev? config/is-test?)
   (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml.core/parse-string plugins.init/init-plugin-with-info!))
+    (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
   (defn- driver-manifest-paths
     "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."

@@ -108,7 +108,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
 
 (comment
   ;; for parameter parsing

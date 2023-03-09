@@ -1,7 +1,9 @@
 (ns metabase-enterprise.serialization.dump
   "Serialize entities into a directory structure of YAMLs."
   (:require
+   [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase-enterprise.serialization.names
     :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
@@ -20,23 +22,26 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [yaml.core :as yaml]
-   [yaml.writer :as y.writer])
+   [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
-(extend-type Temporal y.writer/YAMLWriter
-             (encode [data]
-               (u.date/format data)))
+(defn- yaml-safe
+  "Returns x transformed for YAML output, converting dates to strings using a standard format."
+  [x]
+  (cond
+    (instance? Temporal x) (u.date/format x)
+    (sequential? x)        (map yaml-safe x)
+    (map? x)               (zipmap (keys x) (map yaml-safe (vals x)))
+    :else                  x))
 
 (defn spit-yaml
   "Writes obj to filename and creates parent directories if necessary"
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false})))
+  (spit filename (yaml/generate-string (yaml-safe obj) :dumper-options {:flow-style :block, :split-lines false})))
 
 (defn- as-file?
   [instance]
