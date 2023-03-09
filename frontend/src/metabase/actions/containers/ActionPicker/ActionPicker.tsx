@@ -13,7 +13,7 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 
-import { groupActionsByModelId, sortGroupedActions } from "./utils";
+import { sortAndGroupActions } from "./utils";
 
 import {
   ActionsList,
@@ -42,12 +42,7 @@ export default function ActionPicker({
       [models],
     ) ?? [];
 
-  const actionsByModel = useMemo(() => {
-    const groupedActions = groupActionsByModelId(actions);
-    const sortedGroupedActions = sortGroupedActions(groupedActions);
-
-    return sortedGroupedActions;
-  }, [actions]);
+  const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
 
   return (
     <div className="scroll-y">
@@ -159,7 +154,6 @@ export const ConnectedActionPicker = _.compose(
     query: () => ({
       models: ["dataset"],
     }),
-    loadingAndErrorWrapper: true,
     listName: "models",
   }),
   Actions.loadList({

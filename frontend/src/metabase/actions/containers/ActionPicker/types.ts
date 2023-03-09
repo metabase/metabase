@@ -1,5 +1,5 @@
-import type { WritebackAction } from "metabase-types/api";
+import type { WritebackAction, CardId } from "metabase-types/api";
 
-type ModelId = number;
+type ModelId = CardId;
 
 export type ModelActionMap = Record<ModelId, WritebackAction[]>;
