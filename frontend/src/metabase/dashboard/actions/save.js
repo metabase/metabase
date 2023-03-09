@@ -16,6 +16,28 @@ import { fetchDashboard } from "./data-fetching";
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 
+function hasDashboardChanged(dashboard, dashboardBeforeEditing) {
+  const dashboardHasChanged = !_.isEqual(
+    { ...dashboard, ordered_cards: dashboard.ordered_cards.length },
+    {
+      ...dashboardBeforeEditing,
+      ordered_cards: dashboardBeforeEditing.ordered_cards.length,
+    },
+  );
+
+  if (dashboardHasChanged) {
+    return true;
+  }
+
+  // sometimes the cards objects change order but all the cards themselves are the same
+  // this should not trigger a save
+  const cardsHaveChanged =
+    _.difference(dashboard.ordered_cards, dashboardBeforeEditing.ordered_cards)
+      .length > 0;
+
+  return cardsHaveChanged;
+}
+
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function () {
@@ -29,11 +51,20 @@ export const saveDashboardAndCards = createThunkAction(
         ),
       };
 
+      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
+      const dashboardHasChanged = hasDashboardChanged(
+        dashboard,
+        dashboardBeforeEditing,
+      );
+
+      if (!dashboardHasChanged) {
+        return;
+      }
+
       // clean invalid dashcards
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
