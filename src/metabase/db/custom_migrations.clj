@@ -2,15 +2,18 @@
   (:require
    [clojure.set :as set]
    [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.task :as task]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)))
+   (liquibase.exception ValidationErrors)
+   (org.quartz Scheduler)))
 
 (set! *warn-on-reflection* true)
 
@@ -95,7 +98,53 @@
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Quartz Scheduler Helpers                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; This section of code's purpose is to avoid the migration depending on function in the [[metabase.task]] namespace,
+;; which is likely to change, and might not have as tight test coverage as needed for custom migrations.
+
+(defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
+  *quartz-scheduler*
+  (atom nil))
+
+(defn- scheduler
+  "Fetch the instance of our Quartz scheduler."
+  ^Scheduler []
+  @*quartz-scheduler*)
+
+(defn- load-class ^Class [^String class-name]
+  (Class/forName class-name true (classloader/the-classloader)))
+
+(defrecord ^:private ClassLoadHelper []
+  org.quartz.spi.ClassLoadHelper
+  (initialize [_])
+  (getClassLoader [_]
+    (classloader/the-classloader))
+  (loadClass [_ class-name]
+    (load-class class-name))
+  (loadClass [_ class-name _]
+    (load-class class-name)))
+
+(when-not *compile-files*
+  (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
+
+(defn- set-jdbc-backend-properties!
+  "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
+  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
+  `quartz.properties` file.)"
+  []
+  (when (= (mdb.connection/db-type) :postgres)
+    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (define-migration DeleteAbandonmentEmailTask
-  (task/start-scheduler!)
-  (task/delete-task! (jobs/key "metabase.task.abandonment-emails.job")
-                     (triggers/key "metabase.task.abandonment-emails.trigger")))
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
+    (qs/shutdown scheduler)))
