@@ -174,12 +174,6 @@ describe(
       cy.findByText("New").click();
       popover().findByText("Action").click();
 
-      cy.findByText("Select a database").click();
-      popover().within(() => {
-        cy.findByText("Sample Database").should("not.exist");
-        cy.findByText("QA Postgres12").click();
-      });
-
       fillActionQuery(QUERY);
       cy.findByText(/New Action/)
         .clear()
