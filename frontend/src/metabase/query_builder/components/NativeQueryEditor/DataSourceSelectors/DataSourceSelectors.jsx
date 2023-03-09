@@ -62,11 +62,17 @@ const DataSourceSelectors = ({
   const database = query.database();
 
   const databases = useMemo(() => {
-    const databases = query.metadata().databasesList({ savedQuestions: false });
+    const allDatabases = query
+      .metadata()
+      .databasesList({ savedQuestions: false });
+
     if (!requireWriteback) {
-      return databases;
+      return allDatabases;
     }
-    return databases.filter(database => checkDatabaseActionsEnabled(database));
+
+    return allDatabases.filter(database =>
+      checkDatabaseActionsEnabled(database),
+    );
   }, [query, requireWriteback]);
 
   if (!isNativeEditorOpen || databases.length === 0) {
