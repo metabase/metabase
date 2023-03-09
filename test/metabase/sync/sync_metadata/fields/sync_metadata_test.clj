@@ -45,8 +45,6 @@
              :database-position 0
              :database-required false
              :database-is-auto-increment false}
-<<<<<<< HEAD
-=======
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
@@ -80,37 +78,13 @@
              :database-position 0
              ;; no :database-is-auto-increment key to test case where describe-table does not not return it
              :database-required false}
->>>>>>> master
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
              :id                1
              :database-position 0
-<<<<<<< HEAD
-             :database-required true
-             :database-is-auto-increment false})))))
-
-(deftest database-is-auto-increment-changed-test
-  (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_is_auto_increment true}]]
-           (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment true}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false})))))
-=======
              :database-required false
              :database-is-auto-increment true})))))
->>>>>>> master
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
