@@ -51,9 +51,11 @@
 
 (deftest ^:parallel filter-test
   (testing "valid filters"
-    (let [field [:field 1 {:lib/uuid (str (random-uuid))}]
-          boolean-field [:field 2 {:lib/uuid (str (random-uuid))
-                                   :base-type :type/Boolean}]
+    (let [field         [:field {:lib/uuid (str (random-uuid))} 1]
+          boolean-field [:field
+                         {:lib/uuid  (str (random-uuid))
+                          :base-type :type/Boolean}
+                         2]
           filter-expr
           [:and
            boolean-field
@@ -81,9 +83,15 @@
            [:segment "segment-id"]
            [:case [:= 1 1] true [:not-null field] [:< 0 1]]]]
       (is (= (known-filter-ops) (filter-ops filter-expr)))
-      (is (true? (mc/validate ::filter/filter (ensure-uuids filter-expr))))))
+      ;; testing all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
+      (doseq [filter-clause (rest filter-expr)
+              :let          [filter-clause (ensure-uuids filter-clause)]]
+        (testing (list `mc/validate ::filter/filter filter-clause)
+          (is (mc/validate ::filter/filter filter-clause))))
+      ;; now test the entire thing
+      (is (mc/validate ::filter/filter (ensure-uuids filter-expr)))))
 
   (testing "invalid filter"
     (is (false? (mc/validate
                  ::filter/filter
-                 (ensure-uuids [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]))))))
+                 (ensure-uuids [:xor 13 [:field {:lib/uuid (str (random-uuid))} 1]]))))))
