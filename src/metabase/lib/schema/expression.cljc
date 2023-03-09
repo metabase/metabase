@@ -1,7 +1,7 @@
 (ns metabase.lib.schema.expression
-  (:refer-clojure :exclude [boolean])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.schema.common :as common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
@@ -15,25 +15,28 @@
   For MBQL clauses, try really hard not return an ambiguous set of possible types! Calculate things and determine what
   the result type will be!"
   {:arglists '([expr])}
-  lib.dispatch/dispatch-value)
+  #?(:clj (fn [x]
+            ;; only for clojure! Use the class name as the dispatch type rather than `:type/*`. This is so we can
+            ;; implement support for some Clojure-only classes like `BigDecimal` or `java.time.OffsetDateTime`, for
+            ;; use inside QP code or whatever.
+            (let [dispatch-value (lib.dispatch/dispatch-value x)]
+              (if (= dispatch-value :type/*)
+                (type x)
+                dispatch-value)))
+     :cljs lib.dispatch/dispatch-value))
 
 (defmethod type-of* :default
-  [x]
-  (throw (ex-info (i18n/tru "Don''t know how to determine the base type of {0}" (pr-str x))
-                  {:x x})))
-
-(def ^:private BaseType
-  [:fn
-   {:error/message "valid base type"}
-   #(isa? % :type/*)])
+  [expr]
+  (throw (ex-info (i18n/tru "Don''t know how to determine the base type of {0}" (pr-str expr))
+                  {:expr expr})))
 
 (defn- mbql-clause? [expr]
   (and (vector? expr)
        (keyword? (first expr))))
 
 (mu/defn type-of :- [:or
-                     BaseType
-                     [:set {:min 2} BaseType]]
+                     ::common/base-type
+                     [:set {:min 2} ::common/base-type]]
   "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
   possible types."
   [expr]
@@ -93,6 +96,15 @@
 
 (mr/def ::number
   (expression-schema :type/Number "expression returning a number"))
+
+(mr/def ::date
+  (expression-schema :type/Date "expression returning a date"))
+
+(mr/def ::time
+  (expression-schema :type/Time "expression returning a time"))
+
+(mr/def ::datetime
+  (expression-schema :type/DateTime "expression returning a date time"))
 
 (mr/def ::temporal
   (expression-schema :type/Temporal "expression returning a date, time, or date time"))

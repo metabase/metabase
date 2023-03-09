@@ -1,10 +1,16 @@
 (ns metabase.lib.schema.common
   (:require
+   [clojure.string :as str]
+   [metabase.types]
    [metabase.util.malli.registry :as mr]))
+
+(comment metabase.types/keep-me)
 
 ;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string
-  [:string {:min 1}])
+  [:and
+   [:string {:min 1}]
+   [:fn (complement str/blank?)]])
 
 ;;; Schema representing an integer than must also be greater than or equal to zero.
 (mr/def ::int-greater-than-or-equal-to-zero
@@ -20,3 +26,8 @@
 (mr/def ::options
   [:map
    [:lib/uuid ::uuid]])
+
+(mr/def ::base-type
+  [:fn
+   {:error/message "valid base type"}
+   #(isa? % :type/*)])

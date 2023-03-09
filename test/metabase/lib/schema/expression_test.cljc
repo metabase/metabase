@@ -1,9 +1,8 @@
 (ns metabase.lib.schema.expression-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest testing]]
    [malli.core :as mc]
-   [metabase.lib.schema.expression :as expression]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.schema.expression :as expression]))
 
 (deftest ^:parallel integer-literal-test
   (testing "valid schemas"
@@ -15,41 +14,17 @@
                ::expression/expression)
       (int 1)
       (long 1)
-      ;; TODO
-      #_(bigint 1)))
+      #?@(:clj ((bigint 1)
+                (biginteger 1)))))
   (testing "invalid schemas"
-    (are [n] (are [schema] (not (mc/validate schema n))
-               ;; sanity check
+    (are [n] (are [schema] (mc/explain schema n)
                ::expression/boolean
                ::expression/string
-               #_FIXME
-               #_::expression/date
-               #_::expression/time
-               #_::expression/date-time
+               ::expression/date
+               ::expression/time
+               ::expression/datetime
                ::expression/temporal)
       (int 1)
       (long 1)
-      ;; TODO
-      #_(bigint 1))))
-
-(deftest ^:parallel integer-expression-test
-  (let [venues-price [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} (meta/id :venues :price)]]
-    (testing "A `:field` clause with an integer base type in its options should be considered to be an integer expression"
-      (is (mc/validate
-           ::expression/integer
-           venues-price)))
-    (testing "integer literals are integer expressions"
-      (is (mc/validate
-           ::expression/integer
-           2)))
-    ;; FIXME once we add `:*` back in
-    #_(testing "Multiplication with all integer args should be considered to be an integer expression"
-      (are [schema] (mc/validate
-                     schema
-                     [:* {:lib/uuid (str (random-uuid))} venues-price 2])
-        ::expression/*.integer
-        ::expression/integer))
-    #_(testing "Multiplication with one or more non-integer args should NOT be considered to be an integer expression."
-      (is (not (mc/validate
-                ::expression/integer
-                [:* {} venues-price 2.0]))))))
+      #?@(:clj ((bigint 1)
+                (biginteger 1))))))

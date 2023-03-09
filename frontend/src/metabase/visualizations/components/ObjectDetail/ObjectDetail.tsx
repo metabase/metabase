@@ -130,6 +130,7 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  className,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
@@ -237,7 +238,7 @@ export function ObjectDetailFn({
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
-    <ObjectDetailContainer wide={hasRelationships}>
+    <ObjectDetailContainer wide={hasRelationships} className={className}>
       {hasNotFoundError ? (
         <ErrorWrapper>
           <NotFound />

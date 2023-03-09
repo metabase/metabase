@@ -74,6 +74,7 @@ export const getDownloadButtonParams = ({
   const isSavedQuery = card?.id != null;
   if (isSavedQuery) {
     return {
+      method: "POST",
       url: `api/card/${card.id}/query/${type}`,
       params: { parameters: JSON.stringify(result?.json_query?.parameters) },
     };
@@ -83,6 +84,7 @@ export const getDownloadButtonParams = ({
   if (isUnsavedQuery) {
     return {
       url: `api/dataset/${type}`,
+      method: "POST",
       params: {
         query: JSON.stringify(_.omit(result?.json_query, "constraints")),
         visualization_settings: JSON.stringify(visualizationSettings),

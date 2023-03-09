@@ -44,7 +44,7 @@
     ;; `:type/DateTimeWithLocalTZ`. Technically this should return `:type/DateTime`, since it's the most-specific
     ;; common ancestor type compatible with all args! But calculating that stuff is way too hard! So this will have to
     ;; do for now! -- Cam
-    (case-expr "2023-03-08T06:15" [:field 1 {:base-type :type/DateTimeWithLocalTZ}])
+    (case-expr "2023-03-08T06:15" [:field {:base-type :type/DateTimeWithLocalTZ} 1])
     :type/DateTimeWithLocalTZ
 
     ;; Differing types with a common base type that is more specific than `:type/*`
@@ -83,9 +83,11 @@
 
 (deftest ^:parallel filter-test
   (testing "valid filters"
-    (let [field [:field 1 {:lib/uuid (str (random-uuid))}]
-          boolean-field [:field 2 {:lib/uuid (str (random-uuid))
-                                   :base-type :type/Boolean}]
+    (let [field         [:field {:lib/uuid (str (random-uuid))} 1]
+          boolean-field [:field
+                         {:lib/uuid  (str (random-uuid))
+                          :base-type :type/Boolean}
+                         2]
           filter-expr
           [:and
            boolean-field
@@ -117,6 +119,12 @@
         (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
           (is (not (identical? (get-method expression/type-of* op)
                                (get-method expression/type-of* :default))))))
+      ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
+      (doseq [filter-clause (rest filter-expr)
+              :let          [filter-clause (ensure-uuids filter-clause)]]
+        (testing (list `mc/validate :expression/boolean filter-clause)
+          (is (mc/validate :expression/boolean filter-clause))))
+      ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
 (deftest ^:parallel invalid-filter-test

@@ -3,7 +3,8 @@
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.expression :as expression]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   #?@(:clj ([metabase.lib.schema.literal.jvm :as literal.jvm]))))
 
 (defmethod expression/type-of* :dispatch-type/nil
   [_nil]
@@ -16,15 +17,27 @@
   [_bool]
   :type/Boolean)
 
+(mr/def ::boolean
+  :boolean)
+
 (mr/def ::integer
-  [:int])
+  #?(:clj [:or
+           :int
+           ::literal.jvm/big-integer]
+     :cljs :int))
 
 (defmethod expression/type-of* :dispatch-type/integer
   [_int]
   :type/Integer)
 
+;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
+;;; universe we'd want to allow those if they're not disallowed already.
 (mr/def ::non-integer-real
-  [:double])
+  #?(:clj [:or
+           :double
+           ::literal.jvm/float
+           ::literal.jvm/big-decimal]
+     :cljs :double))
 
 (defmethod expression/type-of* :dispatch-type/number
   [_non-integer-real]
@@ -32,33 +45,80 @@
   :type/Float)
 
 (mr/def ::string
-  [:string])
+  :string)
+
+;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
+;;; allowed to have month `13` or `02-29` for example
+
+(def ^:private date-part-regex #"\d{4}-\d{2}-\d{2}")
+
+(def ^:private time-part-regex #"\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?")
+
+(def ^:private offset-part-regex
+  ;; I think technically a zone offset can have a seconds part too but let's not worry too much about supporting that
+  ;; for now.
+  (re-pattern (str "(?:Z|" time-part-regex ")")))
+
+(def ^:private local-date-regex
+  (re-pattern (str "^" date-part-regex "$")))
+
+(def ^:private local-time-regex
+  (re-pattern (str "^" time-part-regex "$")))
+
+(def ^:private offset-time-regex
+  (re-pattern (str "^" time-part-regex offset-part-regex "$")))
+
+(def ^:private local-datetime-regex
+  (re-pattern (str "^" date-part-regex "T" time-part-regex "$")))
+
+(def ^:private offset-datetime-regex
+  (re-pattern (str "^" date-part-regex "T" time-part-regex offset-part-regex "$")))
+
+
+(mr/def ::string.date
+  [:re local-date-regex])
+
+(mr/def ::string.time
+  [:or
+   [:re local-time-regex]
+   [:re offset-time-regex]])
+
+(mr/def ::string.datetime
+  [:or
+   [:re local-datetime-regex]
+   [:re offset-datetime-regex]])
+
+(defmethod expression/type-of* :dispatch-type/string
+  [s]
+  (condp mc/validate s
+    ::string.datetime #{:type/Text :type/DateTime}
+    ::string.date     #{:type/Text :type/Date}
+    ::string.time     #{:type/Text :type/Time}
+    :type/Text))
 
 (mr/def ::date
-  ;; TODO
-  ;; (count "2022-02-23") => 10
-  [:string {:min 10}])
+  #?(:clj  [:or
+            :time/local-date
+            ::string.date]
+     :cljs ::string.date))
 
 (mr/def ::time
-  ;; TODO
-  ;; (count "13:12") => 5
-  [:string {:min 5}])
+  #?(:clj [:or
+           ::string.time
+           :time/local-time
+           :time/offset-time]
+     :cljs ::string.time))
 
 (mr/def ::datetime
-  ;; TODO
-  ;; (count "2022-02-23T13:12") => 16
-  [:string {:min 16}])
+  #?(:clj [:or
+           ::string.datetime
+           :time/local-date-time
+           :time/offset-date-time
+           :time/zoned-date-time]
+     :cljs ::string.datetime))
 
 (mr/def ::temporal
   [:or
    ::date
    ::time
    ::datetime])
-
-(defmethod expression/type-of* :dispatch-type/string
-  [s]
-  (condp mc/validate s
-    ::datetime #{:type/Text :type/DateTime}
-    ::date     #{:type/Text :type/Date}
-    ::time     #{:type/Text :type/Time}
-    :type/Text))
