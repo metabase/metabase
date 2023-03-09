@@ -108,7 +108,7 @@
    (into [:catn
           {:error/message (str "Valid " tag " clause")}
           [:tag [:= tag]]
-          [:options ::common/options]]
+          [:options [:schema [:ref ::common/options]]]]
          args)])
 
 (defn tuple-clause-schema
@@ -119,7 +119,7 @@
   (into [:tuple
          {:error/message (str "Valid " tag " clause")}
          [:= tag]
-         ::common/options]
+         [:ref ::common/options]]
         args))
 
 ;;;; Even more convenient functions!

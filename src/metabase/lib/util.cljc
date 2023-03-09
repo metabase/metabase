@@ -82,7 +82,7 @@
 (mu/defn ^:private non-negative-stage-index :- ::lib.schema.common/int-greater-than-or-equal-to-zero
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [stages       :- [:sequential ::lib.schema/stage]
+  [stages       :- [:sequential [:ref ::lib.schema/stage]]
    stage-number :- :int]
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
