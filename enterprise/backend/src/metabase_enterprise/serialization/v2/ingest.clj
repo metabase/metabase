@@ -85,10 +85,11 @@
 (deftype YamlIngestion [^File root-dir settings cache]
   Ingestable
   (ingest-list [_]
-    (->> (or @cache
-             (reset! cache (ingest-all root-dir)))
-         vals
-         (map first)))
+    (-> (or @cache (reset! cache (ingest-all root-dir)))
+        keys
+        ;; add settings ingestion paths
+        (concat (for [k (keys settings)]
+                  [{:model "Setting" :id (name k)}]))))
 
   (ingest-one [_ abs-path]
     (when-not @cache

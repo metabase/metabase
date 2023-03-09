@@ -298,7 +298,7 @@
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
-                         (set (keys (#'ingest/ingest-all (io/file dump-dir))))))))
+                         (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
                 (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
