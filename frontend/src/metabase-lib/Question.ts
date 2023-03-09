@@ -26,6 +26,7 @@ import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import * as FILTER from "metabase-lib/queries/utils/filter";
 import * as DESCRIPTION from "metabase-lib/queries/utils/description";
 import * as FIELD_REF from "metabase-lib/queries/utils/field-ref";
 import * as QUERY from "metabase-lib/queries/utils/query";
@@ -458,7 +459,7 @@ class QuestionInner {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  private _type(): string {
+  type(): string {
     return this.datasetQuery().type;
   }
 
@@ -620,6 +621,25 @@ class QuestionInner {
 
   distribution(column): Question {
     return distribution(this, column) || this;
+  }
+
+  usesMetric(metricId): boolean {
+    return (
+      this.isStructured() &&
+      _.any(
+        QUERY.getAggregations(this.query().query()),
+        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
+      )
+    );
+  }
+
+  usesSegment(segmentId): boolean {
+    return (
+      this.isStructured() &&
+      QUERY.getFilters(this.query().query()).some(
+        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
+      )
+    );
   }
 
   composeThisQuery(): Question | null | undefined {
