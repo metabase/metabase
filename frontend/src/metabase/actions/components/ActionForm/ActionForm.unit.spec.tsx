@@ -365,6 +365,8 @@ describe("Actions > ActionForm", () => {
         },
       });
 
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
       userEvent.type(screen.getByLabelText(/foo input/i), "baz");
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();

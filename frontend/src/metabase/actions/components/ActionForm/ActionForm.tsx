@@ -121,7 +121,7 @@ export const ActionForm = ({
         enableReinitialize
         onSubmit={onSubmit}
       >
-        <Form role="form" data-testid="action-form-editor">
+        <Form data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
               {(provided: DroppableProvided) => (
@@ -165,7 +165,7 @@ export const ActionForm = ({
       onSubmit={onSubmit}
       enableReinitialize
     >
-      <Form role="form" data-testid="action-form">
+      <Form data-testid="action-form">
         {form.fields.map(field => (
           <FormFieldWidget key={field.name} formField={field} />
         ))}
