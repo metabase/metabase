@@ -4,6 +4,7 @@
    [java-time :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
+   [kixi.stats.protocols :as p]
    [medley.core :as m]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -112,10 +113,11 @@
                             (redux/post-complete
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
-                             (fn [[offset slope]]
-                               (when (every? u/real-number? [offset slope])
-                                 {:model   (model offset slope)
-                                  :formula (formula offset slope)}))))
+                             (fn [fit]
+                               (let [[offset slope] (some-> fit p/parameters)]
+                                 (when (every? u/real-number? [offset slope])
+                                   {:model   (model offset slope)
+                                    :formula (formula offset slope)})))))
                           (apply redux/juxt))
      :validation-set ((keep (fn [row]
                               (let [x (fx row)
@@ -203,8 +205,9 @@
                                ((map xfn) (last-n 2))
                                (stats/simple-linear-regression xfn yfn)
                                (best-fit xfn yfn))))
-                (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                  (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                (fn [[[y-previous y-current] [x-previous x-current] fit best-fit-equation]]
+                  (let [[offset slope] (some-> fit p/parameters)
+                        unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
                                        (if (or (nil? unit)
                                                (= unit :default))
                                          (infer-unit x-previous x-current)
@@ -218,7 +221,7 @@
                                        (change y-current y-previous))
                      :slope          slope
                      :offset         offset
-                     :best-fit       best-fit
+                     :best-fit       best-fit-equation
                      :col            (:name number-col)
                      :unit           unit))))))
       (trs "Error generating timeseries insight keyed by: {0}"
@@ -244,3 +247,39 @@
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (fingerprinters/constant-fingerprinter nil))))
+
+(comment
+  (transduce identity
+             (timeseries-insight
+              {:datetimes [{:base_type :type/DateTime, :position 0}],
+               :numbers   [{:base_type :type/Number, :position 1}
+                           {:base_type :type/Number, :position 2}]})
+             [["2018-11-01", 296, 10875]
+              ["2018-11-02", 257, 11762]
+              ["2018-11-03", 276, 13101]
+              ["2018-11-05", 172, 10890]])
+
+  (transduce identity
+             (insights [{:base_type :type/DateTime}
+                        {:base_type :type/Number}
+                        {:base_type :type/Number}])
+             [["2018-11-01", 296, 10875]
+              ["2018-11-02", 257, 11762]
+              ["2018-11-03", 276, 13101]
+              ["2018-11-05", 172, 10890]
+              ["2018-11-08", 576, 12935]
+              ["2018-11-09", 525, 30183]
+              ["2018-11-10", 575, 36148]
+              ["2018-11-16", 213, 14942]
+              ["2018-11-17", 503, 15690]
+              ["2018-11-18", 502, 14506]
+              ["2018-11-19", 233, 10714]
+              ["2018-11-20", 174, 9545]
+              ["2018-11-22", 171, 6460]
+              ["2018-11-24", 203, 5217]
+              ["2018-11-26", 133, 3263]
+              ["2018-11-28", 127, 3238]
+              ["2018-11-29", 137, 3120]
+              ["2018-12-01", 180, 3732]
+              ["2018-12-02", 179, 3311]
+              ["2018-12-03", 144, 2525]]))
