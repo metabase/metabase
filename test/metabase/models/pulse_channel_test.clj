@@ -6,7 +6,7 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -475,5 +475,5 @@
                                            :details      {:emails ["cam@test.com"]}
                                            :created_at   now}]]
         (is (= "2f5f0269"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-               (serdes.hash/identity-hash chan)))))))
+               (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes/identity-hash chan)))))))

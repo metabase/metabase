@@ -40,7 +40,7 @@
   com.h2database/h2                         {:mvn/version "2.1.214"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
   com.snowplowanalytics/snowplow-java-tracker
-                                            {:mvn/version "0.12.0"              ; Snowplow analytics
+                                            {:mvn/version "1.0.0"               ; Snowplow analytics
                                              :exclusions [com.fasterxml.jackson.core/jackson-databind]}
   com.taoensso/nippy                        {:mvn/version "3.2.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.0"}             ; Markdown parsing
@@ -65,7 +65,7 @@
                                              :exclusions  [org.clojure/clojurescript]}
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
-  io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML. Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
+  io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML.
                                              :exclusions  [org.clojure/clojure
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
@@ -385,7 +385,13 @@
                                  ;; too many false positives for now
                                  :unused-ret-vals
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity]}}
+                                 :wrong-arity]
+               ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
+               ;; don't use but eastwood detects. This is discussed in Slack here
+               ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
+               ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
+               ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
+               :exclude-namespaces [metabase.analytics.snowplow]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter

@@ -9,6 +9,7 @@ import type {
   InputComponentType,
   Parameter,
   WritebackParameter,
+  FieldType,
 } from "metabase-types/api";
 import type {
   ActionFormProps,
@@ -23,14 +24,8 @@ const getOptionsFromArray = (
   options: (number | string)[],
 ): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
 
-const getSampleOptions = () => [
-  { name: t`Option One`, value: 1 },
-  { name: t`Option Two`, value: 2 },
-  { name: t`Option Three`, value: 3 },
-];
-
-const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
-  ["select", "radio"].includes(fieldSettings.inputType);
+export const inputTypeHasOptions = (inputType: InputSettingType) =>
+  ["select", "radio"].includes(inputType);
 
 type FieldPropTypeMap = Record<InputSettingType, InputComponentType>;
 
@@ -46,6 +41,12 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   select: "select",
   radio: "radio",
 };
+
+function getSampleOptions(fieldType: FieldType) {
+  return fieldType === "number"
+    ? getOptionsFromArray([1, 2, 3])
+    : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
+}
 
 export const getFormField = (
   parameter: Parameter,
@@ -73,10 +74,10 @@ export const getFormField = (
     field: fieldSettings.field,
   };
 
-  if (inputTypeHasOptions(fieldSettings)) {
+  if (inputTypeHasOptions(fieldSettings.inputType)) {
     fieldProps.options = fieldSettings.valueOptions?.length
       ? getOptionsFromArray(fieldSettings.valueOptions)
-      : getSampleOptions();
+      : getSampleOptions(fieldSettings.fieldType);
   }
 
   return fieldProps;
