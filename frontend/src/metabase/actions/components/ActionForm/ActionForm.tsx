@@ -161,7 +161,7 @@ export const ActionForm = ({
 
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={formInitialValues}
       validationSchema={formValidationSchema}
       onSubmit={handleSubmit}
       enableReinitialize

@@ -99,27 +99,18 @@ export const getForm = (
 
 const getFieldValidationType = ({
   inputType,
-  defaultValue,
 }: FieldSettings): Yup.AnySchema => {
   switch (inputType) {
     case "number":
-      return Yup.number()
-        .nullable()
-        .default(defaultValue != null ? Number(defaultValue) : null);
+      return Yup.number().nullable().default(null);
     case "boolean":
-      return Yup.boolean()
-        .nullable()
-        .default(defaultValue != null ? Boolean(defaultValue) : false);
+      return Yup.boolean().nullable().default(false);
     case "date":
     case "datetime":
     case "time":
-      return Yup.string()
-        .nullable()
-        .default(defaultValue != null ? String(defaultValue) : null);
+      return Yup.string().nullable().default(null);
     default:
-      return Yup.string()
-        .nullable()
-        .default(defaultValue != null ? String(defaultValue) : null);
+      return Yup.string().nullable().default(null);
   }
 };
 
