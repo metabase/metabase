@@ -3,7 +3,9 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types]
    [metabase.util.malli.registry :as mr]))
@@ -16,14 +18,11 @@
    [:map
     [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
 
-(mr/def ::base-type
-  [:fn #(isa? % :type/*)])
-
 (mr/def ::field.literal.options
-  [:and
+  [:merge
    ::field.options
    [:map
-    [:base-type ::base-type]]])
+    [:base-type ::common/base-type]]])
 
 ;;; `:field` clause
 (mr/def ::field.literal
@@ -38,7 +37,7 @@
    ::field.options ; TODO -- we should make `:base-type` required here too
    ::id/field])
 
-(mr/def ::field
+(mbql-clause/define-mbql-clause :field
   [:and
    [:tuple
     [:= :field]
@@ -49,26 +48,41 @@
     [:dispatch-type/integer ::field.id]
     [:dispatch-type/string ::field.literal]]])
 
-(mr/def ::expression
-  [:tuple
-   [:= :expression]
-   ::field.options
-   ::common/non-blank-string])
+(defmethod expression/type-of* :field
+  [[_tag opts _id-or-name]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
 
-(mr/def ::aggregation
+(mbql-clause/define-tuple-mbql-clause :expression
+  ::common/non-blank-string)
+
+(defmethod expression/type-of* :expression
+  [[_tag opts _expression-name]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
+
+(mr/def ::aggregation-options
+  [:merge
+   ::common/options
+   [:map
+    [:name {:optional true} ::common/non-blank-string]
+    [:display-name {:optional true} ::common/non-blank-string]]])
+
+(mbql-clause/define-mbql-clause :aggregation
   [:tuple
    [:= :aggregation]
-   ::field.options
+   ::aggregation-options
    ::common/int-greater-than-or-equal-to-zero])
+
+(defmethod expression/type-of* :aggregation
+  [[_tag opts _index]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
 
 (mr/def ::ref
   [:and
-   [:tuple
-    [:enum :field :expression :aggregation]
-    ::field.options
-    any?]
-   [:multi {:dispatch      #(keyword (first %))
-            :error/message ":field, :expression, :or :aggregation reference"}
-    [:field ::field]
-    [:aggregation ::aggregation]
-    [:expression ::expression]]])
+   ::mbql-clause/clause
+   [:fn
+    {:error/message ":field, :expression, :or :aggregation reference"}
+    (fn [[tag :as _clause]]
+      (#{:field :expression :aggregation} tag))]])

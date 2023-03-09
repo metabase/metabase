@@ -695,6 +695,7 @@
           (instance? java.util.regex.Pattern x)))
 
 (derive :dispatch-type/nil      :dispatch-type/*)
+(derive :dispatch-type/boolean  :dispatch-type/*)
 (derive :dispatch-type/string   :dispatch-type/*)
 (derive :dispatch-type/keyword  :dispatch-type/*)
 (derive :dispatch-type/number   :dispatch-type/*)
@@ -722,6 +723,7 @@
   [x]
   (cond
     (nil? x)        :dispatch-type/nil
+    (boolean? x)    :dispatch-type/boolean
     (string? x)     :dispatch-type/string
     (keyword? x)    :dispatch-type/keyword
     (integer? x)    :dispatch-type/integer

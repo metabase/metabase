@@ -27,3 +27,8 @@
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
      [type schema]
      `(register! ~type ~schema)))
+
+(defn resolve-schema
+  "For REPL/test usage: get the definition of a registered schema from the registry."
+  [k]
+  (mr/schema registry k))

@@ -1,215 +1,135 @@
 (ns metabase.lib.schema.expression
   (:require
-   [malli.core :as mc]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.schema.common :as common]
-   [metabase.lib.schema.filter :as filter]
-   [metabase.lib.schema.literal :as literal]
-   [metabase.lib.schema.ref :as ref]
-   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.types]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types/keep-me)
 
-(defn- ref-of-base-type [base-type]
-  [:and
-   [:ref ::ref/ref]
-   [:fn
-    {:error/message (str ":field, :expression, :or :aggregation with a " base-type " :base-type")}
-    (fn [[_ref opts]]
-          (isa? (:base-type opts) base-type))]])
+(defmulti type-of*
+  "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of*]].
 
-(defn- ref-of-base-type-with-temporal-unit [base-type temporal-unit-schema]
-  [:and
-   (ref-of-base-type base-type)
-   [:fn
-    {:error/message (str ":field, :expression, :or :aggregation reference returning a "
-                         base-type
-                         " with a :temporal-unit that matches "
-                         ;; TODO -- humanize this
-                         (pr-str temporal-unit-schema))}
-    (let [validator (mc/validator temporal-unit-schema)]
-      (fn [[_ref {:keys [temporal-unit], :as _opts}]]
-        (validator temporal-unit)))]])
+  For MBQL clauses, try really hard not return an ambiguous set of possible types! Calculate things and determine what
+  the result type will be!
 
-;;; An expression that we can filter on, or do case statements on, etc.
+  If we don't have enough information to determine the type (e.g. a `:field` clause that needs a metadata provider to
+  determine the type), return `::expression/type.unknown`. This is a temporary workaround until we figure out how to
+  always have type info!"
+  {:arglists '([expr])}
+  (fn [x]
+    ;; For the fallback case: use the actual type/class name as the dispatch type rather than `:type/*`. This is so we
+    ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
+    ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
+    (let [dispatch-value (lib.dispatch/dispatch-value x)]
+      (if (= dispatch-value :type/*)
+        (type x)
+        dispatch-value))))
+
+(defmethod type-of* :default
+  [expr]
+  (throw (ex-info (i18n/tru "Don''t know how to determine the base type of {0}" (pr-str expr))
+                  {:expr expr})))
+
+(defn- mbql-clause? [expr]
+  (and (vector? expr)
+       (keyword? (first expr))))
+
+(mr/def ::base-type
+  [:or
+   [:= ::type.unknown]
+   ::common/base-type])
+
+(mu/defn type-of :- [:or
+                     ::base-type
+                     [:set {:min 2} ::base-type]]
+  "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
+  possible types."
+  [expr]
+  (or
+   ;; for MBQL clauses with `:base-type` in their options: ignore their dumb [[type-of*]] methods and return that type
+   ;; directly. Ignore everything else! Life hack!
+   (and (mbql-clause? expr)
+        (map? (second expr))
+        (:base-type (second expr)))
+   (type-of* expr)))
+
+(defn- is-type? [x y]
+  (cond
+    (set? x)             (some #(is-type? % y) x)
+    (set? y)             (some #(is-type? x %) y)
+    (= x ::type.unknown) true
+    :else                (isa? x y)))
+
+(defn type-of?
+  "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
+  [expr base-type]
+  (let [expr-type (type-of expr)]
+    (assert ((some-fn keyword? set?) expr-type)
+            (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
+    (is-type? expr-type base-type)))
+
+(defn- expression-schema
+  "Schema that matches the following rules:
+
+  1a. expression is *not* an MBQL clause, OR
+
+  1b. expression is an registered MBQL clause and matches the schema registered
+      with [[metabase.lib.schema.mbql-clause]], AND
+
+  2. expression's [[type-of]] isa? `base-type`"
+  [base-type description]
+  [:and
+   [:or
+    [:fn
+     {:error/message "This is shaped like an MBQL clause"}
+     (complement mbql-clause?)]
+    [:ref :metabase.lib.schema.mbql-clause/clause]]
+   [:fn
+    {:error/message description}
+    #(type-of? % base-type)]])
+
 (mr/def ::boolean
-  [:or
-   {:error/message "expression returning a boolean"}
-   [:ref ::literal/boolean]
-   [:ref ::filter/filter]
-   (ref-of-base-type :type/Boolean)])
+  (expression-schema :type/Boolean "expression returning a boolean"))
 
-;;; An expression that returns a string.
 (mr/def ::string
-  [:or
-   {:error/message "expression returning a string"}
-   [:ref ::literal/string]
-   (ref-of-base-type :type/Text)])
+  (expression-schema :type/Text "expression returning a string"))
 
-;;; `:length` clause: returns an integer
-;;;
-;;; [:length options <string-expression>
-(mr/def ::length
-  [:tuple
-   [:= :length]
-   ::common/options
-   ::string])
-
-;;; a `:*` clause with all integer expression arguments returns an integer.
-(mr/def ::*.integer
-  [:schema
-   [:cat
-    [:= :*]
-    ::common/options
-    [:* [:schema [:ref ::integer]]]]])
-
-;;; An expression that returns an integer.
 (mr/def ::integer
-  [:or
-   {:error/message "expression returning an integer"}
-   ::literal/integer
-   ::length
-   [:ref ::*.integer]
-   (ref-of-base-type :type/Integer)
-   ;; `:temporal-extract` units like `:day-of-month` actually return `:type/Integer` rather than a temporal type
-   (ref-of-base-type-with-temporal-unit :type/Date     ::temporal-bucketing/unit.date.extract)
-   (ref-of-base-type-with-temporal-unit :type/Time     ::temporal-bucketing/unit.time.extract)
-   (ref-of-base-type-with-temporal-unit :type/DateTime ::temporal-bucketing/unit.date-time.extract)])
+  (expression-schema :type/Integer "expression returning an integer"))
 
-;;; a `:*` clause that isn't an `::*.integer` (i.e., one or more clauses sub-expressions is a non-integer-real expression)
-;;; returns a non-integer-real number
-(mr/def ::*.non-integer-real
-  [:and
-   [:schema
-    [:cat
-     [:= :*]
-     ::common/options
-     [:* [:schema [:ref ::number]]]]]
-   [:not ::*.integer]])
-
-;;; An expression that returns a number that includes a non-integer-real place, including but not limited floats, doubles,
-;;; BigDecimals, SmallDecimals, MediumDecimals, etc! Basically any normal number that isn't an integer!
 (mr/def ::non-integer-real
-  [:or
-   {:error/message "expression returning a number with a non-integer-real place"}
-   [:ref ::literal/non-integer-real]
-   [:ref ::*.non-integer-real]
-   ;; for some crazy reason `:type/Float` is the common base type of all numbers with non-integer-real places, not something
-   ;; smart like `:type/Decimal`
-   (ref-of-base-type :type/Float)])
+  (expression-schema :type/Float "expression returning a non-integer real number"))
 
-;;; Any expression that returns any kind of number.
 (mr/def ::number
-  [:or
-   {:error/message "expression returning a number"}
-   ::integer
-   ::non-integer-real])
+  (expression-schema :type/Number "expression returning a number"))
 
-;;; `:datetime-add` with a Date expression:
-;;;
-;;;    [:datetime-add <options> <date-expression> <amount> <date-interval-unit>]
-(mr/def ::datetime-add.date
-  [:schema
-   [:tuple
-    [:= :datetime-add]
-    ::common/options
-    #_expression [:ref ::date]
-    #_amount     [:ref ::integer]
-    #_unit       ::temporal-bucketing/unit.date.interval]])
-
-;;; Any expression that returns a `:type/Date`
 (mr/def ::date
-  [:or
-   {:error/message "expression returning a date"}
-   [:ref ::literal/date]
-   [:ref ::datetime-add.date]
-   (ref-of-base-type-with-temporal-unit :type/Date [:not ::temporal-bucketing/unit.date.extract])
-   ;; TODO -- does a truncation of a :type/DateTime to `::temporal-bucketing/unit.date.truncate` like `:day` return a
-   ;; `:type/Date`? Should we act like it does?
-   #_(ref-of-base-type-with-temporal-unit :type/DateTime ::temporal-bucketing/unit.date.truncate)])
+  (expression-schema :type/Date "expression returning a date"))
 
-;;; `:datetime-add` with a Time expression:
-;;;
-;;;    [:datetime-add <options> <time-expression> <amount> <time-interval-unit>]
-(mr/def ::datetime-add.time
-  [:schema
-   [:tuple
-    [:= :datetime-add]
-    ::common/options
-    #_expression [:ref ::time]
-    #_amount     [:ref ::integer]
-    #_unit       ::temporal-bucketing/unit.time.interval]])
-
-;;; Any expression that returns a `:type/Time`
 (mr/def ::time
-  [:or
-   {:error/message "expression returning a time"}
-   [:ref ::literal/time]
-   [:ref ::datetime-add.time]
-   (ref-of-base-type-with-temporal-unit :type/Time [:not ::temporal-bucketing/unit.time.extract])])
+  (expression-schema :type/Time "expression returning a time"))
 
-;;; `:datetime-add` with a DateTime expression:
-;;;
-;;;    [:datetime-add <options> <date-time-expression> <amount> <date-time-interval-unit>]
-(mr/def ::datetime-add.date-time
-  [:tuple
-   {:error/message ":datetime-add clause with a date time expression"}
-   [:= :datetime-add]
-   ::common/options
-   #_expression [:ref ::date-time]
-   #_amount     [:ref ::integer]
-   #_unit       ::temporal-bucketing/unit.date-time.interval])
+(mr/def ::datetime
+  (expression-schema :type/DateTime "expression returning a date time"))
 
-;;; Any expression that returns a `:type/DateTime`
-(mr/def ::date-time
-  [:or
-   {:error/message "expression returning a date time"}
-   [:ref ::literal/date-time]
-   [:ref ::datetime-add.date-time]
-   (ref-of-base-type-with-temporal-unit :type/DateTime [:not ::temporal-bucketing/unit.date-time.extract])])
-
-;;; Any expression that returns some sort of temporal value `java.time.OffsetDateTime`
 (mr/def ::temporal
-  [:or
-   {:error/message "expression returning a date, time, or date time"}
-   ::date
-   ::time
-   ::date-time])
+  (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
-;;; Any type of expression that you can appear in an `:order-by` clause, or in a filter like `:>` or `:<=`. This is
-;;; basically everything except for boolean expressions.
 (mr/def ::orderable
-  [:or
-   ::string
-   ::number
-   ::temporal
-   ;; we'll also assume Fields all orderable. This isn't true of all fields but we're not smart enough yet to attach
-   ;; expression types to Fields. Maybe if we were smarter we could do that. Should every `:field` include
-   ;; `:base-type` info?
-   [:ref ::ref/ref]])
+  (expression-schema #{:type/Text :type/Number :type/Temporal}
+                     "an expression that can be compared with :> or :<"))
 
-;;; Any type of expression that can appear in an `:=` or `!=`. I guess this is currently everything?
 (mr/def ::equality-comparable
   [:maybe
-   [:or
-    ::boolean
-    ::string
-    ::number
-    ::temporal
-    [:ref ::ref/ref]]])
+   (expression-schema #{:type/Boolean :type/Text :type/Number :type/Temporal}
+                      "an expression that can appear in := or :!=")])
 
-;;; Any sort of expression at all.
+;;; any type of expression.
 (mr/def ::expression
-  [:maybe
-   [:or
-    ::boolean
-    ::string
-    ::number
-    ::temporal
-    [:ref ::ref/ref]
-    ;; this is here for now until we fill this schema out with all of the possibilities.
-    any?]])
+  [:maybe (expression-schema :type/* "any type of expression")])
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
