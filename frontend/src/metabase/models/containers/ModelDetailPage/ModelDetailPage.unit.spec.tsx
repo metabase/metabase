@@ -729,6 +729,13 @@ describe("ModelDetailPage", () => {
           expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
         });
 
+        it("doesn't show a new question link", async () => {
+          await setup({ model: getModel(), databases: [], tab: "usage" });
+          expect(
+            screen.queryByText(/Create a new question/i),
+          ).not.toBeInTheDocument();
+        });
+
         it("doesn't allow running actions", async () => {
           const model = getModel();
           const actions = [
