@@ -6,7 +6,6 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  findIcon,
   getIcon,
   waitFor,
   waitForElementToBeRemoved,
@@ -120,10 +119,10 @@ describe("Actions > ActionViz > Action", () => {
           }),
         },
       });
-      expect(await findIcon("bolt")).toBeInTheDocument();
-      expect(await screen.findByRole("button")).toBeDisabled();
+      expect(getIcon("bolt")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
       expect(
-        await screen.findByLabelText(/actions are not enabled/i),
+        screen.getByLabelText(/actions are not enabled/i),
       ).toBeInTheDocument();
     });
 
@@ -137,7 +136,7 @@ describe("Actions > ActionViz > Action", () => {
           }),
         },
       });
-      expect(await screen.findByRole("button")).toBeEnabled();
+      expect(screen.getByRole("button")).toBeEnabled();
     });
 
     it("should render a button with default text", async () => {
@@ -266,7 +265,7 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       expect(
-        await screen.findByRole("button", { name: "Click me" }),
+        screen.getByRole("button", { name: "Click me" }),
       ).toBeInTheDocument();
     });
 
