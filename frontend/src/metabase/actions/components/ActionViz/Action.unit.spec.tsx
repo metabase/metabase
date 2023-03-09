@@ -2,13 +2,7 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import {
-  renderWithProviders,
-  screen,
-  getIcon,
-  waitFor,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 
 import type { ActionDashboardCard } from "metabase-types/api";
@@ -76,7 +70,7 @@ function createMockActionDashboardCard(
 }
 
 type SetupOpts = Partial<ActionProps> & {
-  awaitLoading?: boolean;
+  hasDataPermissions?: boolean;
 };
 
 async function setup({
@@ -84,14 +78,20 @@ async function setup({
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  awaitLoading = true,
+  hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
-
-  fetchMock.post(ACTION_EXEC_MOCK_PATH, {
-    "rows-updated": [1],
-  });
+  if (hasDataPermissions) {
+    setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
+    fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
+  } else {
+    const error = {
+      status: 403,
+      body: "You don't have permission to do this",
+    };
+    fetchMock.get(`path:/api/database/${DATABASE.id}`, error);
+    fetchMock.get(`path:/api/database/${DATABASE_WITHOUT_ACTIONS.id}`, error);
+  }
 
   renderWithProviders(
     <Action
@@ -107,11 +107,8 @@ async function setup({
     />,
   );
 
-  if (awaitLoading) {
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
-  }
+  // Wait until UI is ready
+  await screen.findByRole("button");
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -119,7 +116,6 @@ describe("Actions > ActionViz > Action", () => {
     it("should render an empty state for a button with no action", async () => {
       await setup({
         dashcard: createMockActionDashboardCard({ action: undefined }),
-        awaitLoading: false,
       });
       expect(getIcon("bolt")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeDisabled();
@@ -138,6 +134,15 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toBeDisabled();
       expect(
         screen.getByLabelText(/actions are not enabled/i),
+      ).toBeInTheDocument();
+    });
+
+    it("should render a disabled state if the user doesn't have permissions to action database", async () => {
+      await setup({ hasDataPermissions: false });
+      expect(getIcon("bolt")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(
+        screen.getByLabelText(/don't have permission/i),
       ).toBeInTheDocument();
     });
 

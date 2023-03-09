@@ -7,6 +7,11 @@ import { executeRowAction } from "metabase/dashboard/actions";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/core/utils/errors";
+
 import type {
   ActionDashboardCard,
   ParametersForActionExecution,
@@ -37,14 +42,20 @@ import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
 import { FullContainer } from "./ActionButton.styled";
 
-export interface ActionProps extends VisualizationProps {
+interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
   isEditingDashcard: boolean;
-  database: Database;
+  dispatch: Dispatch;
 }
+
+interface DatabaseLoaderProps {
+  database: Database;
+  error?: GenericErrorResponse;
+}
+
+export type ActionProps = VisualizationProps & OwnProps & DatabaseLoaderProps;
 
 function ActionComponent({
   dashcard,
@@ -133,14 +144,17 @@ function ActionFn(props: ActionProps) {
   const {
     database,
     dashcard: { action },
+    error,
   } = props;
 
   const hasActionsEnabled = database?.hasActionsEnabled?.();
 
-  if (!action || !hasActionsEnabled) {
-    const tooltip = !action
-      ? t`No action assigned`
-      : t`Actions are not enabled for this database`;
+  if (error || !action || !hasActionsEnabled) {
+    const tooltip = getErrorTooltip({
+      hasActionAssigned: !!action,
+      hasActionsEnabled,
+      error,
+    });
 
     return (
       <Tooltip tooltip={tooltip}>
@@ -160,10 +174,32 @@ function ActionFn(props: ActionProps) {
   return <ConnectedActionComponent {...props} />;
 }
 
+function getErrorTooltip({
+  hasActionAssigned,
+  hasActionsEnabled,
+  error,
+}: {
+  hasActionAssigned: boolean;
+  hasActionsEnabled: boolean;
+  error?: GenericErrorResponse;
+}) {
+  if (error) {
+    return getResponseErrorMessage(error);
+  }
+  if (!hasActionAssigned) {
+    return t`No action assigned`;
+  }
+  if (!hasActionsEnabled) {
+    return t`Actions are not enabled for this database`;
+  }
+  return t`Something's gone wrong`;
+}
+
 export default _.compose(
   Databases.load({
     id: (state: State, props: ActionProps) =>
       props.dashcard?.action?.database_id,
+    loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
 )(ActionFn);
