@@ -171,7 +171,7 @@
   [query                                                                     :- ::lib.schema/query
    stage-number                                                              :- :int
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join} :- ::lib.schema.join/join]
-  (when-not (= fields :not)
+  (when-not (= fields :none)
     (let [field-metadatas (if (= fields :all)
                             (stage-metadata (assoc query :stages stages))
                             (for [field-ref fields]

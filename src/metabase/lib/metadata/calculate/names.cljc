@@ -24,6 +24,14 @@
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x)))
 
+(defn- options-when-mbql-clause
+  "If this is an MBQL clause, return its options map, if it has one."
+  [x]
+  (when (and (vector? x)
+             (keyword? (first x))
+             (map? (second x)))
+    (second x)))
+
 (mu/defn display-name :- ::lib.schema.common/non-blank-string
   "Calculate a nice human-friendly display name for something."
   [query                                    :- ::lib.schema/query
@@ -31,11 +39,7 @@
    x]
   (or
    ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
-   (when (and (vector? x)
-              (keyword? (first x))
-              (map? (second x)))
-     (let [opts (second x)]
-       (:display-name opts)))
+   (:display-name (options-when-mbql-clause x))
    (try
      (display-name* query stage-number x)
      (catch #?(:clj Throwable :cljs js/Error) e
@@ -58,11 +62,7 @@
    x]
   (or
    ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
-   (when (and (vector? x)
-              (keyword? (first x))
-              (map? (second x)))
-     (let [opts (second x)]
-       (:name opts)))
+   (:name (options-when-mbql-clause x))
    (try
      (column-name* query stage-number x)
      (catch #?(:clj Throwable :cljs js/Error) e

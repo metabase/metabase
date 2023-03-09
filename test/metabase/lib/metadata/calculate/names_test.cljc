@@ -1,18 +1,12 @@
 (ns metabase.lib.metadata.calculate.names-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.metadata.calculate.names
-    :as calculate.names]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculate.names :as calculate.names]
    [metabase.lib.test-metadata :as meta]))
 
 (def ^:private venues-query
-  {:lib/type     :mbql/query
-   :lib/metadata meta/metadata-provider
-   :type         :pipeline
-   :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :lib/options  {:lib/uuid (str (random-uuid))}
-                   :source-table (meta/id :venues)}]})
+  (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn- field-clause
   ([table field]

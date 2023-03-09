@@ -2,6 +2,7 @@
   "Logic for resolving references."
   (:refer-clojure :exclude [ref])
   (:require
+   [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -56,10 +57,8 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
-  (or (some (fn [join-map]
-              (when (= (:alias join-map) join-alias)
-                join-map))
-            (:joins (lib.util/query-stage query stage-number)))
+  (or (m/find-first #(= (:alias %) join-alias)
+                    (:joins (lib.util/query-stage query stage-number)))
       (throw (ex-info (i18n/tru "No join named {0}" (pr-str join-alias))
                       {:join-alias   join-alias
                        :query        query
