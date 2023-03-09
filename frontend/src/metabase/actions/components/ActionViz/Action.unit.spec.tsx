@@ -28,6 +28,7 @@ import Action, { ActionProps } from "./Action";
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
+const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
 
 const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
 const DATABASE = createMockDatabase({
@@ -88,12 +89,9 @@ async function setup({
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
 
-  fetchMock.post(
-    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
-    {
-      "rows-updated": [1],
-    },
-  );
+  fetchMock.post(ACTION_EXEC_MOCK_PATH, {
+    "rows-updated": [1],
+  });
 
   renderWithProviders(
     <Action
@@ -228,9 +226,7 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual({
           modelId: ACTION_MODEL_ID,
           parameters: {
@@ -302,9 +298,7 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });
@@ -331,9 +325,7 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });
