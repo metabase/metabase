@@ -60,6 +60,13 @@
   [pulse]
   (first (filter-pulses-recipients [pulse])))
 
+(defn- strip-cards-and-recipients
+  [pulse]
+  (-> (dissoc pulse :cards)
+      (update :channels
+              (fn [channels]
+                (map #(dissoc % :recipients) channels)))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
@@ -82,7 +89,10 @@
                                     ;; When listing notifications for the /account/notifications page we show them all,
                                     ;; regardless of permissions, since the only allowed action is to unsubscribe.
                                     (filter (if creator-or-recipient identity mi/can-write?))
-                                    filter-pulses-recipients)]
+                                    filter-pulses-recipients)
+          pulses              (if creator-or-recipient
+                                (map strip-cards-and-recipients pulses)
+                                pulses)]
       (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
