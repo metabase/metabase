@@ -129,7 +129,7 @@ function mapStateToProps(state: State, props: ActionProps) {
   };
 }
 
-export function ActionFn(props: ActionProps) {
+function ActionFn(props: ActionProps) {
   const {
     database,
     dashcard: { action },
