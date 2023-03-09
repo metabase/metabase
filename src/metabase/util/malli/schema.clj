@@ -29,6 +29,7 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
+;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
