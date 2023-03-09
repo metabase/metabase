@@ -207,7 +207,7 @@ describe("binning related reproductions", () => {
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At")
+      cy.findByText("Created At: Month")
         .siblings("[data-testid$=hide-button]")
         .click();
       cy.button("Done").click();
