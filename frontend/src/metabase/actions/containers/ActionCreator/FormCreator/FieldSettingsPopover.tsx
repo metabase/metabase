@@ -189,11 +189,11 @@ function RequiredInput({
         <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
         <Toggle
           id="is-required"
-          value={!!value}
-          onChange={required => onChange({ required, defaultValue })}
+          value={value}
+          onChange={required => onChange({ required })}
         />
       </ToggleContainer>
-      {!value && (
+      {value && (
         <>
           <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
           <Input
@@ -201,7 +201,7 @@ function RequiredInput({
             fullWidth
             value={defaultValue ?? ""}
             onChange={e =>
-              onChange({ required: false, defaultValue: e.target.value })
+              onChange({ required: value, defaultValue: e.target.value })
             }
             data-testid="placeholder-input"
           />
