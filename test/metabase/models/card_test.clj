@@ -5,8 +5,7 @@
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
    [metabase.models.card :as card]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -430,8 +429,8 @@
       (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
                       Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
-               (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
-               (serdes.hash/identity-hash card)))))))
+               (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
+               (serdes/identity-hash card)))))))
 
 (deftest parameter-card-test
   (let [default-params {:name       "Category Name"
@@ -562,18 +561,18 @@
                     :type :category}]
                   (db/select-one-field :parameters Card :id (:id card)))))))))
 
-(deftest serdes-descendants-test
+(deftest descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp* [Card [card {:name "some card"}]]
-      (is (empty? (serdes.base/serdes-descendants "Card" (:id card))))))
+      (is (empty? (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
-      (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
-             (serdes.base/serdes-descendants "Card" (:id card2))))))
+             (serdes/descendants "Card" (:id card2))))))
 
   (testing "cards that has a native template tag"
     (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
@@ -585,7 +584,7 @@
                                                                                          :snippet-id   (:id snippet)}}
                                                                :query "select * from products where {{snippet}}"}}}]]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
-             (serdes.base/serdes-descendants "Card" (:id card))))))
+             (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have parameter's source is another card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
@@ -595,7 +594,7 @@
                                                :values_source_type   "card"
                                                :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
-             (serdes.base/serdes-descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2)))))))
 
 
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
