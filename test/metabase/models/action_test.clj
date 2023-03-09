@@ -135,7 +135,7 @@
                #"Actions must be made with models, not cards"
                (t2/update! Action action-id {:archived false}))))))))
 
-(deftest exclude-non-required-pks-for-create-implicit-actions-test
+(deftest exclude-auto-increment-fields-for-create-implicit-actions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (doseq [kind ["row/create" "row/update" "row/delete"]]
