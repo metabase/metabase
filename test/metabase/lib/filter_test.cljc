@@ -80,3 +80,4 @@
         (is (fn? f))
         (is (mc/validate ::schema.filter/filter
                          (apply f {:lib/metadata meta/metadata} -1 args)))))))
+
