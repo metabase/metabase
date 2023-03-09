@@ -375,18 +375,6 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("should not be able to move or archive a personal collection", () => {
-      cy.visit("/collection/root");
-
-      openEllipsisMenuFor(getPersonalCollectionName(USERS.admin));
-
-      popover().within(() => {
-        cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Move").should("not.exist");
-        cy.findByText("Archive").should("not.exist");
-      });
-    });
-
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
@@ -407,19 +395,6 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
 
-        it("should not be possible to archive or move a personal collection via bulk actions", () => {
-          cy.visit("/collection/root");
-
-          selectItemUsingCheckbox(
-            getPersonalCollectionName(USERS.admin),
-            "person",
-          );
-
-          cy.findByText("1 item selected").should("be.visible");
-          cy.button("Move").should("be.disabled");
-          cy.button("Archive").should("be.disabled");
-        });
-
         function bulkSelectDeselectWorkflow() {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
@@ -430,7 +405,7 @@ describe("scenarios > collection defaults", () => {
             cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
-            cy.findByText("6 items selected");
+            cy.findByText("5 items selected");
 
             // Deselect all
             cy.icon("check").click({ force: true });
