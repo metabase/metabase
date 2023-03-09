@@ -284,9 +284,9 @@ class ExpressionEditorTextfield extends React.Component {
   }
 
   diagnoseExpression() {
-    const { source } = this.state;
+    const { source, hasChanges } = this.state;
     const { query, startRule, name } = this.props;
-    if (!source || source.length === 0) {
+    if ((!source || source.length === 0) && hasChanges) {
       return { message: t`Empty expression` };
     }
     return diagnose(source, startRule, query, name);
@@ -321,6 +321,10 @@ class ExpressionEditorTextfield extends React.Component {
   };
 
   handleExpressionChange(source) {
+    if (source) {
+      this.setState({ hasChanges: true });
+    }
+
     this.setState({ source, errorMessage: null });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);

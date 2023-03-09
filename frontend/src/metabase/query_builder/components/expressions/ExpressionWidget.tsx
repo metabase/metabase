@@ -6,7 +6,6 @@ import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/types/Query";
-import Icon from "metabase/components/Icon";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -22,6 +21,8 @@ import {
   InfoLink,
   RemoveLink,
   StyledFieldTitleIcon,
+  Header,
+  HeaderButton,
 } from "./ExpressionWidget.styled";
 
 const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
@@ -36,7 +37,7 @@ export interface ExpressionWidgetProps {
   startRule?: string;
 
   title?: string;
-  validateExpression?: boolean;
+  shouldValidateExpression?: boolean;
 
   reportTimezone: string;
 
@@ -51,7 +52,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     name: initialName,
     expression: initialExpression,
     withName = false,
-    validateExpression = true,
+    shouldValidateExpression = true,
     startRule,
     title,
     reportTimezone,
@@ -69,11 +70,11 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const helpTextTargetRef = useRef(null);
 
   const isValidName = withName ? !!name : true;
-  const isValidExpression = validateExpression
+  const isValidExpression = shouldValidateExpression
     ? isExpression(expression)
     : true;
 
-  const isValid = !error && isValidName && isValidExpression;
+  const isValid = !error && expression && isValidName && isValidExpression;
 
   const handleCommit = () => {
     if (isValid && isNotNull(expression)) {
@@ -82,19 +83,23 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     }
   };
 
+  const handleExpressionChange = (parsedExpression: Expression) => {
+    setExpression(parsedExpression);
+    setError(null);
+  };
+
   return (
     <Container>
-      {/* TODO: refactor to styled */}
-      <div className="text-medium p1 py2 border-bottom flex align-center">
-        <a className="cursor-pointer flex align-center" onClick={onClose}>
-          <Icon name="chevronleft" size={18} />
-          <h3 className="inline-block pl1">{title}</h3>
-        </a>
-      </div>
+      {title && (
+        <Header>
+          <HeaderButton icon="chevronleft" onlyText onClick={onClose}>
+            {title}
+          </HeaderButton>
+        </Header>
+      )}
       <ExpressionFieldWrapper>
         <FieldTitle>
           {t`Expression`}
-
           <Tooltip
             tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
             placement="right"
@@ -117,10 +122,8 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             name={name}
             query={query}
             reportTimezone={reportTimezone}
-            onChange={(parsedExpression: Expression) => {
-              setExpression(parsedExpression);
-              setError(null);
-            }}
+            onChange={handleExpressionChange}
+            onCommit={handleExpressionChange}
             onError={(errorMessage: string) => setError(errorMessage)}
           />
         </div>

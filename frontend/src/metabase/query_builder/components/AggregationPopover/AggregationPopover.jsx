@@ -336,7 +336,7 @@ export default class AggregationPopover extends Component {
             startRule="aggregation"
             withName
             title={CUSTOM_SECTION_NAME}
-            validateExpression={false}
+            shouldValidateExpression={false}
             onChangeExpression={(name, expression) => {
               let newAggregation = AGGREGATION.setContent(
                 this.state.aggregation,
