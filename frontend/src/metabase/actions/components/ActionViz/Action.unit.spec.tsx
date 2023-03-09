@@ -88,6 +88,13 @@ async function setup({
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
 
+  fetchMock.post(
+    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
+    {
+      "rows-updated": [1],
+    },
+  );
+
   renderWithProviders(
     <Action
       dashboard={dashboard}
@@ -107,15 +114,6 @@ async function setup({
       screen.queryAllByTestId("loading-spinner"),
     );
   }
-}
-
-function setupExecutionEndpoint() {
-  fetchMock.post(
-    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
-    {
-      "rows-updated": [1],
-    },
-  );
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -214,7 +212,6 @@ describe("Actions > ActionViz > Action", () => {
         },
       });
 
-      setupExecutionEndpoint();
       await setup({
         dashcard: createMockActionDashboardCard({
           action,
@@ -290,8 +287,6 @@ describe("Actions > ActionViz > Action", () => {
         },
       };
 
-      setupExecutionEndpoint();
-
       await setup({ settings: formSettings });
 
       userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
@@ -322,8 +317,6 @@ describe("Actions > ActionViz > Action", () => {
           parameter_2: 5,
         },
       };
-
-      setupExecutionEndpoint();
 
       await setup({
         settings: formSettings,
