@@ -32,7 +32,7 @@ You can click on any cell in the permissions table to change a group’s access 
 
 Members of the group can create questions using the graphical query builder on data from all tables (within all namespaces/schemas, if your database uses those), including any tables that might get added to this database in the future.
 
-To grant a group the ability to write native/SQL questions or create [actions](./actions.md), you must additionally set [Native query editing](#native-query-editing) to **Yes**.
+To grant a group the ability to write native/SQL questions or create [actions](../actions/start.md), you must additionally set [Native query editing](#native-query-editing) to **Yes**.
 
 ### Granular access
 

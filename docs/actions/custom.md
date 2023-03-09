@@ -35,9 +35,9 @@ WHERE
 
 The above code will create a form that prompts people to input updated values for the (required) `plan` field and optionally the `payment` field for a given record specified by `ID`.
 
-![Example action form](./images/form.png)
-
 The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed statement will only run if someone inserts a value in the payment field. Note the comma that separates the statements is _inside_ the brackets.
+
+![Example action form](./images/form.png)
 
 ## Field types for action variables
 
