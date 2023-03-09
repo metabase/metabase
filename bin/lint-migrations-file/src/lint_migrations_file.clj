@@ -155,6 +155,7 @@
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
+                      ;; convert any lazy seqs to regular vectors and maps
                       (cond (map? x)        (zipmap (keys x) (map fix-vals (vals x)))
                             (sequential? x) (mapv fix-vals x)
                             :else           x))]

@@ -1,6 +1,5 @@
 (ns metabase.plugins
   (:require
-   [clj-yaml.core :as yaml]
    [clojure.core.memoize :as memoize]
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
@@ -11,7 +10,8 @@
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path)))
