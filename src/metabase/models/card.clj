@@ -347,7 +347,8 @@
       ;; Archive associated actions
       (when (and (not (:dataset changes))
                  (:dataset old-card-info))
-        (t2/update! 'Action {:model_id id} {:archived true}))
+        (t2/update! 'Action {:model_id id :type [:not= :implicit]} {:archived true})
+        (t2/delete! 'Action :model_id id, :type :implicit))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
