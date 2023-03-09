@@ -24,13 +24,23 @@ import {
 
 import Action, { ActionProps } from "./Action";
 
+const DASHBOARD_ID = 123;
+const DASHCARD_ID = 456;
+const ACTION_MODEL_ID = 777;
+
+const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
+const DATABASE = createMockDatabase({
+  id: 2,
+  settings: { "database-enable-actions": true },
+});
+
 const defaultProps = {
   dashcard: {
-    id: 456,
-    card_id: 777, // action model id
+    id: DASHCARD_ID,
+    card_id: ACTION_MODEL_ID,
     action: createMockQueryAction({
       name: "My Awesome Action",
-      database_id: 2,
+      database_id: DATABASE.id,
       parameters: [
         createMockActionParameter({
           id: "parameter_1",
@@ -47,17 +57,15 @@ const defaultProps = {
     parameter_mappings: [
       {
         parameter_id: "dash-param-1",
-        card_id: 1,
         target: ["variable", ["template-tag", "1"]],
       },
       {
         parameter_id: "dash-param-2",
-        card_id: 1,
         target: ["variable", ["template-tag", "2"]],
       },
     ],
   },
-  dashboard: createMockDashboard({ id: 123 }),
+  dashboard: createMockDashboard({ id: DASHBOARD_ID }),
   dispatch: _.noop,
   isSettings: false,
   isEditing: false,
@@ -65,12 +73,6 @@ const defaultProps = {
   onVisualizationClick: _.noop,
   parameterValues: {},
 } as unknown as ActionProps;
-
-const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
-const DATABASE = createMockDatabase({
-  id: 2,
-  settings: { "database-enable-actions": true },
-});
 
 type SetupOpts = Partial<ActionProps> & {
   awaitLoading?: boolean;
@@ -89,9 +91,12 @@ async function setup({ awaitLoading = true, ...props }: SetupOpts = {}) {
 }
 
 function setupExecutionEndpoint() {
-  fetchMock.post("path:/api/dashboard/123/dashcard/456/execute", {
-    "rows-updated": [1],
-  });
+  fetchMock.post(
+    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
+    {
+      "rows-updated": [1],
+    },
+  );
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -201,9 +206,9 @@ describe("Actions > ActionViz > Action", () => {
       setupExecutionEndpoint();
       await setup({
         dashcard: createMockActionDashboardCard({
-          id: 456,
-          dashboard_id: 123,
-          card_id: 777, // action model id
+          id: DASHCARD_ID,
+          dashboard_id: DASHBOARD_ID,
+          card_id: ACTION_MODEL_ID,
           action,
           card: defaultProps.dashcard.card,
           parameter_mappings: [
@@ -220,10 +225,10 @@ describe("Actions > ActionViz > Action", () => {
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
+          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
         );
         expect(await call?.request?.json()).toEqual({
-          modelId: 777,
+          modelId: ACTION_MODEL_ID,
           parameters: {
             parameter_1: 44,
           },
@@ -271,7 +276,7 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should submit provided form input values to the action execution endpoint", async () => {
       const expectedBody = {
-        modelId: 777,
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,
@@ -296,7 +301,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
+          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
         );
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
@@ -304,7 +309,7 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should combine data from dashboard parameters and form input when submitting for execution", async () => {
       const expectedBody = {
-        modelId: 777,
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,
@@ -327,7 +332,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
+          `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`,
         );
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
