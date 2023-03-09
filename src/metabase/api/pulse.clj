@@ -63,26 +63,27 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
-  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+    permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
 
-  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+    If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
 
-  If `can_read` is `true`, it specifically returns all subscriptions for which the current user
-  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
-  and a subset of the default items returned for admins. This is used to power the /account/notifications page."
-  [archived dashboard_id can_read]
-  {archived            (s/maybe su/BooleanString)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)
-   can_read            (s/maybe su/BooleanString)}
-  (let [can-read? (Boolean/parseBoolean can_read)
-        archived? (Boolean/parseBoolean archived)
-        pulses    (->> (pulse/retrieve-pulses {:archived?     archived?
-                                               :dashboard-id  dashboard_id
-                                               :user-id       api/*current-user-id*
-                                               :can-read?     can-read?})
-                       (filter (if can-read? mi/can-read? mi/can-write?))
-                       filter-pulses-recipients)]
-    (hydrate pulses :can_write)))
+    If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
+    created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+    and a subset of the default items returned for admins. This is used to power the /account/notifications page."
+    [archived dashboard_id creator_or_recipient]
+    {archived           (s/maybe su/BooleanString)
+     dashboard_id       (s/maybe su/IntGreaterThanZero)
+     creator_or_recipient (s/maybe su/BooleanString)}
+    (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
+          archived?            (Boolean/parseBoolean archived)
+          pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
+                                                            :dashboard-id dashboard_id
+                                                            :user-id      (when creator-or-recipient api/*current-user-id*)})
+                                    ;; When listing notifications for the /account/notifications page we show them all,
+                                    ;; regardless of permissions, since the only allowed action is to unsubscribe.
+                                    (filter (if creator-or-recipient identity mi/can-write?))
+                                    filter-pulses-recipients)]
+      (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -121,13 +122,13 @@
                     :collection_position collection_position
                     :dashboard_id        dashboard_id
                     :parameters          parameters}]
-    (db/transaction
-      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-      ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! pulse-data)
-      ;; ok, now create the Pulse
-      (api/check-500
-       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+   (db/transaction
+     ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+     ;; check that and fix it if needed
+     (api/maybe-reconcile-collection-position! pulse-data)
+     ;; ok, now create the Pulse
+     (api/check-500
+      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"

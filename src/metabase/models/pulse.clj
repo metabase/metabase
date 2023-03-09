@@ -330,15 +330,15 @@
        alert))))
 
 (s/defn retrieve-pulses :- [(mi/InstanceOf Pulse)]
-  "Fetch all `Pulses`."
-  [{:keys [archived? dashboard-id can-read? user-id]
-    :or   {archived? false
-           can-read? false}}]
+  "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
+  or a recipient."
+  [{:keys [archived? dashboard-id user-id]
+    :or   {archived? false}}]
   (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                :from            [[:pulse :p]]
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                 (when can-read?
+                                 (when user-id
                                    [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
                :where           [:and
@@ -350,9 +350,9 @@
                                   [:= :d.archived false]]
                                  (when dashboard-id
                                    [:= :p.dashboard_id dashboard-id])
-                                 ;; Only return dashboard subscriptions when `can-read?` is `true` so that legacy
+                                 ;; Only return dashboard subscriptions when `user-id` is passed, so that legacy
                                  ;; pulses don't show up in the notification management page
-                                 (when can-read?
+                                 (when user-id
                                    [:and
                                     [:not= :p.dashboard_id nil]
                                     [:or
