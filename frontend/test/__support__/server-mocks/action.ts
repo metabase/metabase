@@ -12,17 +12,27 @@ export function setupActionEndpoints(action: WritebackAction) {
 }
 
 export function setupActionsEndpoints(
-  modelId: CardId,
   actions: WritebackAction[],
+  modelId?: CardId,
 ) {
-  fetchMock.get(
-    {
-      url: "path:/api/action",
-      query: { "model-id": modelId },
-      overwriteRoutes: false,
-    },
-    actions,
-  );
+  if (modelId) {
+    fetchMock.get(
+      {
+        url: "path:/api/action",
+        query: { "model-id": modelId },
+        overwriteRoutes: false,
+      },
+      actions,
+    );
+  } else {
+    fetchMock.get(
+      {
+        url: "path:/api/action",
+        overwriteRoutes: false,
+      },
+      actions,
+    );
+  }
 
   fetchMock.post(
     { url: "path:/api/action", overwriteRoutes: true },
@@ -40,14 +50,4 @@ export function setupActionsEndpoints(
   );
 
   actions.forEach(action => setupActionEndpoints(action));
-}
-
-export function setupActionListEndpoint(actions: WritebackAction[]) {
-  fetchMock.get(
-    {
-      url: "path:/api/action",
-      overwriteRoutes: false,
-    },
-    actions,
-  );
 }

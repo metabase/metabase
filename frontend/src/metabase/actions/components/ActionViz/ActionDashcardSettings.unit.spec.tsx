@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import {
-  setupActionListEndpoint,
+  setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -88,7 +88,7 @@ const setup = (
 
   setupSearchEndpoints(models.map(model => createMockCollectionItem(model)));
   setupCardsEndpoints(models);
-  setupActionListEndpoint([...actions1, ...actions2]);
+  setupActionsEndpoints([...actions1, ...actions2]);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
