@@ -114,37 +114,39 @@
         extra-parameters         (set/difference (set (keys request-parameters))
                                                  (set (keys slug->field-name)))
         pk-field                 (first pk-fields)
-        simple-parameters        (update-keys request-parameters (comp keyword slug->field-name))
+        simple-parameters        (->> (update-keys request-parameters (comp keyword slug->field-name))
+                                      (filter (fn [[_k v]] (some? v)))
+                                      (into {}))
         pk-field-name            (keyword (:name pk-field))
         row-parameters           (cond-> simple-parameters
                                    (not= implicit-action :row/create) (dissoc pk-field-name))
         requires_pk              (contains? #{:row/delete :row/update} implicit-action)]
     (api/check (or (not requires_pk)
                    (some? (get simple-parameters pk-field-name)))
-               400
-               (tru "Missing primary key parameter: {0}"
-                    (pr-str (u/slugify (:name pk-field)))))
+      400
+      (tru "Missing primary key parameter: {0}"
+           (pr-str (u/slugify (:name pk-field)))))
     (api/check (empty? extra-parameters)
-               400
-               {:message (tru "No destination parameter found for {0}. Found: {1}"
-                              (pr-str extra-parameters)
-                              (pr-str (set (keys slug->field-name))))
-                :parameters request-parameters
-                :destination-parameters (keys slug->field-name)})
+      400
+      {:message (tru "No destination parameter found for {0}. Found: {1}"
+                     (pr-str extra-parameters)
+                     (pr-str (set (keys slug->field-name))))
+       :parameters request-parameters
+       :destination-parameters (keys slug->field-name)})
     (cond->
-      {:query {:database database-id,
-               :type :query,
-               :query {:source-table table-id}}
-       :row-parameters row-parameters}
+        {:query {:database database-id,
+                 :type :query,
+                 :query {:source-table table-id}}
+         :row-parameters row-parameters}
 
-      requires_pk
-      (assoc-in [:query :query :filter]
-                [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
+        requires_pk
+        (assoc-in [:query :query :filter]
+                  [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
-      requires_pk
-      (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
-                                    :type "id"
-                                    :value [(get simple-parameters pk-field-name)]}]))))
+        requires_pk
+        (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
+                                      :type "id"
+                                      :value [(get simple-parameters pk-field-name)]}]))))
 
 (defn- execute-implicit-action
   [action request-parameters]
