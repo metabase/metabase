@@ -64,8 +64,9 @@
 (mr/def ::aggregation-options
   [:merge
    ::common/options
-   [:name {:optional true} ::common/non-blank-string]
-   [:display-name {:optional true}] ::common/non-blank-string])
+   [:map
+    [:name {:optional true} ::common/non-blank-string]
+    [:display-name {:optional true} ::common/non-blank-string]]])
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
