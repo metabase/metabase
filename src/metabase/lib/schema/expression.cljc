@@ -16,6 +16,37 @@
      [:options ::common/options]
      (into [:args] args)]))
 
+(defn- deftypedclause [op types args]
+  (let [nspace (namespace op)
+        base-op (name op)]
+    (doseq [typ types
+            :let [typed-op (keyword nspace (str base-op "." typ))
+                  return-type (keyword nspace typ)
+                  typed-args (walk/postwalk (fn [n] (if (= n ::_RETURN_TYPE)
+                                                      return-type
+                                                      n))
+                                            args)]]
+      (mr/def typed-op
+        [:vcatn
+         [:clause [:= (keyword base-op)]]
+         [:options ::common/options]
+         (into [:args] typed-args)]))))
+
+;; TODO add these later
+(comment
+  [:absolute-datetime :now :relative-datetime :temporal-extract :time :value :var])
+
+(doseq [op [::+ ::- ::* ::/]]
+  ;; This means int+float is not allowed...
+  (deftypedclause op ["integer" "floating-point"]
+    (let [s [:schema [:ref ::_RETURN_TYPE]]]
+      [:cat s [:+ s]])))
+
+(defclause ::case
+  [:+ [:catn
+       [:pred [:schema [:ref ::boolean]]]
+       [:expr [:schema [:ref ::expression]]]]])
+
 (doseq [op [::abs ::ceil ::floor ::log ::round ::exp ::sqrt]]
   (defclause op
     [:vcatn [:num [:schema [:ref ::number]]]]))
@@ -74,28 +105,12 @@
        [:pred [:schema [:ref ::boolean]]]
        [:expr [:schema [:ref ::expression]]]]])
 
-(defn- deftypedclause [op args]
-  (let [nspace (namespace op)
-        base-op (name op)]
-    (doseq [typ ["boolean" "integer" "floating-point" "string" "temporal"]
-            :let [typed-op (keyword nspace (str base-op "." typ))
-                  return-type (keyword nspace typ)
-                  typed-args (walk/postwalk (fn [n] (if (= n ::_RETURN_TYPE)
-                                                      return-type
-                                                      n))
-                                            args)]]
-      (mr/def typed-op
-        [:vcatn
-         [:clause [:= (keyword base-op)]]
-         [:options ::common/options]
-         (into [:args] typed-args)]))))
-
-(deftypedclause ::case
+(deftypedclause ::case ["boolean" "integer" "floating-point" "string" "temporal"]
   [:args [:+ [:catn
               [:pred [:schema [:ref ::boolean]]]
               [:expr [:schema [:ref ::_RETURN_TYPE]]]]]])
 
-(deftypedclause ::coalesce
+(deftypedclause ::coalesce ["boolean" "integer" "floating-point" "string" "temporal"]
   [:+ [:catn [:expr [:schema [:ref ::_RETURN_TYPE]]]]])
 
 (defclause ::concat
@@ -154,6 +169,10 @@
    ::case.integer
    ::coalesce.integer
    ::literal/integer
+   ::+.integer
+   ::-.integer
+   ::*.integer
+   ::/.integer
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
 
@@ -164,6 +183,10 @@
    ::case.floating-point
    ::coalesce.floating-point
    ::literal/floating-point
+   ::+.floating-point
+   ::-.floating-point
+   ::*.floating-point
+   ::/.floating-point
    ;; TODO base-type fields
    [:schema [:ref ::ref/field]]])
 
