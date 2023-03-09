@@ -161,6 +161,7 @@ export default function FilterPopover({
         reportTimezone={"UTC"} // TODO: Add reportTimezone
         startRule="boolean"
         title={CUSTOM_SECTION_NAME}
+        withName={false}
         shouldValidateExpression={false}
         onChangeExpression={handleExpressionChange}
         onClose={() => setEditingFilter(false)}

@@ -334,7 +334,6 @@ export default class AggregationPopover extends Component {
             query={query}
             expression={aggregation}
             startRule="aggregation"
-            withName
             title={CUSTOM_SECTION_NAME}
             shouldValidateExpression={false}
             onChangeExpression={(name, expression) => {

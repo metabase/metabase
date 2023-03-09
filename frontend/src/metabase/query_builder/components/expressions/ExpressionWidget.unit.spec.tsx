@@ -44,6 +44,24 @@ describe("ExpressionWidget", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("should not render Name field if withName=false", () => {
+    setup({ withName: false });
+
+    expect(screen.queryByText("Name")).not.toBeInTheDocument();
+  });
+
+  it("should render interactive header if title is passed", () => {
+    const mockTitle = "Custom Expression";
+    const { onClose } = setup({ title: mockTitle });
+
+    const title = screen.getByText(mockTitle);
+    expect(title).toBeInTheDocument();
+
+    userEvent.click(title);
+
+    expect(onClose).toHaveBeenCalled();
+  });
 });
 
 const createMockQueryForExpressions = () => {
@@ -75,4 +93,6 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   };
 
   render(<ExpressionWidget {...props} />);
+
+  return mocks;
 }

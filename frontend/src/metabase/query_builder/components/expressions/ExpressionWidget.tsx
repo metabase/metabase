@@ -51,7 +51,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     query,
     name: initialName,
     expression: initialExpression,
-    withName = false,
+    withName = true,
     shouldValidateExpression = true,
     startRule,
     title,
@@ -90,7 +90,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   return (
     <Container>
-      {title && (
+      {title && onClose && (
         <Header>
           <HeaderButton icon="chevronleft" onlyText onClick={onClose}>
             {title}
