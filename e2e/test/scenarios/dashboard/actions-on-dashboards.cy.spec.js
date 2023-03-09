@@ -14,6 +14,7 @@ import {
   popover,
   filterWidget,
   createImplicitAction,
+  dragField,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -57,10 +58,11 @@ const MODEL_NAME = "Test Action Model";
 
         it("adds a custom query action to a dashboard and runs it", () => {
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
-            expect(result.rows.length).to.equal(0);
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(0);
           });
 
           createModelFromTable(TEST_TABLE);
@@ -75,29 +77,47 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             fillActionQuery(
-              `INSERT INTO ${TEST_TABLE} (team_name) VALUES ('Zany Zebras')`,
+              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
             );
+          });
+
+          // can't have this in the .within() because it needs access to document.body
+          dragField(1, 0);
+
+          cy.findByRole("dialog").within(() => {
+            cy.findAllByText("Number").click({ multiple: true })
             cy.findByText("Save").click();
           });
 
+
           cy.findByPlaceholderText("My new fantastic action").type(
-            "Add Zebras",
+            "Update Score",
           );
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
-            actionName: "Add Zebras",
+            actionName: "Update Score",
+            idFilter: true,
           });
 
-          clickHelper("Add Zebras");
+          filterWidget().click();
+          addWidgetStringFilter("1")
+
+          clickHelper("Update Score");
+
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("New score").type("55");
+            cy.button("Run").click();
+          });
 
           cy.wait("@executeAPI");
 
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
             expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(55);
           });
         });
 

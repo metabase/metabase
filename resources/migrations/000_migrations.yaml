@@ -14303,7 +14303,7 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-004
       author: qnkhuat
-      comment: Added 0.47.0 - Add auto_incremented to metabase_fielj
+      comment: Added 0.47.0 - Add auto_incremented to metabase_field
       changes:
         - addColumn:
             tableName: metabase_field

@@ -75,7 +75,7 @@ export const setTemplateTagTypesFromFieldSettings = (
   const query = question.query() as NativeQuery;
   let tempQuestion = question.clone();
 
-  query.templateTagsWithoutSnippets().forEach((tag: TemplateTag) => {
+  query.variableTemplateTags().forEach((tag: TemplateTag) => {
     const currentQuery = tempQuestion.query() as NativeQuery;
     const fieldType = fields[tag.id]?.fieldType ?? "string";
     const nextTag = {

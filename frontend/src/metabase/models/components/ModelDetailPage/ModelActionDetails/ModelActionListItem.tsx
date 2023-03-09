@@ -22,8 +22,9 @@ import {
 interface Props {
   action: WritebackAction;
   actionUrl: string;
-  canWrite: boolean;
   canRun: boolean;
+  canEdit: boolean;
+  canArchive: boolean;
   onArchive: (action: WritebackAction) => void;
 }
 
@@ -46,11 +47,11 @@ function ImplicitActionCardContent() {
 function ModelActionListItem({
   action,
   actionUrl,
-  canWrite,
   canRun,
+  canEdit,
+  canArchive,
   onArchive,
 }: Props) {
-  const canArchive = canWrite && action.type !== "implicit";
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
@@ -65,8 +66,8 @@ function ModelActionListItem({
   const menuItems = useMemo(
     () => [
       {
-        title: canWrite ? t`Edit` : t`View`,
-        icon: canWrite ? "pencil" : "eye",
+        title: canEdit ? t`Edit` : t`View`,
+        icon: canEdit ? "pencil" : "eye",
         link: actionUrl,
       },
       canArchive && {
@@ -75,7 +76,7 @@ function ModelActionListItem({
         action: handleArchive,
       },
     ],
-    [actionUrl, canWrite, canArchive, handleArchive],
+    [actionUrl, canEdit, canArchive, handleArchive],
   );
 
   return (

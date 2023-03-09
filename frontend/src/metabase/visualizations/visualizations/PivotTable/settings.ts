@@ -39,6 +39,15 @@ import {
 } from "./utils";
 import { PivotSetting } from "./types";
 
+export const getTitleForColumn = (
+  column: Column,
+  settings: VisualizationSettings,
+) => {
+  const { column: _column, column_title: columnTitle } =
+    settings.column(column);
+  return columnTitle || formatColumn(_column);
+};
+
 export const settings = {
   ...columnSettings({ hidden: true }),
   [COLLAPSED_ROWS_SETTING]: {
@@ -75,6 +84,9 @@ export const settings = {
       partitions,
       columns: data == null ? [] : data.cols,
       settings,
+      getColumnTitle: (column: Column) => {
+        return getTitleForColumn(column, settings);
+      },
     }),
     getValue: (
       [{ data, card }]: [{ data: DatasetData; card: Card }],

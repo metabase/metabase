@@ -145,7 +145,7 @@
 
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard including all DashboardCardSeries.
-   Returns the updated DashboardCard or throws an Exception."
+   Returns true or throws an Exception."
   [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
@@ -169,7 +169,7 @@
                                                   :dashboardcard_id id
                                                   {:order-by [[:position :asc]]})))
        (update-dashboard-card-series! dashboard-card series)))
-    (retrieve-dashboard-card id)))
+    nil))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."

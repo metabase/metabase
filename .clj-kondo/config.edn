@@ -621,6 +621,8 @@
    :name    source-namespaces}
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}
+  {:pattern "^metabase\\.lib\\.*"
+   :name    metabase-lib}
   ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
   ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2.
   ;;
@@ -676,4 +678,15 @@
      honeysql.types                    {:message "Use Honey SQL 2"}
      honeysql.util                     {:message "Use Honey SQL 2"}
      metabase.util.honeysql-extensions {:message "Use h2x"}
-     metabase.util.honey-sql-1         {:message "Use h2x"}}}}}}
+     metabase.util.honey-sql-1         {:message "Use h2x"}}}}
+
+  ;; enable all the extra linters we haven't enabled in the core app yet in MLv2. It's all new code so we can adhere
+  ;; to the new stricter rules from day 1
+  metabase-lib
+  {:linters
+   {:docstring-leading-trailing-whitespace {:level :warning}
+    :reduce-without-init                   {:level :warning}
+    :used-underscored-binding              {:level :warning}
+    :single-key-in                         {:level :warning}
+    :keyword-binding                       {:level :warning}
+    :shadowed-var                          {:level :warning}}}}}

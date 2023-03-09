@@ -7,11 +7,13 @@
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
+   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.order-by :as order-by]
+   [metabase.lib.schema.ref :as ref]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::stage.native
@@ -21,14 +23,24 @@
    [:native any?]
    [:args {:optional true} [:sequential any?]]])
 
+(mr/def ::breakouts
+  [:sequential {:min 1} [:ref ::ref/ref]])
+
+(mr/def ::fields
+  [:sequential {:min 1} [:ref ::ref/ref]])
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    [:lib/type [:= :mbql.stage/mbql]]
+    [:lib/type    [:= :mbql.stage/mbql]]
     [:lib/options ::common/options]
-    [:order-by {:optional true} ::order-by/order-bys]
-    [:joins {:optional true} ::join/joins]
-    [:filter {:optional true} ::expression/boolean]]
+    [:joins       {:optional true} [:ref ::join/joins]]
+    [:expressions {:optional true} [:ref ::expression/expressions]]
+    [:breakout    {:optional true} ::breakouts]
+    [:aggregation {:optional true} [:ref ::aggregation/aggregations]]
+    [:fields      {:optional true} ::fields]
+    [:filter      {:optional true} [:ref ::expression/boolean]]
+    [:order-by    {:optional true} [:ref ::order-by/order-bys]]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
    [:fn (complement #(contains? % :source-query))]])
 
@@ -45,15 +57,25 @@
    ::stage.mbql
    [:fn (complement #(contains? % :source-table))]])
 
+;;; the schemas are constructed this way instead of using `:or` because they give better error messages
+(mr/def ::stage.type
+  [:enum :mbql.stage/native :mbql.stage/mbql])
+
 (mr/def ::stage
-  [:or
-   ::stage.native
-   ::stage.mbql])
+  [:and
+   [:map
+    [:lib/type ::stage.type]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql]]])
 
 (mr/def ::stage.initial
-  [:or
-   ::stage.native
-   ::stage.mbql.with-source])
+  [:and
+   [:map
+    [:lib/type ::stage.type]]
+   [:multi {:dispatch :lib/type}
+    [:mbql.stage/native ::stage.native]
+    [:mbql.stage/mbql ::stage.mbql.with-source]]])
 
 (mr/def ::stage.additional
   ::stage.mbql.without-source)
