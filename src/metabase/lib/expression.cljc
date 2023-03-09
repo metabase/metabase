@@ -46,4 +46,3 @@
               metabase.lib.options/ensure-uuid)))))
 
 (metabase.lib.expression/defexpression abs [x])
-

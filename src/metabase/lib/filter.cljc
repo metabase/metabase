@@ -67,4 +67,3 @@
 (metabase.lib.filter/deffilter time-interval [x amount unit])
 (metabase.lib.filter/deffilter segment [segment-id])
 (metabase.lib.filter/deffilter case [& pred-exprs])
-
