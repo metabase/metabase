@@ -2,6 +2,7 @@
   "Conveniences for usage in REPL and tests. Things in this namespace are not meant for normal usage in the FE client or
   in QB code."
   (:require
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -54,3 +55,9 @@
   [x y]
   (fn [query stage-number]
     (lib.filter/= query stage-number x y)))
+
+(mu/defn ->abs :- fn?
+  "Return function creating an `abs` expression clause."
+  [x]
+  (fn [query stage-number]
+    (lib.expression/abs query stage-number x)))

@@ -54,3 +54,13 @@
              [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
              [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
             (f {:lib/metadata meta/metadata} -1)))))
+
+(deftest ^:parallel ->abs-test
+  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        f (lib.dev/->abs venues-category-id-metadata)]
+    (is (fn? f))
+    (is (=? [:abs
+             {:lib/uuid uuid?}
+             [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]]
+            (f {:lib/metadata meta/metadata} -1)))))

@@ -1,9 +1,11 @@
 (ns metabase.lib.core
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
-  (:refer-clojure :exclude [remove replace and or not = < <= > >= not-empty case])
+  (:refer-clojure :exclude [remove replace and or not = < <= > >= not-empty case
+                            abs])
   (:require
    [metabase.lib.dev :as lib.dev]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.order-by :as lib.order-by]
@@ -22,6 +24,8 @@
  [lib.dev
   field
   query-for-table-name]
+ [lib.expression
+  abs]
  [lib.filter
   and
   or

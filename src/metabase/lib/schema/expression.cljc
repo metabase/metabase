@@ -213,3 +213,9 @@
     ::temporal
     ::ref/ref]])
 
+(mr/def ::expression
+  [:or
+   [:schema [:ref ::number]]
+   [:schema [:ref ::string]]
+   [:schema [:ref ::boolean]]
+   [:schema [:ref ::temporal]]])

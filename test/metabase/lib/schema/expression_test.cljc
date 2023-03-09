@@ -7,7 +7,7 @@
    malli.registry
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]
-   [metabase.util.malli.registry :as mr]))
+   #_[metabase.util.malli.registry :as mr]))
 
 (defn- ensure-uuids [expression]
   (walk/postwalk

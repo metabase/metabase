@@ -77,8 +77,8 @@
                                            :stages      [{:source-table (meta/id :venues)}]
                                            :condition   [:=
                                                          {:lib/uuid uuid?}
-                                                         [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
+                                                         [:abs {:lib/uuid uuid?} [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]]
                                                          [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]}]}]}
               (-> q1
-                  (lib/join q2 (lib.dev/->= venues-category-id-metadata categories-id-metadata))
+                  (lib/join q2 (lib.dev/->= (lib.dev/->abs venues-category-id-metadata) categories-id-metadata))
                   (dissoc :lib/metadata)))))))
