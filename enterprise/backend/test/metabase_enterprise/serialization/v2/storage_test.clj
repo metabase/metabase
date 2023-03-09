@@ -46,6 +46,7 @@
                        (assoc :parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
+                       (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))
 
             (is (= (-> (into {} (db/select-one Collection :id (:id child)))
@@ -54,6 +55,7 @@
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
                                                 child-filename (str child-filename ".yaml")))
+                       (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))))))))
 
 (deftest collection-nesting-test
@@ -141,8 +143,7 @@
 
           (testing "the Field was properly exported"
             (is (= (-> (into {} (serdes/extract-one "Field" {} (db/select-one 'Field :id (:id website))))
-                       (update :created_at      u.date/format)
-                       (dissoc :serdes/meta))
+                       (update :created_at      u.date/format))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases" "My Company Data"
                                                 "tables"    "Customers"

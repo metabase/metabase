@@ -97,10 +97,10 @@
   (ingest-one [_ abs-path]
     (when-not @cache
       (reset! cache (ingest-all root-dir)))
-    (let [{:keys [model id]} (first abs-path)]
-      (if (and (= (count abs-path) 1)
-               (= model "Setting"))
-        {:serdes/meta abs-path :key (keyword id) :value (get settings (keyword id))}
+    (let [{:keys [id]} (first abs-path)
+          kw-id        (keyword id)]
+      (if (= ["Setting"] (mapv :model abs-path))
+        {:serdes/meta abs-path :key kw-id :value (get settings kw-id)}
         (->> abs-path
              strip-labels
              (get @cache)
