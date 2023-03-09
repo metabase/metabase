@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [boolean])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.schema.ref :as ref]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
@@ -28,6 +27,10 @@
    {:error/message "valid base type"}
    #(isa? % :type/*)])
 
+(defn- mbql-clause? [expr]
+  (and (vector? expr)
+       (keyword? (first expr))))
+
 (mu/defn type-of :- [:or
                      BaseType
                      [:set {:min 2} BaseType]]
@@ -37,11 +40,16 @@
   (or
    ;; for MBQL clauses with `:base-type` in their options: ignore their dumb [[type-of*]] methods and return that type
    ;; directly. Ignore everything else! Life hack!
-   (and (vector? expr)
-        (keyword? (first expr))
+   (and (mbql-clause? expr)
         (map? (second expr))
         (:base-type (second expr)))
    (type-of* expr)))
+
+(defn- is-type? [x y]
+  (cond
+    (set? x) (some #(is-type? % y) x)
+    (set? y) (some #(is-type? x %) y)
+    :else    (isa? x y)))
 
 (defn type-of?
   "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
@@ -49,61 +57,55 @@
   (let [expr-type (type-of expr)]
     (assert ((some-fn keyword? set?) expr-type)
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
-    (if (set? expr-type)
-      (some (fn [a-type]
-              (isa? a-type base-type))
-            expr-type)
-      (isa? expr-type base-type))))
+    (is-type? expr-type base-type)))
 
-(defn- type-of?-schema [base-type description]
-  [:fn
-   {:error/message description}
-   #(type-of? % base-type)])
+(defn- expression-schema
+  "Schema that matches the following rules:
+
+  1a. expression is *not* an MBQL clause, OR
+
+  1b. expression is an registered MBQL clause and matches the schema registered
+      with [[metabase.lib.schema.mbql-clause]], AND
+
+  2. expression's [[type-of]] isa? `base-type`"
+  [base-type description]
+  [:and
+   [:or
+    [:fn
+     {:error/message "This is shaped like an MBQL clause"}
+     (complement mbql-clause?)]
+    [:ref :metabase.lib.schema.mbql-clause/clause]]
+   [:fn
+    {:error/message description}
+    #(type-of? % base-type)]])
 
 (mr/def ::boolean
-  (type-of?-schema :type/Boolean "expression returning a boolean"))
+  (expression-schema :type/Boolean "expression returning a boolean"))
 
 (mr/def ::string
-  (type-of?-schema :type/Text "expression returning a string"))
+  (expression-schema :type/Text "expression returning a string"))
 
 (mr/def ::integer
-  (type-of?-schema :type/Integer "expression returning an integer"))
+  (expression-schema :type/Integer "expression returning an integer"))
 
 (mr/def ::non-integer-real
-  (type-of?-schema :type/Float "expression returning a non-integer real number"))
+  (expression-schema :type/Float "expression returning a non-integer real number"))
 
 (mr/def ::number
-  (type-of?-schema :type/Number "expression returning a number"))
+  (expression-schema :type/Number "expression returning a number"))
 
 (mr/def ::temporal
-  (type-of?-schema :type/Temporal "expression returning a date, time, or date time"))
+  (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
-;;; Any type of expression that you can appear in an `:order-by` clause, or in a filter like `:>` or `:<=`. This is
-;;; basically everything except for boolean expressions.
 (mr/def ::orderable
-  [:or
-   ::string
-   ::number
-   ::temporal
-   ;; FIXME: assume all fields are orderable until we resolve #28911 and include `:base-type` info with every ref
-   [:ref ::ref/ref]])
+  (expression-schema #{:type/Text :type/Number :type/Temporal}
+                     "an expression that can be compared with :> or :<"))
 
-;;; Any type of expression that can appear in an `:=` or `:!=`. I guess this is currently everything?
 (mr/def ::equality-comparable
   [:maybe
-   [:or
-    ::boolean
-    ::string
-    ::number
-    ::temporal
-    [:ref ::ref/ref]]])
+   (expression-schema #{:type/Boolean :type/Text :type/Number :type/Temporal}
+                      "an expression that can appear in := or :!=")])
 
 ;;; any type of expression.
 (mr/def ::expression
-  [:maybe
-   [:or
-    ::boolean
-    ::string
-    ::number
-    ::temporal
-    [:ref ::ref/ref]]])
+  [:maybe (expression-schema :type/* "any type of expression")])

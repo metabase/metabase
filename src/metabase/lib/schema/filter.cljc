@@ -68,7 +68,7 @@
 (doseq [op [:starts-with :ends-with :contains :does-not-contain]]
   (mbql-clause/define-mbql-clause op :- :type/Boolean
     [:tuple
-     op
+     [:= op]
      [:merge ::common/options string-filter-options]
      #_whole [:ref ::expression/string]
      #_part [:ref ::expression/string]]))

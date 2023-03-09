@@ -30,7 +30,11 @@
   "Build the schema for `::clause*`, a `:multi` schema that maps MBQL clause tag -> the schema
   in [[clause-schema-registry]]."
   []
-  (into [:multi {:dispatch first, :error/message "Not an MBQL clause"}]
+  (into [:multi {:dispatch first
+                 :error/fn (fn [{:keys [value]} _]
+                             (if (vector? value)
+                               (str "Invalid " (pr-str (first value)) " clause: " (pr-str value))
+                               "not an MBQL clause"))}]
         (map (fn [tag]
                [tag [:ref (tag->registered-schema-name tag)]]))
         @tag-registry))

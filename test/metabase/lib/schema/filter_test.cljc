@@ -3,7 +3,10 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   [metabase.lib.schema.expression :as expression]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.filter]))
+
+(comment metabase.lib.schema.filter/keep-me)
 
 (defn- case-expr [& args]
   (let [clause [:case
@@ -41,7 +44,7 @@
     ;; `:type/DateTimeWithLocalTZ`. Technically this should return `:type/DateTime`, since it's the most-specific
     ;; common ancestor type compatible with all args! But calculating that stuff is way too hard! So this will have to
     ;; do for now! -- Cam
-    (case-expr "2023-03-08T06:15" [:field {:base-type :type/DateTimeWithLocalTZ} 1])
+    (case-expr "2023-03-08T06:15" [:field 1 {:base-type :type/DateTimeWithLocalTZ}])
     :type/DateTimeWithLocalTZ
 
     ;; Differing types with a common base type that is more specific than `:type/*`
@@ -114,9 +117,14 @@
         (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
           (is (not (identical? (get-method expression/type-of* op)
                                (get-method expression/type-of* :default))))))
-      (is (true? (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
+      (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
-  (testing "invalid filter"
-    (is (false? (mc/validate
-                 ::expression/boolean
-                 (ensure-uuids [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]))))))
+(deftest ^:parallel invalid-filter-test
+  (testing "invalid filters"
+    (are [clause] (mc/explain
+                   ::expression/boolean
+                   (ensure-uuids clause))
+      ;; xor doesn't exist
+      [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
+      ;; 1 is not a valid <string> arg
+      [:contains "abc" 1])))
