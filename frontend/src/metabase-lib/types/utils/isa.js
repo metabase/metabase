@@ -150,6 +150,11 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
 
+// This function is being used to detect number fields that can be used for aggregations and can be formatted as numbers.
+// Do not use this function to determine filtering behavior since coordinates should be filtered as numbers.
+export const isNonCoordinateNumber = field =>
+  isNumber(field) && !isCoordinate(field);
+
 export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
 
 export const isTime = field => {

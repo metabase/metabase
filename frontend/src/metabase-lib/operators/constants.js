@@ -6,7 +6,7 @@ import {
   isDate,
   isBoolean,
   isScope,
-  isSummable,
+  isNonCoordinateNumber,
   isLongitude,
 } from "metabase-lib/types/utils/isa";
 import {
@@ -299,8 +299,8 @@ function allFields(fields) {
   return fields;
 }
 
-function summableFields(fields) {
-  return _.filter(fields, isSummable);
+function numberFields(fields) {
+  return _.filter(fields, isNonCoordinateNumber);
 }
 
 function scopeFields(fields) {
@@ -331,7 +331,7 @@ export const AGGREGATION_OPERATORS = [
     name: t`Sum of ...`,
     columnName: t`Sum`,
     description: t`Sum of all the values of a column.`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [numberFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -340,7 +340,7 @@ export const AGGREGATION_OPERATORS = [
     name: t`Average of ...`,
     columnName: t`Average`,
     description: t`Average of all the values of a column`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [numberFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -349,7 +349,7 @@ export const AGGREGATION_OPERATORS = [
     name: t`Median of ...`,
     columnName: t`Median`,
     description: t`Median of all the values of a column`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [numberFields],
     requiresField: true,
     requiredDriverFeature: "percentile-aggregations",
   },
@@ -367,7 +367,7 @@ export const AGGREGATION_OPERATORS = [
     name: t`Cumulative sum of ...`,
     columnName: t`Cumulative sum`, // NOTE: actually "Sum" as of 2019-10-01
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [numberFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -385,7 +385,7 @@ export const AGGREGATION_OPERATORS = [
     name: t`Standard deviation of ...`,
     columnName: t`Standard deviation`, // NOTE: actually "SD" as of 2019-10-01
     description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [numberFields],
     requiresField: true,
     requiredDriverFeature: "standard-deviation-aggregations",
   },

@@ -47,8 +47,7 @@ export function columnSettings({
 import MetabaseSettings from "metabase/lib/settings";
 import {
   isDate,
-  isNumber,
-  isCoordinate,
+  isNonCoordinateNumber,
   isCurrency,
   isDateWithoutTime,
 } from "metabase-lib/types/utils/isa";
@@ -440,13 +439,6 @@ export const NUMBER_COLUMN_SETTINGS = {
 };
 
 const COMMON_COLUMN_SETTINGS = {
-  // markdown_template: {
-  //   title: t`Markdown template`,
-  //   widget: "input",
-  //   props: {
-  //     placeholder: "{{value}}",
-  //   },
-  // },
   column: {
     getValue: column => column,
   },
@@ -476,7 +468,7 @@ export function getSettingDefinitionsForColumn(series, column) {
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else if (isNumber(column) && !isCoordinate(column)) {
+  } else if (isNonCoordinateNumber(column)) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
