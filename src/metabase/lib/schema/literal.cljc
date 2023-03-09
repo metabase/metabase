@@ -1,15 +1,35 @@
 (ns metabase.lib.schema.literal
   "Malli schemas for string, temporal, number, and boolean literals."
-  (:require [metabase.util.malli.registry :as mr]))
+  (:require
+   [malli.core :as mc]
+   [metabase.lib.schema.expression :as expression]
+   [metabase.util.malli.registry :as mr]))
+
+(defmethod expression/type-of* :dispatch-type/nil
+  [_nil]
+  :type/*)
 
 (mr/def ::boolean
-  [:boolean])
+  :boolean)
+
+(defmethod expression/type-of* :dispatch-type/boolean
+  [_bool]
+  :type/Boolean)
 
 (mr/def ::integer
   [:int])
 
-(mr/def ::floating-point
+(defmethod expression/type-of* :dispatch-type/integer
+  [_int]
+  :type/Integer)
+
+(mr/def ::non-integer-real
   [:double])
+
+(defmethod expression/type-of* :dispatch-type/number
+  [_non-integer-real]
+  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
+  :type/Float)
 
 (mr/def ::string
   [:string])
@@ -34,3 +54,11 @@
    ::date
    ::time
    ::datetime])
+
+(defmethod expression/type-of* :dispatch-type/string
+  [s]
+  (condp mc/validate s
+    ::datetime #{:type/Text :type/DateTime}
+    ::date     #{:type/Text :type/Date}
+    ::time     #{:type/Text :type/Time}
+    :type/Text))

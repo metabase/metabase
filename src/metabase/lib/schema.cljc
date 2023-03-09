@@ -9,10 +9,15 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.join :as join]
+   [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.util.malli.registry :as mr]))
+
+(comment metabase.lib.schema.filter/keep-me
+         metabase.lib.schema.literal/keep-me)
 
 (mr/def ::stage.native
   [:map
