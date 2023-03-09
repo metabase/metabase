@@ -10,11 +10,18 @@
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.expression.arithmetic]
+   [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.join :as join]
+   [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
    [metabase.util.malli.registry :as mr]))
+
+(comment metabase.lib.schema.expression.arithmetic/keep-me
+         metabase.lib.schema.filter/keep-me
+         metabase.lib.schema.literal/keep-me)
 
 (mr/def ::stage.native
   [:map
