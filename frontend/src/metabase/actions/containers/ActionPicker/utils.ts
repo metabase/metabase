@@ -10,7 +10,9 @@ export const sortAndGroupActions = (
     return {};
   }
 
-  const sortedActions = _.sortBy(actions, "name");
+  const sortedActions = _.sortBy(actions, (a: WritebackAction) =>
+    a.name.toLowerCase(),
+  );
   const sortedGroupedActions = _.groupBy(sortedActions, "model_id");
 
   return sortedGroupedActions;

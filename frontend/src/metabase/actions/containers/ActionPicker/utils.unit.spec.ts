@@ -7,7 +7,7 @@ const testActions = [
   createMockQueryAction({ id: 4, name: "Dog Action", model_id: 2 }),
   createMockQueryAction({ id: 3, name: "Cat Action", model_id: 2 }),
   createMockQueryAction({ id: 5, name: "Elephant Action", model_id: 3 }),
-  createMockQueryAction({ id: 1, name: "Aardvark Action", model_id: 1 }),
+  createMockQueryAction({ id: 1, name: "aardvark Action", model_id: 1 }),
 ];
 
 describe("Actions > ActionPicker", () => {
