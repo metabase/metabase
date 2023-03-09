@@ -2,5 +2,5 @@
 
 (defmacro defexpression
   [expression-name argv]
-  `(defn ~expression-name "docstring" ~argv
-     ~(remove #{'&} argv)))
+  `(defn ~expression-name "docstring" [~'query ~'stage ~@argv]
+     ~(into ['query 'stage] (remove #{'&} argv))))
