@@ -4,8 +4,10 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.filter]
    [metabase.util.malli :as mu]))
+
+(comment metabase.lib.schema.filter/keep-me)
 
 (defmulti ^:private ->filter-arg
   {:arglists '([query stage-number x])}
@@ -26,7 +28,7 @@
 
 (mu/defn = :- [:or
                fn?
-               ::lib.schema.filter/=]
+               :mbql.clause/=]
   "Create an `=` filter clause."
   ([x y]
    (fn [query stage-number]
