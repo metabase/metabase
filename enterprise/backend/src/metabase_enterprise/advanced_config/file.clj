@@ -233,7 +233,7 @@
   "Contents of the config file if it exists, otherwise `nil`. If config exists, it will be returned as a map."
   []
   (when-let [m (or *config*
-                   (yaml/from-file (str (path)) true))]
+                   (yaml/from-file (str (path))))]
     (s/assert* ::config m)
     (expand-templates m)))
 
