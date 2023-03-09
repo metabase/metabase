@@ -19,21 +19,21 @@
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
-  (let [{old-database-type             :database-type
-         old-base-type                 :base-type
-         old-field-comment             :field-comment
-         old-semantic-type             :semantic-type
-         old-database-position         :database-position
-         old-database-name             :name
+  (let [{old-database-type              :database-type
+         old-base-type                  :base-type
+         old-field-comment              :field-comment
+         old-semantic-type              :semantic-type
+         old-database-position          :database-position
+         old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
-         old-db-required               :database-required} metabase-field
-        {new-database-type             :database-type
-         new-base-type                 :base-type
-         new-field-comment             :field-comment
-         new-database-position         :database-position
-         new-database-name             :name
+         old-db-required                :database-required} metabase-field
+        {new-database-type              :database-type
+         new-base-type                  :base-type
+         new-field-comment              :field-comment
+         new-database-position          :database-position
+         new-database-name              :name
          new-database-is-auto-increment :database-is-auto-increment
-         new-db-required               :database-required} field-metadata
+         new-db-required                :database-required} field-metadata
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)

@@ -85,8 +85,6 @@
       (update :fields (partial (comp set map-indexed) (fn [idx field]
                                                         (add-db-position field idx))))))
 
-(driver/describe-table ::toucanery nil {:name "employees"})
-
 (defmethod driver/table-rows-seq ::toucanery
   [_ _ table]
   (when (= (:name table) "_metabase_metadata")
