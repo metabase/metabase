@@ -43,15 +43,11 @@
                     (.endsWith (name %) "_at")))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defn- map-ish?
-  [x]
-  (or (map? x) (isa? x flatland.ordered.map.OrderedMap)))
-
 (defn- parse-keys
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [obj]
   (cond
-    (map-ish? obj)    (m/map-kv (fn [k v]
+    (map? obj)        (m/map-kv (fn [k v]
                                   [(if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
                                      (apply keyword (str/split k #"/"))
                                      k)
