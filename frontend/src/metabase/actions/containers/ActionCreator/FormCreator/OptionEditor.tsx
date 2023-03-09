@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -51,6 +51,16 @@ export const OptionPopover = ({
   const isDirty = text !== optionsToText(options);
   const hasError = Boolean(error);
   const canSave = hasOptions && isDirty && !hasError;
+
+  useEffect(() => {
+    if (optionsToText(options) !== text) {
+      setText(optionsToText(options));
+    }
+    // Ignore text changes caused by user edits,
+    // and only trigger when options change from outside
+    // (e.g. on field type change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
