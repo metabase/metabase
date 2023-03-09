@@ -9,7 +9,9 @@ import {
   findIcon,
   getIcon,
   waitFor,
+  waitForElementToBeRemoved,
 } from "__support__/ui";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 
 import {
   createMockActionDashboardCard,
@@ -20,9 +22,8 @@ import {
   createMockDashboard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
 
-import Action, { ActionComponent, ActionProps } from "./Action";
+import Action, { ActionProps } from "./Action";
 
 const defaultProps = {
   dashcard: {
@@ -66,33 +67,26 @@ const defaultProps = {
   parameterValues: {},
 } as unknown as ActionProps;
 
-const databases: Record<number, any> = {
-  1: createMockDatabase({ id: 1 }),
-  2: createMockDatabase({
-    id: 2,
-    settings: { "database-enable-actions": true },
-  }),
+const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
+const DATABASE = createMockDatabase({
+  id: 2,
+  settings: { "database-enable-actions": true },
+});
+
+type SetupOpts = Partial<ActionProps> & {
+  awaitLoading?: boolean;
 };
 
-async function setup(options?: Partial<ActionProps>) {
-  return renderWithProviders(
-    <ActionComponent {...defaultProps} {...options} />,
-  );
-}
+async function setup({ awaitLoading = true, ...props }: SetupOpts = {}) {
+  setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
 
-async function setupActionWrapper(options?: Partial<ActionProps>) {
-  const dbId = options?.dashcard?.action?.database_id ?? 0;
+  renderWithProviders(<Action {...defaultProps} {...props} />);
 
-  fetchMock.get(`path:/api/database/${dbId}`, databases[dbId] ?? null);
-
-  return renderWithProviders(<Action {...defaultProps} {...options} />, {
-    withSampleDatabase: true,
-    storeInitialState: {
-      entities: createMockEntitiesState({
-        databases,
-      }),
-    },
-  });
+  if (awaitLoading) {
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+  }
 }
 
 function setupExecutionEndpoint() {
@@ -101,14 +95,15 @@ function setupExecutionEndpoint() {
   });
 }
 
-describe("Actions > ActionViz > ActionComponent", () => {
+describe("Actions > ActionViz > Action", () => {
   describe("Button actions", () => {
     it("should render an empty state for a button with no action", async () => {
-      await setupActionWrapper({
+      await setup({
         dashcard: {
           ...defaultProps.dashcard,
           action: undefined,
         },
+        awaitLoading: false,
       });
       expect(getIcon("bolt")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeDisabled();
@@ -116,7 +111,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
     });
 
     it("should render a disabled state for a button with an action from a database where actions are disabled", async () => {
-      await setupActionWrapper({
+      await setup({
         dashcard: {
           ...defaultProps.dashcard,
           action: createMockQueryAction({
@@ -133,7 +128,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
     });
 
     it("should render an enabled state when the action is valid", async () => {
-      await setupActionWrapper({
+      await setup({
         dashcard: {
           ...defaultProps.dashcard,
           action: createMockQueryAction({
@@ -348,6 +343,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
+            database_id: DATABASE.id,
             parameters: [
               createMockActionParameter({
                 id: "1",

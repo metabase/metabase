@@ -46,7 +46,7 @@ export interface ActionProps extends VisualizationProps {
   database: Database;
 }
 
-export function ActionComponent({
+function ActionComponent({
   dashcard,
   dashboard,
   dispatch,
