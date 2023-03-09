@@ -39,7 +39,7 @@ export interface ActionFormComponentProps {
   initialValues?: ActionFormInitialValues;
   isEditable?: boolean;
   onClose?: () => void;
-  onSubmit?: (
+  onSubmit: (
     params: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
@@ -113,15 +113,14 @@ export const ActionForm = ({
     });
   };
 
-  const handleSubmit = (
-    values: ParametersForActionExecution,
-    actions: FormikHelpers<ParametersForActionExecution>,
-  ) => onSubmit?.(values, actions);
-
   if (isSettings) {
     const fieldSettings = formSettings.fields || {};
     return (
-      <FormProvider initialValues={formInitialValues} onSubmit={handleSubmit}>
+      <FormProvider
+        initialValues={formInitialValues}
+        enableReinitialize
+        onSubmit={onSubmit}
+      >
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
@@ -163,7 +162,7 @@ export const ActionForm = ({
     <FormProvider
       initialValues={formInitialValues}
       validationSchema={formValidationSchema}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
@@ -172,7 +171,9 @@ export const ActionForm = ({
         ))}
 
         <ActionFormButtonContainer>
-          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
+          {onClose && (
+            <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+          )}
           <FormSubmitButton
             title={submitTitle ?? t`Submit`}
             {...submitButtonVariant}
