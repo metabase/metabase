@@ -46,7 +46,7 @@ const ACTION = createMockQueryAction({
     }),
     createMockActionParameter({
       id: "parameter_2",
-      type: "type/Text",
+      type: "type/Integer",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
