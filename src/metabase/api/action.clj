@@ -52,7 +52,7 @@
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
 (api/defendpoint GET "/"
-  "Returns actions that can be used for QueryActions. By default lists all available actions. Pass optional
+  "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [model-id]
   {model-id [:maybe pos-int?]}
