@@ -23,7 +23,7 @@
               :semantic-type     :type/PK
               :pk?               true
               :database-required false
-              :database-is-auto-increment false}
+              :database-is-auto-increment true}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary

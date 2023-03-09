@@ -34,7 +34,6 @@
          new-database-name             :name
          new-database-is-auto-increment :database-is-auto-increment
          new-db-required               :database-required} field-metadata
-        new-database-is-auto-increment              (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
