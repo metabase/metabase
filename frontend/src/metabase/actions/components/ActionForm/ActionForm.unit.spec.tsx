@@ -300,9 +300,7 @@ describe("Actions > ActionForm", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("disables form submission when required fields are not provided", async () => {
@@ -421,9 +419,7 @@ describe("Actions > ActionForm", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets a default value for an empty field", async () => {
@@ -440,25 +436,23 @@ describe("Actions > ActionForm", () => {
               id: "abc-123",
               title: "foo input",
               required: true,
+              defaultValue: "foo",
             }),
             "def-456": makeFieldSettings({
               inputType: "boolean",
               id: "def-456",
               title: "bar input",
               required: false,
+              defaultValue: "bar",
             }),
           },
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets types on form submissions correctly", async () => {
