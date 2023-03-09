@@ -130,7 +130,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.14"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.1"}             ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "4.20.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
