@@ -63,12 +63,10 @@
                                               :archived false)
                        :creator)
               []))]
-    (if model-id
-      (let [model (api/read-check Card model-id)]
-        ;; We don't check the permissions on the actions, we assume they are
-        ;; readable if the model is readable.
-        (actions-for [model]))
-      (let [models (t2/select Card {:where
+    ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
+    (let [models (if model-id
+                   [(api/read-check Card model-id)]
+                   (t2/select Card {:where
                                     [:and
                                      [:= :dataset true]
                                      [:= :archived false]
@@ -76,8 +74,8 @@
                                      (collection/visible-collection-ids->honeysql-filter-clause
                                       :collection_id
                                       (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]})]
-        (actions-for models)))))
+                                       @api/*current-user-permissions-set*))]}))]
+      (actions-for models))))
 
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
