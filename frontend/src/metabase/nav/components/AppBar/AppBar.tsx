@@ -16,6 +16,7 @@ export interface AppBarProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
   onLogout: () => void;
@@ -25,7 +26,7 @@ const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
-    <AppBarRoot data-testid="app-bar">
+    <AppBarRoot data-testid="app-bar" isVisible={props.isVisible}>
       {isSmallScreen ? <AppBarSmall {...props} /> : <AppBarLarge {...props} />}
     </AppBarRoot>
   );
