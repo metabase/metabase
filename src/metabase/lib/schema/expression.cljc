@@ -19,15 +19,14 @@
   determine the type), return `::expression/type.unknown`. This is a temporary workaround until we figure out how to
   always have type info!"
   {:arglists '([expr])}
-  #?(:clj (fn [x]
-            ;; only for clojure! Use the class name as the dispatch type rather than `:type/*`. This is so we can
-            ;; implement support for some Clojure-only classes like `BigDecimal` or `java.time.OffsetDateTime`, for
-            ;; use inside QP code or whatever.
-            (let [dispatch-value (lib.dispatch/dispatch-value x)]
-              (if (= dispatch-value :type/*)
-                (type x)
-                dispatch-value)))
-     :cljs lib.dispatch/dispatch-value))
+  (fn [x]
+    ;; For the fallback case: use the actual type/class name as the dispatch type rather than `:type/*`. This is so we
+    ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
+    ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
+    (let [dispatch-value (lib.dispatch/dispatch-value x)]
+      (if (= dispatch-value :type/*)
+        (type x)
+        dispatch-value))))
 
 (defmethod type-of* :default
   [expr]
