@@ -101,7 +101,7 @@
   [:tuple
    [:= :segment]
    ::common/options
-   [:or ::common/int-greater-than-zero ::common/non-blank-[:ref ::expression/string]]])
+   [:or ::common/int-greater-than-zero ::common/non-blank-string]])
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 (mr/def ::case-subclause

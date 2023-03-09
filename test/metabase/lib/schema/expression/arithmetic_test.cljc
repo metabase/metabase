@@ -25,7 +25,7 @@
         (is (mc/validate :mbql.clause/* expr))
         (is (mc/validate ::expression/integer expr))))
     (testing "Multiplication with one or more non-integer args should NOT be considered to be an integer expression."
-      (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2.0]]
+      (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2.1]]
         (is (= :type/Number
                (expression/type-of expr)))
         (is (mc/validate :mbql.clause/* expr))

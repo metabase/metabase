@@ -13,7 +13,11 @@
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of*]].
 
   For MBQL clauses, try really hard not return an ambiguous set of possible types! Calculate things and determine what
-  the result type will be!"
+  the result type will be!
+
+  If we don't have enough information to determine the type (e.g. a `:field` clause that needs a metadata provider to
+  determine the type), return `::expression/type.unknown`. This is a temporary workaround until we figure out how to
+  always have type info!"
   {:arglists '([expr])}
   #?(:clj (fn [x]
             ;; only for clojure! Use the class name as the dispatch type rather than `:type/*`. This is so we can
@@ -34,9 +38,14 @@
   (and (vector? expr)
        (keyword? (first expr))))
 
+(mr/def ::base-type
+  [:or
+   [:= ::type.unknown]
+   ::common/base-type])
+
 (mu/defn type-of :- [:or
-                     ::common/base-type
-                     [:set {:min 2} ::common/base-type]]
+                     ::base-type
+                     [:set {:min 2} ::base-type]]
   "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
   possible types."
   [expr]
@@ -50,9 +59,10 @@
 
 (defn- is-type? [x y]
   (cond
-    (set? x) (some #(is-type? % y) x)
-    (set? y) (some #(is-type? x %) y)
-    :else    (isa? x y)))
+    (set? x)             (some #(is-type? % y) x)
+    (set? y)             (some #(is-type? x %) y)
+    (= x ::type.unknown) true
+    :else                (isa? x y)))
 
 (defn type-of?
   "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
@@ -121,3 +131,10 @@
 ;;; any type of expression.
 (mr/def ::expression
   [:maybe (expression-schema :type/* "any type of expression")])
+
+;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
+(mr/def ::expressions
+  [:map-of
+   {:min 1, :error/message ":expressions definition map of expression name -> expression"}
+   ::common/non-blank-string
+   ::expression])

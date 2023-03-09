@@ -4,7 +4,7 @@
    [malli.core :as mc]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.lib.schema.literal.jvm :as literal.jvm]))))
+   #?@(:clj ([metabase.lib.schema.literal.jvm]))))
 
 (defmethod expression/type-of* :dispatch-type/nil
   [_nil]
@@ -23,7 +23,7 @@
 (mr/def ::integer
   #?(:clj [:or
            :int
-           ::literal.jvm/big-integer]
+           :metabase.lib.schema.literal.jvm/big-integer]
      :cljs :int))
 
 (defmethod expression/type-of* :dispatch-type/integer
@@ -35,8 +35,8 @@
 (mr/def ::non-integer-real
   #?(:clj [:or
            :double
-           ::literal.jvm/float
-           ::literal.jvm/big-decimal]
+           :metabase.lib.schema.literal.jvm/float
+           :metabase.lib.schema.literal.jvm/big-decimal]
      :cljs :double))
 
 (defmethod expression/type-of* :dispatch-type/number
@@ -50,29 +50,23 @@
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
 ;;; allowed to have month `13` or `02-29` for example
 
-(def ^:private date-part-regex #"\d{4}-\d{2}-\d{2}")
-
-(def ^:private time-part-regex #"\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?")
-
-(def ^:private offset-part-regex
-  ;; I think technically a zone offset can have a seconds part too but let's not worry too much about supporting that
-  ;; for now.
-  (re-pattern (str "(?:Z|" time-part-regex ")")))
+;;; TODO -- these were split out into separate parts originally but apparently string <-> re-pattern conversion
+;;; doesn't work in Cljs the way it works in Clj
 
 (def ^:private local-date-regex
-  (re-pattern (str "^" date-part-regex "$")))
+  #"^\d{4}-\d{2}-\d{2}$")
 
 (def ^:private local-time-regex
-  (re-pattern (str "^" time-part-regex "$")))
+  #"^\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?$")
 
 (def ^:private offset-time-regex
-  (re-pattern (str "^" time-part-regex offset-part-regex "$")))
+  #"^\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?(?:Z|\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?)$")
 
 (def ^:private local-datetime-regex
-  (re-pattern (str "^" date-part-regex "T" time-part-regex "$")))
+  #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?$")
 
 (def ^:private offset-datetime-regex
-  (re-pattern (str "^" date-part-regex "T" time-part-regex offset-part-regex "$")))
+  #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?(?:Z|\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?)$")
 
 
 (mr/def ::string.date

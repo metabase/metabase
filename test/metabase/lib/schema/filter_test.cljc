@@ -4,9 +4,13 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.filter]))
+   [metabase.lib.schema.filter]
+   [metabase.lib.schema.literal]
+   [metabase.lib.schema.ref]))
 
-(comment metabase.lib.schema.filter/keep-me)
+(comment metabase.lib.schema.filter/keep-me
+         metabase.lib.schema.literal/keep-me
+         metabase.lib.schema.ref/keep-me)
 
 (defn- case-expr [& args]
   (let [clause [:case
@@ -44,7 +48,7 @@
     ;; `:type/DateTimeWithLocalTZ`. Technically this should return `:type/DateTime`, since it's the most-specific
     ;; common ancestor type compatible with all args! But calculating that stuff is way too hard! So this will have to
     ;; do for now! -- Cam
-    (case-expr "2023-03-08T06:15" [:field {:base-type :type/DateTimeWithLocalTZ} 1])
+    (case-expr "2023-03-08T06:15" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
     :type/DateTimeWithLocalTZ
 
     ;; Differing types with a common base type that is more specific than `:type/*`
@@ -54,7 +58,9 @@
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
    (fn [f]
-     (if (and (vector? f) (not (map-entry? f)))
+     (if (and (vector? f)
+              (keyword? (first f))
+              (not (map-entry? f)))
        (let [[op & args] f]
          (cond
            (and (map? (first args)) (not (:lib/uuid (first args))))
@@ -113,8 +119,7 @@
            [:time-interval {:include-current true} field :next :default]
            [:segment 1]
            [:segment "segment-id"]
-           [:case [[:= 1 1] true
-                   [:not-null field] [:< 0 1]]]]]
+           [:case [[[:= 1 1] true] [[:not-null field] [:< 0 1]]]]]]
       (doseq [op (filter-ops filter-expr)]
         (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
           (is (not (identical? (get-method expression/type-of* op)
@@ -122,8 +127,9 @@
       ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
       (doseq [filter-clause (rest filter-expr)
               :let          [filter-clause (ensure-uuids filter-clause)]]
-        (testing (list `mc/validate :expression/boolean filter-clause)
-          (is (mc/validate :expression/boolean filter-clause))))
+        (testing (pr-str filter-clause)
+          (is (= (expression/type-of filter-clause) :type/Boolean))
+          (is (mc/validate ::expression/boolean filter-clause))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 

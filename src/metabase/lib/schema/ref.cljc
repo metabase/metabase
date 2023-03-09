@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
@@ -47,8 +48,18 @@
     [:dispatch-type/integer ::field.id]
     [:dispatch-type/string ::field.literal]]])
 
+(defmethod expression/type-of* :field
+  [[_tag opts _id-or-name]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
+
 (mbql-clause/define-tuple-mbql-clause :expression
   ::common/non-blank-string)
+
+(defmethod expression/type-of* :expression
+  [[_tag opts _expression-name]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
 
 (mr/def ::aggregation-options
   [:merge
@@ -61,6 +72,11 @@
    [:= :aggregation]
    ::aggregation-options
    ::common/int-greater-than-or-equal-to-zero])
+
+(defmethod expression/type-of* :aggregation
+  [[_tag opts _index]]
+  (or (:base-type opts)
+      ::expression/type.unknown))
 
 (mr/def ::ref
   [:and
