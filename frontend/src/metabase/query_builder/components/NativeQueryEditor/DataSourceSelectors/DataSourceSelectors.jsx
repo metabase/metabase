@@ -17,6 +17,7 @@ const DataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   requireWriteback: PropTypes.bool,
+  editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -49,6 +50,7 @@ const TableSelectorPropTypes = {
 
 const PlaceholderPropTypes = {
   query: PropTypes.object,
+  editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
 const DataSourceSelectors = ({
@@ -58,6 +60,7 @@ const DataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   requireWriteback = false,
+  editorContext,
 }) => {
   const database = query.database();
 
@@ -76,7 +79,7 @@ const DataSourceSelectors = ({
   }, [query, requireWriteback]);
 
   if (!isNativeEditorOpen || databases.length === 0) {
-    return <Placeholder query={query} />;
+    return <Placeholder query={query} editorContext={editorContext} />;
   }
 
   return (
@@ -181,11 +184,18 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
 
 TableSelector.propTypes = TableSelectorPropTypes;
 
-const Placeholder = ({ query }) => (
-  <div className="ml2 p2 text-medium">
-    {t`This question is written in ${getNativeQueryLanguage(query.engine())}.`}
-  </div>
-);
+const Placeholder = ({ query, editorContext }) => {
+  if (editorContext === "action") {
+    return null;
+  }
+
+  const language = getNativeQueryLanguage(query.engine());
+  return (
+    <div className="ml2 p2 text-medium">
+      {t`This question is written in ${language}.`}
+    </div>
+  );
+};
 
 Placeholder.propTypes = PlaceholderPropTypes;
 
