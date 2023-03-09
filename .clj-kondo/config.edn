@@ -454,6 +454,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
+  metabase.lib.expression/defexpression                                                metabase.lib.filter/deffilter
   metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
   metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
@@ -586,7 +587,6 @@
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
    metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
-   metabase.lib.expression/defexpression                                        macros.metabase.lib.expression/defexpression
    metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
