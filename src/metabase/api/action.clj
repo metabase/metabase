@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
@@ -55,7 +56,7 @@
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [model-id]
-  {model-id [:maybe pos-int?]}
+  {model-id [:maybe ms/IntGreaterThanZero]}
   (letfn [(actions-for [models]
             (if (seq models)
               (hydrate (action/select-actions models
