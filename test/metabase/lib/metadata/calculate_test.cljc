@@ -1,10 +1,15 @@
 (ns metabase.lib.metadata.calculate-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.metadata.calculate :as calculate]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private venues-query
   {:lib/type     :mbql/query
@@ -16,28 +21,35 @@
                    :source-table (meta/id :venues)}]})
 
 (defn- venues-query-with-last-stage [m]
-  (update-in venues-query [:stages 0] merge m))
+  (let [query (update-in venues-query [:stages 0] merge m)]
+    (is (mc/validate ::lib.schema/query query))
+    query))
 
 (defn- field-clause
   ([table field]
    (field-clause table field nil))
   ([table field options]
-   [:field (merge {:lib/uuid (str (random-uuid))} options) (meta/id table field)]))
+   [:field
+    (merge {:base-type (:base_type (meta/field-metadata table field))
+            :lib/uuid  (str (random-uuid))}
+           options)
+    (meta/id table field)]))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
-    (is (=? [(merge (meta/field-metadata :venues :price)
-                    {:source    :fields
-                     :field_ref [:field {:lib/uuid string?} (meta/id :venues :price)]})]
-            (calculate/stage-metadata
-             {:lib/type     :mbql/query
-              :type         :pipeline
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
-                              :source-table (meta/id :venues)
-                              :fields       [(field-clause :venues :price)]}]
-              :database     (meta/id)
-              :lib/metadata meta/metadata-provider})))))
+    (let [query {:lib/type     :mbql/query
+                 :type         :pipeline
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
+                                 :source-table (meta/id :venues)
+                                 :fields       [(field-clause :venues :price)]}]
+                 :database     (meta/id)
+                 :lib/metadata meta/metadata-provider}]
+      (is (mc/validate ::lib.schema/query query))
+      (is (=? [(merge (meta/field-metadata :venues :price)
+                      {:source    :fields
+                       :field_ref [:field {:lib/uuid string?} (meta/id :venues :price)]})]
+              (calculate/stage-metadata query))))))
 
 ;;; FIXME
 #_(deftest ^:parallel col-info-implicit-join-test
@@ -256,14 +268,14 @@
                                              2]}})
              [:sum
               {:lib/uuid (str (random-uuid))}
-              [:expression {:lib/uuid (str (random-uuid))} "double-price"]])))))
+              [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
 (defn- infer-first
   ([expr]
    (infer-first expr nil))
 
   ([expr last-stage]
-   (#'calculate/metadata-for-expression-ref
+   (#'calculate/metadata-for-ref
     (venues-query-with-last-stage
      (merge
       {:expressions {"expr" expr}}
@@ -279,16 +291,19 @@
                  :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
-                (infer-first [:coalesce {} (field-clause :venues :name) "bar"])))
+                (infer-first [:coalesce
+                              {:lib/uuid (str (random-uuid))}
+                              (field-clause :venues :name)
+                              "bar"])))
         (testing "Does not contain a field id in its analysis (#18513)"
-          (is (not (contains? (infer-first [:coalesce {} (field-clause :venues :name) "bar"])
+          (is (not (contains? (infer-first [:coalesce {:lib/uuid (str (random-uuid))} (field-clause :venues :name) "bar"])
                               :id)))))
       (testing "Gets the type information from the literal"
-        (is (=? {:base_type       :type/Text
-                 :name            "expr"
-                 :display_name    "expr"
-                 :field_ref       [:expression {} "expr"]}
-                (infer-first [:coalesce {} "bar" (field-clause :venues :name)])))))))
+        (is (=? {:base_type    :type/Text
+                 :name         "expr"
+                 :display_name "expr"
+                 :field_ref    [:expression {} "expr"]}
+                (infer-first [:coalesce {:lib/uuid (str (random-uuid))} "bar" (field-clause :venues :name)])))))))
 
 (deftest ^:parallel infer-case-test
   (testing "Case"
@@ -298,10 +313,13 @@
                  :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
-                (infer-first [:coalesce (field-clause :venues :name) "bar"])))
+                (infer-first [:coalesce
+                              {:lib/uuid (str (random-uuid))}
+                              (field-clause :venues :name)
+                              "bar"])))
         (testing "does not contain a field id in its analysis (#17512)"
           (is (false?
-               (contains? (infer-first [:coalesce (field-clause :venues :name) "bar"])
+               (contains? (infer-first [:coalesce {:lib/uuid (str (random-uuid))} (field-clause :venues :name) "bar"])
                           :id))))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test
@@ -335,7 +353,7 @@
           (calculate/stage-metadata
            (venues-query-with-last-stage
             {:expressions {"prev_month" [:+
-                                         {}
+                                         {:lib/uuid (str (random-uuid))}
                                          (field-clause :users :last-login)
-                                         [:interval {} -1 :month]]}
-             :fields      [[:expression {:lib/uuid (str (random-uuid))} "prev_month"]]})))))
+                                         [:interval {:lib/uuid (str (random-uuid))} -1 :month]]}
+             :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})))))

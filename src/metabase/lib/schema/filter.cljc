@@ -2,12 +2,9 @@
   "Schemas for the various types of filter clauses that you'd pass to `:filter` or use inside something else that takes
   a boolean expression."
   (:require
-   [clojure.set :as set]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.types :as types]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.mbql-clause :as mbql-clause]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -102,53 +99,3 @@
    [:= :segment]
    ::common/options
    [:or ::common/int-greater-than-zero ::common/non-blank-string]])
-
-;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
-(mr/def ::case-subclause
-  [:tuple
-   {:error/message "Valid :case [pred expr] pair"}
-   #_pred [:ref ::expression/boolean]
-   #_expr [:ref ::expression/expression]])
-
-;;; TODO -- this is not really a filter clause and doesn't belong in here. But where does it belong?
-(mbql-clause/define-tuple-mbql-clause :case
-  ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:sequential {:min 1} [:ref ::case-subclause]])
-
-;;; the logic for calculating the return type of a `:case` statement is not optimal nor perfect. But it should be ok
-;;; for now and errors on the side of being permissive. See this Slack thread for more info:
-;;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1678325996901389
-(defmethod expression/type-of* :case
-  [[_tag _opts pred-expr-pairs]]
-  (reduce
-   (fn [best-guess [_pred expr]]
-     (let [return-type (expression/type-of expr)]
-       (cond
-         (nil? best-guess)
-         return-type
-
-         ;; if both types are keywords return their most-specific ancestor.
-         (and (keyword? best-guess)
-              (keyword? return-type))
-         (types/most-specific-common-ancestor best-guess return-type)
-
-         ;; if one type is a specific type but the other is an ambiguous union of possible types, return the specific
-         ;; type. A case can't possibly have multiple different return types, so if one expression has an unambiguous
-         ;; type then the whole thing has to have a compatible type.
-         (keyword? best-guess)
-         best-guess
-
-         (keyword? return-type)
-         return-type
-
-         ;; if both types are ambiguous unions of possible types then return the intersection of the two. But if the
-         ;; intersection is empty, return the union of everything instead. I don't really want to go down a rabbit
-         ;; hole of trying to find the intersection between the most-specific common ancestors
-         :else
-         (or (when-let [intersection (not-empty (set/intersection best-guess return-type))]
-               (if (= (count intersection) 1)
-                 (first intersection)
-                 intersection))
-             (set/union best-guess return-type)))))
-   nil
-   pred-expr-pairs))

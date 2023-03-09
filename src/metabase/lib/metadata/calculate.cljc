@@ -1,16 +1,16 @@
 (ns metabase.lib.metadata.calculate
   (:refer-clojure :exclude [ref])
   (:require
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculate.names :as calculate.names]
    [metabase.lib.metadata.calculate.resolve :as calculate.resolve]
-   [metabase.lib.metadata.calculate.type :as calculate.type]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expresssion]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
@@ -28,28 +28,32 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
-(mu/defn ^:private metadata-for-field-ref :- lib.metadata/ColumnMetadata
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   field-ref    :- ::lib.schema.ref/field]
+(defmulti ^:private metadata-for-ref
+  {:arglists '([query stage-number ref])}
+  (fn [_query _stage-number ref]
+    (lib.dispatch/dispatch-value ref)))
+
+(defmethod metadata-for-ref :field
+  [query stage-number [_tag opts :as field-ref]]
   (let [metadata (merge
                   {:lib/type  :metadata/field
                    :field_ref field-ref}
                   (calculate.resolve/field-metadata query stage-number field-ref)
-                  {:display_name (calculate.names/display-name query stage-number field-ref)})]
+                  {:display_name (calculate.names/display-name query stage-number field-ref)}
+                  (when (:base-type opts)
+                    {:base_type (:base-type opts)}))]
     (cond->> metadata
       (:parent_id metadata) (add-parent-column-metadata query))))
 
-(mu/defn ^:private metadata-for-expression-ref :- lib.metadata/ColumnMetadata
-  [query                                                   :- ::lib.schema/query
-   stage-number                                            :- :int
-   [_expression _opts expression-name, :as expression-ref] :- ::lib.schema.ref/expression]
+(defmethod metadata-for-ref :expression
+  [query stage-number [_expression opts expression-name, :as expression-ref]]
   (let [expression (calculate.resolve/expression query stage-number expression-name)]
     {:lib/type     :metadata/field
      :field_ref    expression-ref
      :name         expression-name
      :display_name (calculate.names/display-name query stage-number expression-ref)
-     :base_type    (calculate.type/base-type query stage-number expression)}))
+     :base_type    (or (:base-type opts)
+                       (lib.schema.expresssion/type-of expression))}))
 
 (mu/defn ^:private metadata-for-aggregation :- lib.metadata/ColumnMetadata
   [query        :- ::lib.schema/query
@@ -59,27 +63,19 @@
   (let [display-name (calculate.names/display-name query stage-number aggregation)]
     {:lib/type     :metadata/field
      :source       :aggregation
-     :base_type    (calculate.type/base-type query stage-number aggregation)
+     :base_type    (lib.schema.expresssion/type-of aggregation)
      :field_ref    [:aggregation {:lib/uuid (str (random-uuid))} index]
      :name         (calculate.names/column-name query stage-number aggregation)
      :display_name display-name}))
 
-(mu/defn ^:private metadata-for-aggregation-ref :- lib.metadata/ColumnMetadata
-  [query                                  :- ::lib.schema/query
-   stage-number                           :- :int
-   [_ag _opts index, :as aggregation-ref] :- ::lib.schema.ref/aggregation]
+(defmethod metadata-for-ref :aggregation
+  [query stage-number [_ag opts index, :as aggregation-ref]]
   (let [aggregation (calculate.resolve/aggregation query stage-number index)]
-    (assoc (metadata-for-aggregation query stage-number aggregation index)
-           :field_ref aggregation-ref)))
-
-(mu/defn ^:private metadata-for-ref :- lib.metadata/ColumnMetadata
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   ref          :- ::lib.schema.ref/ref]
-  (case (first ref)
-    :field       (metadata-for-field-ref query stage-number ref)
-    :expression  (metadata-for-expression-ref query stage-number ref)
-    :aggregation (metadata-for-aggregation-ref query stage-number ref)))
+    (merge
+     (metadata-for-aggregation query stage-number aggregation index)
+     {:field_ref aggregation-ref}
+     (when (:base-type opts)
+       {:base_type (:base-type opts)}))))
 
 (mu/defn ^:private breakout-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [query        :- ::lib.schema/query

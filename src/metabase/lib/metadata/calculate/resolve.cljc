@@ -9,10 +9,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(comment metabase.lib.schema.ref/keep-me)
 
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
@@ -44,7 +46,7 @@
   "Resolve metadata for a `:field` ref."
   [query                                        :- ::lib.schema/query
    stage-number                                 :- :int
-   [_field _opts id-or-name, :as _field-clause] :- ::lib.schema.ref/field]
+   [_field _opts id-or-name, :as _field-clause] :- :mbql.clause/field]
   (if (integer? id-or-name)
     (resolve-field-id query stage-number id-or-name)
     (resolve-field-name query stage-number id-or-name)))
