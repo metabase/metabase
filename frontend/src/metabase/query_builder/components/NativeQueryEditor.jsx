@@ -518,6 +518,7 @@ class NativeQueryEditor extends Component {
       snippetCollections = [],
       resizable,
       requireWriteback = false,
+      editorContext = "question",
       setDatasetQuery,
     } = this.props;
 
@@ -545,6 +546,7 @@ class NativeQueryEditor extends Component {
                 setDatabaseId={this.setDatabaseId}
                 setTableId={this.setTableId}
                 requireWriteback={requireWriteback}
+                editorContext={editorContext}
               />
             </div>
             {hasParametersList && (
