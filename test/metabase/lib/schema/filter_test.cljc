@@ -1,18 +1,66 @@
 (ns metabase.lib.schema.filter-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   malli.registry
-   ;; expression and filter recursively depend on each other
-   metabase.lib.schema.expression
-   [metabase.lib.schema.filter :as filter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.filter]
+   [metabase.lib.schema.literal]
+   [metabase.lib.schema.ref]))
+
+(comment metabase.lib.schema.filter/keep-me
+         metabase.lib.schema.literal/keep-me
+         metabase.lib.schema.ref/keep-me)
+
+(defn- case-expr [& args]
+  (let [clause [:case
+                {:lib/uuid (str (random-uuid))}
+                (mapv (fn [arg]
+                        [[:= {:lib/uuid (str (random-uuid))} 1 1]
+                         arg])
+                      args)]]
+    (is (mc/validate :mbql.clause/case clause))
+    clause))
+
+(deftest ^:parallel case-type-of-test
+  (are [expr expected] (= expected
+                          (expression/type-of expr))
+    ;; easy, no ambiguity
+    (case-expr 1 1)
+    :type/Integer
+
+    ;; Ambiguous literal types
+    (case-expr "2023-03-08")
+    #{:type/Text :type/Date}
+
+    (case-expr "2023-03-08" "2023-03-08")
+    #{:type/Text :type/Date}
+
+    ;; Ambiguous literal types mixed with unambiguous types
+    (case-expr "2023-03-08" "abc")
+    :type/Text
+
+    ;; Literal types that are ambiguous in different ways! `:type/Text` is the only common type between them!
+    (case-expr "2023-03-08" "05:13")
+    :type/Text
+
+    ;; Confusion! The "2023-03-08T06:15" is #{:type/String :type/DateTime}, which is less specific than
+    ;; `:type/DateTimeWithLocalTZ`. Technically this should return `:type/DateTime`, since it's the most-specific
+    ;; common ancestor type compatible with all args! But calculating that stuff is way too hard! So this will have to
+    ;; do for now! -- Cam
+    (case-expr "2023-03-08T06:15" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
+    :type/DateTimeWithLocalTZ
+
+    ;; Differing types with a common base type that is more specific than `:type/*`
+    (case-expr 1 1.1)
+    :type/Number))
 
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
    (fn [f]
-     (if (and (vector? f) (not (map-entry? f)))
+     (if (and (vector? f)
+              (keyword? (first f))
+              (not (map-entry? f)))
        (let [[op & args] f]
          (cond
            (and (map? (first args)) (not (:lib/uuid (first args))))
@@ -24,16 +72,6 @@
            :else f))
        f))
    filter-expr))
-
-(defn- known-filter-ops
-  "Return all registered filter operators."
-  []
-  (into #{}
-        (comp (filter #(and (qualified-keyword? %)
-                            (not= % ::filter/filter)
-                            (= (namespace %) (namespace ::filter/filter))))
-              (map (comp keyword name)))
-        (keys (malli.registry/schemas @#'mr/registry))))
 
 (defn- filter-ops
   "Return the set of filter operators in `filter-expr`."
@@ -81,17 +119,26 @@
            [:time-interval {:include-current true} field :next :default]
            [:segment 1]
            [:segment "segment-id"]
-           [:case [:= 1 1] true [:not-null field] [:< 0 1]]]]
-      (is (= (known-filter-ops) (filter-ops filter-expr)))
-      ;; testing all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
+           [:case [[[:= 1 1] true] [[:not-null field] [:< 0 1]]]]]]
+      (doseq [op (filter-ops filter-expr)]
+        (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
+          (is (not (identical? (get-method expression/type-of* op)
+                               (get-method expression/type-of* :default))))))
+      ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
       (doseq [filter-clause (rest filter-expr)
               :let          [filter-clause (ensure-uuids filter-clause)]]
-        (testing (list `mc/validate ::filter/filter filter-clause)
-          (is (mc/validate ::filter/filter filter-clause))))
+        (testing (pr-str filter-clause)
+          (is (= (expression/type-of filter-clause) :type/Boolean))
+          (is (mc/validate ::expression/boolean filter-clause))))
       ;; now test the entire thing
-      (is (mc/validate ::filter/filter (ensure-uuids filter-expr)))))
+      (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
-  (testing "invalid filter"
-    (is (false? (mc/validate
-                 ::filter/filter
-                 (ensure-uuids [:xor 13 [:field {:lib/uuid (str (random-uuid))} 1]]))))))
+(deftest ^:parallel invalid-filter-test
+  (testing "invalid filters"
+    (are [clause] (mc/explain
+                   ::expression/boolean
+                   (ensure-uuids clause))
+      ;; xor doesn't exist
+      [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
+      ;; 1 is not a valid <string> arg
+      [:contains "abc" 1])))
