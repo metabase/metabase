@@ -2885,7 +2885,7 @@
                                 (mt/user-http-request :rasta :post 403 execute-path
                                                       {:parameters {"id" 1}})))))
               (testing "With read rights on the DB"
-                (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+                (perms/grant-permissions-for-all-schemas! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
                     (is (= {:rows-affected 1}

@@ -138,7 +138,7 @@
 
 (defn- query-action-perms
   [{:keys [database]}]
-  #{(perms/data-perms-path database)})
+  #{(perms/all-schemas-path database)})
 
 (s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
