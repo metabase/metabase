@@ -522,3 +522,18 @@
                                         :post 400
                                         (format "action/%s/execute" action-id)
                                         {:parameters {:id 1 :name "European"}})))))))))
+
+(deftest parameter-stripping-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {action-id :action-id} {:type :implicit :kind "row/update"}]
+        (testing "It strips out nil values"
+          (mt/user-http-request :crowberto
+                                :post 200
+                                (format "action/%s/execute" action-id)
+                                {:parameters {:id 1 :name "Darth Vader" :last_login nil}})
+          (is (= "Darth Vader"
+                 (ffirst (mt/rows (mt/run-mbql-query users {:breakout [$name] :filter [:= $id 1]})))))
+          (is (not (nil?
+                    (ffirst (mt/rows (mt/run-mbql-query users {:breakout [$last_login] :filter [:= $id 1]})))))))))))
