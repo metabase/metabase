@@ -115,16 +115,16 @@
       (testing "happy paths\n"
         (let [query (mt/mbql-query users)]
           (doseq [query-change [{:limit       1}
-                                #_{:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
-                                #_{:filter      [:> (mt/$ids $users.id) 2]}
-                                #_{:breakout    [(mt/$ids !month.users.last_login)]}
-                                #_{:aggregation [[:count]]}
-                                #_{:joins       [{:fields       :all
-                                                  :source-table (mt/id :checkins)
-                                                  :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                                  :alias        "People"}]}
-                                #_{:order-by    [[(mt/$ids $users.id) :asc]]}
-                                #_{:fields      [(mt/$ids $users.id)]}]]
+                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
+                                {:filter      [:> (mt/$ids $users.id) 2]}
+                                {:breakout    [(mt/$ids !month.users.last_login)]}
+                                {:aggregation [[:count]]}
+                                {:joins       [{:fields       :all
+                                                :source-table (mt/id :checkins)
+                                                :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                                :alias        "People"}]}
+                                {:order-by    [[(mt/$ids $users.id) :asc]]}
+                                {:fields      [(mt/$ids $users.id)]}]]
             (testing (format "when adding %s to the query" (first (keys query-change)))
               (mt/with-actions [{model-id :id}           {:dataset true :dataset_query query}
                                 {action-id-1 :action-id} {:type :implicit

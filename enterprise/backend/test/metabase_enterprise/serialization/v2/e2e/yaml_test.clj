@@ -158,8 +158,8 @@
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))
-               ;; Simple model are primary used for actions.
-               ;; We can't use :card for actions because implicit actions require the model's query to contains
+               ;; Simple model is primary used for actions.
+               ;; We can't use :card for actions because implicit actions require the model's query to contain
                ;; nothing but a source table
                :simple-model            (mapv #(update-in % [1 :refs] table->db)
                                                (many-random-fks
