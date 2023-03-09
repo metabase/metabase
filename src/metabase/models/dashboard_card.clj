@@ -169,7 +169,7 @@
                                                   :dashboardcard_id id
                                                   {:order-by [[:position :asc]]})))
        (update-dashboard-card-series! dashboard-card series)))
-    true))
+    nil))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
