@@ -10,10 +10,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.filter :as schema.filter]
    [metabase.lib.test-metadata :as meta]
-   [metabase.mbql.util :as mbql.u])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal]))
-  #?(:cljs (:require-macros [com.gfredericks.test.chuck.clojure-test]
-                            [metabase.mbql.util])))
+   [metabase.mbql.util :as mbql.u]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])))
+  #?(:cljs (:require-macros [metabase.mbql.util])))
 
 (defn- field-metadata-gen
   [[_ id-or-name]]
