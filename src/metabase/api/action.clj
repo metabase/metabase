@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
@@ -52,10 +53,10 @@
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
 (api/defendpoint GET "/"
-  "Returns actions that can be used for QueryActions. By default lists all available actions. Pass optional
+  "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [model-id]
-  {model-id [:maybe pos-int?]}
+  {model-id [:maybe ms/IntGreaterThanZero]}
   (letfn [(actions-for [models]
             (if (seq models)
               (hydrate (action/select-actions models
@@ -63,12 +64,10 @@
                                               :archived false)
                        :creator)
               []))]
-    (if model-id
-      (let [model (api/read-check Card model-id)]
-        ;; We don't check the permissions on the actions, we assume they are
-        ;; readable if the model is readable.
-        (actions-for [model]))
-      (let [models (t2/select Card {:where
+    ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
+    (let [models (if model-id
+                   [(api/read-check Card model-id)]
+                   (t2/select Card {:where
                                     [:and
                                      [:= :dataset true]
                                      [:= :archived false]
@@ -76,8 +75,8 @@
                                      (collection/visible-collection-ids->honeysql-filter-clause
                                       :collection_id
                                       (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]})]
-        (actions-for models)))))
+                                       @api/*current-user-permissions-set*))]}))]
+      (actions-for models))))
 
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
