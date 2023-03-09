@@ -17,7 +17,7 @@
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u] 
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
@@ -71,7 +71,7 @@
   (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
 
 (defn hydrated-hash
-  "Returns a function which accepts an entity and returns the identity hash of 
+  "Returns a function which accepts an entity and returns the identity hash of
    the value of the hydrated property under key k."
   [k]
   (fn [entity]
