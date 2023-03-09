@@ -84,7 +84,8 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should fire onChange handler after changing required and default value properties", async () => {
     const settings = getDefaultFieldSettings({
       fieldType: "number",
-      required: false,
+      required: true,
+      defaultValue: 10,
     });
     const { onChange } = setup({ settings });
 
@@ -95,13 +96,12 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
+      required: false,
       defaultValue: undefined,
-      required: true,
     });
 
-    const defaultValueInput = screen.getByLabelText("Default value");
-    expect(defaultValueInput).not.toHaveValue();
-    await userEvent.type(defaultValueInput, "5");
+    userEvent.click(screen.getByLabelText("Required"));
+    await userEvent.type(screen.getByLabelText("Default value"), "5");
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
