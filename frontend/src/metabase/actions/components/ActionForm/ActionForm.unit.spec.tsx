@@ -340,6 +340,42 @@ describe("Actions > ActionForm", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
+    it("allows form submission when all required fields are set", async () => {
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
+        },
+      });
+
+      userEvent.type(screen.getByLabelText(/foo input/i), "baz");
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+    });
+
     it("allows form submission when all fields are optional", async () => {
       const { onSubmit } = setup({
         parameters: [
