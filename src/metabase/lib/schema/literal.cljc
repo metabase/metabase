@@ -4,16 +4,23 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::boolean
-  [:boolean])
+  :boolean)
 
+;;; TODO -- for Clojure, we should also add BigInteger
 (mr/def ::integer
-  [:int])
+  :int)
 
-(mr/def ::floating-point
-  [:double])
+;;; TODO -- for Clojure, we should also add BigDecimal, and `:float`:
+;;;
+;;; (malli.core/validate :double (float 1.0)) => false
+;;;
+;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
+;;; universe we'd want to allow those if they're not disallowed already.
+(mr/def ::non-integer-real
+  :double)
 
 (mr/def ::string
-  [:string])
+  :string)
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
 ;;; allowed to have month `13` or `02-29` for example

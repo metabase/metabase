@@ -11,8 +11,6 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
-  downloadAndAssert,
-  assertSheetRowsCount,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -544,19 +542,17 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders").should("be.visible");
   });
 
-  it("should allow downloading card data", () => {
+  it("should allow removing a card and undoing", () => {
     visitDashboard(1);
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByTestId("legend-caption").realHover();
-    });
 
-    downloadAndAssert({ fileType: "xlsx", questionId: 1 }, sheet => {
-      expect(sheet["A1"].v).to.eq("ID");
-      expect(sheet["A2"].v).to.eq(1);
-      expect(sheet["A3"].v).to.eq(2);
+    cy.icon("pencil").click();
+    cy.findByTestId("dashcard").realHover();
+    cy.icon("close").click();
+    cy.findByText("Orders").should("not.exist");
 
-      assertSheetRowsCount(18760)(sheet);
-    });
+    cy.findByText("Undo").click();
+    saveDashboard();
+    cy.findByText("Orders").should("be.visible");
   });
 });
 
