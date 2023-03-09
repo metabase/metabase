@@ -6,7 +6,8 @@
    [malli.generator :as mg]
    [malli.impl.regex :as re]
    [malli.registry :as mr]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   #?@(:clj ([malli.experimental.time :as malli.time])))
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 ;;; Implementation of :vcatn schema: stolen from malli sources,
@@ -39,7 +40,10 @@
   (-vcat-gen schema options))
 
 (defonce ^:private registry*
-  (atom (merge (mc/default-schemas) (mut/schemas) (schemas))))
+  (atom (merge (mc/default-schemas)
+               (mut/schemas)
+               #?(:clj (malli.time/schemas))
+                (schemas))))
 
 (defonce ^:private registry (mr/mutable-registry registry*))
 

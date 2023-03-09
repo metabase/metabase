@@ -9,11 +9,15 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
+(defn- default-MBQL-clause->pMBQL [mbql-clause]
+  (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
+    (into [clause-type options] (map ->pMBQL) args)))
+
 (defmethod ->pMBQL :default
   [x]
   (if (and (vector? x)
            (keyword? (first x)))
-    (lib.options/ensure-uuid x)
+    (default-MBQL-clause->pMBQL x)
     x))
 
 (defmethod ->pMBQL :mbql/query
@@ -29,6 +33,12 @@
        (update stage k ->pMBQL)))
    stage
    [:aggregation :breakout :expressions :fields :filter :order-by :joins]))
+
+(defmethod ->pMBQL :mbql/join
+  [join]
+  (-> join
+      (update :condition ->pMBQL)
+      (update :stages ->pMBQL)))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]

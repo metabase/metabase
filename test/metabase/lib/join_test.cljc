@@ -21,8 +21,8 @@
                                                       :source-table (meta/id :categories)}]
                                        :condition   [:=
                                                      {:lib/uuid uuid?}
-                                                     [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                                                     [:field (meta/id :categories :id) {:lib/uuid uuid?}]]}]}]}
+                                                     [:field {:lib/uuid uuid?} (meta/id :venues :category-id)]
+                                                     [:field {:lib/uuid uuid?} (meta/id :categories :id)]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
                         (lib.dev/->= (lib/field "VENUES" "CATEGORY_ID")
@@ -43,8 +43,8 @@
                                                       :source-table (meta/id :venues)}]
                                        :condition   [:=
                                                      {:lib/uuid uuid?}
-                                                     [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                                                     [:field (meta/id :categories :id) {:lib/uuid uuid?}]]}]}]}
+                                                     [:field {:lib/uuid uuid?} (meta/id :venues :category-id)]
+                                                     [:field {:lib/uuid uuid?} (meta/id :categories :id)]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
               (lib/join (lib/saved-question-query meta/metadata-provider meta/saved-question)
                         (lib.dev/->= (lib/field "VENUES" "CATEGORY_ID")
@@ -67,8 +67,8 @@
                                   :source-table (meta/id :venues)}]
                    :condition   [:=
                                  {:lib/uuid uuid?}
-                                 [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]}
+                                 [:field {:lib/uuid uuid?} (meta/id :venues :category-id)]
+                                 [:field {:base-type :type/BigInteger, :lib/uuid uuid?} "ID"]]}
                   (f {:lib/metadata meta/metadata} -1)))))
       (is (=? {:database (meta/id)
                :stages   [{:source-table (meta/id :categories)
@@ -77,8 +77,8 @@
                                            :stages      [{:source-table (meta/id :venues)}]
                                            :condition   [:=
                                                          {:lib/uuid uuid?}
-                                                         [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-                                                         [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]}]}]}
+                                                         [:field {:lib/uuid uuid?} (meta/id :venues :category-id)]
+                                                         [:field {:base-type :type/BigInteger, :lib/uuid uuid?} "ID"]]}]}]}
               (-> q1
                   (lib/join q2 (lib.dev/->= venues-category-id-metadata categories-id-metadata))
                   (dissoc :lib/metadata)))))))

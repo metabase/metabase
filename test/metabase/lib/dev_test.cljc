@@ -18,7 +18,7 @@
 (deftest ^:parallel field-from-database-metadata-test
   (let [f (lib/field "VENUES" "ID")]
     (is (fn? f))
-    (is (=? [:field (meta/id :venues :id) {:lib/uuid uuid?}]
+    (is (=? [:field {:lib/uuid uuid?} (meta/id :venues :id)]
             (f {:lib/type :mbql/query, :lib/metadata meta/metadata-provider} -1)))))
 
 (deftest ^:parallel field-from-results-metadata-test
@@ -29,7 +29,7 @@
     (is (=? {:lib/type :metadata/field
              :name     "ID"}
             field-metadata))
-    (is (=? [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]
+    (is (=? [:field {:base-type :type/BigInteger, :lib/uuid uuid?} "ID"]
             (#'lib.field/->field {} -1 field-metadata)))))
 
 (deftest ^:parallel query-for-table-name-test
