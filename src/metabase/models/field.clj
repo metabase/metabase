@@ -183,7 +183,6 @@
   :in  mi/json-in
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
-
 (mi/define-methods
  Field
  {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
