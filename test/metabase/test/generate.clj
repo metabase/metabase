@@ -239,6 +239,7 @@
                                               :table_id      [:table :id]
                                               :collection_id [:collection :id]}}
    ;; like card but is a model and the query is very simple
+   ;; it's used primarily as model for actions
    :simple-model                  {:prefix    :sm
                                    :spec      ::card
                                    :insert!   {:model Card}

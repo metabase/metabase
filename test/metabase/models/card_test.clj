@@ -111,7 +111,7 @@
 
 (deftest disable-implicit-actions-if-needed-test
   (mt/with-actions-enabled
-    (testing "when updating a model to include any clauses will disable implicit actions if exists\n"
+    (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
         (let [query (mt/mbql-query users)]
           (doseq [query-change [{:limit       1}
@@ -122,7 +122,9 @@
                                 {:joins       [{:fields       :all
                                                 :source-table (mt/id :checkins)
                                                 :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                                :alias        "People"}]}]]
+                                                :alias        "People"}]}
+                                {:order-by    [[(mt/$ids $users.id) :asc]]}
+                                {:fields      [(mt/$ids $users.id)]}]]
             (testing (format "when adding %s to the query" (first (keys query-change)))
               (mt/with-actions [{model-id :id}           {:dataset true :dataset_query query}
                                 {action-id-1 :action-id} {:type :implicit

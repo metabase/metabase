@@ -319,10 +319,13 @@
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
-  meaning there are no clauses such as(filter, limit, breakout...)"
+  meaning there are no clauses such as(filter, limit, breakout...).
+
+  The list of clauses should match with FE, which is defined in `metabase-lib/queries/StructuredQuery.ts`"
   [{dataset-query :dataset_query :as _card}]
   (and (= :query (:type dataset-query))
-       (every? #(nil? (get-in dataset-query [:query %])) [:expressions :filter :limit :breakout :aggregation :joins])))
+       (every? #(nil? (get-in dataset-query [:query %]))
+               [:expressions :filter :limit :breakout :aggregation :joins :order-by :fields])))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
@@ -361,7 +364,7 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
-      ;; updating a model dataset query to includes any clauses will disable implicit acitons(if it exists)
+      ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (:dataset old-card-info)
                  (not (model-supports-implicit-actions? changes)))
