@@ -88,10 +88,10 @@
 
   ([query stage-number x condition]
    (let [stage-number (or stage-number -1)
-         join         (cond-> (->join-clause query stage-number x)
+         new-join     (cond-> (->join-clause query stage-number x)
                         condition (assoc :condition (join-condition query stage-number condition)))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
-                                                                     (conj (vec joins) join))))))
+                                                                     (conj (vec joins) new-join))))))
 
 (mu/defn joins :- ::lib.schema.join/joins
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the

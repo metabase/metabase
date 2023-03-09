@@ -89,7 +89,7 @@ export default class QueryVisualization extends Component {
               className="spread"
               error={result.error}
               via={result.via}
-              card={question.card()}
+              question={question}
               duration={result.duration}
             />
           ) : result?.data ? (

@@ -6,6 +6,11 @@ import {
   modal,
 } from "e2e/support/helpers";
 
+import {
+  crudGroupMappingsWidget,
+  checkGroupConsistencyAfterDeletingMappings,
+} from "./group-mappings-widget";
+
 describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
     restore();
@@ -64,6 +69,25 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.wait("@updateSettings");
 
     getSamlCard().findByText("Set up").should("exist");
+  });
+
+  describe("Group Mappings Widget", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/setting").as("getSettings");
+      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+      cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+      cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
+        "clearGroup",
+      );
+    });
+
+    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
+      crudGroupMappingsWidget("saml");
+    });
+
+    it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
+      checkGroupConsistencyAfterDeletingMappings("saml");
+    });
   });
 });
 

@@ -5,48 +5,50 @@
   #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
 
 (deftest ^:parallel pipeline-test
-  (are [query expected] (=? expected
-                            (lib.util/pipeline query))
-    ;; MBQL query
-    {:database 1
-     :type     :query
-     :query    {:source-query {:source-query {:source-table 2}}
-                :filter       [:=
-                               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
-                               [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
-                               "wow"]}}
-    {:database 1
-     :type     :pipeline
-     :stages   [{:lib/type     :mbql.stage/mbql
-                 :source-table 2}
-                {:lib/type :mbql.stage/mbql}
-                {:lib/type :mbql.stage/mbql
-                 :filter   [:=
-                            {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
-                            [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
-                            "wow"]}]}
+  (let [uuid1 (random-uuid)
+        uuid2 (random-uuid)]
+    (are [query expected] (=? expected
+                              (lib.util/pipeline query))
+      ;; MBQL query
+      {:database 1
+       :type     :query
+       :query    {:source-query {:source-query {:source-table 2}}
+                  :filter       [:=
+                                 {:lib/uuid uuid1}
+                                 [:field 3 {:lib/uuid uuid2}]
+                                 "wow"]}}
+      {:database 1
+       :type     :pipeline
+       :stages   [{:lib/type     :mbql.stage/mbql
+                   :source-table 2}
+                  {:lib/type :mbql.stage/mbql}
+                  {:lib/type :mbql.stage/mbql
+                   :filter   [:=
+                              {:lib/uuid uuid1}
+                              [:field 3 {:lib/uuid uuid2}]
+                              "wow"]}]}
 
-    ;; native query
-    {:database 1
-     :type     :native
-     :native   {:query "SELECT * FROM VENUES;"}}
-    {:database 1
-     :type     :pipeline
-     :stages   [{:lib/type :mbql.stage/native
-                 :native   "SELECT * FROM VENUES;"}]}
+      ;; native query
+      {:database 1
+       :type     :native
+       :native   {:query "SELECT * FROM VENUES;"}}
+      {:database 1
+       :type     :pipeline
+       :stages   [{:lib/type :mbql.stage/native
+                   :native   "SELECT * FROM VENUES;"}]}
 
-    ;; already a pipeline: nothing to do
-    {:database 1
-     :lib/type :mbql/query
-     :type     :pipeline
-     :stages   [{:lib/type    :mbql.stage/native
-                 :lib/options {:lib/uuid "ef87e113-7436-41dd-9f78-3232c6778436"}
-                 :native      "SELECT * FROM VENUES;"}]}
-    {:database 1
-     :lib/type :mbql/query
-     :type     :pipeline
-     :stages   [{:lib/type :mbql.stage/native
-                 :native   "SELECT * FROM VENUES;"}]}))
+      ;; already a pipeline: nothing to do
+      {:database 1
+       :lib/type :mbql/query
+       :type     :pipeline
+       :stages   [{:lib/type    :mbql.stage/native
+                   :lib/options {:lib/uuid (random-uuid)}
+                   :native      "SELECT * FROM VENUES;"}]}
+      {:database 1
+       :lib/type :mbql/query
+       :type     :pipeline
+       :stages   [{:lib/type :mbql.stage/native
+                   :native   "SELECT * FROM VENUES;"}]})))
 
 (deftest ^:parallel query-stage-test
   (is (=? {:lib/type     :mbql.stage/mbql

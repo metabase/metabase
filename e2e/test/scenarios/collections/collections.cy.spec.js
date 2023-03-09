@@ -453,7 +453,7 @@ describe("scenarios > collection defaults", () => {
       });
 
       describe("move", () => {
-        it("should be possible to bulk move items", () => {
+        it("should be possible to bulk move items and undo", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
@@ -472,6 +472,11 @@ describe("scenarios > collection defaults", () => {
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
           cy.findByText("Orders");
+
+          cy.findByText("Undo").click();
+          navigationSidebar().findByText("Our analytics").click();
+          cy.findByText("Orders").should("be.visible");
+          cy.findByText("Undo").should("not.exist");
         });
       });
     });

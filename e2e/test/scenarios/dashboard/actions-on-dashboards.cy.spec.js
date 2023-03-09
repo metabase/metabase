@@ -14,6 +14,7 @@ import {
   popover,
   filterWidget,
   createImplicitAction,
+  dragField,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -57,10 +58,11 @@ const MODEL_NAME = "Test Action Model";
 
         it("adds a custom query action to a dashboard and runs it", () => {
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
-            expect(result.rows.length).to.equal(0);
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(0);
           });
 
           createModelFromTable(TEST_TABLE);
@@ -75,29 +77,47 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             fillActionQuery(
-              `INSERT INTO ${TEST_TABLE} (team_name) VALUES ('Zany Zebras')`,
+              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
             );
+          });
+
+          // can't have this in the .within() because it needs access to document.body
+          dragField(1, 0);
+
+          cy.findByRole("dialog").within(() => {
+            cy.findAllByText("Number").click({ multiple: true })
             cy.findByText("Save").click();
           });
 
+
           cy.findByPlaceholderText("My new fantastic action").type(
-            "Add Zebras",
+            "Update Score",
           );
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
-            actionName: "Add Zebras",
+            actionName: "Update Score",
+            idFilter: true,
           });
 
-          clickHelper("Add Zebras");
+          filterWidget().click();
+          addWidgetStringFilter("1")
+
+          clickHelper("Update Score");
+
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("New score").type("55");
+            cy.button("Run").click();
+          });
 
           cy.wait("@executeAPI");
 
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
             expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(55);
           });
         });
 
@@ -444,9 +464,119 @@ const MODEL_NAME = "Test Action Model";
             }
           });
         });
+
+        it("properly loads and updates date and time fields for implicit update actions", () => {
+          createModelFromTable(TEST_COLUMNS_TABLE);
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: "Update",
+            idFilter: true,
+          });
+
+          filterWidget().click();
+          addWidgetStringFilter("1");
+
+          clickHelper("Update");
+
+          cy.wait("@executePrefetch");
+
+          const oldRow = many_data_types_rows[0];
+          const newTime = "2020-01-10T01:35:55";
+
+          modal().within(() => {
+            changeValue({
+              fieldName: "Date",
+              fieldType: "date",
+              oldValue: oldRow.date,
+              newValue: newTime.slice(0, 10),
+            });
+
+            changeValue({
+              fieldName: "Datetime",
+              fieldType: "datetime-local",
+              oldValue: oldRow.datetime.replace(" ", "T"),
+              newValue: newTime,
+            });
+
+            changeValue({
+              fieldName: "Time",
+              fieldType: "time",
+              oldValue: oldRow.time,
+              newValue: newTime.slice(-8),
+            });
+
+            changeValue({
+              fieldName: "Timestamp",
+              fieldType: "datetime-local",
+              oldValue: oldRow.timestamp.replace(" ", "T"),
+              newValue: newTime,
+            });
+
+            // only postgres has timezone-aware columns
+            // the instance is in US/Pacific so it's -8 hours
+            if (dialect === "postgres") {
+              changeValue({
+                fieldName: "Datetimetz",
+                fieldType: "datetime-local",
+                oldValue: "2020-01-01T00:35:55",
+                newValue: newTime,
+              });
+
+              changeValue({
+                fieldName: "Timestamptz",
+                fieldType: "datetime-local",
+                oldValue: "2020-01-01T00:35:55",
+                newValue: newTime,
+              });
+            }
+
+            if (dialect === "mysql") {
+              changeValue({
+                fieldName: "Datetimetz",
+                fieldType: "datetime-local",
+                oldValue: oldRow.datetimeTZ.replace(" ", "T"),
+                newValue: newTime,
+              });
+
+              changeValue({
+                fieldName: "Timestamptz",
+                fieldType: "datetime-local",
+                oldValue: oldRow.timestampTZ.replace(" ", "T"),
+                newValue: newTime,
+              });
+            }
+            cy.button("Update").click();
+          });
+
+          cy.wait("@executeAPI");
+
+          queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then(result => {
+            const row = result.rows[0];
+
+            // the driver adds a time to this date so we have to use .include
+            expect(row.date).to.include(newTime.slice(0, 10));
+            expect(row.time).to.equal(newTime.slice(-8));
+
+            // metabase is smart and localizes these, so all of these are +8 hours
+            const newTimeAdjusted = newTime.replace("T01", "T09");
+            // we need to use .include because the driver adds milliseconds to the timestamp
+            expect(row.datetime).to.include(newTimeAdjusted);
+            expect(row.timestamp).to.include(newTimeAdjusted);
+            expect(row.datetimeTZ).to.include(newTimeAdjusted);
+            expect(row.timestampTZ).to.include(newTimeAdjusted);
+          });
+        });
       });
-    },
-  );
+    });
 });
 
 const createModelFromTable = tableName => {

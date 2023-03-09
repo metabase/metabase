@@ -206,29 +206,9 @@
 ;;; Any type of expression that can appear in an `:=` or `!=`. I guess this is currently everything?
 (mr/def ::equality-comparable
   [:maybe
-   ::expression])
-
-(mr/def ::expression
-  [:or
-   [:schema [:ref ::number]]
-   [:schema [:ref ::string]]
-   [:schema [:ref ::boolean]]
-   [:schema [:ref ::temporal]]])
-
-(comment
-  [
-   :*
-   :+
-   :-
-   :/
-   :absolute-datetime
-   :not
-   :now
-
-   :relative-datetime
-   :temporal-extract
-   :time
-   :value
-   :var
-   ]
-  )
+   [:or
+    ::boolean
+    ::string
+    ::number
+    ::temporal
+    ::ref/ref]])
