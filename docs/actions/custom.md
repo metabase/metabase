@@ -45,7 +45,7 @@ For each {% raw %}{{ variable }}{% endraw %} that you set in an action, you'll n
 
 Each of these variable field types present different options. Click on the gear icon to change options.
 
-If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. In the SQL code, remember to enclose the optional parameters in brackets `[[ ]]`, including the comma.
+If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. In the SQL code, remember to enclose any optional variables and commas in brackets, like `{% raw %}[[, column = {{ optional_variable }}]] {% endraw %}`.
 
 You can include placeholder text for all fields in the action form.
 

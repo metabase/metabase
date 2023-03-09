@@ -34,7 +34,7 @@ Basic actions include:
 
 The update action will present people with a form with editable fields for each column in the primary source table.
 
-When setting up an Update action on a dashboard, you must pass an entity key to the action from a dashboard filter. For other values, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters).
+When setting up an Update action on a dashboard, you must pass an entity key (like an ID) to the action from a dashboard filter. For other values, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters).
 
 ### Delete
 
