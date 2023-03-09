@@ -2,9 +2,15 @@ import React from "react";
 import _ from "underscore";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { waitFor } from "@testing-library/react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  findIcon,
+  getIcon,
+  waitFor,
+} from "__support__/ui";
+
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
@@ -96,7 +102,6 @@ function setupExecutionEndpoint() {
 }
 
 describe("Actions > ActionViz > ActionComponent", () => {
-  // button actions are just a modal trigger around forms
   describe("Button actions", () => {
     it("should render an empty state for a button with no action", async () => {
       await setupActionWrapper({
@@ -105,7 +110,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           action: undefined,
         },
       });
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(getIcon("bolt")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeDisabled();
       expect(screen.getByLabelText(/no action assigned/i)).toBeInTheDocument();
     });
@@ -120,7 +125,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
           }),
         },
       });
-      expect(await screen.findByLabelText("bolt icon")).toBeInTheDocument();
+      expect(await findIcon("bolt")).toBeInTheDocument();
       expect(await screen.findByRole("button")).toBeDisabled();
       expect(
         await screen.findByLabelText(/actions are not enabled/i),
