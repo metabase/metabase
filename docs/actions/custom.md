@@ -65,7 +65,7 @@ VALUES (
 {% endraw %} 
 ```
 
-Though if you want to make a field optional in an `INSERT` statement, you need to get a little fancy. Metabase will only run an optional statement if a value is supplied to a variable in that optional statement, so the trick here is to use a SQL comment to sneak a variable in the optional column.
+Though if you want to make a field optional in an `INSERT` statement, you need to get a little fancy. Metabase will only run an optional statement if a value is supplied to a variable in that optional statement, so the trick here is to use a SQL comment to sneak a variable into the optional column.
 
 ```
 {% raw %} 
@@ -73,7 +73,7 @@ Though if you want to make a field optional in an `INSERT` statement, you need t
 {% endraw %} 
 ```
 
-So a full `INSERT` statement with an optional variable would look like so:
+So a full `INSERT` statement with an optional variable would look like so (note that the optional clauses for the `{% raw %}{{ expected_invoice}}{{% endraw %}` variable are in both the column and values lists):
 
 ```
 {% raw %} 
