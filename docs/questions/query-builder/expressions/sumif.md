@@ -106,8 +106,10 @@ To view those payments by month, set the **Group by** column to "Date Received: 
 | String                                                                                           | ❌                        |
 | Number                                                                                           | ✅                        |
 | Timestamp                                                                                        | ❌                        |
-| Boolean                                                                                          | ❌                        |
+| Boolean                                                                                          | ✅                        |
 | JSON                                                                                             | ❌                        |
+
+See [parameters](#parameters).
 
 ## Related functions
 

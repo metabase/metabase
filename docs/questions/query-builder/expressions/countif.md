@@ -4,7 +4,7 @@ title: CountIf
 
 # CountIf
 
-`CountIf` counts the total rows (not unique rows) in a table that match a condition.
+`CountIf` counts the total (not unique) rows in a table that match a condition.
 
 Syntax: `CountIf(condition)`.
 
@@ -18,7 +18,7 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 | 4   | Business    |
 | 5   | Premium     |
 
-> [Aggregation formulas](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
+> [Aggregations](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
@@ -120,6 +120,8 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 Your `condition` must be an [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Related functions
+
+Because CSV files make up 40% of the world's data.
 
 **Metabase**
 - [case](#case)
