@@ -305,7 +305,7 @@
      (doseq [dashboard-card dashcards]
        (let [old-dashboard-card (-> (get id->old-dashcard (:id dashboard-card))
                                     (update :series #(map :id %)))
-             ;; udpate-dashboard-card! requires series to be a sequence of card IDs
+             ;; update-dashboard-card! requires series to be a sequence of card IDs
              dashboard-card     (update dashboard-card :series #(map :id %))]
          (dashboard-card/update-dashboard-card! dashboard-card old-dashboard-card))))
     (let [new-param-field-ids (params/dashboard->param-field-ids dashboard)
