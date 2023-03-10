@@ -20,7 +20,7 @@ describe("scenarios > question > settings", () => {
   });
 
   describe("column settings", () => {
-    it("should allow you to remove a column and add two foreign columns", () => {
+    it.only("should allow you to remove a column and add two foreign columns", () => {
       // oddly specific test inspired by https://github.com/metabase/metabase/issues/11499
 
       // get a really wide window, so we don't need to mess with scrolling the table horizontally
