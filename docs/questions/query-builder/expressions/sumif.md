@@ -22,6 +22,8 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 
 ## Parameters
 
+Syntax: `SumIf(column, condition)`.
+
 - `column` can be the name of a numeric column, or a [function](../expressions-list.md#functions) that returns a numeric column.
 - `condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
 
@@ -85,10 +87,10 @@ SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 Or, sum payments for all plans that aren't "Basic": 
 
 ```
-{% raw %}SumIf([Payment], [Plan] != "Basic"){% endraw %} 
+SumIf([Payment], [Plan] != "Basic")
 ```
 
-> The "not equal" operator `!=` should be written as "!=".
+> The "not equal" operator `!=` should be written as !=.
 
 To view those payments by month, set the **Group by** column to "Date Received: Month".
 
@@ -166,7 +168,7 @@ Don't forget to set the **Group by** column to "Date Received: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 If our [payment sample data](#sumif) is stored in a PostgreSQL database:
 

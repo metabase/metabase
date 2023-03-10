@@ -4,7 +4,7 @@ title: CountIf
 
 # CountIf
 
-`CountIf` counts the total (not unique) rows in a table that match a condition.
+`CountIf` counts the total number of rows in a table that match a condition. `CountIf` counts every row, not just unique rows.
 
 Syntax: `CountIf(condition)`.
 
@@ -22,7 +22,9 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
 ## Parameters
 
-`condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+Syntax: `CountIf(condition)`.
+
+`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Multiple conditions
 
@@ -34,9 +36,9 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 | 4   | Business    | false               |
 | 5   | Premium     | true                |
 
-### Mandatory matches
+### Required conditions
 
-To count the total rows in a table that match multiple mandatory conditions, combine the conditions using the `AND` operator:
+To count the total number of rows in a table that match multiple required conditions, combine the conditions using the `AND` operator:
 
 ```
 CountIf(([Plan] = "Basic" AND [Active Subscription] = true))
@@ -44,7 +46,7 @@ CountIf(([Plan] = "Basic" AND [Active Subscription] = true))
 
 This expression will return 2 on the sample data above (the total number of Basic plans that have an active subscription).
 
-### Optional matches
+### Optional conditions
 
 To count the total rows in a table that match multiple optional conditions, combine the conditions using the `OR` operator:
 
@@ -52,9 +54,9 @@ To count the total rows in a table that match multiple optional conditions, comb
 CountIf(([Plan] = "Basic" OR [Active Subscription] = true))
 ```
 
-Returns 4 on the sample data.
+Returns 4 on the sample data: there are three Basic plans, plus one Premium plan has an active subscription.
 
-### Some mandatory and some optional matches
+### Some mandatory and some optional conditions
 
 To combine mandatory and optional conditions, group the conditions using parentheses:
 
@@ -62,7 +64,7 @@ To combine mandatory and optional conditions, group the conditions using parenth
 CountIf(([Plan] = "Basic" OR [Plan] = "Business") AND [Active Subscription] = "false"))
 ```
 
-Returns 2 on the sample data.
+Returns 2 on the sample data: there are only two Basic or Business plans that lack an active subscription.
 
 > Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making mandatory conditions optional (or vice versa).
 
@@ -92,10 +94,10 @@ CountIf([Active Subscription] = false)
 Alternatively, if your **Active Subscription** column contains `null` (empty) values that represent inactive plans, you could use:
 
 ```
-{% raw %}CountIf([Payment], [Plan] != true){% endraw %}
+CountIf([Payment], [Plan] != true)
 ```
 
-> The "not equal" operator `!=` should be written as "!=".
+> The "not equal" operator `!=` should be written as !=.
 
 To view your conditional counts by plan, set the **Group by** column to "Plan".
 
@@ -197,7 +199,7 @@ You'll also need to set the **Group by** column to "Created Date: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 If our [sample data](#multiple-conditions) is stored in a PostgreSQL database:
 
