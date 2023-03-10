@@ -1,5 +1,6 @@
 (ns metabase.api.action-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
@@ -92,15 +93,15 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          _archived {:name                   "Archived example"
-                                     :type                   :query
-                                     :model_id               card-id
-                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                                     :type name)
-                                     :database_id            (mt/id)
-                                     :parameters             [{:id "x" :type "number"}]
-                                     :visualization_settings {:position "top"}
-                                     :archived               true}]
+                          archived {:name                   "Archived example"
+                                    :type                   :query
+                                    :model_id               card-id
+                                    :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                    :type name)
+                                    :database_id            (mt/id)
+                                    :parameters             [{:id "x" :type "number"}]
+                                    :visualization_settings {:position "top"}
+                                    :archived               true}]
           (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
             (is (= (map :action-id [action-1 action-2 action-3])
                    (map :id response)))
@@ -112,7 +113,23 @@
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                "Should not be able to list actions without read permission on the model")))))))
+                "Should not be able to list actions without read permission on the model"))
+          (testing "Can list all actions"
+            (let [response (mt/user-http-request :crowberto :get 200 "action")
+                  action-ids (into #{} (map :id) response)]
+              (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
+                               action-ids))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (schema= ExpectedGetQueryActionAPIResponse
+                               action))))
+              (testing "Does not have archived actions"
+                (is (not (contains? action-ids (:id archived)))))
+              (testing "Does not return actions on models without permissions"
+                (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
+                  (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
+                                                (into #{} (map :id) rasta-list)))))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"

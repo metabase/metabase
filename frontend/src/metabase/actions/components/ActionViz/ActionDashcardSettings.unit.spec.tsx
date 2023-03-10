@@ -88,8 +88,7 @@ const setup = (
 
   setupSearchEndpoints(models.map(model => createMockCollectionItem(model)));
   setupCardsEndpoints(models);
-  setupActionsEndpoints(models[0].id, actions1);
-  setupActionsEndpoints(models[1].id, actions2);
+  setupActionsEndpoints([...actions1, ...actions2]);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
