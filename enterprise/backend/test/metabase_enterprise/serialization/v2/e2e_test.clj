@@ -99,7 +99,7 @@
 (defn- clean-entity
  "Removes any comparison-confounding fields, like `:created_at`."
  [entity]
- (dissoc entity :created_at))
+ (dissoc entity :created_at :result_metadata))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
