@@ -26,6 +26,8 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
 ## Multiple conditions
 
+We'll use the following sample data to show you `CountIf` with [required](#required-conditions), [optional](#optional-conditions), and [mixed](#some-required-and-some-optional-conditions) conditions.
+
 | ID  | Plan        | Active Subscription |
 |-----|-------------| --------------------|
 | 1   | Basic       | true                |
@@ -199,20 +201,20 @@ You'll also need to set the **Group by** column to "Created Date: Month".
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
-If our [sample data](#multiple-conditions) is stored in a PostgreSQL database:
+If our [sample data](#multiple-conditions) is stored in a PostgreSQL database, the SQL query:
 
 ```sql
 SELECT COUNT(CASE WHEN plan = "Basic" THEN id END) AS total_basic_plans
 FROM accounts
 ```
 
-is equivalent to the Metabase `CountIf` expression:
+is equivalent to the Metabase expression:
 
 ```
 CountIf([Plan] = "Basic")
 ```
 
-To add [conditions with a grouping column](#conditional-count-by-group):
+If you want to get a [conditional count by group](#conditional-count-by-group), the SQL query:
 
 ```sql
 SELECT 
@@ -223,7 +225,7 @@ GROUP BY
     plan
 ```
 
-gets the same result as the Metabase `CountIf` expression:
+gets the same result as the Metabase expression:
 
 ```
 CountIf([Active Subscription] = false)
@@ -233,13 +235,13 @@ Note that the SQL `GROUP BY` statement will map to a Metabase [**Group by**](../
 
 ### Spreadsheets
 
-If our [sample data](#multiple-conditions) is in a spreadsheet where "ID" is in column A:
+If our [sample data](#multiple-conditions) is in a spreadsheet where "ID" is in column A, the spreadsheet formula:
 
 ```
 =CountIf(B:B, "Basic")
 ```
 
-produces the same result as:
+produces the same result as the Metabase expression:
 
 ```
 CountIf([Plan] = "Basic")
@@ -247,13 +249,17 @@ CountIf([Plan] = "Basic")
 
 ### Python
 
-If our [sample data](#multiple-conditions) is in a `pandas` dataframe column called `df`:
+If our [sample data](#multiple-conditions) is in a `pandas` dataframe column called `df`, the Python code:
 
 ```python
 len(df[df['Plan'] == "Basic"])
 ```
 
-will count the number of rows where the condition is met.
+uses the same logic as the Metabase expression:
+
+```
+CountIf([Plan] = "Basic")
+```
 
 To get a [conditional count with a grouping column](#conditional-count-by-group):
 
@@ -265,6 +271,12 @@ To get a [conditional count with a grouping column](#conditional-count-by-group)
 ## Group by a column, and count the rows within each group
 
     len(df_filtered.groupby('Plan'))
+```
+
+The Python code above will produce the same result as the Metabase `CountIf` expression (with the [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Plan").
+
+```
+CountIf([Active Subscription] = false)
 ```
 
 ## Further reading

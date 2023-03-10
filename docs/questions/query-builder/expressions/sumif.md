@@ -27,6 +27,8 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 
 ## Multiple conditions
 
+We'll use the following sample data to show you `SumIf` with [required](#required-conditions), [optional](#optional-conditions), and [mixed](#some-required-and-some-optional-conditions) conditions.
+
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
 | 100      | Basic       | October 1, 2020   |
@@ -176,7 +178,7 @@ Don't forget to set the **Group by** column to "Date Received: Month".
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
-If our [payment sample data](#sumif) is stored in a PostgreSQL database:
+If our [payment sample data](#sumif) is stored in a PostgreSQL database, the SQL query:
 
 ```sql
 SELECT 
@@ -184,13 +186,13 @@ SELECT
 FROM invoices
 ```
 
-is equivalent to the Metabase `SumIf` expression:
+is equivalent to the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-To add [multiple conditions with a grouping column](#conditional-subtotals-by-group):
+To add [multiple conditions with a grouping column](#conditional-subtotals-by-group), use the SQL query:
 
 ```sql
 SELECT 
@@ -201,23 +203,23 @@ GROUP BY
     DATE_TRUNC("month", date_received)
 ```
 
-The SQL `SELECT` statement matches the Metabase `SumIf` expression:
+The `SELECT` part of the SQl query matches the Metabase `SumIf` expression:
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The SQL `GROUP BY` statement maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
+The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
 
 ### Spreadsheets
 
-If our [payment sample data](#sumif) is in a spreadsheet where "Payment" is in column A and "Date Received" is in column B:
+If our [payment sample data](#sumif) is in a spreadsheet where "Payment" is in column A and "Date Received" is in column B, the spreadsheet formula:
 
 ```
 =SUMIF(B:B, "Basic", A:A)
 ```
 
-produces the same result as:
+produces the same result as the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
@@ -227,13 +229,13 @@ To add additional conditions, you'll need to switch to a spreadsheet **array for
 
 ### Python
 
-If our [payment sample data](#sumif) is in a `pandas` dataframe column called `df`:
+If our [payment sample data](#sumif) is in a `pandas` dataframe column called `df`, the Python code:
 
 ```python
 df.loc[df['Plan'] == "Basic", 'Payment'].sum()
 ```
 
-is equivalent to
+is equivalent to the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
