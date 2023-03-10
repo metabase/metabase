@@ -134,7 +134,7 @@ Different ways to do the same thing, because CSV files still make up 40% of the 
 
 ### case
 
-You can combine [`Sum`](../expressions-list.md#sum) and [`case`](./case.md)
+You can combine [`Sum`](../expressions-list.md#sum) and [`case`](./case.md):
 
 ```
 Sum(case([Plan] = "Basic", [Payment]))

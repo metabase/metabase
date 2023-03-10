@@ -68,7 +68,7 @@ Returns 2 on the sample data: there are only two Basic or Business plans that la
 
 > Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making required conditions optional (or vice versa).
 
-## Conditional count by group
+## Conditional counts by group
 
 In general, to get a conditional count for a category or group, such as the number of inactive subscriptions per plan, you'll:
 
@@ -214,7 +214,7 @@ is equivalent to the Metabase expression:
 CountIf([Plan] = "Basic")
 ```
 
-If you want to get a [conditional count by group](#conditional-count-by-group), the SQL query:
+If you want to get [conditional counts broken out by group](#conditional-counts-by-group), the SQL query:
 
 ```sql
 SELECT 
@@ -225,13 +225,13 @@ GROUP BY
     plan
 ```
 
-gets the same result as the Metabase expression:
+The `SELECT` part of the SQl query matches the Metabase expression:
 
 ```
 CountIf([Active Subscription] = false)
 ```
 
-Note that the SQL `GROUP BY` statement will map to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
+The `GROUP BY` part of the SQL query matches a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
 
 ### Spreadsheets
 
@@ -261,7 +261,7 @@ uses the same logic as the Metabase expression:
 CountIf([Plan] = "Basic")
 ```
 
-To get a [conditional count with a grouping column](#conditional-count-by-group):
+To get a [conditional count with a grouping column](#conditional-counts-by-group):
 
 ```python
 ## Add your conditions
