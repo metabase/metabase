@@ -550,8 +550,8 @@
 
   overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
   [vals-a vals-b]
-  (let [[min-a max-a]          (-> vals-a sort ((juxt first last)))
-        [min-b max-b]          (-> vals-b sort ((juxt first last)))
+  (let [[min-a max-a] (-> vals-a sort ((juxt first last)))
+        [min-b max-b] (-> vals-b sort ((juxt first last)))
         [a b c d]     (sort [min-a min-b max-a max-b])
         max-width     (- d a)
         overlap-width (- c b)]
@@ -800,17 +800,16 @@
         joined-rows     (mapv vector x-rows y-rows)
         viz-settings    (set-default-stacked viz-settings card)
         [x-cols y-cols] ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
-
-        enforced-type (if (= chart-type :combo)
-                        nil
-                        chart-type)
-        card-name     (:name card)
+        enforced-type   (if (= chart-type :combo)
+                          nil
+                          chart-type)
+        card-name       (:name card)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
-        series-seqs   [(if (= (count x-cols) 1)
-                         (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
-                         (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
-        labels        (combo-label-info x-cols y-cols viz-settings)
-        settings      (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
+        series-seqs     [(if (= (count x-cols) 1)
+                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
+                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
+        labels          (combo-label-info x-cols y-cols viz-settings)
+        settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
      render-type
      (js-svg/combo-chart series-seqs settings))))
