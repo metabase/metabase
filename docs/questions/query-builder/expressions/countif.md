@@ -161,9 +161,7 @@ To count the total number of Basic plans across both sources, you could create a
 
 ```
 Count(case([Plan: Source A] = "Basic", [ID: Source A], 
-            case([Plan: Source B] = "basic", [ID: Source B])
-        )
-    )
+            case([Plan: Source B] = "basic", [ID: Source B])))
 ```
 
 ### CumulativeCount
@@ -180,7 +178,7 @@ If our sample data is a time series:
 | 4   | Business    | false               | November 1, 2020 |
 | 5   | Premium     | true                | November 1, 2020 |
 
-And we want to get the running count of _active_ plans like this:
+And we want to get the running count of active plans like this:
 
 | Created Date: Month | Total Active Plans to Date |
 |---------------------|----------------------------|
@@ -202,7 +200,7 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 If our [sample data](#multiple-conditions) is stored in a PostgreSQL database:
 
 ```sql
-SELECT COUNT(CASE WHEN plan = "Basic" THEN id END) AS basic_plans
+SELECT COUNT(CASE WHEN plan = "Basic" THEN id END) AS total_basic_plans
 FROM accounts
 ```
 
@@ -216,13 +214,14 @@ To add [conditions with a grouping column](#conditional-count-by-group):
 
 ```sql
 SELECT 
+    plan,
     COUNT(CASE WHEN active_subscription = false THEN id END) AS total_inactive_subscriptions
 FROM accounts
 GROUP BY 
     plan
 ```
 
-will do the same thing as the Metabase `CountIf` expression:
+gets the same result as the Metabase `CountIf` expression:
 
 ```
 CountIf([Active Subscription] = false)
@@ -244,8 +243,6 @@ produces the same result as:
 CountIf([Plan] = "Basic")
 ```
 
-To add additional conditions, you'll need to use a spreadsheet **array formula**.
-
 ### Python
 
 If our [sample data](#multiple-conditions) is in a `pandas` dataframe column called `df`:
@@ -259,8 +256,6 @@ will count the number of rows where the condition is met.
 To get a [conditional count with a grouping column](#conditional-count-by-group):
 
 ```python
-import datetime as dt
-
 ## Add your conditions
 
     df_filtered = df[df['Active subscription'] == false]
