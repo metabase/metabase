@@ -3,8 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel equals-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
@@ -16,14 +16,14 @@
         (is (fn? f))
         (is (=? [:=
                  {:lib/uuid string?}
-                 [:field (meta/id :venues :category-id) {:lib/uuid string?}]
-                 [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]]
+                 [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]
+                 [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
                 (f {:lib/metadata meta/metadata} -1)))))
     (testing "with query/stage-number, return clause right away"
       (is (=? [:=
                {:lib/uuid string?}
-               [:field (meta/id :venues :category-id) {:lib/uuid string?}]
-               [:field "ID" {:base-type :type/BigInteger, :lib/uuid string?}]]
+               [:field {:lib/uuid string?} (meta/id :venues :category-id)]
+               [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
               (lib/= {:lib/metadata meta/metadata}
                      -1
                      venues-category-id-metadata

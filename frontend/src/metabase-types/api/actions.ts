@@ -129,6 +129,8 @@ export type Size = "small" | "medium" | "large";
 export type DateRange = [string, string];
 export type NumberRange = [number, number];
 
+export type FieldValueOptions = (string | number)[];
+
 export interface FieldSettings {
   id: string;
   name: string;
@@ -142,7 +144,7 @@ export interface FieldSettings {
   defaultValue?: string | number;
   hidden: boolean;
   range?: DateRange | NumberRange;
-  valueOptions?: (string | number)[];
+  valueOptions?: FieldValueOptions;
   width?: Size;
   height?: number;
   hasSearch?: boolean;

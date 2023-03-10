@@ -82,8 +82,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -146,21 +145,21 @@
  {:types       (constantly {:value :encrypted-text})
   :primary-key (constantly :key)})
 
-(defmethod serdes.hash/identity-hash-fields Setting
+(defmethod serdes/hash-fields Setting
   [_setting]
   [:key])
 
-(defmethod serdes.base/extract-all "Setting" [_model _opts]
+(defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
                              :getter (partial get-value-of-type :string))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
 
-(defmethod serdes.base/load-find-local "Setting" [[{:keys [id]}]]
+(defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
   (get-value-of-type :string (keyword id)))
 
-(defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
+(defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key value))
 
 (def ^:private Type

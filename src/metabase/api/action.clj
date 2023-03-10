@@ -10,6 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -125,6 +126,10 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
+    (when (and (= "implicit" type)
+               (not (card/model-supports-implicit-actions? model)))
+      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
+                      {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
        (db/select-one Database :id db-id))))
