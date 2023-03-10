@@ -157,9 +157,10 @@
                 "ensure the card_id cannot be changed 4. ensure the dashboard_id cannot be changed")
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id}]
-                    DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
-                                                      :card_id            card-id
-                                                      :parameter_mappings [{:foo "bar"}]}]
+                    DashboardCard [{dashcard-id :id
+                                    :as dashboard-card} {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:foo "bar"}]}]
                     Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                     Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
       (testing "unmodified dashcard"
@@ -183,7 +184,8 @@
                      :col                    1
                      :parameter_mappings     [{:foo "barbar"}]
                      :visualization_settings {}
-                     :series                 [card-id-2 card-id-1]}))))
+                     :series                 [card-id-2 card-id-1]}
+                    dashboard-card))))
       (testing "validate db captured everything"
         (is (= {:size_x                 5
                 :size_y                 3
@@ -217,7 +219,7 @@
                     DashboardCard [{dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id} {:name "Series Card 1"}]
                     Card          [{series-id-2 :id} {:name "Series Card 2"}]]
-      (toucan2.execute/with-call-count [call-count]
+      (db/with-call-counting [call-count]
         (dashboard/update-dashcards! dashboard [{:id     dashcard-id-1
                                                  :cardId card-id
                                                  :row    1
