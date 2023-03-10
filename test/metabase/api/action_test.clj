@@ -1,15 +1,17 @@
 (ns metabase.api.action-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
-   [metabase.models :refer [Card]]
-   [metabase.models.action :refer [Action]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.util UUID)))
 
@@ -36,6 +38,31 @@
    :creator_id             su/IntGreaterThanZero
    :creator                user/DefaultUser
    s/Keyword               s/Any})
+
+(defn all-actions-default
+  [card-id]
+  [{:name            "Get example"
+    :description     "A dummy HTTP action"
+    :type            "http"
+    :model_id        card-id
+    :template        {:method "GET"
+                      :url    "https://example.com/{{x}}"}
+    :parameters      [{:id "x" :type "text"}]
+    :response_handle ".body"
+    :error_handle    ".status >= 400"}
+   {:name          "Query example"
+    :description   "A simple update query action"
+    :type          "query"
+    :model_id      card-id
+    :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
+                           :type name)
+    :database_id   (t2/select-one-fn :database_id Card :id card-id)
+    :parameters    [{:id "x" :type "type/biginteger"}]}
+   {:name       "Implicit example"
+    :type       "implicit"
+    :model_id   card-id
+    :kind       "row/create"
+    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
 
 (deftest list-actions-test
   (mt/with-actions-enabled
@@ -85,11 +112,7 @@
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                "Should not be able to list actions without read permission on the model"))
-          (testing "Should not be possible to demote a model with actions"
-            (is (partial= {:message "Cannot make a question from a model with actions"}
-                          (mt/user-http-request :crowberto :put 500 (str "card/" card-id)
-                                                {:dataset false})))))))))
+                "Should not be able to list actions without read permission on the model")))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
@@ -104,34 +127,79 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
+(deftest action-model-db-disagree-test
+  (let [cross-db-action (fn cross-db-action [model-id other-db-id]
+                          {:type :query
+                           :model_id model-id       ;; model against one-db
+                           :database_id other-db-id ;; action against sample-dataset
+                           :name "cross db action"
+                           :dataset_query
+                           {:native
+                            {:query "update people
+                                       set source = {{source}}
+                                     where id = {{id}}",
+                             :template-tags {:source {:id "source",
+                                                      :name "source",
+                                                      :display-name "Source",
+                                                      :type "text"},
+                                             :id {:id "id",
+                                                  :name "id",
+                                                  :display-name "Id",
+                                                  :type "number"}}},
+                            :database other-db-id
+                            :type "native"}
+                           :parameters [{:id "id"
+                                         :slug "id"
+                                         :type :number
+                                         :target [:variable
+                                                  [:template-tag "id"]]}
+                                        {:id "source"
+                                         :slug "source"
+                                         :type :text
+                                         :required false
+                                         :target [:variable
+                                                  [:template-tag "source"]]}]})]
+    (testing "when action's database and model's database disagree"
+      (testing "Both dbs are checked for actions enabled at creation"
+        (mt/dataset sample-dataset
+          (let [sample-dataset-id (mt/id)]
+            (mt/dataset test-data
+              (mt/with-actions-enabled
+                (is (not= (mt/id) sample-dataset-id))
+                (mt/with-temp* [Card [model {:dataset true
+                                             :dataset_query
+                                             (mt/native-query
+                                              {:query "select * from checkins limit 1"})}]]
+                  (let [action (cross-db-action (:id model) sample-dataset-id)
+                        response (mt/user-http-request :rasta :post 400 "action"
+                                                       action)]
+                    (testing "Checks both databases for actions enabled"
+                      (is (partial= {:message "Actions are not enabled."
+                                     :data {:database-id sample-dataset-id}}
+                                    response))))))))))
+      (testing "When executing, both dbs are checked for enabled"
+        (mt/dataset sample-dataset
+          (let [sample-dataset-id (mt/id)]
+            (mt/with-actions-test-data-and-actions-enabled
+              (mt/with-actions [{model-id :id} {:dataset true
+                                                :dataset_query (mt/mbql-query categories)}
+                                {action-on-other-id :action-id} (cross-db-action model-id
+                                                                                 sample-dataset-id)]
+                (is (partial= {:message "Actions are not enabled."
+                               :data {:database-id sample-dataset-id}}
+                              (mt/user-http-request :crowberto
+                                                    :post 400
+                                                    (format "action/%s/execute" action-on-other-id)
+                                                    ;; Twitter is the current value so effectively a no-op
+                                                    {:parameters {:id 1 :source "Twitter"}})))))))))))
+
 (deftest unified-action-create-test
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-actions-test-data-tables #{"users" "categories"}
         (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
                           {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
-          (doseq [initial-action [{:name "Get example"
-                                   :description "A dummy HTTP action"
-                                   :type "http"
-                                   :model_id card-id
-                                   :template {:method "GET"
-                                              :url "https://example.com/{{x}}"}
-                                   :parameters [{:id "x" :type "text"}]
-                                   :response_handle ".body"
-                                   :error_handle ".status >= 400"}
-                                  {:name "Query example"
-                                   :description "A simple update query action"
-                                   :type "query"
-                                   :model_id card-id
-                                   :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
-                                                          :type name)
-                                   :database_id (mt/id)
-                                   :parameters [{:id "x" :type "type/biginteger"}]}
-                                  {:name "Implicit example"
-                                   :type "implicit"
-                                   :model_id card-id
-                                   :kind "row/create"
-                                   :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}]]
+          (doseq [initial-action (all-actions-default card-id)]
             (let [update-fn      (fn [m]
                                    (cond-> (assoc m :name "New name")
                                      (= (:type initial-action) "implicit")
@@ -146,7 +214,10 @@
                   expected-fn    (fn [m]
                                    (cond-> m
                                      (= (:type initial-action) "implicit")
-                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                                     (assoc :database_id (mt/id)
+                                            :parameters (if (= "row/create" (:kind initial-action))
+                                                            []
+                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
@@ -158,7 +229,7 @@
                            (:cause
                             (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                 (testing "a plain card instead of a model"
-                  (mt/with-temp Card [{plain-card-id :id}]
+                  (mt/with-temp Card [{plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                     (is (= "Actions must be made with models, not cards."
                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -206,6 +277,51 @@
                            (mt/user-http-request :rasta :delete 403 action-path))))
                   (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
                   (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
+
+(deftest implicit-actions-on-non-raw-model-test
+  (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
+    (mt/with-actions-enabled
+      (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                          :dataset       true}]
+        (is (= "Implicit actions are not supported for models with clauses."
+               (mt/user-http-request :crowberto :post 400 "action"
+                                     {:name       "Implicit example"
+                                      :type       "implicit"
+                                      :model_id   model-id
+                                      :kind       "row/create"
+                                      :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]})))))))
+
+(deftest snowplow-test
+  (snowplow-test/with-fake-snowplow-collector
+    (mt/with-actions-enabled
+      (testing "Should send a snowplow event when"
+        (t2.with-temp/with-temp
+          [Card {card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
+          (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
+            (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
+              (testing (format "adding an action of type %s" type)
+                (is (=? {:user-id (str (mt/user->id :crowberto))
+                         :data    {"action_id"      (:id new-action)
+                                   "event"          "action_created"
+                                   "num_parameters" (count parameters)
+                                   "type"           type}}
+                        (last (snowplow-test/pop-event-data-and-user-id!)))))
+
+              (testing (format "update an action of type %s" type)
+                (let [updated-action (mt/user-http-request :crowberto :put 200 (str "action/" (:id new-action)) {:name "new name"})]
+                  (is (=? {:user-id (str (mt/user->id :crowberto))
+                           :data    {"action_id"      (:id updated-action)
+                                     "event"          "action_updated"
+                                     "type"           type}}
+                          (last (snowplow-test/pop-event-data-and-user-id!))))))
+
+              (testing (format "delete an action of type %s" type)
+                (mt/user-http-request :crowberto :delete 204 (str "action/" (:id new-action)))
+                (is (=? {:user-id (str (mt/user->id :crowberto))
+                         :data    {"action_id"      (:id new-action)
+                                   "event"          "action_deleted"
+                                   "type"           type}}
+                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
@@ -364,3 +480,45 @@
         (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
+
+(deftest execute-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (testing "Action execution"
+        (snowplow-test/with-fake-snowplow-collector
+          (is (=? {:rows-affected 1}
+                  (mt/user-http-request :crowberto
+                                        :post 200
+                                        (format "action/%s/execute" action-id)
+                                        {:parameters {:id 1 :name "European"}})))
+          (testing "send a snowplow event"
+            (is (= {:data {"action_id" action-id
+                           "event"     "action_executed"
+                           "source"    "model_detail"
+                           "type"      "query"}
+                    :user-id (str (mt/user->id :crowberto))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))))))
+
+    (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
+      (testing "Check that we get a 404 if the action is archived"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto
+                                     :post 404
+                                     (format "action/%s/execute" action-id)
+                                     {:parameters {:id 1 :name "European"}})))))
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+        (testing "Check that we get a 404 if the action doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto
+                                       :post 404
+                                       (format "action/%s/execute" nonexistent-id)
+                                       {:parameters {:id 1 :name "European"}})))))
+      (testing "Check that we get a 400 if actions are disabled for the database."
+        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+          (is (= "Actions are not enabled."
+                 (:cause
+                  (mt/user-http-request :crowberto
+                                        :post 400
+                                        (format "action/%s/execute" action-id)
+                                        {:parameters {:id 1 :name "European"}})))))))))

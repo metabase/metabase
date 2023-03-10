@@ -7,21 +7,12 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Field
-            FieldValues
-            Metric
-            NativeQuerySnippet
-            Segment
-            Table
-            Timeline
-            TimelineEvent
-            User]]
-   [metabase.models.serialization.base :as serdes.base]
+    :refer [Action Card Collection Dashboard DashboardCard Database Field
+            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            TimelineEvent User]]
+   [metabase.models.action :as action]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan.db :as db])
@@ -42,7 +33,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes.base/serdes-path entity))
+                          [(no-labels (serdes/path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -778,7 +769,7 @@
           field3d    (atom nil)]
 
       (testing "serializing the original database, table, field and fieldvalues"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           (reset! db1s     (ts/create! Database :name "my-db"))
           (reset! table1s  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! Field :name "STATE" :table_id (:id @table1s)))
@@ -787,7 +778,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1
@@ -810,12 +801,12 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes.base/serdes-path)
+                          (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 
       (testing "deserializing finds existing FieldValues properly"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           ;; A different database and tables, so the IDs don't match.
           (reset! db2d    (ts/create! Database :name "other-db"))
           (reset! table2d (ts/create! Table    :name "ORDERS" :db_id (:id @db2d)))
@@ -862,7 +853,7 @@
         table1s    (atom nil)]
 
     (testing "loading a bare card"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s    (ts/create! Database :name "my-db"))
         (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! Field :name "STATE" :table_id (:id @table1s))
@@ -907,7 +898,7 @@
         card1s     (atom nil)
         extracted  (atom nil)]
     (testing "snippets referenced by native cards must be deserialized"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s      (ts/create! Database :name "my-db"))
         (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
@@ -924,7 +915,7 @@
         (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
 
         (testing "on extraction"
-          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (= (:entity_id @snippet1s)
                  (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
 
@@ -939,3 +930,39 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest load-action-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "extraction succeeds"
+        (ts/with-source-db
+          (let [db       (ts/create! Database :name "my-db")
+                card     (ts/create! Card
+                                     :name "the query"
+                                     :query_type :native
+                                     :dataset true
+                                     :database_id (:id db)
+                                     :dataset_query {:database (:id db)
+                                                     :native {:type   :native
+                                                              :native {:query "wow"}}})
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
+                                                     (and (= model "Action") (= id eid)))
+                                                   @serialized))]
+              (is (some? action-serialized))
+              (testing ":type should be a string"
+                (is (string? (:type action-serialized))))))))
+      (testing "loading succeeds"
+        (ts/with-dest-db
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (let [action (db/select-one Action :entity_id eid)]
+            (is (some? action))
+            (testing ":type should be a keyword again"
+              (is (keyword? (:type action))))))))))

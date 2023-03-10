@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import React from "react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { FieldAlignment, FieldOrientation } from "./types";
@@ -71,13 +72,16 @@ export const FieldInfoLabel = styled.div`
 `;
 
 export interface FieldRootProps {
+  alignment: FieldAlignment;
   orientation: FieldOrientation;
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
   display: ${props => props.orientation === "horizontal" && "flex"};
   justify-content: ${props =>
-    props.orientation === "horizontal" && "space-between"};
+    props.alignment === "end" &&
+    props.orientation === "horizontal" &&
+    "space-between"};
   margin-bottom: 1.25rem;
 
   &:focus-within {
@@ -90,3 +94,13 @@ export const FieldRoot = styled.div<FieldRootProps>`
     }
   }
 `;
+
+export const FieldLabelWithContainer = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => (
+  <FieldLabelContainer>
+    <FieldLabel hasError={false}>{children}</FieldLabel>
+  </FieldLabelContainer>
+);

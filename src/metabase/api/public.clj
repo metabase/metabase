@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -264,8 +265,7 @@
 (api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
+   `parameters` should be the mapped dashboard parameters with values."
   [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}
@@ -564,8 +564,7 @@
 (api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.
 
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
+   `parameters` should be the mapped dashboard parameters with values."
   [uuid :as {{:keys [parameters], :as _body} :body}]
   {uuid       ms/UUIDString
    parameters [:maybe [:map-of :keyword any?]]}
@@ -587,6 +586,9 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+            (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :public_form
+                                                                                     :type      (:type action)
+                                                                                     :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 

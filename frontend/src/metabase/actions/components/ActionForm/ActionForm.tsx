@@ -14,7 +14,6 @@ import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import Icon from "metabase/components/Icon";
 
 import type {
   ActionFormInitialValues,
@@ -26,13 +25,11 @@ import type {
 } from "metabase-types/api";
 
 import { reorderFields } from "metabase/actions/containers/ActionCreator/FormCreator";
-import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
 import { FormFieldWidget } from "./ActionFormFieldWidget";
+import FormFieldEditor from "./FormFieldEditor";
 import {
   ActionFormButtonContainer,
-  FormFieldContainer,
-  SettingsContainer,
-  InputContainer,
+  FormFieldEditorDragContainer,
 } from "./ActionForm.styled";
 
 import { getForm, getFormValidationSchema } from "./utils";
@@ -40,6 +37,7 @@ import { getForm, getFormValidationSchema } from "./utils";
 export interface ActionFormComponentProps {
   parameters: WritebackParameter[] | Parameter[];
   initialValues?: ActionFormInitialValues;
+  isEditable?: boolean;
   onClose?: () => void;
   onSubmit?: (
     params: ParametersForActionExecution,
@@ -54,6 +52,7 @@ export interface ActionFormComponentProps {
 export const ActionForm = ({
   parameters,
   initialValues = {},
+  isEditable = false,
   onClose,
   onSubmit,
   submitTitle,
@@ -85,7 +84,7 @@ export const ActionForm = ({
     const newOrder = destination?.index ?? source.index;
 
     const reorderedFields = reorderFields(
-      formSettings.fields,
+      formSettings.fields ?? {},
       oldOrder,
       newOrder,
     );
@@ -115,12 +114,9 @@ export const ActionForm = ({
   ) => onSubmit?.(formValidationSchema.cast(values), actions);
 
   if (isSettings) {
+    const fieldSettings = formSettings.fields || {};
     return (
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={formValidationSchema}
-        onSubmit={handleSubmit}
-      >
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
@@ -130,30 +126,22 @@ export const ActionForm = ({
                     <Draggable
                       key={`draggable-${field.name}`}
                       draggableId={field.name}
+                      isDragDisabled={!isEditable}
                       index={index}
                     >
                       {(provided: DraggableProvided) => (
-                        <FormFieldContainer
+                        <FormFieldEditorDragContainer
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          isSettings={isSettings}
                         >
-                          <SettingsContainer>
-                            <Icon name="grabber2" size={14} />
-                          </SettingsContainer>
-
-                          <InputContainer>
-                            <FormFieldWidget
-                              key={field.name}
-                              formField={field}
-                            />
-                          </InputContainer>
-                          <FieldSettingsButtons
-                            fieldSettings={formSettings.fields[field.name]}
+                          <FormFieldEditor
+                            field={field}
+                            fieldSettings={fieldSettings[field.name]}
+                            isEditable={isEditable}
                             onChange={handleChangeFieldSettings}
                           />
-                        </FormFieldContainer>
+                        </FormFieldEditorDragContainer>
                       )}
                     </Draggable>
                   ))}

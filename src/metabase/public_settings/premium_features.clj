@@ -39,17 +39,33 @@
   "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
   "https://store.metabase.com")
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (declare premium-embedding-token)
 
-(defn- active-user-count []
+(defn- active-users-count* []
   {:post [(integer? %)]}
+  "Returns the number of active users."
   (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
   (t2/count :core_user :is_active true))
+
+(def ^:private cached-active-user-count
+  "Primarily used for the settings because we don't wish it to be 100%."
+  (memoize/ttl
+    active-users-count*
+    :ttl/threshold (u/minutes->ms 5)))
+
+(defsetting active-users-count
+  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+  :visibility :admin
+  :type       :integer
+  :default    0
+  :getter     (fn []
+                (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                 0
+                 (cached-active-user-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -70,7 +86,7 @@
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (active-user-count)
+          (http/get {:query-params {:users     (active-users-count*)
                                     :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
           :body
           (json/parse-string keyword)))
@@ -122,12 +138,12 @@
               (fn [token]
                 ;; this is a sanity check to make sure we can actually get the active user count BEFORE we try to call
                 ;; [[fetch-token-status*]], because `fetch-token-status*` catches Exceptions and therefore caches failed
-                ;; results. We were running into issues in the e2e tests where `active-user-count` was timing out
+                ;; results. We were running into issues in the e2e tests where `active-users-count` was timing out
                 ;; because of to weird timeouts after restoring the app DB from a snapshot, which would cause other
                 ;; tests to fail because a timed-out token check would get cached as a result.
                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
                 (u/with-timeout (u/seconds->ms 5)
-                  (active-user-count))
+                  (active-users-count*))
                 (fetch-token-status* token))
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]

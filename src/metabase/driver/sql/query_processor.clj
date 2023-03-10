@@ -43,10 +43,13 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn make-nestable-sql
+  "For embedding native sql queries, wraps [sql] in parens and removes any semicolons"
+  [sql]
+  (str "(" (str/replace sql #";[\s;]*$" "") ")"))
+
 (defn- format-sql-source-query [_fn [sql params]]
-  ;; wrap `sql` string in parens and strip off any trailing semicolons.
-  (let [sql (str "(" (str/replace sql #";+\s*$" "") ")")]
-    (into [sql] params)))
+  (into [(make-nestable-sql sql)] params))
 
 (sql/register-fn! ::sql-source-query #'format-sql-source-query)
 
@@ -182,7 +185,7 @@
 
 (defn- format-compiled
   [_compiled [honeysql-expr]]
-  (sql/format-expr honeysql-expr {:inline true}))
+  (sql/format-expr honeysql-expr {:nested true}))
 
 (sql/register-fn! ::compiled #'format-compiled)
 
@@ -333,35 +336,41 @@
   This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
   adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
   from [[driver/db-start-of-week]]."
-  ([driver day-of-week]
-   (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
+  ([driver day-of-week-honeysql-expr]
+   (adjust-day-of-week driver day-of-week-honeysql-expr (driver.common/start-of-week-offset driver)))
 
-  ([driver day-of-week offset]
-   (adjust-day-of-week driver day-of-week offset hx/mod))
+  ([driver day-of-week-honeysql-expr offset]
+   (adjust-day-of-week driver day-of-week-honeysql-expr offset hx/mod))
 
   ([driver
-    day-of-week
+    day-of-week-honeysql-expr
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
    (cond
-     (zero? offset) day-of-week
-     (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
-     :else          (hx/call :case
-                             (hx/call :=
-                                      (mod-fn (hx/+ day-of-week offset) (inline-num 7))
-                                      (inline-num 0))
-                             (inline-num 7)
-                             :else
-                             (mod-fn
-                              (hx/+ day-of-week offset)
-                              (inline-num 7))))))
+     (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
+     (zero? offset)   day-of-week-honeysql-expr
+     (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
+     :else            (hx/call :case
+                               (hx/call :=
+                                        (mod-fn (hx/+ day-of-week-honeysql-expr offset) (inline-num 7))
+                                        (inline-num 0))
+                               (inline-num 7)
+                               :else
+                               (mod-fn
+                                (hx/+ day-of-week-honeysql-expr offset)
+                                (inline-num 7))))))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
   statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
   [[metabase.util.honeysql-extensions]]; like `:ansi`, but uppercases the result).
 
-    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)"
+    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
+
+  IMPORTANT NOTE! For drivers using Honey SQL 2, this actually corresponds to the Honey SQL `:dialect` option, so this
+  method name is a bit of a misnomer!
+
+  TODO -- we should update this method name to better reflect its usage in Honey SQL 2."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -374,13 +383,13 @@
   `:milliseconds`.
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
-  {:arglists '([driver seconds-or-milliseconds expr]), :added "0.35.0"}
+  {:arglists '([driver seconds-or-milliseconds honeysql-expr]), :added "0.35.0"}
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
 (defmulti cast-temporal-string
   "Cast a string representing "
-  {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
+  {:arglists '([driver coercion-strategy honeysql-expr]), :added "0.38.0"}
   (fn [driver coercion-strategy _] [(driver/dispatch-on-initialized-driver driver) coercion-strategy])
   :hierarchy #'driver/hierarchy)
 
@@ -574,12 +583,12 @@
   ;;             | ------------- | * bin-width + min-value
   ;;             |_  bin-width  _|
   ;;
-  (-> honeysql-form
-      (hx/- min-value)
-      (hx// bin-width)
-      hx/floor
-      (hx/* bin-width)
-      (hx/+ min-value)))
+  (cond-> honeysql-form
+    (not (zero? min-value)) (hx/- min-value)
+    true                    (hx// bin-width)
+    true                    hx/floor
+    true                    (hx/* bin-width)
+    (not (zero? min-value)) (hx/+ min-value)))
 
 (defn- field-source-table-aliases
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
@@ -746,7 +755,9 @@
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (case (long hx/*honey-sql-version*)
+                                               1 0.0
+                                               2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1236,8 +1247,8 @@
 (defmethod apply-top-level-clause [:sql :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
-      (sql.helpers/limit items)
-      (sql.helpers/offset (* items (dec page)))))
+      (sql.helpers/limit (inline-num items))
+      (sql.helpers/offset (inline-num (* items (dec page))))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
@@ -1292,7 +1303,7 @@
     (binding [sql/*dialect*      (sql/get-dialect dialect)
               sql/*quoted*       true
               sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form))))
+      (sql/format-expr honeysql-form {:nested true}))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
@@ -1361,10 +1372,18 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native params], :as source-query} :source-query}]
+  [driver honeysql-form {{:keys [native params],
+                          persisted :persisted-info/native
+                          :as source-query} :source-query}]
   (assoc honeysql-form
-         :from [[(if native
+         :from [[(cond
+                   persisted
+                   (sql-source-query persisted nil)
+
+                   native
                    (sql-source-query native params)
+
+                   :else
                    (apply-clauses driver {} source-query))
                  (let [table-alias (->honeysql driver (hx/identifier :table-alias source-query-alias))]
                    (case (long hx/*honey-sql-version*)
@@ -1398,7 +1417,10 @@
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
-  (binding [hx/*honey-sql-version* (honey-sql-version driver)]
+  (binding [driver/*driver*        driver
+            hx/*honey-sql-version* (honey-sql-version driver)]
+    (when (= hx/*honey-sql-version* 1)
+      (sql.qp.deprecated/log-deprecation-warning driver "Honey SQL 1" "0.46.0"))
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)

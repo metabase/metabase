@@ -4,13 +4,17 @@ import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
+  DatabaseId,
   FieldType,
   InputSettingType,
   NativeDatasetQuery,
   Parameter,
   ParameterType,
+  VisualizationSettings,
   WritebackParameter,
+  WritebackQueryAction,
 } from "metabase-types/api";
+import type { Card as LegacyCard } from "metabase-types/types/Card";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -67,11 +71,11 @@ export const setTemplateTagTypesFromFieldSettings = (
   question: Question,
   settings: ActionFormSettings,
 ): Question => {
-  const fields = settings.fields;
+  const fields = settings.fields || {};
   const query = question.query() as NativeQuery;
   let tempQuestion = question.clone();
 
-  query.templateTagsWithoutSnippets().forEach((tag: TemplateTag) => {
+  query.variableTemplateTags().forEach((tag: TemplateTag) => {
     const currentQuery = tempQuestion.query() as NativeQuery;
     const fieldType = fields[tag.id]?.fieldType ?? "string";
     const nextTag = {
@@ -101,7 +105,7 @@ export const setParameterTypesFromFieldSettings = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): Parameter[] => {
-  const fields = settings.fields;
+  const fields = settings.fields || {};
   return parameters.map(parameter => {
     const field = fields[parameter.id];
     return {
@@ -113,35 +117,25 @@ export const setParameterTypesFromFieldSettings = (
   });
 };
 
-export const removeOrphanSettings = (
-  formSettings: ActionFormSettings,
-  parameters: Parameter[],
-): ActionFormSettings => {
-  const parameterIds = parameters.map(parameter => parameter.id);
-  return {
-    ...formSettings,
-    fields: _.pick(formSettings.fields, parameterIds),
-  };
-};
-
-export const addMissingSettings = (
+export const syncFieldsWithParameters = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): ActionFormSettings => {
   const parameterIds = parameters.map(parameter => parameter.id);
-  const fieldIds = Object.keys(settings.fields);
-  const missingIds = _.difference(parameterIds, fieldIds);
+  const fieldIds = Object.keys(settings.fields || {});
+  const addedIds = _.difference(parameterIds, fieldIds);
+  const removedIds = _.difference(fieldIds, parameterIds);
 
-  if (!missingIds.length) {
+  if (!addedIds.length && !removedIds.length) {
     return settings;
   }
 
   return {
     ...settings,
     fields: {
-      ...settings.fields,
+      ..._.omit(settings.fields, removedIds),
       ...Object.fromEntries(
-        missingIds.map(id => [id, getDefaultFieldSettings({ id })]),
+        addedIds.map(id => [id, getDefaultFieldSettings({ id })]),
       ),
     },
   };
@@ -159,17 +153,36 @@ export const convertQuestionToAction = (
     formSettings,
     cleanQuestion.parameters(),
   );
-  const visualization_settings = removeOrphanSettings(
-    addMissingSettings(formSettings, parameters),
-    parameters,
-  );
+
   return {
     id: question.id(),
     name: question.displayName() as string,
     description: question.description(),
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
-    database_id: question.databaseId(),
+    database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
-    visualization_settings,
+    visualization_settings: formSettings,
   };
+};
+
+const convertActionToQuestionCard = (
+  action: WritebackQueryAction,
+): LegacyCard<NativeDatasetQuery> => {
+  return {
+    id: action.id,
+    name: action.name,
+    description: action.description,
+    dataset_query: action.dataset_query as NativeDatasetQuery,
+    display: "action",
+    visualization_settings:
+      action.visualization_settings as VisualizationSettings,
+  };
+};
+
+export const convertActionToQuestion = (
+  action: WritebackQueryAction,
+  metadata: Metadata,
+) => {
+  const question = new Question(convertActionToQuestionCard(action), metadata);
+  return question.setParameters(action.parameters);
 };

@@ -1,8 +1,11 @@
 import React, { useMemo, useCallback } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { executeRowAction } from "metabase/dashboard/actions";
+
+import Tooltip from "metabase/core/components/Tooltip";
 
 import type {
   ActionDashboardCard,
@@ -10,21 +13,29 @@ import type {
   WritebackQueryAction,
   Dashboard,
 } from "metabase-types/api";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
+import {
+  generateFieldSettingsFromParameters,
+  setNumericValues,
+} from "metabase/actions/utils";
 
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import Databases from "metabase/entities/databases";
+
+import type Database from "metabase-lib/metadata/Database";
+
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
-  setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
+import { FullContainer } from "./ActionButton.styled";
 
 export interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
@@ -32,6 +43,7 @@ export interface ActionProps extends VisualizationProps {
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
   isEditingDashcard: boolean;
+  database: Database;
 }
 
 export function ActionComponent({
@@ -72,15 +84,15 @@ export function ActionComponent({
 
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) => {
-      const params = {
-        ...setNumericValues(
-          dashcardParamValues,
-          generateFieldSettingsFromParameters(
-            dashcard?.action?.parameters ?? [],
-          ),
-        ),
-        ...parameterMap,
-      };
+      const action = dashcard.action;
+      const fieldSettings =
+        action?.visualization_settings?.fields ||
+        generateFieldSettingsFromParameters(action?.parameters ?? []);
+
+      const params = setNumericValues(
+        { ...dashcardParamValues, ...parameterMap },
+        fieldSettings,
+      );
 
       return executeRowAction({
         dashboard,
@@ -118,19 +130,40 @@ function mapStateToProps(state: State, props: ActionProps) {
 }
 
 export function ActionFn(props: ActionProps) {
-  if (!props.dashcard?.action) {
+  const {
+    database,
+    dashcard: { action },
+  } = props;
+
+  const hasActionsEnabled = database?.hasActionsEnabled?.();
+
+  if (!action || !hasActionsEnabled) {
+    const tooltip = !action
+      ? t`No action assigned`
+      : t`Actions are not enabled for this database`;
+
     return (
-      <ActionButtonView
-        disabled
-        icon="bolt"
-        tooltip={t`No action assigned`}
-        settings={props.settings}
-        focus={props.isEditingDashcard}
-      />
+      <Tooltip tooltip={tooltip}>
+        <FullContainer>
+          <ActionButtonView
+            disabled
+            icon="bolt"
+            tooltip={tooltip}
+            settings={props.settings}
+            focus={props.isEditingDashcard}
+          />
+        </FullContainer>
+      </Tooltip>
     );
   }
 
   return <ConnectedActionComponent {...props} />;
 }
 
-export default connect(mapStateToProps)(ActionFn);
+export default _.compose(
+  Databases.load({
+    id: (state: State, props: ActionProps) =>
+      props.dashcard?.action?.database_id,
+  }),
+  connect(mapStateToProps),
+)(ActionFn);

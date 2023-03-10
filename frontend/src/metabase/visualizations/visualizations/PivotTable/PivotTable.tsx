@@ -23,7 +23,6 @@ import {
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
-import { formatColumn } from "metabase/lib/formatting";
 
 import type { DatasetData } from "metabase-types/types/Dataset";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -61,7 +60,11 @@ import {
   LEFT_HEADER_LEFT_SPACING,
   MIN_HEADER_CELL_WIDTH,
 } from "./constants";
-import { settings, _columnSettings as columnSettings } from "./settings";
+import {
+  settings,
+  _columnSettings as columnSettings,
+  getTitleForColumn,
+} from "./settings";
 
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),
@@ -131,11 +134,10 @@ function PivotTable({
 
   const getColumnTitle = useCallback(
     function (columnIndex) {
-      const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-      const { column, column_title: columnTitle } = settings.column(
-        columns[columnIndex],
-      );
-      return columnTitle || formatColumn(column);
+      const column = data.cols.filter(col => !isPivotGroupColumn(col))[
+        columnIndex
+      ];
+      return getTitleForColumn(column, settings);
     },
     [data, settings],
   );
@@ -488,6 +490,7 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   uiName: t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
+  canSavePng: false,
   databaseSupportsPivotTables,
   isSensible,
   checkRenderable,

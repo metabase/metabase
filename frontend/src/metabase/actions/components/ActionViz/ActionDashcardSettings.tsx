@@ -2,19 +2,21 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import EmptyState from "metabase/components/EmptyState";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
+import { setActionForDashcard } from "metabase/dashboard/actions";
+
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
-
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
-import { setActionForDashcard } from "metabase/dashboard/actions";
-import EmptyState from "metabase/components/EmptyState";
 import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
-
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
@@ -22,6 +24,8 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
+  ExplainerText,
+  BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
 
 const mapDispatchToProps = {
@@ -50,6 +54,8 @@ export function ActionDashcardSettings({
     setActionForDashcard(dashcard, newAction);
   };
 
+  const hasParameters = !!action?.parameters?.length;
+
   return (
     <ActionSettingsWrapper>
       <ActionSettingsLeft>
@@ -59,7 +65,21 @@ export function ActionDashcardSettings({
       <ActionSettingsRight>
         {action ? (
           <>
-            <ActionSettingsHeader>{action.name}</ActionSettingsHeader>
+            {hasParameters && (
+              <>
+                <ActionSettingsHeader>
+                  {t`Where should the values for '${action.name}' come from?`}
+                </ActionSettingsHeader>
+                <ExplainerText>
+                  {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
+                  <BrandLinkWithLeftMargin
+                    href={MetabaseSettings.docsUrl("dashboards/actions")}
+                  >
+                    {t`Learn more.`}
+                  </BrandLinkWithLeftMargin>
+                </ExplainerText>
+              </>
+            )}
             <ParameterMapperContainer>
               <ConnectedActionParameterMappingForm
                 dashcard={dashcard}

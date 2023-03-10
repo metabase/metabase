@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
@@ -19,13 +19,11 @@ import ActionParametersInputModal from "./ActionParametersInputModal";
 const defaultProps = {
   missingParameters: [
     createMockActionParameter({
-      id: "1",
-      name: "Parameter 1",
+      id: "parameter_1",
       type: "type/Text",
     }),
     createMockActionParameter({
-      id: "2",
-      name: "Parameter 2",
+      id: "parameter_2",
       type: "type/Text",
     }),
   ],
@@ -54,19 +52,13 @@ async function setupModal(options?: any) {
 }
 
 function setupPrefetch() {
-  nock(location.origin)
-    .get(uri => uri.includes("/api/dashboard/123/dashcard/456/execute"))
-    .reply(200, {
-      "1": "uno",
-      "2": "dos",
-    });
+  fetchMock.get("path:/api/dashboard/123/dashcard/456/execute", {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
 }
 
 describe("Actions > ActionParametersInputForm", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should render an action form", async () => {
     await setup();
     expect(screen.getByTestId("action-form")).toBeInTheDocument();
@@ -97,12 +89,12 @@ describe("Actions > ActionParametersInputForm", () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Run"));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({
-        "1": "uno",
-        "2": "dos",
+        parameter_1: "uno",
+        parameter_2: "dos",
       });
     });
   });
@@ -110,13 +102,11 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should generate field types from parameter types", async () => {
     const missingParameters = [
       createMockActionParameter({
-        id: "1",
-        name: "Parameter 1",
+        id: "parameter_1",
         type: "type/Text",
       }),
       createMockActionParameter({
-        id: "2",
-        name: "Parameter 2",
+        id: "parameter_2",
         type: "type/Integer",
       }),
     ];

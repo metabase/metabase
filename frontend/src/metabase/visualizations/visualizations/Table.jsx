@@ -7,14 +7,10 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import {
-  getColumnCardinality,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -32,20 +28,28 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import {
-  findColumnIndexForColumnSetting,
-  findColumnForColumnSetting,
-} from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
+const getTitleForColumn = (column, series, settings) => {
+  const isPivoted = Table.isPivoted(series, settings);
+  if (isPivoted) {
+    return formatColumn(column) || t`Unset`;
+  } else {
+    return (
+      settings.column(column)["_column_title_full"] || formatColumn(column)
+    );
+  }
+};
+
 export default class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
+  static canSavePng = false;
 
   static minSize = { width: 4, height: 3 };
 
@@ -173,21 +177,19 @@ export default class Table extends Component {
     "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
-      widget: ChartSettingOrderedSimple,
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }], _vizSettings, extra = {}) =>
+      widget: ChartSettingOrderedColumns,
+      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+      isValid: ([{ card, data }]) =>
         // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
         card.visualization_settings["table.columns"].length !== 0 &&
-        (extra.isQueryRunning ||
-          _.all(
-            card.visualization_settings["table.columns"],
-            columnSetting =>
-              !columnSettings.enabled ||
-              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-          )),
+        _.all(
+          card.visualization_settings["table.columns"],
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+        ),
       getDefault: ([
         {
           data: { cols },
@@ -198,56 +200,26 @@ export default class Table extends Component {
           fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
         })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-        hasOnEnable: false,
-        paddingLeft: "0",
-        hideOnDisabled: true,
-        getPopoverProps: columnSetting => ({
-          id: "column_settings",
-          props: {
-            initialKey: getColumnKey(
-              findColumnForColumnSetting(cols, columnSetting),
-            ),
-          },
-        }),
-        extraButton: {
-          text: t`Add or remove columns`,
-          key: "table.columns_visibility",
-        },
-        getItemTitle: columnSetting =>
-          getFriendlyName(
-            findColumnForColumnSetting(cols, columnSetting) || {
-              display_name: "[Unknown]",
-            },
-          ),
-      }),
-    },
-    "table.columns_visibility": {
-      hidden: true,
-      writeSettingId: "table.columns",
-      readDependencies: ["table.columns"],
-      widget: ChartSettingColumnEditor,
-      getValue: (_series, vizSettings) => vizSettings["table.columns"],
-      getProps: (
-        [
+      getProps: (series, settings) => {
+        const [
           {
             data: { cols },
           },
-        ],
-        _settings,
-        _onChange,
-        extra,
-      ) => ({
-        columns: cols,
-        isDashboard: extra.isDashboard,
-        metadata: extra.metadata,
-        isQueryRunning: extra.isQueryRunning,
-      }),
+        ] = series;
+
+        return {
+          columns: cols,
+          getColumnName: columnSetting => {
+            const columnIndex = findColumnIndexForColumnSetting(
+              cols,
+              columnSetting,
+            );
+            if (columnIndex >= 0) {
+              return getTitleForColumn(cols[columnIndex], series, settings);
+            }
+          },
+        };
+      },
     },
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
@@ -471,15 +443,7 @@ export default class Table extends Component {
       return null;
     }
     const { series, settings } = this.props;
-    const isPivoted = Table.isPivoted(series, settings);
-    const column = cols[columnIndex];
-    if (isPivoted) {
-      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
-    } else {
-      return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
-      );
-    }
+    return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
   render() {

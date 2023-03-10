@@ -2,17 +2,17 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {
   isDraggable: boolean;
-  isHidden: boolean;
 }
 
 export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   margin: 0.5rem 0;
   overflow: hidden;
-  display: ${({ isHidden }) => (isHidden ? "none" : "flex")};
+  display: flex;
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
@@ -63,13 +63,12 @@ export const ColumnItemContainer = styled.div`
   align-items: center;
 `;
 
-export const ColumnItemIcon = styled(Icon)`
+export const ColumnItemIcon = styled(Button)`
   margin-left: 1rem;
-  cursor: pointer;
-  color: ${color("text-dark")};
+  padding: 0;
 
   &:hover {
-    color: ${color("text-medium")};
+    background-color: unset;
   }
 `;
 

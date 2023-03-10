@@ -1,84 +1,73 @@
-import React from "react";
+import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
+import type { FieldSettings } from "metabase-types/api";
 import { getDefaultFieldSettings } from "../../../utils";
-import { FieldSettingsPopover } from "./FieldSettingsPopover";
+import {
+  FieldSettingsPopover,
+  FieldSettingsPopoverProps,
+} from "./FieldSettingsPopover";
+
+function WrappedFieldSettingsPopover({
+  fieldSettings: initialSettings,
+  onChange,
+}: FieldSettingsPopoverProps) {
+  const [settings, setSettings] = useState(initialSettings);
+
+  const handleChange = (nextSettings: FieldSettings) => {
+    setSettings(nextSettings);
+    onChange(nextSettings);
+  };
+
+  return (
+    <FieldSettingsPopover fieldSettings={settings} onChange={handleChange} />
+  );
+}
+
+function setup({ settings = getDefaultFieldSettings() } = {}) {
+  const onChange = jest.fn();
+  render(
+    <WrappedFieldSettingsPopover
+      fieldSettings={settings}
+      onChange={onChange}
+    />,
+  );
+  return { settings, onChange };
+}
 
 describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should show the popover", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
+    setup();
 
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
     ).toBeInTheDocument();
-  });
-
-  it("should fire onChange handler clicking a different field type", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
-
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText("date"));
-
-    expect(changeSpy).toHaveBeenCalledTimes(1);
-
-    expect(changeSpy).toHaveBeenCalledWith({
-      ...settings,
-      fieldType: "date",
-      inputType: "date", // should set default input type for new field type
-    });
   });
 
   it("should fire onChange handler clicking a different input type", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
+    const { settings, onChange } = setup();
 
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("dropdown"));
+    userEvent.click(screen.getByText("Dropdown"));
 
-    expect(changeSpy).toHaveBeenCalledTimes(1);
-
-    expect(changeSpy).toHaveBeenCalledWith({
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
       ...settings,
       inputType: "select",
     });
   });
 
   it("should fire onChange handler editing placeholder", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
+    const { settings, onChange } = setup();
 
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
+    userEvent.click(screen.getByLabelText("Field settings"));
 
     expect(
       await screen.findByTestId("field-settings-popover"),
@@ -86,9 +75,38 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
 
     await userEvent.type(screen.getByTestId("placeholder-input"), "$");
 
-    expect(changeSpy).toHaveBeenLastCalledWith({
+    expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
       placeholder: "$",
+    });
+  });
+
+  it("should fire onChange handler after changing required and default value properties", async () => {
+    const settings = getDefaultFieldSettings({
+      fieldType: "number",
+      required: true,
+    });
+    const { onChange } = setup({ settings });
+
+    userEvent.click(screen.getByLabelText("Field settings"));
+    await screen.findByTestId("field-settings-popover");
+
+    userEvent.click(screen.getByLabelText("Required"));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      defaultValue: undefined,
+      required: false,
+    });
+
+    const defaultValueInput = screen.getByLabelText("Default value");
+    expect(defaultValueInput).not.toHaveValue();
+    await userEvent.type(defaultValueInput, "5");
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      required: false,
+      defaultValue: 5,
     });
   });
 });

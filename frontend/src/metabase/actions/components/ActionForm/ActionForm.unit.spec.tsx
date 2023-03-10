@@ -59,6 +59,7 @@ const setup = ({
     <ActionForm
       initialValues={initialValues}
       parameters={parameters}
+      isEditable
       submitTitle="Save"
       formSettings={formSettings}
       setFormSettings={isSettings ? setFormSettings : undefined}
@@ -612,8 +613,8 @@ describe("Actions > ActionForm", () => {
       });
 
       // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("number"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
+      userEvent.click(await screen.findByText("Number"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -642,8 +643,8 @@ describe("Actions > ActionForm", () => {
       });
 
       // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("long text"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
+      userEvent.click(await screen.findByText("Long text"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -671,8 +672,8 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("date"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
+      userEvent.click(await screen.findByText("Date"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -699,8 +700,8 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("category"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
+      userEvent.click(await screen.findByText("Category"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
@@ -709,6 +710,7 @@ describe("Actions > ActionForm", () => {
             "abc-123": makeFieldSettings({
               fieldType: "category",
               inputType: "select",
+              valueOptions: [],
             }),
           },
         });
@@ -726,7 +728,7 @@ describe("Actions > ActionForm", () => {
         formSettings,
       });
 
-      userEvent.click(await screen.findByLabelText("gear icon"));
+      userEvent.click(await screen.findByLabelText("Field settings"));
       userEvent.click(await screen.findByRole("switch"));
 
       await waitFor(() => {

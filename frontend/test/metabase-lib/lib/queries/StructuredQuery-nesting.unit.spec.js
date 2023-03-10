@@ -141,9 +141,7 @@ describe("StructuredQuery nesting", () => {
     let virtualCardTable;
     beforeEach(() => {
       const question = ORDERS.question();
-      dataset = question
-        .setCard({ ...question.card(), id: 123 })
-        .setDataset(true);
+      dataset = question.setId(123).setDataset(true);
 
       // create a virtual table for the card
       // that contains fields from both Orders and Products tables

@@ -4,6 +4,7 @@ const config = require("./webpack.config.js");
 const SHARED_SRC = path.join(__dirname, "frontend", "src", "metabase-shared");
 
 module.exports = {
+  mode: "production",
   entry: {
     color_selector: "./frontend/src/metabase-shared/color_selector.js",
   },
@@ -13,7 +14,9 @@ module.exports = {
     path: path.resolve(__dirname, "resources", "frontend_shared"),
     filename: "[name].js",
     library: "shared",
-    libraryTarget: "umd",
+  },
+  optimization: {
+    minimize: true,
   },
 };
 

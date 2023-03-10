@@ -3,11 +3,14 @@
   (:require
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as http-action]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
+   [metabase.models.card :as card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.malli :as mu]
@@ -74,7 +77,9 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
-  (api/write-check Action action-id)
+  (let [action (api/write-check Action action-id)]
+    (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
+                                                                            :action_id action-id}))
   (db/delete! Action :id action-id)
   api/generic-204-no-content)
 
@@ -103,8 +108,17 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
-    (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
+    (when (and (= "implicit" type)
+               (not (card/model-supports-implicit-actions? model)))
+      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
+                      {:status-code 400})))
+    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+      (actions/check-actions-enabled-for-database!
+       (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
+    (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
+                                                                            :action_id      action-id
+                                                                            :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
       ;; db/insert! does not return a value when used with h2
@@ -133,7 +147,11 @@
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
-  (action/select-action :id id))
+  (let [{:keys [parameters type] :as action} (action/select-action :id id)]
+    (snowplow/track-event! ::snowplow/action-updated api/*current-user-id* {:type           type
+                                                                            :action_id      id
+                                                                            :num_parameters (count parameters)})
+    action))
 
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
@@ -162,5 +180,18 @@
   (actions/check-actions-enabled! id)
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})
+
+(api/defendpoint POST "/:id/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values."
+  [id :as {{:keys [parameters], :as _body} :body}]
+  {id       pos-int?
+   parameters [:maybe [:map-of :keyword any?]]}
+  (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
+    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
+                                                                             :type      type
+                                                                             :action_id id})
+    (actions.execution/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

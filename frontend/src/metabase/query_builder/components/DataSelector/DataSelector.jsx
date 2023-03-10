@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
@@ -454,8 +455,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    const { loading } = this.props;
-    const loadedDatasets = prevProps.loading && !loading;
+    const { allLoading } = this.props;
+    const loadedDatasets = prevProps.allLoading && !allLoading;
 
     // Once datasets are queried with the search endpoint,
     // this would hide the initial loading and view.
@@ -688,7 +689,10 @@ export class UnconnectedDataSelector extends Component {
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
       [DATABASE_STEP]: () => {
-        return this.props.fetchDatabases(this.props.databaseQuery);
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchDatabases({ saved: true }),
+        ]);
       },
       [SCHEMA_STEP]: () => {
         return Promise.all([
@@ -763,20 +767,19 @@ export class UnconnectedDataSelector extends Component {
   showSavedQuestionPicker = () =>
     this.setState({ isSavedQuestionPickerShown: true });
 
-  onChangeDataBucket = selectedDataBucketId => {
-    const { databases } = this.props;
+  onChangeDataBucket = async selectedDataBucketId => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
-      this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+      await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
-    this.switchToStep(
+    await this.switchToStep(
       DATABASE_STEP,
       {
         selectedDataBucketId,
       },
       false,
     );
-    const database = databases.find(db => db.is_saved_questions);
+    const database = this.props.databases.find(db => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
     }
@@ -858,12 +861,13 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getTriggerClasses() {
-    if (this.props.triggerClasses) {
-      return this.props.triggerClasses;
+    const { readOnly, triggerClasses, renderAsSelect } = this.props;
+    if (triggerClasses) {
+      return cx(triggerClasses, { disabled: readOnly });
     }
-    return this.props.renderAsSelect
-      ? "border-medium bg-white block no-decoration"
-      : "flex align-center";
+    return renderAsSelect
+      ? cx("border-medium bg-white block no-decoration", { disabled: readOnly })
+      : cx("flex align-center", { disabled: readOnly });
   }
 
   handleSavedQuestionPickerClose = () => {

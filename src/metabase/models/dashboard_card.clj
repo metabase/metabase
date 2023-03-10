@@ -1,6 +1,8 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
@@ -8,16 +10,16 @@
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
@@ -51,10 +53,10 @@
                            :visualization_settings :visualization-settings})
   :pre-insert pre-insert})
 
-(defmethod serdes.hash/identity-hash-fields DashboardCard
+(defmethod serdes/hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
-   (comp serdes.hash/identity-hash
+  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
+   (comp serdes/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
    :visualization_settings
@@ -141,7 +143,7 @@
 
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard including all DashboardCardSeries.
-   Returns the updated DashboardCard or throws an Exception."
+   Returns true or throws an Exception."
   [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
@@ -165,7 +167,7 @@
                                                   :dashboardcard_id id
                                                   {:order-by [[:position :asc]]})))
        (update-dashboard-card-series! dashboard-card series)))
-    (retrieve-dashboard-card id)))
+    nil))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
@@ -217,20 +219,132 @@
       (db/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
+;;; ----------------------------------------------- Link cards ----------------------------------------------------
+
+(def ^:private all-card-info-columns
+  {:model         :text
+   :id            :integer
+   :name          :text
+   :description   :text
+
+   ;; for cards and datasets
+   :collection_id :integer
+   :display       :text
+
+   ;; for tables
+   :db_id        :integer})
+
+(def ^:private  link-card-columns-for-model
+  {"database"   [:id :name :description]
+   "table"      [:id [:display_name :name] :description :db_id]
+   "dashboard"  [:id :name :description :collection_id]
+   "card"       [:id :name :description :collection_id :display]
+   "dataset"    [:id :name :description :collection_id :display]
+   "collection" [:id :name :description]})
+
+(defn- ->column-alias
+  "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
+  column name"
+  [column-or-aliased]
+  (if (sequential? column-or-aliased)
+    (second column-or-aliased)
+    column-or-aliased))
+
+(defn- select-clause-for-link-card-model
+  "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
+  of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
+  missing from `entity-columns` but found in `all-card-info-columns`."
+  [model]
+  (let [model-cols                       (link-card-columns-for-model model)
+        model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
+    (for [[col col-type] all-card-info-columns
+          :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
+      (cond
+        (= col :model)
+        [(h2x/literal model) :model]
+
+        maybe-aliased-col
+        maybe-aliased-col
+
+        ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
+        ;; correct type, e.g.
+        ;;
+        ;;    SELECT cast(NULL AS integer)
+        ;;
+        ;; For MySQL, this is not needed.
+        :else
+        [(when-not (= (mdb/db-type) :mysql)
+           [:cast nil col-type])
+         col]))))
+
+(def ^:private link-card-models
+  (set (keys serdes/link-card-model->toucan-model)))
+
+(defn link-card-info-query-for-model
+  "Return a honeysql query that is used to fetch info for a linkcard."
+  [model id-or-ids]
+  {:select (select-clause-for-link-card-model model)
+   :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+   :where  (if (coll? id-or-ids)
+             [:in :id id-or-ids]
+             [:= :id id-or-ids])})
+
+(defn- link-card-info-query
+  [link-card-model->ids]
+  (if (= 1 (count link-card-model->ids))
+    (apply link-card-info-query-for-model (first link-card-model->ids))
+    {:select   [:*]
+     :from     [[{:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+                 :alias_is_required_by_sql_but_not_needed_here]]}))
+
+(mi/define-batched-hydration-method dashcard-linkcard-info
+  :dashcard/linkcard-info
+  "Update entity info for link cards.
+
+  Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
+  The viz-settings only store the model name and id, info like name, description will need to be
+  hydrated on fetch to make sure those info are up-to-date."
+  [dashcards]
+  (let [entity-path   [:visualization_settings :link :entity]
+        ;; find all dashcards that are link-cards and get its model, id
+        ;; [[:table #{1 2}] [:database #{3 4}]]
+        model-and-ids (->> dashcards
+                           (map #(get-in % entity-path))
+                           (filter #(link-card-models (:model %)))
+                           (group-by :model)
+                           (map (fn [[k v]] [k (set (map :id v))])))]
+    (if (seq model-and-ids)
+      (let [;; query all entities in 1 db call
+            ;; {[:table 3] {:name ...}}
+            model-and-id->info
+            (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
+                (update-vals (fn [{model :model :as instance}]
+                               (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
+                                 instance
+                                 {:restricted true}))))]
+        (map (fn [card]
+               (if-let [model-info (->> (get-in card entity-path)
+                                        ((juxt :model :id))
+                                        (get model-and-id->info))]
+                 (assoc-in card entity-path model-info)
+                 card))
+             dashcards))
+      dashcards)))
+
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
-(defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
-  [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
-   (serdes.base/infer-self-path "DashboardCard" dashcard)])
+(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
+  [(serdes/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+   (serdes/infer-self-path "DashboardCard" dashcard)])
 
-(defmethod serdes.base/load-xform "DashboardCard"
+(defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes.util/import-fk 'Card)
-      (update :action_id              serdes.util/import-fk 'Action)
-      (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :card_id                serdes/import-fk 'Card)
+      (update :action_id              serdes/import-fk 'Action)
+      (update :dashboard_id           serdes/import-fk 'Dashboard)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
-      (update :parameter_mappings     serdes.util/import-parameter-mappings)
-      (update :visualization_settings serdes.util/import-visualization-settings)))
+      (update :parameter_mappings     serdes/import-parameter-mappings)
+      (update :visualization_settings serdes/import-visualization-settings)))

@@ -506,6 +506,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasAnyClauses() {
+    // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
     return (
       this.hasJoins() ||
       this.hasExpressions() ||

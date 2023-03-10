@@ -1,6 +1,6 @@
 (ns metabase.server.routes.index
   "Logic related to loading various versions of the index.html template. The actual template lives in
-  `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build frontend`)
+  `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build.sh frontend`)
   different versions that include the FE app are created as `index.html`, `public.html`, and `embed.html`."
   (:require
    [cheshire.core :as json]

@@ -1,6 +1,8 @@
 import {
+  Card,
   Dashboard,
   DashboardOrderedCard,
+  VirtualCard,
   ActionDashboardCard,
 } from "metabase-types/api";
 import { createMockCard } from "./card";
@@ -28,12 +30,17 @@ export const createMockDashboardOrderedCard = (
 ): DashboardOrderedCard => ({
   id: 1,
   dashboard_id: 1,
+  col: 0,
+  row: 0,
+  card_id: 1,
   size_x: 1,
   size_y: 1,
+  entity_id: "abc_123",
   visualization_settings: {},
-  justAdded: false,
-  card_id: 1,
   card: createMockCard(),
+  created_at: "2020-01-01T12:30:30.000000",
+  updated_at: "2020-01-01T12:30:30.000000",
+  justAdded: false,
   parameter_mappings: [],
   ...opts,
 });
@@ -43,12 +50,32 @@ export const createMockActionDashboardCard = (
 ): ActionDashboardCard => ({
   ...createMockDashboardOrderedCard(),
   action: undefined,
-  card: createMockCard(),
+  card: createMockCard({ display: "action" }),
   visualization_settings: {
     "button.label": "Please click me",
     "button.variant": "primary",
     actionDisplayType: "button",
     virtual_card: createMockCard({ display: "action" }),
+  },
+  ...opts,
+});
+
+export const createMockDashboardCardWithVirtualCard = (
+  opts?: Partial<DashboardOrderedCard>,
+): DashboardOrderedCard => ({
+  ...createMockDashboardOrderedCard(),
+  card: {
+    query_average_duration: null,
+  } as Card,
+  card_id: null,
+  visualization_settings: {
+    virtual_card: {
+      archived: false,
+      dataset_query: {},
+      display: "text",
+      name: "",
+      visualization_settings: {},
+    } as VirtualCard,
   },
   ...opts,
 });

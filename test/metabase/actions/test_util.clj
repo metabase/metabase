@@ -93,14 +93,14 @@
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
-  {:style/indent 0}
+  {:style/indent :defn}
   [& body]
   `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
-  {:style/indent 0}
+  {:style/indent :defn}
   [dataset-definition & body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
 

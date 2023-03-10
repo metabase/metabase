@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -43,4 +44,28 @@ export const ModalLeft = styled.div`
   display: flex;
   flex-direction: column;
   border-right: 1px solid ${color("border")};
+`;
+
+export const ModalRight = styled.div`
+  display: flex;
+  position: relative;
+  overflow-y: hidden;
+
+  ${SidebarContent.Root}, ${SidebarContent.Content} {
+    width: 100%;
+    height: 100%;
+  }
+
+  ${SidebarContent.Content} {
+    overflow-y: auto;
+  }
+
+  ${SidebarContent.Header.Root} {
+    position: sticky;
+    top: 0;
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    margin: 0;
+    background-color: ${color("white")};
+    z-index: 5;
+  }
 `;

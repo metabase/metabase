@@ -4,8 +4,9 @@
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card DashboardCard Table]]
+   [metabase.models :refer [Card DashboardCard Database Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
@@ -79,6 +80,11 @@
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
     (actions/check-actions-enabled! action)
+    (let [model (db/select-one Card :id (:model_id action))]
+      (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
+        ;; the above check checks the db of the model. We check the db of the query action here
+        (actions/check-actions-enabled-for-database!
+         (db/select-one Database :id (:database_id action)))))
     (try
       (case action-type
         :query
@@ -177,6 +183,9 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
+                                                                             :type      (:type action)
+                                                                             :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values

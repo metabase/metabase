@@ -1,8 +1,11 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
+import _ from "underscore";
 import { createAction } from "redux-actions";
 
-import { createEntity } from "metabase/lib/entities";
+import { ActionSchema } from "metabase/schema";
+import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 import { ActionsApi } from "metabase/services";
 
 import type {
@@ -36,6 +39,14 @@ export type UpdateImplicitActionParams = Omit<
   "type"
 > &
   BaseUpdateActionParams;
+
+export type CreateActionParams =
+  | CreateQueryActionParams
+  | CreateImplicitActionParams;
+
+export type UpdateActionParams =
+  | UpdateQueryActionParams
+  | UpdateImplicitActionParams;
 
 const defaultImplicitActionCreateOptions = {
   insert: true,
@@ -92,16 +103,31 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
+  schema: ActionSchema,
   path: "/api/action",
   api: {
-    create: (params: CreateQueryActionParams | CreateImplicitActionParams) =>
-      ActionsApi.create(params),
-    update: (params: UpdateQueryActionParams | UpdateImplicitActionParams) =>
-      ActionsApi.update(params),
+    create: (params: CreateActionParams) => ActionsApi.create(params),
+    update: (params: UpdateActionParams) => {
+      // Changing action type is not supported
+      const cleanParams = _.omit(params, "type");
+      return ActionsApi.update(cleanParams);
+    },
   },
   actions: {
     enableImplicitActionsForModel,
   },
+  writableProperties: [
+    "name",
+    "description",
+    "type",
+    "model_id",
+    "database_id",
+    "dataset_query",
+    "parameters",
+    "public_uuid",
+    "visualization_settings",
+    "archived",
+  ],
   objectActions: {
     createPublicLink: createAction(
       CREATE_PUBLIC_LINK,
@@ -126,6 +152,12 @@ const Actions = createEntity({
         });
       },
     ),
+    setArchived: ({ id }: WritebackAction, archived: boolean) =>
+      Actions.actions.update(
+        { id },
+        { archived },
+        undo({}, t`action`, archived ? t`archived` : t`unarchived`),
+      ),
   },
   reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
@@ -145,6 +177,11 @@ const Actions = createEntity({
         return state;
       }
     }
+  },
+  objectSelectors: {
+    getUrl: (action: WritebackAction) =>
+      Urls.action({ id: action.model_id }, action.id),
+    getIcon: () => ({ name: "bolt" }),
   },
 });
 

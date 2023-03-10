@@ -98,18 +98,21 @@
                   nil)
     (fn [^ResultSet rs]
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
-      #(let [default (.getString rs "COLUMN_DEF")
-             no-default? (contains? #{nil "NULL" "null"} default)
-             nullable (.getInt rs "NULLABLE")
-             not-nullable? (= 0 nullable)
-             auto-increment (.getString rs "IS_AUTOINCREMENT")
+      #(let [default            (.getString rs "COLUMN_DEF")
+             no-default?        (contains? #{nil "NULL" "null"} default)
+             nullable           (.getInt rs "NULLABLE")
+             not-nullable?      (= 0 nullable)
+             ;; IS_AUTOINCREMENT could return nil
+             auto-increment     (.getString rs "IS_AUTOINCREMENT")
+             auto-increment?    (= "YES" auto-increment)
              no-auto-increment? (= "NO" auto-increment)
-             column-name (.getString rs "COLUMN_NAME")
-             required? (and no-default? not-nullable? no-auto-increment?)]
+             column-name        (.getString rs "COLUMN_NAME")
+             required?          (and no-default? not-nullable? no-auto-increment?)]
          (merge
-           {:name              column-name
-            :database-type     (.getString rs "TYPE_NAME")
-            :database-required required?}
+           {:name                      column-name
+            :database-type             (.getString rs "TYPE_NAME")
+            :database-is-auto-increment auto-increment?
+            :database-required         required?}
            (when-let [remarks (.getString rs "REMARKS")]
              (when-not (str/blank? remarks)
                {:field-comment remarks})))))))
@@ -153,7 +156,7 @@
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                  (let [semantic-type (calculated-semantic-type driver column-name database-type)]
                    (merge
-                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
+                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
                     {:base-type         (database-type->base-type-or-warn driver database-type)
                      :database-position i}
                     (when semantic-type
@@ -229,15 +232,15 @@
   (into
    #{}
    (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                      (fn [^ResultSet rs]
-                                        (fn []
-                                          {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                           :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                              :schema (.getString rs "PKTABLE_SCHEM")}
-                                           :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+                                           (fn [^ResultSet rs]
+                                             (fn []
+                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
+                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
-  "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)

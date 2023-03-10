@@ -5,6 +5,7 @@ import {
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
+  MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
 
 import {
@@ -105,8 +106,9 @@ export const GRAPH_DATA_SETTINGS = {
     title: t`X-axis`,
     widget: "fields",
     getMarginBottom: (series, vizSettings) =>
-      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
-        ? "0rem"
+      vizSettings["graph.dimensions"]?.length === 2 &&
+      series.length <= MAX_SERIES
+        ? "0.5rem"
         : "1rem",
     isValid: (series, vizSettings) =>
       series.some(
@@ -220,16 +222,9 @@ export const GRAPH_DATA_SETTINGS = {
       }));
     },
     getHidden: (series, settings) => {
-      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
-    },
-    getProps: (series, settings) => {
-      return {
-        getPopoverProps: item => ({
-          props: {
-            seriesKey: item.key,
-          },
-        }),
-      };
+      return (
+        settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
+      );
     },
     dashboard: false,
     readDependencies: ["series_settings.colors", "series_settings"],
@@ -358,12 +353,19 @@ export const STACKABLE_SETTINGS = {
       }
       return true;
     },
-    getDefault: ([{ card, data }], settings) =>
+    getDefault: ([{ card, data }], settings) => {
       // legacy setting and default for D-M-M+ charts
-      settings["stackable.stacked"] ||
-      (card.display === "area" && settings["graph.metrics"].length > 1)
-        ? "stacked"
-        : null,
+      if (settings["stackable.stacked"]) {
+        return settings["stackable.stacked"];
+      }
+
+      const shouldStack =
+        card.display === "area" &&
+        (settings["graph.metrics"].length > 1 ||
+          settings["graph.dimensions"].length > 1);
+
+      return shouldStack ? "stacked" : null;
+    },
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
@@ -371,7 +373,7 @@ export const STACKABLE_SETTINGS = {
       );
       return stackableDisplays.length <= 1;
     },
-    readDependencies: ["graph.metrics", "series"],
+    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
   "stackable.stack_display": {
     section: t`Display`,

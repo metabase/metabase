@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
-import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
+import type {
+  ForeignKey,
+  ConcreteTableId,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
@@ -28,12 +31,14 @@ import {
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
-import Table from "metabase-lib/metadata/Table";
-import Question from "metabase-lib/Question";
-import { ObjectId, OnVisualizationClickType } from "./types";
+import type {
+  ObjectId,
+  OnVisualizationClickType,
+  ObjectDetailProps,
+} from "./types";
 
 import {
   getObjectName,
@@ -44,13 +49,15 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
-  CenteredLayout,
   RootModal,
-  ObjectDetailModal,
+  ObjectDetailContainer,
+  ObjectDetailHeaderWrapper,
   ObjectDetailBodyWrapper,
   ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
+  PaginationFooter,
+  ObjectDetailWrapperDiv,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -100,32 +107,6 @@ const mapDispatchToProps = (dispatch: any) => ({
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
-export interface ObjectDetailProps {
-  data: DatasetData;
-  question: Question;
-  table: Table | null;
-  zoomedRow: unknown[] | undefined;
-  zoomedRowID: ObjectId;
-  tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
-    [key: number]: { status: number; value: number };
-  };
-  settings: any;
-  canZoom: boolean;
-  canZoomPreviousRow: boolean;
-  canZoomNextRow: boolean;
-  showActions?: boolean;
-  showRelations?: boolean;
-  onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: any) => boolean;
-  fetchTableFks: (id: number) => void;
-  loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
-  followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
-  closeObjectDetail: () => void;
-}
-
 export function ObjectDetailFn({
   data,
   question,
@@ -140,6 +121,7 @@ export function ObjectDetailFn({
   canZoomNextRow,
   showActions = true,
   showRelations = true,
+  showHeader,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -148,6 +130,7 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  className,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
@@ -247,6 +230,7 @@ export function ObjectDetailFn({
     cols: data.cols,
     zoomedRow,
     tableId: table?.id,
+    settings,
   });
 
   const hasPk = !!data.cols.find(isPK);
@@ -254,84 +238,107 @@ export function ObjectDetailFn({
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
-    <ObjectDetailModal wide={hasRelationships}>
+    <ObjectDetailContainer wide={hasRelationships} className={className}>
       {hasNotFoundError ? (
         <ErrorWrapper>
           <NotFound />
         </ErrorWrapper>
       ) : (
-        <div className="ObjectDetail" data-testid="object-detail">
-          <ObjectDetailHeader
-            canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
-            objectName={objectName}
-            objectId={displayId}
-            canZoomPreviousRow={canZoomPreviousRow}
-            canZoomNextRow={canZoomNextRow}
-            showActions={showActions}
-            viewPreviousObjectDetail={viewPreviousObjectDetail}
-            viewNextObjectDetail={viewNextObjectDetail}
-            closeObjectDetail={closeObjectDetail}
-          />
-          <ObjectDetailBodyWrapper>
-            <ObjectDetailBody
-              data={data}
+        <ObjectDetailWrapperDiv
+          className="ObjectDetail"
+          data-testid="object-detail"
+        >
+          {showHeader && (
+            <ObjectDetailHeader
+              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
-              zoomedRow={zoomedRow ?? []}
-              settings={settings}
-              hasRelationships={hasRelationships}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-              tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={onFollowForeignKey}
+              objectId={displayId}
+              canZoomPreviousRow={canZoomPreviousRow}
+              canZoomNextRow={canZoomNextRow}
+              showActions={showActions}
+              viewPreviousObjectDetail={viewPreviousObjectDetail}
+              viewNextObjectDetail={viewNextObjectDetail}
+              closeObjectDetail={closeObjectDetail}
             />
-          </ObjectDetailBodyWrapper>
-        </div>
+          )}
+          <ObjectDetailBody
+            data={data}
+            objectName={objectName}
+            zoomedRow={zoomedRow ?? []}
+            settings={settings}
+            hasRelationships={hasRelationships}
+            onVisualizationClick={onVisualizationClick}
+            visualizationIsClickable={visualizationIsClickable}
+            tableForeignKeys={tableForeignKeys}
+            tableForeignKeyReferences={tableForeignKeyReferences}
+            followForeignKey={onFollowForeignKey}
+          />
+        </ObjectDetailWrapperDiv>
       )}
-    </ObjectDetailModal>
+    </ObjectDetailContainer>
   );
 }
 
-function ObjectDetailWrapper({
+export function ObjectDetailWrapper({
   question,
+  isDataApp,
   data,
   closeObjectDetail,
+  card,
+  dashcard,
+  isObjectDetail,
   ...props
 }: ObjectDetailProps) {
-  if (question.display() === "object") {
-    if (data.rows.length > 1) {
-      return (
-        <CenteredLayout>
-          <h3>{t`Too many rows for a detail view`}</h3>
-        </CenteredLayout>
-      );
-    }
+  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
+  // only show modal if this object detail was triggered via an object detail zoom action
+  const shouldShowModal = isObjectDetail;
+
+  if (shouldShowModal) {
     return (
+      <RootModal
+        isOpen
+        full={false}
+        onClose={closeObjectDetail}
+        className={""} // need an empty className to override the Modal default width
+      >
+        <ObjectDetailFn
+          {...props}
+          showHeader
+          data={data}
+          question={question}
+          closeObjectDetail={closeObjectDetail}
+        />
+      </RootModal>
+    );
+  }
+
+  const hasPagination = data?.rows?.length > 1;
+
+  return (
+    <>
       <ObjectDetailFn
         {...props}
+        zoomedRow={data.rows[currentObjectIndex]}
         data={data}
         question={question}
+        showHeader={props.settings["detail.showHeader"]}
         showActions={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
+        isDataApp={isDataApp}
       />
-    );
-  }
-  return (
-    <RootModal
-      isOpen
-      full={false}
-      onClose={closeObjectDetail}
-      className={""} // need an empty className to override the Modal default width
-    >
-      <ObjectDetailFn
-        {...props}
-        data={data}
-        question={question}
-        closeObjectDetail={closeObjectDetail}
-      />
-    </RootModal>
+      {hasPagination && (
+        <PaginationFooter
+          start={currentObjectIndex}
+          end={currentObjectIndex}
+          total={data.rows.length}
+          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
+          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
+          singleItem
+        />
+      )}
+    </>
   );
 }
 
@@ -340,7 +347,7 @@ export interface ObjectDetailHeaderProps {
   objectName: string;
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
-  canZoomNextRow: boolean;
+  canZoomNextRow?: boolean;
   showActions?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
@@ -359,7 +366,7 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <div className="Grid border-bottom relative">
+    <ObjectDetailHeaderWrapper className="Grid">
       <div className="Grid-cell">
         <h2 className="p3">
           {objectName}
@@ -405,7 +412,7 @@ export function ObjectDetailHeader({
           </div>
         </div>
       )}
-    </div>
+    </ObjectDetailHeaderWrapper>
   );
 }
 
@@ -413,7 +420,7 @@ export interface ObjectDetailBodyProps {
   data: DatasetData;
   objectName: string;
   zoomedRow: unknown[];
-  settings: unknown;
+  settings: VisualizationSettings;
   hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
@@ -437,7 +444,7 @@ export function ObjectDetailBody({
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <>
+    <ObjectDetailBodyWrapper>
       <DetailsTable
         data={data}
         zoomedRow={zoomedRow}
@@ -453,28 +460,11 @@ export function ObjectDetailBody({
           foreignKeyClicked={followForeignKey}
         />
       )}
-    </>
+    </ObjectDetailBodyWrapper>
   );
 }
 
-export const ObjectDetailProperties = {
-  uiName: t`Object Detail`,
-  identifier: "object",
-  iconName: "document",
-  noun: t`object`,
-  hidden: true,
-  settings: {
-    // adding a "hidden" argument to this settings function breaks pivot table settings
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    ...columnSettings({ hidden: true }),
-  },
-  isSensible: () => true,
-};
-
-const ObjectDetail = Object.assign(
-  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
-  ObjectDetailProperties,
-);
-
-export default ObjectDetail;
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ObjectDetailWrapper);

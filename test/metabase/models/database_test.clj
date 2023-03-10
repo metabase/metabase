@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.secret :as secret :refer [Secret]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
@@ -93,6 +93,22 @@
                 "settings"    {"database-enable-actions" true}
                 "id"          3}
                (encode-decode pg-db)))))))
+
+(deftest driver-supports-actions-and-database-enable-actions-test
+  (mt/test-drivers #{:sqlite}
+    (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :sqlite}]
+        (is (= false (driver/database-supports? :sqlite :actions database)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :settings {:database-enable-actions true})))))
+    (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
+      (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The database does not support actions."
+             (db/update! Database (:id database) :engine :sqlite)))))))
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
@@ -211,7 +227,7 @@
   (testing "manipulating secret values in db-details works correctly"
     (mt/with-driver :secret-test-driver
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
-        (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
+        (let [secret-ids  (atom #{})    ; keep track of all secret IDs created with the temp database
               check-db-fn (fn [{:keys [details] :as _database} exp-secret]
                             (when (not= :file-path (:source exp-secret))
                               (is (not (contains? details :password-value))
@@ -231,12 +247,13 @@
                               (is (some? updated_at) "updated_at populated for the secret instance")
                               (doseq [[exp-key exp-val] exp-secret]
                                 (testing (format "%s=%s in secret" exp-key exp-val)
-                                  (is (= exp-val (cond-> (exp-key secret)
-                                                   (string? exp-val)
-                                                   (String.)
-
-                                                   :else
-                                                   identity)))))))]
+                                  (let [v (exp-key secret)
+                                        v (if (and (string? exp-val)
+                                                   (bytes? v))
+                                            (String. ^bytes v "UTF-8")
+                                            v)]
+                                    (is (= exp-val
+                                           v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
             (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
                                                                        :name    "Test DB with secrets"
@@ -286,9 +303,9 @@
   (testing "Database hashes are composed of the name and engine"
     (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes.hash/identity-hash db)))
+             (serdes/identity-hash db)))
       (is (= "b6f1a9e8"
-             (serdes.hash/identity-hash db))))))
+             (serdes/identity-hash db))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"

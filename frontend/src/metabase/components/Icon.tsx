@@ -141,7 +141,9 @@ class BaseIcon extends Component<IconProps> {
 
 const StyledSVG = styled("svg", {
   shouldForwardProp: shouldForwardNonTransientProp,
-})``;
+})`
+  outline: none;
+`;
 
 const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
   function BaseIconWithRef(props, ref) {

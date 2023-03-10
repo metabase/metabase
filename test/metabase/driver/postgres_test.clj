@@ -18,6 +18,7 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.secret :as secret]
@@ -806,22 +807,25 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name              "name"
-                             :database-type     "varchar"
-                             :base-type         :type/Text
-                             :pk?               true
-                             :database-position 0
-                             :database-required true}
-                            {:name              "status"
-                             :database-type     "bird_status"
-                             :base-type         :type/PostgresEnum
-                             :database-position 1
-                             :database-required true}
-                            {:name              "type"
-                             :database-type     "bird type"
-                             :base-type         :type/PostgresEnum
-                             :database-position 2
-                             :database-required true}}}
+                  :fields #{{:name                      "name"
+                             :database-type             "varchar"
+                             :base-type                 :type/Text
+                             :pk?                       true
+                             :database-position         0
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "status"
+                             :database-type             "bird_status"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         1
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "type"
+                             :database-type             "bird type"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         2
+                             :database-required         true
+                             :database-is-auto-increment false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
@@ -851,6 +855,35 @@
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :postgres
+    (testing "actions with enums"
+      (do-with-enums-db
+       (fn [enums-db]
+         (mt/with-db enums-db
+           (mt/with-actions-enabled
+             (mt/with-actions [model {:dataset true
+                                      :dataset_query
+                                      (mt/mbql-query birds)}
+                               {action-id :action-id} {:type :implicit
+                                                       :kind "row/create"}]
+               (testing "Enum fields are a valid implicit parameter target"
+                 (let [columns        (->> model :result_metadata (map :name) set)
+                       action-targets (->> (action/select-action :id action-id)
+                                           :parameters
+                                           (map :id)
+                                           set)]
+                   (is (= columns action-targets))))
+               (testing "Can create new records with an enum value"
+                 (is (= {:created-row
+                         {:name "new bird", :status "good bird", :type "turkey"}}
+                        (mt/user-http-request :crowberto
+                                              :post 200
+                                              (format "action/%s/execute" action-id)
+                                              {:parameters {"name"   "new bird"
+                                                            "status" "good bird"
+                                                            "type"   "turkey"}}))))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------

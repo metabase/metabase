@@ -82,6 +82,7 @@ class DashboardHeader extends Component {
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -116,6 +117,10 @@ class DashboardHeader extends Component {
 
   onAddTextBox() {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+
+  onAddLinkCard() {
+    this.props.addLinkDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
   onAddAction() {
@@ -247,6 +252,14 @@ class DashboardHeader extends Component {
             </DashboardHeaderButton>
           </a>
         </Tooltip>,
+        <Tooltip key="add-link-card" tooltip={t`Add link card`}>
+          <DashboardHeaderButton
+            onClick={() => this.onAddLinkCard()}
+            data-metabase-event={`Dashboard;Add Link Card`}
+          >
+            <Icon name="link" size={18} />
+          </DashboardHeaderButton>
+        </Tooltip>,
       );
 
       const {
@@ -291,6 +304,7 @@ class DashboardHeader extends Component {
             <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
+                aria-label={t`Add action`}
                 data-metabase-event={`Dashboard;Add Action Button`}
               >
                 <Icon name="click" size={18} />
