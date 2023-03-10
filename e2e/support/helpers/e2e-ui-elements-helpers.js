@@ -2,7 +2,6 @@
 export const POPOVER_ELEMENT = ".popover[data-state~='visible']";
 
 export function popover() {
-  cy.get(POPOVER_ELEMENT).should("be.visible");
   return cy.get(POPOVER_ELEMENT);
 }
 

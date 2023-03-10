@@ -33,6 +33,10 @@ import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+import {
+  ChartSettingHideButton,
+  getDefaultTableColumns,
+} from "../components/settings/ChartSettingHideButton";
 
 const getTitleForColumn = (column, series, settings) => {
   const isPivoted = Table.isPivoted(series, settings);
@@ -194,12 +198,7 @@ export default class Table extends Component {
         {
           data: { cols },
         },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
+      ]) => getDefaultTableColumns(cols),
       getProps: (series, settings) => {
         const [
           {
@@ -362,6 +361,22 @@ export default class Table extends Component {
           placeholder: t`http://toucan.example/{{bird_id}}`,
         };
       },
+    };
+
+    settings["enabled"] = {
+      widget: ChartSettingHideButton,
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => ({ column, columns: cols }),
     };
 
     return settings;
