@@ -1,4 +1,12 @@
 (ns metabase.db.custom-migrations
+  "Custom liquibase migrations, so we can manipulate data with Clojure.
+   We prefer to use SQL migrations in most cases because they are likely to be more performant and stable.
+   However, there are some cases where we need to do something that is not possible or very difficult with SQL, such as JSON manipulation.
+
+   Migrations demand a higher level of reliability than normal code, so be careful about what these migrations depend on.
+   If the code the migration depends on changes, the migration could corrupt app dbs and be very difficult to recover from.
+
+   If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
   (:require
    [clojure.set :as set]
    [clojurewerkz.quartzite.jobs :as jobs]
