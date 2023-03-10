@@ -21,7 +21,7 @@
   "Returns x with lazy seqs converted to vectors wherever they appear in the data structure."
   [x]
   (cond
-    (map? x)        (zipmap (keys x) (map vectorized (vals x)))
+    (map? x)        (update-vals x vectorized)
     (sequential? x) (mapv vectorized x)
     :else           x))
 
@@ -30,7 +30,7 @@
   [x]
   (cond
     (instance? Temporal x) (u.date/format x)
-    (map? x)               (zipmap (keys x) (map yamlize (vals x)))
+    (map? x)               (update-vals x yamlize)
     (sequential? x)        (map yamlize x)
     :else                  x))
 
@@ -58,7 +58,7 @@
   ([f] (load identity f))
   ([constructor ^Path f]
    (try
-     (-> f .toUri from-file constructor)
+     (-> f .toUri slurp parse-string constructor)
      (catch Exception e
        (log/error (trs "Error parsing {0}:\n{1}"
                        (.getFileName f)
