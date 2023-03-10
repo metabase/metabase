@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { ChangeEvent, useMemo } from "react";
 import { t } from "ttag";
 
 import type {
@@ -12,9 +12,8 @@ import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
-import { isEmpty } from "metabase/lib/validate";
-
 import { getInputTypes } from "./constants";
+import { getDefaultValueInputType } from "./utils";
 import {
   SettingsTriggerIcon,
   ToggleContainer,
@@ -55,19 +54,6 @@ export function FieldSettingsPopover({
   );
 }
 
-function cleanDefaultValue(fieldType: FieldType, value?: string | number) {
-  if (isEmpty(value)) {
-    return;
-  }
-
-  if (fieldType === "number") {
-    const clean = Number(value);
-    return !Number.isNaN(clean) ? clean : 0;
-  }
-
-  return value;
-}
-
 export function FormCreatorPopoverBody({
   fieldSettings,
   onChange,
@@ -87,17 +73,19 @@ export function FormCreatorPopoverBody({
       placeholder: newPlaceholder,
     });
 
-  const handleUpdateRequired = ({
-    required,
-    defaultValue,
-  }: {
-    required: boolean;
-    defaultValue?: string | number;
-  }) =>
+  const handleUpdateRequired = (required: boolean) =>
     onChange({
       ...fieldSettings,
       required,
-      defaultValue: cleanDefaultValue(fieldSettings.fieldType, defaultValue),
+      defaultValue: undefined,
+    });
+
+  const handleUpdateDefaultValue = (
+    defaultValue: string | number | undefined,
+  ) =>
+    onChange({
+      ...fieldSettings,
+      defaultValue,
     });
 
   const hasPlaceholder =
@@ -119,9 +107,9 @@ export function FormCreatorPopoverBody({
       )}
       <Divider />
       <RequiredInput
-        value={fieldSettings.required}
-        defaultValue={fieldSettings.defaultValue}
-        onChange={handleUpdateRequired}
+        fieldSettings={fieldSettings}
+        onChangeRequired={handleUpdateRequired}
+        onChangeDefaultValue={handleUpdateDefaultValue}
       />
     </SettingsPopoverBody>
   );
@@ -168,41 +156,44 @@ function PlaceholderInput({
   );
 }
 
+interface RequiredInputProps {
+  fieldSettings: FieldSettings;
+  onChangeRequired: (required: boolean) => void;
+  onChangeDefaultValue: (defaultValue: string | number | undefined) => void;
+}
+
 function RequiredInput({
-  value,
-  defaultValue,
-  onChange,
-}: {
-  value: boolean;
-  defaultValue?: string | number;
-  onChange: ({
-    required,
-    defaultValue,
-  }: {
-    required: boolean;
-    defaultValue?: string | number;
-  }) => void;
-}) {
+  fieldSettings: { fieldType, inputType, required, defaultValue },
+  onChangeRequired,
+  onChangeDefaultValue,
+}: RequiredInputProps) {
+  const handleDefaultValueChange = ({
+    target: { value },
+  }: ChangeEvent<HTMLInputElement>) => {
+    if (!value) {
+      onChangeDefaultValue(undefined);
+    } else if (fieldType === "number") {
+      onChangeDefaultValue(Number(value));
+    } else {
+      onChangeDefaultValue(value);
+    }
+  };
+
   return (
     <div>
       <ToggleContainer>
         <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
-        <Toggle
-          id="is-required"
-          value={value}
-          onChange={required => onChange({ required })}
-        />
+        <Toggle id="is-required" value={required} onChange={onChangeRequired} />
       </ToggleContainer>
-      {value && (
+      {required && (
         <>
           <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
           <Input
             id="default-value"
+            type={getDefaultValueInputType(inputType)}
             fullWidth
             value={defaultValue ?? ""}
-            onChange={e =>
-              onChange({ required: value, defaultValue: e.target.value })
-            }
+            onChange={handleDefaultValueChange}
           />
         </>
       )}
