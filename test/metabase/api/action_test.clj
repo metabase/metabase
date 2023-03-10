@@ -281,7 +281,7 @@
     (mt/with-actions-enabled
       (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
                                           :dataset       true}]
-        (is (= "Implicit actions are not supported for models with clauses"
+        (is (= "Implicit actions are not supported for models with clauses."
                (mt/user-http-request :crowberto :post 400 "action"
                                      {:name       "Implicit example"
                                       :type       "implicit"
