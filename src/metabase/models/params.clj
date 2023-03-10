@@ -200,17 +200,17 @@
 
 (s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
-  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
-  [dashboard]
-  (let [dashboard (hydrate dashboard [:ordered_cards :card])]
-    (set/union
-     (set (mbql.u/match (seq (dashboard->parameter-mapping-field-clauses dashboard))
-            [:field (id :guard integer?) _]
-            id))
-     (dashboard->card-param-field-ids dashboard))))
+  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
+  It requires `dashboard-hydrated-with-cards` is a Dashboard hydrated with `[:ordered_cards :card]`."
+  [dashboard-hydrated-with-cards]
+  (set/union
+   (set (mbql.u/match (seq (dashboard->parameter-mapping-field-clauses dashboard-hydrated-with-cards))
+          [:field (id :guard integer?) _]
+          id))
+   (dashboard->card-param-field-ids dashboard-hydrated-with-cards)))
 
 (defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> dashboard dashboard->param-field-ids param-field-ids->fields))
+  (-> dashboard (hydrate [:ordered_cards :card]) dashboard->param-field-ids param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

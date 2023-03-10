@@ -6,6 +6,7 @@
    [metabase.models.card-test :as card-test]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
@@ -170,19 +171,19 @@
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
-      (testing "return value from the update call should be nil"
-        (is (nil? (dashboard-card/update-dashboard-card!
-                   {:id                     dashcard-id
-                    :actor_id               (mt/user->id :rasta)
-                    :dashboard_id           nil
-                    :card_id                nil
-                    :size_x                 5
-                    :size_y                 3
-                    :row                    1
-                    :col                    1
-                    :parameter_mappings     [{:foo "barbar"}]
-                    :visualization_settings {}
-                    :series                 [card-id-2 card-id-1]}))))
+      (testing "return value from the update call should be true"
+        (is (true? (dashboard-card/update-dashboard-card!
+                    {:id                     dashcard-id
+                     :actor_id               (mt/user->id :rasta)
+                     :dashboard_id           nil
+                     :card_id                nil
+                     :size_x                 5
+                     :size_y                 3
+                     :row                    1
+                     :col                    1
+                     :parameter_mappings     [{:foo "barbar"}]
+                     :visualization_settings {}
+                     :series                 [card-id-2 card-id-1]}))))
       (testing "validate db captured everything"
         (is (= {:size_x                 5
                 :size_y                 3
@@ -201,6 +202,44 @@
                                           :dataset_query          {}
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
+
+(deftest update-dashboard-card!-call-count-test
+  (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
+            PUT /api/dashboard/:id/cards handler"
+    (mt/with-temp* [Dashboard     [{dashboard-id :id :as dashboard}]
+                    Card          [{card-id :id}]
+                    DashboardCard [{dashcard-id-1 :id} {:row 1
+                                                        :col 2
+                                                        :size_x 3
+                                                        :size_y 4
+                                                        :dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [{dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    Card          [{series-id-1 :id} {:name "Series Card 1"}]
+                    Card          [{series-id-2 :id} {:name "Series Card 2"}]]
+      (toucan2.execute/with-call-count [call-count]
+        (dashboard/update-dashcards! dashboard [{:id     dashcard-id-1
+                                                 :cardId card-id
+                                                 :row    1
+                                                 :col    2
+                                                 :size_x 3
+                                                 :size_y 4
+                                                 :series [{:id series-id-1}]}
+                                                {:id     dashcard-id-2
+                                                 :cardId card-id
+                                                 :row    1
+                                                 :col    2
+                                                 :size_x 3
+                                                 :size_y 4
+                                                 :series [{:id series-id-2}]}
+                                                {:id     dashcard-id-3
+                                                 :cardId card-id
+                                                 :row    1
+                                                 :col    2
+                                                 :size_x 3
+                                                 :size_y 4
+                                                 :series []}])
+        (is (= 13 (call-count)))))))
 
 (deftest normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"

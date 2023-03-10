@@ -374,12 +374,14 @@
        (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
          (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
 
-
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (db/select-one Dashboard :id dashboard-id)))]
+  (let [dashboard       (-> (db/select-one Dashboard :id dashboard-id)
+                            api/check-404
+                            (hydrate [:ordered_cards :card]))
+        param-field-ids (params/dashboard->param-field-ids dashboard)]
     (api/check-404 (contains? param-field-ids field-id))))
 
 (defn card-and-field-id->values
