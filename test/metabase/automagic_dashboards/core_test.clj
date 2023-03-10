@@ -282,6 +282,83 @@
               (is (= #{"CreateTimestamp" "Timestamp"} (bindset (mt/id :orders :created_at))))
               (is (= "CreateTimestamp" (boundval (mt/id :orders :created_at)))))))))))
 
+(deftest field-candidate-matching-test
+  (testing "Simple dimensions with only a tablespec can be matched directly against fields."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        ;; This is a fabricated context with simple fields.
+        ;; These can be matched against dimension definitions with simple 1-element vector table specs
+        ;; Example: {:field_type [:type/CreationTimestamp]}
+        ;; More context is needed (see below test) for two-element dimension definitions
+        (let [context    {:source {:fields (db/select Field :id [:in [(mt/id :people :created_at)
+                                                                      (mt/id :people :latitude)
+                                                                      (mt/id :orders :created_at)]])}}
+              ;; Lifted from the GenericTable dimensions definition
+              dimensions {"CreateTimestamp"       {:field_type [:type/CreationTimestamp]}
+                          "Lat"                   {:field_type [:entity/GenericTable :type/Latitude]}
+                          "Timestamp"             {:field_type [:type/DateTime]}}]
+          (is (= #{(mt/id :people :created_at)
+                   (mt/id :orders :created_at)}
+                 (set (map :id (#'magic/field-candidates context (dimensions "Timestamp"))))))
+          (is (= #{(mt/id :people :created_at)
+                   (mt/id :orders :created_at)}
+                 (set (map :id (#'magic/field-candidates context (dimensions "CreateTimestamp"))))))
+          ;; This does not match any of our fabricated context fields (even (mt/id :people :latitude)) because the
+          ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
+          (is (= #{} (set (map :id (#'magic/field-candidates context (dimensions "Lat"))))))))))
+  (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :orders)
+                                       :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]
+                                                                      [:field (mt/id :people :source) {:join-alias "People - User"}]
+                                                                      [:field (mt/id :people :longitude) {:join-alias "People - User"}]
+                                                                      [:field (mt/id :people :latitude) {:join-alias "People - User"}]]
+                                                       :source-table (mt/id :people)
+                                                       :condition    [:=
+                                                                      [:field (mt/id :orders :user_id) nil]
+                                                                      [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                                       :alias        "People - User"}
+                                                      {:fields       [[:field (mt/id :products :category) {:join-alias "Products"}]
+                                                                      [:field (mt/id :products :price) {:join-alias "Products"}]]
+                                                       :source-table (mt/id :products)
+                                                       :condition    [:=
+                                                                      [:field (mt/id :orders :product_id) nil]
+                                                                      [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                                       :alias        "Products"}]
+                                       :fields       [[:field (mt/id :orders :created_at) nil]]}}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [card {:table_id        (mt/id :products)
+                                      :collection_id   collection-id
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
+                                      :dataset         true}]]
+            (let [base-context (#'magic/make-base-context (#'magic/->root card))
+                  dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}
+                                "GenericNumber"         {:field_type [:entity/GenericTable :type/Number]}
+                                "Lat"                   {:field_type [:entity/GenericTable :type/Latitude]}
+                                "Long"                  {:field_type [:entity/GenericTable :type/Longitude]}
+                                "State"                 {:field_type [:entity/GenericTable :type/State]}}]
+              (is (= #{(mt/id :people :state)}
+                     (->> (#'magic/field-candidates base-context (dimensions "State")) (map :id) set)))
+              (is (= #{(mt/id :products :category)
+                       (mt/id :people :source)}
+                     (->> (#'magic/field-candidates base-context (dimensions "GenericCategoryMedium")) (map :id) set)))
+              (is (= #{(mt/id :products :price)
+                       (mt/id :people :longitude)
+                       (mt/id :people :latitude)}
+                     (->> (#'magic/field-candidates base-context (dimensions "GenericNumber")) (map :id) set)))
+              (is (= #{(mt/id :people :latitude)}
+                     (->> (#'magic/field-candidates base-context (dimensions "Lat")) (map :id) set)))
+              (is (= #{(mt/id :people :longitude)}
+                     (->> (#'magic/field-candidates base-context (dimensions "Long")) (map :id) set))))))))))
+
 (defn- ensure-card-sourcing
   "Ensure that destination data is only derived from source data.
   This is a check against a card being generated that presents results unavailable to it with respect to its source data."

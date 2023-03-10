@@ -446,6 +446,8 @@
                               (->reference template-type entity))))))))
 
 (defn- field-candidates
+  "Given a context and a dimension definition, find all fields from the context
+   that match the definition of this dimension."
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to (:tables context))
