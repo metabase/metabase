@@ -161,6 +161,10 @@ Once you have configured SAML authentication, you can choose to disable the opti
 
 When users log in to Metabase for the first time via SSO, this will automatically create a Metabase account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can turn this toggle off at the bottom of the Authentication page.
 
+It's very important to note that if the user doesn't exist in Metabase, it will be created on the fly.
+
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+
 ## Example code using SAML
 
 You can find example code that uses SAML authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
