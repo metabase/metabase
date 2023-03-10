@@ -113,15 +113,6 @@
 ;; This section of code's purpose is to avoid the migration depending on function in the [[metabase.task]] namespace,
 ;; which is likely to change, and might not have as tight test coverage as needed for custom migrations.
 
-(defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
-  *quartz-scheduler*
-  (atom nil))
-
-(defn- scheduler
-  "Fetch the instance of our Quartz scheduler."
-  ^Scheduler []
-  @*quartz-scheduler*)
-
 (defn- load-class ^Class [^String class-name]
   (Class/forName class-name true (classloader/the-classloader)))
 
