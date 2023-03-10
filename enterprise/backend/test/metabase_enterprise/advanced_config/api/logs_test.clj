@@ -42,12 +42,14 @@
                      (->> (ee.api.logs/query-execution-logs 2023 2)
                           (filter #(#{user-id} (:executor_id %)))
                           (filter #((set (map :id [qe-a qe-b])) (:id %)))
-                          (map #(select-keys % [:started_at :id]))))))
+                          (map #(select-keys % [:started_at :id]))))))))))
 
-            (testing "require admins"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))))
-          (testing "Logs endpoint only works when `:advanced-config` feature is available."
-            (premium-features.test/with-premium-features #{}
-              (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
-                     (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02"))))))))))
+    (testing "permission tests"
+      (testing "require admins"
+        (premium-features.test/with-premium-features #{:advanced-config}
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))))
+      (testing "only works when `:advanced-config` feature is available."
+        (premium-features.test/with-premium-features #{}
+          (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
+                 (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02"))))))))
