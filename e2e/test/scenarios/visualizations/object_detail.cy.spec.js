@@ -282,8 +282,7 @@ function changeSorting(columnName, direction) {
       resetTestTable({ type: dialect, table: TEST_TABLE });
       restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      resyncDatabase(WRITABLE_DB_ID);
-      cy.wait(300)
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
     });
 
     it('can show object detail modal for items with composite keys', () => {
@@ -298,8 +297,6 @@ function changeSorting(columnName, direction) {
         cy.icon('chevrondown').click();
         cy.findAllByText("Horse").should('have.length', 2);
       });
-
-
     });
   });
 
@@ -310,8 +307,7 @@ function changeSorting(columnName, direction) {
       resetTestTable({ type: dialect, table: TEST_TABLE });
       restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      resyncDatabase(WRITABLE_DB_ID);
-      cy.wait(300);
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
     });
 
     it('can show object detail modal for items with no primary key', () => {
@@ -326,7 +322,6 @@ function changeSorting(columnName, direction) {
         cy.icon('chevrondown').click();
         cy.findAllByText("Horse").should('have.length', 2);
       });
-
     });
   });
 });
