@@ -247,39 +247,3 @@
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (fingerprinters/constant-fingerprinter nil))))
-
-(comment
-  (transduce identity
-             (timeseries-insight
-              {:datetimes [{:base_type :type/DateTime, :position 0}],
-               :numbers   [{:base_type :type/Number, :position 1}
-                           {:base_type :type/Number, :position 2}]})
-             [["2018-11-01", 296, 10875]
-              ["2018-11-02", 257, 11762]
-              ["2018-11-03", 276, 13101]
-              ["2018-11-05", 172, 10890]])
-
-  (transduce identity
-             (insights [{:base_type :type/DateTime}
-                        {:base_type :type/Number}
-                        {:base_type :type/Number}])
-             [["2018-11-01", 296, 10875]
-              ["2018-11-02", 257, 11762]
-              ["2018-11-03", 276, 13101]
-              ["2018-11-05", 172, 10890]
-              ["2018-11-08", 576, 12935]
-              ["2018-11-09", 525, 30183]
-              ["2018-11-10", 575, 36148]
-              ["2018-11-16", 213, 14942]
-              ["2018-11-17", 503, 15690]
-              ["2018-11-18", 502, 14506]
-              ["2018-11-19", 233, 10714]
-              ["2018-11-20", 174, 9545]
-              ["2018-11-22", 171, 6460]
-              ["2018-11-24", 203, 5217]
-              ["2018-11-26", 133, 3263]
-              ["2018-11-28", 127, 3238]
-              ["2018-11-29", 137, 3120]
-              ["2018-12-01", 180, 3732]
-              ["2018-12-02", 179, 3311]
-              ["2018-12-03", 144, 2525]]))
