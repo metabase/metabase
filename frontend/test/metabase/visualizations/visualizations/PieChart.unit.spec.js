@@ -64,14 +64,15 @@ const setup = () => {
   };
 
   renderWithProviders(<Container />);
-
-  //Append mocked style for .hide class
-  const mockedStyle = document.createElement("style");
-  mockedStyle.innerHTML = `.hide {display: none;}`;
-  document.body.append(mockedStyle);
 };
 
 describe("table settings", () => {
+  beforeAll(() => {
+    //Append mocked style for .hide class
+    const mockedStyle = document.createElement("style");
+    mockedStyle.innerHTML = `.hide {display: none;}`;
+    document.body.append(mockedStyle);
+  });
   it("should render", () => {
     setup();
     expect(screen.getByTestId("pie-chart")).toBeInTheDocument();
