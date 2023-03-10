@@ -36,7 +36,8 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
           "getCardAssociations",
         );
-        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
+        cy.intercept("GET", "/api/action").as("getActions");
+        cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
         cy.intercept(
           "GET",
@@ -69,7 +70,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
+            cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
           });
 
           cy.findByRole("tab", { name: "Actions" }).click();
