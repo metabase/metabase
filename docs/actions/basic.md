@@ -34,11 +34,11 @@ Basic actions include:
 
 The update action will present people with a form with editable fields for each column in the primary source table.
 
-When setting up an Update action on a dashboard, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters).
+When setting up an Update action on a dashboard, you must pass an entity key (like an ID) to the action from a dashboard filter. For other values, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters).
 
 ### Delete
 
-The Delete action will create a form that prompts people for an ID, and will delete the record (row) corresponding to that ID in the underlying table that backs the model.
+The Delete action will create a form that prompts people for an entity key, and will delete the record (row) corresponding to that ID in the underlying table that backs the model.
 
 ### Create
 
@@ -46,7 +46,11 @@ The Create action is the `INSERT INTO` action. The Create action will present a 
 
 ## Basic actions on dashboards
 
-When setting up actions on a dashboard, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters). See [Actions in dashboards](../dashboards/actions.md).
+When setting up actions on a dashboard, you can either prompt the person to fill in a value for each field, or have a field automatically filled in via parameters (such as values set in dashboard filters).
+
+The Update basic action requires you to pass a value for the entity key.
+
+See [Actions in dashboards](../dashboards/actions.md).
 
 ## Archiving basic actions
 
@@ -56,3 +60,4 @@ Because basic actions are made of magic, you cannot archive them. You can just t
 
 - [Introduction to actions](./introduction.md)
 - [Custom actions](./custom.md)
+- [Actions in dashboards](../dashboards/actions.md)
