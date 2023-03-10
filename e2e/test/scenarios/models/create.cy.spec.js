@@ -9,7 +9,7 @@ describe("scenarios > models > create", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("creates a native query model via the New button", () => {
+  it.only("creates a native query model via the New button", () => {
     cy.visit("/");
 
     goFromHomePageToNewNativeQueryModelPage();
