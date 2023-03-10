@@ -156,7 +156,7 @@
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
                       ;; convert any lazy seqs to regular vectors and maps
-                      (cond (map? x)        (zipmap (keys x) (map fix-vals (vals x)))
+                      (cond (map? x)        (update-vals x fix-vals)
                             (sequential? x) (mapv fix-vals x)
                             :else           x))]
       (fix-vals (yaml/parse-string (slurp file))))))
