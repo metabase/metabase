@@ -319,7 +319,7 @@
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
-  meaning there are no clauses such as(filter, limit, breakout...).
+  meaning there are no clauses such as filter, limit, breakout...
 
   The list of clauses should match with FE, which is defined in the
   method `hasAnyClauses` of `metabase-lib/queries/StructuredQuery` class"

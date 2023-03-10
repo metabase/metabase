@@ -110,7 +110,7 @@
   (let [model (api/write-check Card model_id)]
     (when (and (= "implicit" type)
                (not (card/model-supports-implicit-actions? model)))
-      (throw (ex-info (tru "Implicit actions are not supported for models with clauses")
+      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!

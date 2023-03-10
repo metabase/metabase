@@ -277,7 +277,7 @@
                   (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
 
 (deftest implicit-actions-on-non-raw-model-test
-  (testing "Implicit actions are not supported on model that has clauses(aggregation, sort, breakout, ...)"
+  (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
     (mt/with-actions-enabled
       (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
                                           :dataset       true}]
