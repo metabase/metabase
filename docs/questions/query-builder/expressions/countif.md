@@ -135,32 +135,35 @@ Your `condition` must be an [function](../expressions-list.md#functions) or [con
 You can combine [`Count`](../expressions-list.md#count) with [`case`](./case.md):
 
 ```
-Count(case([Plan] = "Basic", [Plan]))
+Count(case([Plan] = "Basic", [ID]))
 ```
 
-to do the same thing as the `CountIf` expression:
+to do the same thing as `CountIf`:
 
 ```
 CountIf([Plan] = "Basic")
 ```
 
-The `case` version lets you count a different column when the condition isn't met. For example, if you have data formatted like this:
+The `case` version lets you count a different column when the condition isn't met. For example, if you've got data from different sources:
 
-| Active Plan | Expired Plan | Active Subscription |
-|-------------|--------------| --------------------|
-| Basic       |              | true                |
-| Basic       |              | true                | 
-|             | Basic        | false               |
-|             | Business     | false               |
-| Premium     |              | true                |
+| ID: Source A  | Plan: Source A | ID: Source B  | Plan: Source B       | 
+|---------------|----------------|---------------| ---------------------|
+| 1             | Basic          |               |                      |
+|               |                | B             | basic                |
+|               |                | C             | basic                |
+| 4             | Business       | D             | business             |
+| 5             | Premium        | E             | premium              |
 
-You could create a `case` expression to:
+To count the total number of Basic plans across both sources, you could create a `case` expression to:
 
-- count the "Active Plan" column when "Active Subscription = true"
-- count the "Expired Plan" column when "Active Subscription = false"
+- count the rows in "ID: Source A" where "Plan: Source A = "Basic"
+- count the rows in "ID: Source B" where "Plan: Source B = "basic"
 
 ```
-Count(case([Active Subscription] = true, [Active Plan], [Expired Plan]))
+Count(case([Plan: Source A] = "Basic", [ID: Source A], 
+            case([Plan: Source B] = "basic", [ID: Source B])
+        )
+    )
 ```
 
 ### CumulativeCount
