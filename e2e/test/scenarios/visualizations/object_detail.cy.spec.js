@@ -4,11 +4,14 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const FIRST_ORDER_ID = 9676;
 const SECOND_ORDER_ID = 10874;
@@ -177,6 +180,49 @@ describe("scenarios > question > object details", () => {
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
+  });
+
+  it("should work as a viz display type", () => {
+    const questionDetails = {
+      display: "object",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+            {
+              fields: "all",
+              "source-table": PEOPLE_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People" }],
+              ],
+              alias: "People",
+            },
+          ],
+        },
+        type: "query",
+      },
+    };
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findByTestId("object-detail");
+
+    cy.log("metabase(#29023)");
+    cy.findByText("People → Name").scrollIntoView().should("be.visible");
+    cy.findByText(/Item 1 of/i).should("be.visible");
   });
 });
 

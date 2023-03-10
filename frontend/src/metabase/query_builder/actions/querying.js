@@ -135,7 +135,7 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.query().datasetQuery().type,
+            question.type(),
             duration,
           ),
         );

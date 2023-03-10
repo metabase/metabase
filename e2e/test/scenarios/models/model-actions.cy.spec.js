@@ -330,6 +330,26 @@ describe(
         cy.findByLabelText("Success message").should("be.disabled");
       });
     });
+
+    it("should display parameters for variable template tags only", () => {
+      cy.visit("/");
+      cy.findByText("New").click();
+      popover().findByText("Action").click();
+      cy.findByText("Select a database").click();
+      popover().within(() => cy.findByText("QA Postgres12").click());
+
+      fillActionQuery("{{#1-orders-model}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+
+      fillActionQuery("{{snippet:101}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+      cy.findByLabelText("101").should("not.exist");
+
+      fillActionQuery("{{id}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+      cy.findByLabelText("101").should("not.exist");
+      cy.findByLabelText("Id").should("be.visible");
+    });
   },
 );
 

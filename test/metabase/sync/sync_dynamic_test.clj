@@ -22,7 +22,7 @@
                            (for [field fields]
                              (u/select-non-nil-keys
                               field
-                              [:table_id :name :fk_target_field_id :parent_id :base_type :database_type]))))))))
+                              [:table_id :name :fk_target_field_id :parent_id :base_type :database_type :database_is_auto_increment]))))))))
 
 (defn- get-tables [database-or-id]
   (->> (hydrate (db/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
@@ -32,5 +32,5 @@
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
     (mt/with-temp Database [db {:engine ::toucanery/toucanery}]
       (sync/sync-database! db)
-      (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
-             (remove-nonsense (get-tables db)))))))
+     (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
+            (remove-nonsense (get-tables db)))))))
