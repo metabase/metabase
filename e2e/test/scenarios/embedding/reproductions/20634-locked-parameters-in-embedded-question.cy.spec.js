@@ -2,6 +2,8 @@ import { restore, visitIframe } from "e2e/support/helpers";
 
 describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {
+    cy.intercept("PUT", "/api/card/*").as("publishChanges");
+
     restore();
     cy.signInAsAdmin();
 
@@ -46,6 +48,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
 
       // publish the embedded question so that we can directly navigate to its url
       cy.findByText("Publish").click();
+      cy.wait("@publishChanges");
     });
 
     // directly navigate to the embedded question

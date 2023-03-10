@@ -5,6 +5,8 @@
 // json-serializable data to cypress tasks (which run in node)
 // https://docs.cypress.io/api/commands/task#Arguments
 
+import { many_data_types_rows } from "./test_tables_data";
+
 export const colors27745 = async dbClient => {
   const tableName = "colors27745";
 
@@ -20,7 +22,7 @@ export const colors27745 = async dbClient => {
     { name: "blue" },
   ]);
 
-  return true;
+  return null;
 };
 
 export const scoreboard_actions = async dbClient => {
@@ -52,5 +54,50 @@ export const scoreboard_actions = async dbClient => {
     { team_name: "Nifty Narwhals", score: 100 },
   ]);
 
-  return true;
+  return null;
+};
+
+export const many_data_types = async dbClient => {
+  const tableName = "many_data_types";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.increments("id").primary();
+    table.uuid("uuid");
+
+    table.integer("integer");
+    table.integer("integerUnsigned").unsigned();
+    table.tinyint("tinyint");
+    table.tinyint("tinyint1", 1);
+    table.smallint("smallint");
+    table.mediumint("mediumint");
+    table.bigInteger("bigint");
+
+    table.string("string");
+    table.text("text");
+
+    table.float("float");
+    table.double("double");
+    table.decimal("decimal");
+
+    table.boolean("boolean");
+
+    table.date("date");
+    table.dateTime("datetime", { useTz: false });
+    table.dateTime("datetimeTZ", { useTz: true });
+    table.time("time");
+    table.timestamp("timestamp", { useTz: false });
+    table.timestamp("timestampTZ", { useTz: true });
+
+    table.json("json");
+    table.jsonb("jsonb");
+
+    table.enu("enum", ["alpha", "beta", "gamma", "delta"]);
+
+    table.binary("binary");
+  });
+
+  await dbClient(tableName).insert(many_data_types_rows);
+  return null;
 };

@@ -23,7 +23,7 @@
                (cmd/load "/path/" "--num-cans" "2")))))
     (testing "import (v2)"
       (testing "with no options"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/")
+        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error false})
                (cmd/import "/path/")))))))
 
 (deftest export-test
@@ -40,5 +40,5 @@
         (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil})
                (cmd/export "/path/"))))
       (testing "with --collections list"
-        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3]})
-               (cmd/export "/path/" "--collections" "1,2,3")))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3] :include-field-values true})
+               (cmd/export "/path/" "--collections" "1,2,3" "--include-field-values")))))))

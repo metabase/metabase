@@ -134,8 +134,7 @@ describe("ObjectDetailDrill", () => {
 
           it("should apply '=' filter to one of the PKs on click", () => {
             const [action] = actions;
-            const card = action.question().card();
-            expect(card.dataset_query.query).toEqual({
+            expect(action.question().datasetQuery().query).toEqual({
               "source-table": ORDERS.id,
               filter: ["=", ORDERS.ID.reference(), cellValue],
             });
@@ -168,8 +167,7 @@ describe("ObjectDetailDrill", () => {
 
           it("should fallback to result metadata info about columns if table is not available", () => {
             const [action] = actions;
-            const card = action.question().card();
-            expect(card.dataset_query.query).toEqual({
+            expect(action.question().datasetQuery().query).toEqual({
               "source-table": ORDERS.id,
               filter: ["=", ORDERS.ID.reference(), cellValue],
             });
@@ -250,8 +248,7 @@ describe("ObjectDetailDrill", () => {
 
       it("should apply object detail filter correctly", () => {
         const [action] = actions;
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        expect(action.question().datasetQuery().query).toEqual({
           "source-table": PRODUCTS.id,
           filter: ["=", PRODUCTS.ID.reference(), cellValue],
         });
@@ -279,8 +276,7 @@ describe("ObjectDetailDrill", () => {
 
       it("should apply object detail filter correctly", () => {
         const [action] = actions;
-        const card = action.question().card();
-        expect(card.dataset_query.query).toEqual({
+        expect(action.question().datasetQuery().query).toEqual({
           "source-table": PRODUCTS.id,
           filter: ["=", PRODUCTS.ID.reference(), cellValue],
         });

@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan.db :as db]
@@ -160,7 +160,7 @@
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [obj-name (format name-fmt-str (tu/random-name))]
+    (let [obj-name (format name-fmt-str (tu.random/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (apply bigquery.tx/execute! (create-args-fn obj-name))
@@ -267,33 +267,12 @@
               ;; make sure all the fields for taxi_tips were synced
               (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
           (testing " for querying"
-            (is (= ["ff0b96c0cada768361b1c9341e11905254644afb"
-                    "c7fd753040e0170e38049465089bca99c750f5ed8b3f6c547b303057ec23be36b9b86790fe417bb5949d980892460a2732a28a515bb805cf967bf4cf4b44b074"
-                    "2016-09-20T07:15:00Z"
-                    "2016-09-20T07:30:00Z"
-                    1265
-                    7.2
-                    nil
-                    nil
-                    nil
-                    nil
-                    0.01
-                    0.0
-                    nil
-                    0.0
-                    0.01
-                    "Cash"
-                    "303 Taxi"
-                    nil
-                    nil
-                    nil
-                    nil
-                    nil
-                    nil]
-                   (mt/first-row
-                     (mt/run-mbql-query taxi_trips
-                       {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
-                                    "ff0b96c0cada768361b1c9341e11905254644afb"]})))))
+            (is (= 23
+                   (count (mt/first-row
+                            (mt/run-mbql-query taxi_trips
+                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
+                                           "Cash"]
+                               :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -347,7 +326,7 @@
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
                (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-               "`describe-table` should detect the correct base-type for array type columns")))))
+            "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"

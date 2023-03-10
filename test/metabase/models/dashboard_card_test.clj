@@ -11,7 +11,7 @@
     :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface-test :as i.test]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db])
@@ -170,36 +170,19 @@
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
-      (testing "return value from the update call"
-        (is (= {:size_x                 5
-                :size_y                 3
-                :col                    1
-                :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
-                :visualization_settings {}
-                :series                 [{:name                   "Test Card 2"
-                                          :description            nil
-                                          :display                :table
-                                          :dataset_query          {}
-                                          :visualization_settings {}}
-                                         {:name                   "Test Card 1"
-                                          :description            nil
-                                          :display                :table
-                                          :dataset_query          {}
-                                          :visualization_settings {}}]}
-               (remove-ids-and-timestamps
-                (dashboard-card/update-dashboard-card!
-                 {:id                     dashcard-id
-                  :actor_id               (mt/user->id :rasta)
-                  :dashboard_id           nil
-                  :card_id                nil
-                  :size_x                 5
-                  :size_y                 3
-                  :row                    1
-                  :col                    1
-                  :parameter_mappings     [{:foo "barbar"}]
-                  :visualization_settings {}
-                  :series                 [card-id-2 card-id-1]})))))
+      (testing "return value from the update call should be nil"
+        (is (nil? (dashboard-card/update-dashboard-card!
+                   {:id                     dashcard-id
+                    :actor_id               (mt/user->id :rasta)
+                    :dashboard_id           nil
+                    :card_id                nil
+                    :size_x                 5
+                    :size_y                 3
+                    :row                    1
+                    :col                    1
+                    :parameter_mappings     [{:foo "barbar"}]
+                    :visualization_settings {}
+                    :series                 [card-id-2 card-id-1]}))))
       (testing "validate db captured everything"
         (is (= {:size_x                 5
                 :size_y                 3
@@ -281,5 +264,5 @@
                                                :col                    3
                                                :created_at             now}]]
         (is (= "1311d6dc"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {} 6 3 now])
-               (serdes.hash/identity-hash dashcard)))))))
+               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
+               (serdes/identity-hash dashcard)))))))

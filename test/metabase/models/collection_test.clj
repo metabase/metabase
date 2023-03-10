@@ -17,7 +17,7 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1644,15 +1644,15 @@
                                        :created_at now
                                        :namespace  "yolocorp"
                                        :location   (format "/%s/%s/" (:id c1) (:id c2))}]]
-        (let [c1-hash (serdes.hash/identity-hash c1)
-              c2-hash (serdes.hash/identity-hash c2)]
+        (let [c1-hash (serdes/identity-hash c1)
+              c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"
-                 (serdes.hash/raw-hash ["top level" :yolocorp "ROOT" now])
+                 (serdes/raw-hash ["top level" :yolocorp "ROOT" now])
                  c1-hash)
               "Top-level collections should use a parent hash of 'ROOT'")
           (is (= "a27aef0f"
-                 (serdes.hash/raw-hash ["nested" :yolocorp c1-hash now])
+                 (serdes/raw-hash ["nested" :yolocorp c1-hash now])
                  c2-hash))
           (is (= "e816af2d"
-                 (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash now])
-                 (serdes.hash/identity-hash c3))))))))
+                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes/identity-hash c3))))))))

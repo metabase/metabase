@@ -5,6 +5,8 @@ import {
   restore,
   fillActionQuery,
   createAction,
+  navigationSidebar,
+  openNavigationSidebar,
 } from "e2e/support/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -83,7 +85,7 @@ describe(
       cy.intercept("PUT", "/api/action/*").as("updateAction");
     });
 
-    it("should allow to view, create, edit, and archive model actions", () => {
+    it("should allow CRUD operations on model actions", () => {
       cy.get("@modelId").then(id => {
         cy.visit(`/model/${id}/detail`);
         cy.wait("@getModel");
@@ -100,7 +102,9 @@ describe(
 
       cy.findByRole("link", { name: "New action" }).click();
       fillActionQuery("DELETE FROM orders WHERE id = {{ id }}");
-      fieldSettings().findByText("Number").click();
+      cy.findByRole("radiogroup", { name: "Field type" })
+        .findByText("Number")
+        .click();
       cy.findByRole("button", { name: "Save" }).click();
       modal().within(() => {
         cy.findByLabelText("Name").type("Delete Order");
@@ -112,8 +116,7 @@ describe(
 
       openActionEditorFor("Delete Order");
       fillActionQuery(" AND status = 'pending'");
-      fieldSettings()
-        .findByRole("radiogroup", { name: "Field type" })
+      cy.findByRole("radiogroup", { name: "Field type" })
         .findByLabelText("Number")
         .should("be.checked");
       cy.findByRole("button", { name: "Update" }).click();
@@ -144,6 +147,24 @@ describe(
       cy.findByText("Create").should("not.exist");
       cy.findByText("Update").should("not.exist");
       cy.findByText("Delete").should("not.exist");
+
+      openNavigationSidebar();
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
+      popover().findByText("View archive").click();
+
+      getArchiveListItem("Delete Order").within(() => {
+        cy.icon("unarchive").click({ force: true });
+      });
+      cy.findByText("Delete Order").should("not.exist");
+      cy.findByRole("button", { name: "Undo" }).click();
+      cy.findByText("Delete Order").should("be.visible");
+      getArchiveListItem("Delete Order").within(() => {
+        cy.icon("trash").click({ force: true });
+      });
+      cy.findByTestId("Delete Order").should("not.exist");
+      cy.findByRole("button", { name: "Undo" }).should("not.exist");
     });
 
     it("should allow to create an action with the New button", () => {
@@ -309,6 +330,26 @@ describe(
         cy.findByLabelText("Success message").should("be.disabled");
       });
     });
+
+    it("should display parameters for variable template tags only", () => {
+      cy.visit("/");
+      cy.findByText("New").click();
+      popover().findByText("Action").click();
+      cy.findByText("Select a database").click();
+      popover().within(() => cy.findByText("QA Postgres12").click());
+
+      fillActionQuery("{{#1-orders-model}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+
+      fillActionQuery("{{snippet:101}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+      cy.findByLabelText("101").should("not.exist");
+
+      fillActionQuery("{{id}}");
+      cy.findByLabelText("#1-orders-model").should("not.exist");
+      cy.findByLabelText("101").should("not.exist");
+      cy.findByLabelText("Id").should("be.visible");
+    });
   },
 );
 
@@ -336,11 +377,6 @@ function assertQueryEditorDisabled() {
   // Instead we'd assert that a user can't type in the editor
   fillActionQuery("QWERTY");
   cy.findByText("QWERTY").should("not.exist");
-}
-
-function fieldSettings() {
-  cy.findByTestId("action-form-editor").within(() => cy.icon("gear").click());
-  return popover();
 }
 
 function enableSharingFor(actionName, { publicUrlAlias }) {
@@ -371,4 +407,8 @@ function disableSharingFor(actionName) {
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
+}
+
+function getArchiveListItem(itemName) {
+  return cy.findByTestId(`archive-item-${itemName}`);
 }

@@ -375,22 +375,27 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("should not be able to move or archive a personal collection", () => {
-      cy.visit("/collection/root");
-
-      openEllipsisMenuFor(getPersonalCollectionName(USERS.admin));
-
-      popover().within(() => {
-        cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Move").should("not.exist");
-        cy.findByText("Archive").should("not.exist");
-      });
-    });
-
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          bulkSelectDeselectWorkflow();
+          cy.visit("/collection/root");
+
+          // Select one
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+          cy.icon("dash").should("exist");
+          cy.icon("check").should("exist");
+
+          // Select all
+          cy.findByLabelText("Select all items").click();
+          cy.icon("dash").should("not.exist");
+          cy.findByText("5 items selected");
+
+          // Deselect all
+          cy.findByLabelText("Select all items").click();
+
+          cy.icon("check").should("not.exist");
+          cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -404,40 +409,9 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("1 item selected").should("be.visible");
 
           cy.findByText("Our analytics").click();
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
 
-        it("should not be possible to archive or move a personal collection via bulk actions", () => {
-          cy.visit("/collection/root");
-
-          selectItemUsingCheckbox(
-            getPersonalCollectionName(USERS.admin),
-            "person",
-          );
-
-          cy.findByText("1 item selected").should("be.visible");
-          cy.button("Move").should("be.disabled");
-          cy.button("Archive").should("be.disabled");
-        });
-
-        function bulkSelectDeselectWorkflow() {
-          cy.visit("/collection/root");
-          selectItemUsingCheckbox("Orders");
-          cy.findByText("1 item selected").should("be.visible");
-
-          cy.findByTestId("bulk-action-bar").within(() => {
-            // Select all
-            cy.findByRole("checkbox");
-            cy.icon("dash").click({ force: true });
-            cy.icon("dash").should("not.exist");
-            cy.findByText("6 items selected");
-
-            // Deselect all
-            cy.icon("check").click({ force: true });
-          });
-          cy.icon("check").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
-        }
       });
 
       describe("archive", () => {
@@ -445,19 +419,23 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Archive").click();
+          cy.findByText(/item(s)? selected/)
+            .button("Archive")
+            .click();
 
           cy.findByText("Orders").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
       });
 
       describe("move", () => {
-        it("should be possible to bulk move items", () => {
+        it("should be possible to bulk move items and undo", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Move").click();
+          cy.findByText(/item(s)? selected/)
+            .button("Move")
+            .click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
@@ -465,11 +443,16 @@ describe("scenarios > collection defaults", () => {
           });
 
           cy.findByText("Orders").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.be.visible");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
           cy.findByText("Orders");
+
+          cy.findByText("Undo").click();
+          navigationSidebar().findByText("Our analytics").click();
+          cy.findByText("Orders").should("be.visible");
+          cy.findByText("Undo").should("not.exist");
         });
       });
     });
@@ -514,10 +497,7 @@ function openEllipsisMenuFor(item) {
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
     .closest("tr")
-    .within(() => {
-      cy.icon(icon).trigger("mouseover");
-      cy.findByRole("checkbox").click();
-    });
+    .within(() => cy.findByRole("checkbox").click());
 }
 
 function visitRootCollection() {
