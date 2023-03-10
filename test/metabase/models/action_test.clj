@@ -50,7 +50,7 @@
                                        "json_bit → 1234" "json_bit → 1234123412314"
                                        "json_bit → boop" "json_bit → doop" "json_bit → genres"
                                        "json_bit → noop" "json_bit → published" "json_bit → title"
-                                       "json_bit → zoop" })]
+                                       "json_bit → zoop"})]
                 (is (= model-columns (t2/select-one-fn (comp set
                                                              (partial map :name)
                                                              :result_metadata)
@@ -140,3 +140,17 @@
                Exception
                #"Actions must be made with models, not cards"
                (t2/update! Action action-id {:archived false}))))))))
+
+(deftest exclude-auto-increment-fields-for-create-implicit-actions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (doseq [kind ["row/create" "row/update" "row/delete"]]
+        (testing (format "for implicit action with kind=%s we should %s include auto incremented fields"
+                         kind (if (= "row/create" kind) "not" ""))
+          (mt/with-actions [{:keys [action-id]} {:type :implicit
+                                                 :kind kind}]
+            (let [parameters (:parameters (action/select-action :id action-id))
+                  id-parameter (first (filter #(= "id" (:id %)) parameters))]
+              (if (= "row/create" kind)
+                (is (nil? id-parameter))
+                (is (some? id-parameter))))))))))
