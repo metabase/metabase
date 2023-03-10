@@ -4,8 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.sync.describe-table
-       :as sql-jdbc.describe-table]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.sync :as sync]
