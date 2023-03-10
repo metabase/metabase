@@ -79,6 +79,16 @@ describe("table settings", () => {
 
   it("should allow you to show and hide the grand total", async () => {
     setup();
+
+    jest
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(() => ({
+        height: 200,
+        width: 200,
+        x: 0,
+        y: 0,
+      }));
+
     expect(screen.getByTestId("detail-value")).toBeVisible();
     expect(screen.getByTestId("detail-value")).toHaveTextContent("2,000");
     userEvent.click(screen.getByText("Display"));
@@ -93,6 +103,8 @@ describe("table settings", () => {
     await waitFor(() => {
       expect(screen.getByTestId("detail-value")).toBeVisible();
     });
+
+    jest.restoreAllMocks();
   });
 
   it("should allow you to show and hide the legend", async () => {

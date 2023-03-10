@@ -273,12 +273,12 @@ export default class PieChart extends Component {
       }
 
       if (
-        groupElement.getBoundingClientRect().width >= 120 ||
-        settings["pie.show_total"]
+        groupElement.getBoundingClientRect().width < 120 ||
+        !settings["pie.show_total"]
       ) {
-        detailElement.classList.remove("hide");
-      } else {
         detailElement.classList.add("hide");
+      } else {
+        detailElement.classList.remove("hide");
       }
     });
 
