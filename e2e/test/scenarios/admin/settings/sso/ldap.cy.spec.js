@@ -119,13 +119,16 @@ describe(
           "getSessionProperties",
         );
         cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+        cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
+          "clearGroup",
+        );
       });
 
-      it.only("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
+      it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
         crudGroupMappingsWidget("ldap");
       });
 
-      it.only("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
+      it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
         checkGroupConsistencyAfterDeletingMappings("ldap");
       });
     });

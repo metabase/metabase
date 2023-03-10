@@ -17,6 +17,10 @@
 ;; TODO -- should the default implementation call [[metabase.lib.query/query]]? That way if we implement a method to
 ;; create an MBQL query from a `Table`, then we'd also get [[join]] support for free?
 
+(defmethod ->join-clause :mbql/join
+  [_query _stage-number a-join-clause]
+  a-join-clause)
+
 (defmethod ->join-clause :mbql/query
   [_query _stage-number another-query]
   (-> {:lib/type :mbql/join
@@ -28,6 +32,14 @@
   (-> {:lib/type :mbql/join
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
+
+(defmethod ->join-clause :metadata/table
+  [query stage-number table-metadata]
+  (->join-clause query
+                 stage-number
+                 {:lib/type     :mbql.stage/mbql
+                  :lib/options  {:lib/uuid (str (random-uuid))}
+                  :source-table (:id table-metadata)}))
 
 (defmethod ->join-clause :dispatch-type/fn
   [query stage-number f]
@@ -83,15 +95,18 @@
   `condition` is currently required, but in the future I think we should make this smarter and try to infer a sensible
   default condition for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
   B, join via that relationship. Not yet implemented!"
+  ([query a-join-clause]
+   (join query -1 a-join-clause (:condition a-join-clause)))
+
   ([query x condition]
    (join query -1 x condition))
 
   ([query stage-number x condition]
    (let [stage-number (or stage-number -1)
-         join         (cond-> (->join-clause query stage-number x)
+         new-join     (cond-> (->join-clause query stage-number x)
                         condition (assoc :condition (join-condition query stage-number condition)))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
-                                                                     (conj (vec joins) join))))))
+                                                                     (conj (vec joins) new-join))))))
 
 (mu/defn joins :- ::lib.schema.join/joins
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the

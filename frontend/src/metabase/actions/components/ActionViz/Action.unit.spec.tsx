@@ -6,7 +6,9 @@ import { waitFor } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
+  createMockActionDashboardCard,
   createMockActionParameter,
+  createMockFieldSettings,
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
@@ -31,7 +33,7 @@ const defaultProps = {
         }),
         createMockActionParameter({
           id: "parameter_2",
-          type: "type/Text",
+          type: "type/Integer",
           target: ["variable", ["template-tag", "2"]],
         }),
       ],
@@ -174,6 +176,61 @@ describe("Actions > ActionViz > ActionComponent", () => {
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+
+    it("should format dashboard filter values for numeric parameters", async () => {
+      const parameter = createMockActionParameter({
+        id: "parameter_1",
+        name: "parameter_1",
+        type: "number/=",
+        target: ["variable", ["template-tag", "1"]],
+      });
+
+      const action = createMockQueryAction({
+        name: "My Awesome Action",
+        database_id: 2,
+        parameters: [parameter],
+        visualization_settings: {
+          fields: {
+            [parameter.id]: createMockFieldSettings({
+              fieldType: "number",
+              inputType: "number",
+            }),
+          },
+        },
+      });
+
+      setupExecutionEndpoint();
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          id: 456,
+          dashboard_id: 123,
+          card_id: 777, // action model id
+          action,
+          card: defaultProps.dashcard.card,
+          parameter_mappings: [
+            {
+              parameter_id: "dash-param-1",
+              target: ["variable", ["template-tag", "1"]],
+            },
+          ],
+        }),
+        parameterValues: { "dash-param-1": "44" },
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Click me" }));
+
+      await waitFor(async () => {
+        const call = fetchMock.lastCall(
+          "path:/api/dashboard/123/dashcard/456/execute",
+        );
+        expect(await call?.request?.json()).toEqual({
+          modelId: 777,
+          parameters: {
+            parameter_1: 44,
+          },
+        });
+      });
+    });
   });
 
   describe("Form actions", () => {
@@ -218,7 +275,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         modelId: 777,
         parameters: {
           parameter_1: "foo",
-          parameter_2: "bar",
+          parameter_2: 5,
         },
       };
 
@@ -231,9 +288,9 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.type(screen.getByLabelText("Parameter 2"), "bar");
+      userEvent.type(screen.getByLabelText("Parameter 2"), "5");
       await waitFor(() =>
-        expect(screen.getByLabelText("Parameter 2")).toHaveValue("bar"),
+        expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
       userEvent.click(screen.getByRole("button", { name: "Run" }));
@@ -251,7 +308,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         modelId: 777,
         parameters: {
           parameter_1: "foo",
-          parameter_2: "baz",
+          parameter_2: 5,
         },
       };
 
@@ -259,7 +316,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-2": "baz" },
+        parameterValues: { "dash-param-2": "5" },
       });
 
       userEvent.type(screen.getByLabelText("Parameter 1"), "foo");

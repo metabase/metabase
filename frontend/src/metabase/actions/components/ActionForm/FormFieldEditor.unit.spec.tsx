@@ -1,8 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon, queryIcon } from "__support__/ui";
+import {
+  render,
+  screen,
+  getIcon,
+  queryIcon,
+  waitFor,
+  within,
+} from "__support__/ui";
 import FormProvider from "metabase/core/components/FormProvider";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
+import type { FieldSettings } from "metabase-types/api";
 import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
@@ -13,20 +21,31 @@ const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
 
 function setup({
   field = DEFAULT_FIELD,
-  fieldSettings = getDefaultFieldSettings(),
+  fieldSettings: initialFieldSettings = getDefaultFieldSettings(),
   isEditable = true,
   onChange = jest.fn(),
 }: Partial<FormFieldEditorProps> = {}) {
-  render(
-    <FormProvider initialValues={{}} onSubmit={jest.fn()}>
+  function WrappedFormFieldEditor() {
+    const [fieldSettings, setFieldSettings] = useState(initialFieldSettings);
+    return (
       <FormFieldEditor
         field={field}
         fieldSettings={fieldSettings}
         isEditable={isEditable}
-        onChange={onChange}
+        onChange={nextFieldSettings => {
+          onChange(nextFieldSettings);
+          setFieldSettings(nextFieldSettings);
+        }}
       />
+    );
+  }
+
+  render(
+    <FormProvider initialValues={{}} onSubmit={jest.fn()}>
+      <WrappedFormFieldEditor />
     </FormProvider>,
   );
+
   return { onChange };
 }
 
@@ -76,5 +95,69 @@ describe("FormFieldEditor", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber2")).not.toBeInTheDocument();
+  });
+
+  describe("field values", () => {
+    const TEST_STRING_FIELD_SETTINGS: FieldSettings = {
+      ...getDefaultFieldSettings(),
+      fieldType: "string",
+      inputType: "select",
+      valueOptions: ["1", "2", "3", "not-a-number"],
+    };
+
+    it("keeps value options when switching between input types", async () => {
+      const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
+      userEvent.click(screen.getByLabelText("Field settings"));
+      const popover = await screen.findByRole("tooltip");
+
+      userEvent.click(within(popover).getByRole("radio", { name: "Text" }));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          inputType: "string",
+        }),
+      );
+
+      userEvent.click(
+        within(popover).getByRole("radio", { name: "Inline select" }),
+      );
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          inputType: "radio",
+        }),
+      );
+    });
+
+    it("handles value options when switching between field types", async () => {
+      const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
+
+      userEvent.click(screen.getByText("Category"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "category",
+        }),
+      );
+
+      userEvent.click(screen.getByText("Number"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "number",
+          valueOptions: [1, 2, 3],
+        }),
+      );
+
+      userEvent.click(screen.getByText("Date"));
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...TEST_STRING_FIELD_SETTINGS,
+          fieldType: "date",
+          inputType: "date",
+          valueOptions: undefined,
+        }),
+      );
+    });
   });
 });
