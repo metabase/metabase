@@ -8,7 +8,123 @@
    [malli.registry :as mr]
    [malli.util :as mut]
    #?@(:clj ([malli.experimental.time :as malli.time])))
-  #?(:cljs (:require-macros [metabase.util.malli.registry])))
+  #?(:cljs (:require-macros [metabase.util.malli.registry]))
+  (:import
+   #?@(:clj ((java.time Duration LocalDate LocalDateTime
+                        LocalTime Instant ZonedDateTime
+                        OffsetDateTime ZoneId OffsetTime
+                        ZoneOffset)))))
+
+#?(:clj
+   (do
+     (def ^:private gen-zone-offset
+       (letfn [(align-sign [leader follower]
+                 (cond-> follower
+                   (neg? leader) -))]
+         (gen/let [hours   (gen/large-integer* {:min -12 :max 14})
+                   minutes (gen/fmap (partial align-sign hours) (gen/large-integer* {:min 0 :max 59}))
+                   seconds (gen/fmap (partial align-sign hours) (gen/large-integer* {:min 0 :max 59}))]
+           (ZoneOffset/ofHoursMinutesSeconds (int hours) (int minutes) (int seconds)))))
+
+     (def ^:private gen-zone-id
+       (gen/one-of [(gen/fmap #(ZoneId/ofOffset "UTC" %) gen-zone-offset)
+                    (gen/elements (mapv #(ZoneId/of %) (ZoneId/getAvailableZoneIds)))]))
+
+     (def ^:private gen-duration
+       (gen/let [^Long years   (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long months  (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long days    (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long hours   (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long minutes (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long seconds (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long millis  (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long nanos   gen/large-integer]
+         (.. (Duration/ZERO)
+             (plusDays (+ (* years 365) (* months 30) days))
+             (plusHours hours)
+             (plusMinutes minutes)
+             (plusSeconds seconds)
+             (plusMillis millis)
+             (plusNanos nanos))))
+
+     (def ^:private gen-instant
+       (gen/let [^Duration duration gen-duration]
+         (.plus (Instant/now) duration)))
+
+     (def ^:private gen-local-date
+       (gen/let [^Long years  (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long months (gen/large-integer* {:min -100000 :max 100000})
+                 ^Long days   (gen/large-integer* {:min -100000 :max 100000})]
+         (.. (LocalDate/now)
+             (plusYears years)
+             (plusMonths months)
+             (plusDays days))))
+
+     (def ^:private gen-local-time
+       (gen/let [^Long hours   (gen/large-integer* {:min -23 :max 23})
+                 ^Long minutes (gen/large-integer* {:min -59 :max 59})
+                 ^Long seconds (gen/large-integer* {:min -59 :max 59})
+                 ^Long nanos   gen/large-integer]
+         (.. (LocalTime/now)
+             (plusHours hours)
+             (plusMinutes minutes)
+             (plusSeconds seconds)
+             (plusNanos nanos))))
+
+     (def ^:private gen-local-date-time
+       (gen/let [^LocalDate  date gen-local-date
+                 ^LocalTime  time gen-local-time]
+         (LocalDateTime/of date time)))
+
+     (defmethod mg/-schema-generator :time/zone-offset
+       [_schema _options]
+       gen-zone-offset)
+
+     (defmethod mg/-schema-generator :time/zone-id
+       [_schema _options]
+       gen-zone-id)
+
+     (defmethod mg/-schema-generator :time/duration
+       [_schema _options]
+       gen-duration)
+
+     (defmethod mg/-schema-generator :time/instant
+       [_schema _options]
+       gen-instant)
+
+     (defmethod mg/-schema-generator :time/local-date
+       [_schema _options]
+       gen-local-date)
+
+     (defmethod mg/-schema-generator :time/local-time
+       [_schema _options]
+       gen-local-time)
+
+     (defmethod mg/-schema-generator :time/local-date-time
+       [_schema _options]
+       gen-local-date-time)
+
+     (defmethod mg/-schema-generator :time/offset-time
+       [_schema _options]
+       (gen/let [^LocalTime  time gen-local-time
+                 ^ZoneOffset offset gen-zone-offset]
+         (OffsetTime/of time offset)))
+
+     (defmethod mg/-schema-generator :time/offset-date-time
+       [_schema _options]
+       (gen/let [^LocalDateTime date-time gen-local-date-time
+                 ^ZoneOffset    offset gen-zone-offset]
+         (OffsetDateTime/of date-time offset)))
+
+     (defmethod mg/-schema-generator :time/zoned-date-time
+       [_schema _options]
+       (gen/let [^LocalDateTime date-time gen-local-date-time
+                 ^ZoneId        zone-id gen-zone-id]
+         (ZonedDateTime/of date-time zone-id)))))
+
+(comment
+  (mg/sample :time/zoned-date-time {:size 50})
+  nil)
 
 ;;; Implementation of :vcatn schema: stolen from malli sources,
 ;;; would be nice to find a more composable way.
@@ -43,7 +159,7 @@
   (atom (merge (mc/default-schemas)
                (mut/schemas)
                #?(:clj (malli.time/schemas))
-                (schemas))))
+               (schemas))))
 
 (defonce ^:private registry (mr/mutable-registry registry*))
 

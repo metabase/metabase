@@ -103,7 +103,6 @@
 ;; the :metabase.lib.schema.expression/boolean schema can be used.
 (mr/def ::filter
   [:or
-   [:ref ::ref/field]
    ;; primitive clauses
    ::and
    ::or

@@ -1,6 +1,8 @@
 (ns metabase.lib.schema.expression
   (:require
+   [clojure.test.check.generators :as gen]
    [malli.core :as mc]
+   [malli.generator :as mg]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.filter :as filter]
    [metabase.lib.schema.literal :as literal]
@@ -13,6 +15,9 @@
 
 (defn- ref-of-base-type [base-type]
   [:and
+   {:gen/gen (gen/let [ref-val (mg/generator ::ref/ref)
+                       type-val (gen/elements (cons base-type (descendants base-type)))]
+               (assoc-in ref-val [1 :base-type] type-val))}
    [:ref ::ref/ref]
    [:fn
     {:error/message (str ":field, :expression, :or :aggregation with a " base-type " :base-type")}
@@ -37,8 +42,8 @@
   [:or
    {:error/message "expression returning a boolean"}
    [:ref ::literal/boolean]
-   [:ref ::filter/filter]
-   (ref-of-base-type :type/Boolean)])
+   (ref-of-base-type :type/Boolean)
+   [:ref ::filter/filter]])
 
 ;;; An expression that returns a string.
 (mr/def ::string
@@ -85,7 +90,8 @@
     [:cat
      [:= :*]
      ::common/options
-     [:* [:schema [:ref ::number]]]]]
+     ;; it has to contain at least one element not to match ::*.integer
+     [:+ [:schema [:ref ::number]]]]]
    [:not ::*.integer]])
 
 ;;; An expression that returns a number that includes a non-integer-real place, including but not limited floats, doubles,

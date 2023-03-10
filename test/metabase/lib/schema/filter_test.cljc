@@ -4,10 +4,10 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    malli.registry
+   [metabase.lib.core :as lib]
    ;; expression and filter recursively depend on each other
    metabase.lib.schema.expression
-   [metabase.lib.schema.filter :as filter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.filter :as filter]))
 
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
@@ -25,15 +25,36 @@
        f))
    filter-expr))
 
+(def filter-creation-function
+  "Map filter clause types to the corresponding creation function.
+  To be extended whenever a new filter clause type is defined."
+  {:and              lib/and
+   :or               lib/or
+   :not              lib/not
+   :=                lib/=
+   :!=               lib/!=
+   :<                lib/<
+   :<=               lib/<=
+   :>                lib/>
+   :>=               lib/>=
+   :between          lib/between
+   :inside           lib/inside
+   :is-null          lib/is-null
+   :not-null         lib/not-null
+   :is-empty         lib/is-empty
+   :not-empty        lib/not-empty
+   :starts-with      lib/starts-with
+   :ends-with        lib/ends-with
+   :contains         lib/contains
+   :does-not-contain lib/does-not-contain
+   :time-interval    lib/time-interval
+   :segment          lib/segment
+   :case             lib/case})
+
 (defn- known-filter-ops
   "Return all registered filter operators."
   []
-  (into #{}
-        (comp (filter #(and (qualified-keyword? %)
-                            (not= % ::filter/filter)
-                            (= (namespace %) (namespace ::filter/filter))))
-              (map (comp keyword name)))
-        (keys (malli.registry/schemas @#'mr/registry))))
+  (set (keys filter-creation-function)))
 
 (defn- filter-ops
   "Return the set of filter operators in `filter-expr`."

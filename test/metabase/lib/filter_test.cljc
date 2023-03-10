@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.filter :as schema.filter]
+   [metabase.lib.schema.filter-test :as schema.filter-test]
    [metabase.lib.test-metadata :as meta]
    [metabase.mbql.util :as mbql.u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])))
@@ -44,37 +45,11 @@
   (gen/sample filter-expr-gen)
   nil)
 
-(def ^:private filter-creation-function
-  "Map filter clause types to the corresponding creation function.
-  To be extended whenever a new filter clause type is defined."
-  {:and              lib/and
-   :or               lib/or
-   :not              lib/not
-   :=                lib/=
-   :!=               lib/!=
-   :<                lib/<
-   :<=               lib/<=
-   :>                lib/>
-   :>=               lib/>=
-   :between          lib/between
-   :inside           lib/inside
-   :is-null          lib/is-null
-   :not-null         lib/not-null
-   :is-empty         lib/is-empty
-   :not-empty        lib/not-empty
-   :starts-with      lib/starts-with
-   :ends-with        lib/ends-with
-   :contains         lib/contains
-   :does-not-contain lib/does-not-contain
-   :time-interval    lib/time-interval
-   :segment          lib/segment
-   :case             lib/case})
-
 (deftest ^:parallel filter-creation
   (checking "filters can be created"
     [filter-expr filter-expr-gen]
     (let [[op _options & args] filter-expr
-          f (filter-creation-function op)]
+          f (schema.filter-test/filter-creation-function op)]
       (is (some? f))
       (when f
         (is (fn? f))

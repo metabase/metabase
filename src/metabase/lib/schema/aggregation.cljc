@@ -8,7 +8,7 @@
   [:tuple
    [:= :sum]
    ::common/options
-   [:ref ::expression/number]])
+   ::expression/number])
 
 (mr/def ::aggregation
   [:or

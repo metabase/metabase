@@ -33,7 +33,8 @@
 ;;;
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
-  ::common/non-blank-string)
+  ;; wrapped in :or to be able override the generator
+  [:or {:gen/fmap #(str % "-" (random-uuid))} ::common/non-blank-string])
 
 (mr/def ::join
   [:map
