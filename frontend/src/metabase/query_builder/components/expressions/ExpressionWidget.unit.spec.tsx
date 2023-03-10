@@ -1,15 +1,33 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getIcon } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
+import { getIcon, render, screen } from "__support__/ui";
 import { createEntitiesState } from "__support__/store";
+import type { LinkProps } from "metabase/core/components/Link";
+import { getMetadata } from "metabase/selectors/metadata";
+import { createMockState } from "metabase-types/store/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { getMetadata } from "metabase/selectors/metadata";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
+
+jest.mock(
+  "metabase/core/components/Link",
+  () =>
+    function LinkMock({ to: href, tooltip, children, ...props }: LinkProps) {
+      const tooltipProps = typeof tooltip === "string" ? { tooltip } : tooltip;
+
+      return (
+        <>
+          <a href={href} {...props}>
+            {children}
+          </a>
+          {/* for some reason in Jest Tooltip for link doesn't show properly, so mocking it here */}
+          {tooltipProps && <div>{tooltipProps.tooltip}</div>}
+        </>
+      );
+    },
+);
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -22,17 +40,24 @@ describe("ExpressionWidget", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip", () => {
+  it("should render help icon with tooltip which leads to documentation page", async () => {
     setup();
 
     const icon = getIcon("info");
     expect(icon).toBeInTheDocument();
 
-    userEvent.hover(icon);
+    const link = screen.getByTestId("expression-widget-info-link");
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
+    );
+
+    userEvent.hover(link);
 
     expect(
       screen.getByText(
-        "You can reference columns here in functions or equations, like: floor([Price] - [Discount]).",
+        "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
       ),
     ).toBeInTheDocument();
   });
