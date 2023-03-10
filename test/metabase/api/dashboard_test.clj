@@ -2715,7 +2715,7 @@
                 (is (partial= {:name "Birds"}
                               new-row)))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing other parameters should fail gracefully"
