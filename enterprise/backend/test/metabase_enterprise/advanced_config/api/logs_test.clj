@@ -23,8 +23,8 @@
   (testing "GET /api/logs/query_execution/:yyyy-mm"
     (let [test-user :crowberto
           user-id   (mt/user->id test-user)]
-      ;; QueryExecution is an unbounded mega table, so run this test in an empty appdb
-      ;; otherwise calling the API will returns a zillion of log and we'll get OOM or stackoverflow.
+      ;; QueryExecution is an unbounded mega table and query it could result in a full table scan :( (See: #29103)
+      ;; Run the test in an empty database to make querying less intense.
       (mt/with-empty-h2-app-db
         (mt/with-temp* [QueryExecution [qe-a (merge query-execution-defaults
                                                     {:executor_id user-id
