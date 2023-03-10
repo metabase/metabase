@@ -216,4 +216,4 @@
           (doseq [action-id [create-id update-id delete-id]]
             (is (some? (->> (action/select-action :id action-id)
                             :parameters
-                            (filter #(= "uuid" (:id %)))
+                            (filter #(= "uuid" (:id %))))))))))))
