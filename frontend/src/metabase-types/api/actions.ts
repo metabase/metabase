@@ -96,7 +96,7 @@ export type OnSubmitActionForm = (
 // Action Forms
 
 export type ActionDisplayType = "form" | "button";
-export type FieldType = "string" | "number" | "date" | "category";
+export type FieldType = "string" | "number" | "date";
 
 export type DateInputType = "date" | "time" | "datetime";
 
@@ -108,8 +108,7 @@ export type InputSettingType =
   | "number"
   | "select"
   | "radio"
-  | "boolean"
-  | "category";
+  | "boolean";
 
 // these types get passed to the input components
 export type InputComponentType =
@@ -121,8 +120,7 @@ export type InputComponentType =
   | "radio"
   | "date"
   | "time"
-  | "datetime-local"
-  | "category";
+  | "datetime-local";
 
 export type Size = "small" | "medium" | "large";
 

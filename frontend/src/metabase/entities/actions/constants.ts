@@ -11,7 +11,6 @@ interface TagTypeMap {
 
 export const fieldTypeToParameterTypeMap: FieldTypeMap = {
   string: "string/=",
-  category: "string/=",
   number: "number/=",
 };
 
@@ -24,7 +23,6 @@ export const dateTypeToParameterTypeMap: FieldTypeMap = {
 
 export const fieldTypeToTagTypeMap: TagTypeMap = {
   string: "text",
-  category: "text",
   number: "number",
   date: "date",
 };

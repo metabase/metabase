@@ -591,7 +591,7 @@ describe("Actions > ActionForm", () => {
           type: "form",
           fields: {
             "abc-123": makeFieldSettings({
-              inputType: "category",
+              inputType: "string",
               id: "abc-123",
               title: "input",
               required: false,
@@ -718,7 +718,7 @@ describe("Actions > ActionForm", () => {
       });
     });
 
-    it("can change a date field to a select field", async () => {
+    it("can change a date field to a number field", async () => {
       const formSettings: ActionFormSettings = {
         type: "form",
         fields: {
@@ -731,16 +731,15 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("Category"));
+      userEvent.click(await screen.findByText("Number"));
 
       await waitFor(() => {
         expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
-              fieldType: "category",
-              inputType: "select",
-              valueOptions: [],
+              fieldType: "number",
+              inputType: "number",
             }),
           },
         });

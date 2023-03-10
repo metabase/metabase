@@ -27,7 +27,6 @@ type TagTypeMap = Record<string, TemplateTagType>;
 
 const fieldTypeToParameterTypeMap: FieldTypeMap = {
   string: "string/=",
-  category: "string/=",
   number: "number/=",
 };
 
@@ -40,7 +39,6 @@ const dateTypeToParameterTypeMap: FieldTypeMap = {
 
 const fieldTypeToTagTypeMap: TagTypeMap = {
   string: "text",
-  category: "text",
   number: "number",
   date: "date",
 };
