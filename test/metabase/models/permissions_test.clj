@@ -872,8 +872,8 @@
   (is (= :non-scoped      (perms/classify-path "/application/monitoring/")))
 
   (is (= :query-v2        (perms/classify-path "/query/db/0/native/")))
-  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/something/table/3/")))
-  )
+  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/something/table/3/"))))
+
 
 (deftest data-permissions-classify-path
   (is (= :data (perms/classify-path "/db/3/")))

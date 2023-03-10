@@ -3,20 +3,29 @@ import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import { alpha, color, lighten } from "metabase/lib/colors";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";
 
-export const UndoList = styled.ul`
+export const UndoList = styled.ul<{ isNavbarOpen: boolean }>`
   position: fixed;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 0;
-  margin: ${space(2)};
+  margin-left: ${props =>
+    props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : 0};
+  margin-bottom: ${space(2)};
   z-index: 999;
 `;
 
-export const ToastCard = styled(Card)`
+export const ToastCard = styled(Card)<{
+  translateY: number;
+  color?: string;
+}>`
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
   min-width: 310px;
+  transform: ${props => `translateY(${props.translateY}px)`};
+  ${props => (props.color ? `background-color: ${color(props.color)}` : "")}
 `;
 
 export const CardContent = styled.div`

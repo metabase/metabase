@@ -42,6 +42,7 @@
    [metabase.test.util.async :as tu.async]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
@@ -83,6 +84,7 @@
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
+  tu.random/keep-me
   test.tz/keep-me
   tx/keep-me
   tx.env/keep-me)
@@ -109,7 +111,8 @@
   query
   run-mbql-query
   with-db
-  with-temp-copy-of-db]
+  with-temp-copy-of-db
+  with-empty-h2-app-db]
 
  [data.impl
   *db-is-temp-copy?*]
@@ -215,8 +218,6 @@
   is-uuid-string?
   obj->json->obj
   postwalk-pred
-  random-email
-  random-name
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
@@ -248,6 +249,11 @@
   set-ns-log-level!
   with-log-messages-for-level
   with-log-level]
+
+ [tu.random
+  random-name
+  random-hash
+  random-email]
 
  [test.tz
   with-system-timezone-id]

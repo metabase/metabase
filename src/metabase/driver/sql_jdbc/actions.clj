@@ -177,7 +177,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-deleted 1)
-            (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
+            (throw (ex-info (if (zero? rows-deleted)
+                              (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                              (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                             {::incorrect-number-deleted true
                              :number-deleted            rows-deleted
                              :query                     query
@@ -213,7 +215,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-updated 1)
-            (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
+            (throw (ex-info (if (zero? rows-updated)
+                              (tru "Sorry, the row you''re trying to update doesn''t exist")
+                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                             {::incorrect-number-updated true
                              :number-updated            rows-updated
                              :query                     query

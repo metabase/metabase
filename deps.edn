@@ -63,7 +63,7 @@
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
-  info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML. Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
                                              :exclusions  [org.clojure/clojure
@@ -472,7 +472,7 @@
     com.github.seancorfield/depstar   {:mvn/version "2.1.303"}
     expound/expound                   {:mvn/version "0.7.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.0.3"}
-    io.github.clojure/tools.build     {:git/tag "v0.9.3" :git/sha "e537cd1"}
+    io.github.clojure/tools.build     {:git/tag "v0.9.4" :git/sha "76b78fe"}
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha8"}
     org.clojure/tools.deps.alpha      {:mvn/version "0.12.985"}
     org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}

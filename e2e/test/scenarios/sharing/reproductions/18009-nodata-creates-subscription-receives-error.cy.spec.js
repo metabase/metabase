@@ -6,7 +6,7 @@ import {
   sendEmailAndAssert,
 } from "e2e/support/helpers";
 
-describe.skip("issue 18009", { tags: "@external" }, () => {
+describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
