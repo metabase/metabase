@@ -20,8 +20,7 @@
    [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)
-   (org.quartz Scheduler)))
+   (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
 
