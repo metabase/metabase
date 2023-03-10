@@ -21,7 +21,10 @@ There are two ways to create a custom action:
 
 Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table.
 
-For example, you could write an action that would update the `plan` column for a record in the `Invoices` table in the Sample Database:
+
+### Example `UPDATE` action
+
+You could write an action that would update the `plan` column for a record in the `invoices` table in the Sample Database:
 
 ```
 {% raw %}
@@ -38,6 +41,58 @@ The above code will create a form that prompts people to input updated values fo
 The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed statement will only run if someone inserts a value in the payment field. Note the comma that separates the statements is _inside_ the brackets.
 
 ![Example action form](./images/form.png)
+
+## Example `INSERT` action
+
+Insert statements are pretty straightforward (we're leading with commas here so it's easy to comment out lines):
+
+```
+{% raw %} 
+INSERT INTO invoices (
+  account_id
+  ,payment
+  ,expected_invoice
+  ,plan
+  ,date_received
+)
+VALUES (
+  {{ account_id }}
+  ,{{ payment }}
+  ,{{expected_invoice}}
+  ,{{plan}}
+  ,({{date_received}}
+);
+{% endraw %} 
+```
+
+Though if you want to make a field optional in an `INSERT` statement, you need to get a little fancy. Metabase will only run an optional statement if a value is supplied to a variable in that optional statement, so the trick here is to use a SQL comment to sneak a variable in the optional column.
+
+```
+{% raw %} 
+  [[, expected_invoice --- {{ expected_invoice}}]] 
+{% endraw %} 
+```
+
+So a full `INSERT` statement with an optional variable would look like so:
+
+```
+{% raw %} 
+INSERT INTO invoices (
+  account_id
+  ,payment
+  [[,expected_invoice -- {{expected_invoice}}]]
+  ,plan
+  ,date_received
+)
+VALUES (
+  {{ account_id }}
+  ,{{ payment }}
+  [[,{{ expected_invoice }}]]
+  ,{{ plan }}
+  ,({{ date_received }}
+);
+{% endraw %} 
+```
 
 ## Field types for action variables
 
