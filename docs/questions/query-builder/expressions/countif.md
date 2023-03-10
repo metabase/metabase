@@ -22,8 +22,6 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
 ## Parameters
 
-Syntax: `CountIf(condition)`.
-
 `CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Multiple conditions
@@ -56,17 +54,17 @@ CountIf(([Plan] = "Basic" OR [Active Subscription] = true))
 
 Returns 4 on the sample data: there are three Basic plans, plus one Premium plan has an active subscription.
 
-### Some mandatory and some optional conditions
+### Some required and some optional conditions
 
-To combine mandatory and optional conditions, group the conditions using parentheses:
+To combine required and optional conditions, group the conditions using parentheses:
 
 ```
-CountIf(([Plan] = "Basic" OR [Plan] = "Business") AND [Active Subscription] = "false"))
+CountIf(([Plan] = "Basic" OR [Plan] = "Business") AND [Active Subscription] = "false")
 ```
 
 Returns 2 on the sample data: there are only two Basic or Business plans that lack an active subscription.
 
-> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making mandatory conditions optional (or vice versa).
+> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making required conditions optional (or vice versa).
 
 ## Conditional count by group
 
@@ -119,11 +117,11 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 | Boolean                                                                                          | ✅                        |
 | JSON                                                                                             | ❌                        |
 
-Your `condition` must be an [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Related functions
 
-Because CSV files make up 40% of the world's data.
+Different ways to do the same thing, because it's fun to try new things.
 
 **Metabase**
 - [case](#case)
@@ -160,8 +158,8 @@ The `case` version lets you count a different column when the condition isn't me
 
 To count the total number of Basic plans across both sources, you could create a `case` expression to:
 
-- count the rows in "ID: Source A" where "Plan: Source A = "Basic"
-- count the rows in "ID: Source B" where "Plan: Source B = "basic"
+- Count the rows in "ID: Source A" where "Plan: Source A = "Basic"
+- Count the rows in "ID: Source B" where "Plan: Source B = "basic"
 
 ```
 Count(case([Plan: Source A] = "Basic", [ID: Source A], 
@@ -170,7 +168,7 @@ Count(case([Plan: Source A] = "Basic", [ID: Source A],
 
 ### CumulativeCount
 
-`CountIf` doesn't do running counts. You'll need to combine the [CumulativeCount](../expressions-list.md#cumulativecount) aggregation with the [`case`](./case.md) function.
+`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../expressions-list.md#cumulativecount) with [`case`](./case.md).
 
 If our sample data is a time series:
 
@@ -186,13 +184,13 @@ And we want to get the running count of active plans like this:
 
 | Created Date: Month | Total Active Plans to Date |
 |---------------------|----------------------------|
-| October 2022        | 2                          |
-| November 2022       | 3                          |
+| October 2020        | 2                          |
+| November 2020       | 3                          |
 
 Create an aggregation from **Summarize** > **Custom expression**:
 
 ```
-CumulativeCount(case([Active Subscription] = true, [Plan]))
+CumulativeCount(case([Active Subscription] = true, [ID]))
 ```
 
 You'll also need to set the **Group by** column to "Created Date: Month".

@@ -22,8 +22,6 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 
 ## Parameters
 
-Syntax: `SumIf(column, condition)`.
-
 - `column` can be the name of a numeric column, or a [function](../expressions-list.md#functions) that returns a numeric column.
 - `condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
 
@@ -37,15 +35,19 @@ Syntax: `SumIf(column, condition)`.
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
 
-To sum a column based on multiple _mandatory_ conditions, combine the conditions using the `AND` operator:
+### Required conditions
+
+To sum a column based on multiple required conditions, combine the conditions using the `AND` operator:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" AND month([Date Received]) = 10))
 ```
 
-This expression would return 200 on the sample data above, as it sums all of the payments received for Basic Plans in October.
+This expression would return 200 on the sample data above: the sum of all of the payments received for Basic Plans in October.
 
-To sum a column with multiple _optional_ conditions, combine the conditions using the `OR` operator:
+### Optional conditions
+
+To sum a column with multiple optional conditions, combine the conditions using the `OR` operator:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
@@ -53,7 +55,9 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
 
 Returns 600 on the sample data.
 
-To combine mandatory and optional conditions, group the conditions using parentheses:
+### Some required and some optional conditions
+
+To combine required and optional conditions, group the conditions using parentheses:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Received]) = 10)
@@ -61,7 +65,7 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Recei
 
 Returns 400 on the sample data.
 
-> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making mandatory conditions optional (or vice versa).
+> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making required conditions optional (or vice versa).
 
 ## Conditional subtotals by group
 
@@ -115,6 +119,8 @@ See [parameters](#parameters).
 
 ## Related functions
 
+Different ways to do the same thing, because CSV files still make up 40% of the world's data.
+
 **Metabase**
 - [case](#case)
 - [CumulativeSum](#cumulativesum)
@@ -126,13 +132,13 @@ See [parameters](#parameters).
 
 ### case
 
-You can combine the `Sum` and [`case`](./case.md) formulas
+You can combine [`Sum`](../expressions-list.md#sum) and [`case`](./case.md)
 
 ```
 Sum(case([Plan] = "Basic", [Payment]))
 ```
 
-to do the same thing as the `SumIf` formula:
+to do the same thing as `SumIf`:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
