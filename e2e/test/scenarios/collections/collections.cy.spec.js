@@ -250,7 +250,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders in a dashboard");
     });
 
-    it("should be able to drag an item to the root collection (metabase#16498)", () => {
+    it.only("should be able to drag an item to the root collection (metabase#16498)", () => {
       moveItemToCollection("Orders", "First collection");
 
       getCollectionIdFromSlug("first_collection", id => {
