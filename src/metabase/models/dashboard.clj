@@ -284,25 +284,39 @@
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
+(defn should-update-dashcard?
+  "update keys are from [[metabase.models.dashboard-card/update-dashboard-card!]].
+  we should probably unite them."
+  [dashcard changes]
+  (let [update-keys [:card_id :action_id :parameter_mappings :visualization_settings :series]]
+   (not= (select-keys dashcard update-keys) (select-keys changes update-keys))))
+
 (defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard-or-id`.
-   This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
-   are performed when finished, for example updating FieldValues for On-Demand DBs.
-   Returns `nil`."
+  This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
+  are performed when finished, for example updating FieldValues for On-Demand DBs.
+  Returns `nil`."
   {:style/indent 1}
   [dashboard-or-id dashcards]
-  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
-        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
+  (let [old-param-field-ids  (dashboard-id->param-field-ids dashboard-or-id)
+        dashcard-ids         (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))
+        dashboard            (-> (if (map? dashboard-or-id)
+                                   dashboard-or-id
+                                   (t2/select-one Dashboard :id dashboard-or-id))
+                                 (t2/hydrate [:ordered_cards :series]))
+        id->dashcard-current (group-by :id (:ordered_cards dashboard))
+        id->dashcard-change  (group-by :id dashcards)]
     (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (if (contains? dashcard-ids dashcard-id)
-        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))
+        (when (should-update-dashcard? (get id->dashcard-current dashcard-id)
+                                       (get id->dashcard-change dashcard-id))
+          (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))
         (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                              (u/the-id dashboard-or-id) dashcard-id)
                         {:status-code 404}))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
-
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query
@@ -472,7 +486,7 @@
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                             (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [card_id parameter_mappings visualization_settings]}]
