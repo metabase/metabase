@@ -5,8 +5,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.card-test :as card-test]
    [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard :refer [Dashboard] :as dashboard]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
