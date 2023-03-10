@@ -45,7 +45,7 @@
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
   (mu/with-api-error-message
-    [:int {:min 1}]
+    pos-int?
     (deferred-tru "value must be an integer greater than zero.")))
 
 (def PositiveNum

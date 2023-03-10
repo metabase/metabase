@@ -267,10 +267,11 @@
       (= schema-type :re) (first (try (mc/children schema)
                                       (catch clojure.lang.ExceptionInfo _
                                         (mc/children (eval schema)))))
-      (= schema-type :int) #"[0-9]+"
-      (= schema-type int?) #"[0-9]+"
+      (= schema-type 'pos-int?) #"[0-9]+"
+      (= schema-type :int) #"-?[0-9]+"
+      (= schema-type 'int?) #"-?[0-9]+"
       (= schema-type :uuid) u/uuid-regex
-      (= schema-type uuid?) u/uuid-regex)))
+      (= schema-type 'uuid?) u/uuid-regex)))
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on

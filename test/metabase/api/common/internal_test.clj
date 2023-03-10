@@ -57,10 +57,10 @@
   {address ms/NonBlankString}
   {:status 200 :body address})
 
-(api/defendpoint POST "/auto-coerce-square/:x"
+(api/defendpoint POST "/auto-coerce-pos-square/:x"
   [x]
   ;; if not for this annotation, x would continue to be a string:
-  {x :int}
+  {x ms/PositiveInt}
   (* x x))
 
 (api/defendpoint POST "/auto-coerce-string-repeater"
@@ -86,6 +86,12 @@
          [:archipelago :string]]}
   (let [{:keys [state po-box archipelago]} body]
     (str/join " | " [state po-box archipelago])))
+
+(api/defendpoint POST "/accept-thing/:a" [a] {a [:re #"a.*"]} "hit route for a.")
+(api/defendpoint POST "/accept-thing/:b" [b] {b [:re #"b.*"]} "hit route for b.")
+(api/defendpoint POST "/accept-thing/:c" [c] {c [:re #"c.*"]} "hit route for c.")
+(api/defendpoint POST "/accept-thing/:d" [d] {d [:re #"d.*"]} "hit route for d.")
+(api/defendpoint POST "/accept-thing/:e" [e] {e [:re #"e.*"]} "hit route for e.")
 
 (api/define-routes)
 
@@ -186,12 +192,17 @@
 
     (testing "auto-coercion"
 
-      (is (= 16 (:body (post! "/auto-coerce-square/4" {}))))
-      (is (= 16 (:body (post! "/auto-coerce-square/-4" {}))))
-      (is (= {:errors {:x "integer"}, :specific-errors {:x ["should be an integer, received: \"not-an-int\""]}}
+      (is (= 16 (:body (post! "/auto-coerce-pos-square/4" {}))))
+
+      ;; Does not match route:
+      (is (= nil (:body (post! "/auto-coerce-pos-square/-4" {}))))
+
+      (is (= {:errors {:x "value must be an integer greater than zero."},
+              :specific-errors {:x ["value must be an integer greater than zero., received: \"not-an-int\""]}}
              (:body (post! "/auto-coerce-square/not-an-int" {}))))
 
-      (is (= "chirp! chirp! chirp!" (:body (post! "/auto-coerce-string-repeater" {:n 3 :str "chirp!" :join " "}))))
+      (is (= "chirp! chirp! chirp!"
+             (:body (post! "/auto-coerce-string-repeater" {:n 3 :str "chirp!" :join " "}))))
 
       (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
               :specific-errors {:body {:n ["should be a positive int, received: -3"]}}}
@@ -204,12 +215,10 @@
                            {:n 3 :str 123 :join " "}))))
 
       (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
-              :specific-errors
-              {:body
-               {:str ["missing required key, received: nil"],
-                :n ["missing required key, received: nil"],
-                :join ["missing required key, received: nil"]}}}
-             (:body (post! "/auto-coerce-string-repeater" {}))))
+              :specific-errors {:body {:str ["missing required key, received: nil"],
+                                       :n ["missing required key, received: nil"],
+                                       :join ["missing required key, received: nil"]}}}
+             (:body (post! "/auto-coer ce-string-repeater" {}))))
 
       (is (= {;; in the defendpoint body, it is coerced properly:
               :pr-strd "#{:c :d/e :b :a}",
@@ -226,16 +235,21 @@
              (:body (post! "/auto-coerce-destructure" {}))))
 
       (is (= {:errors
-              {:body
-               "map where {:user-state -> <string>, :po-box -> <string with length between 1 and 10 inclusive>, :archipelago -> <string>} with no other keys"},
-              :specific-errors
-              {:body
-               {:ser-state ["should be spelled :user-state, received: \"my state\""],
-                :o-box ["should be spelled :po-box, received: \"my po-box\""],
-                :rchipelago ["should be spelled :archipelago, received: \"my archipelago\""]}}}
+              {:body "map where {:user-state -> <string>, :po-box -> <string with length between 1 and 10 inclusive>, :archipelago -> <string>} with no other keys"},
+              :specific-errors {:body {:ser-state ["should be spelled :user-state, received: \"my state\""],
+                                       :o-box ["should be spelled :po-box, received: \"my po-box\""],
+                                       :rchipelago ["should be spelled :archipelago, received: \"my archipelago\""]}}}
              (:body (post! "/closed-map-spellcheck" {:ser-state "my state"
                                                      :o-box "my po-box"
-                                                     :rchipelago "my archipelago"})))))))
+                                                     :rchipelago "my archipelago"})))))
+
+    (testing "routes need to not be arbitrarily chosen"
+      (is (= "hit route for a." (:body (post! "/accept-thing/a123" {}))))
+      (is (= "hit route for b." (:body (post! "/accept-thing/b123" {}))))
+      (is (= "hit route for c." (:body (post! "/accept-thing/c123" {}))))
+      (is (= "hit route for d." (:body (post! "/accept-thing/d123" {}))))
+      (is (= "hit route for e." (:body (post! "/accept-thing/e123" {}))))
+      (is (= nil (:body (post! "/accept-thing/f123" {})))))))
 
 (deftest route-fn-name-test
   (are [method route expected] (= expected
