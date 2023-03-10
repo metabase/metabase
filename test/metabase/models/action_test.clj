@@ -188,7 +188,7 @@
              (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         :table_id (mt/id :required_uuid)))))
     (mt/with-actions-enabled
-      (testing "table with required PK should exclude it from implicit create action"
+      (testing "PK with a default should be excluded from implicit create action parameters"
         (mt/with-actions [_                      {:dataset true :dataset_query (mt/mbql-query default_uuid)}
                           {create-id :action-id} {:type :implicit
                                                   :kind "row/create"}
@@ -203,7 +203,7 @@
                            :parameters
                            (filter #(= "uuid" (:id %)))
                            first))))))
-      (testing "table with required PK should include it in all implicit action kinds"
+      (testing "PK without a default should be included in the parameters for all implicit action types"
         (mt/with-actions [_                      {:dataset true :dataset_query (mt/mbql-query required_uuid)}
                           {create-id :action-id} {:type :implicit
                                                   :kind "row/create"}
