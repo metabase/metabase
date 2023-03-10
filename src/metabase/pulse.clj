@@ -9,11 +9,13 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
@@ -60,18 +62,18 @@
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
-                     :dashboard-id  (u/the-id dashboard)
-                     :card-id       card-id
-                     :dashcard-id   (u/the-id dashcard)
-                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                     :export-format :api
-                     :parameters    parameters
-                     :middleware    {:process-viz-settings? true
-                                     :js-int-to-string?     false}
-                     :run           (fn [query info]
-                                      (qp/process-query-and-save-with-max-results-constraints!
-                                       (assoc query :async? false)
-                                       info)))]
+                   :dashboard-id  (u/the-id dashboard)
+                   :card-id       card-id
+                   :dashcard-id   (u/the-id dashcard)
+                   :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                   :export-format :api
+                   :parameters    parameters
+                   :middleware    {:process-viz-settings? true
+                                   :js-int-to-string?     false}
+                   :run           (fn [query info]
+                                    (qp/process-query-and-save-with-max-results-constraints!
+                                     (assoc query :async? false)
+                                     info)))]
       {:card     card
        :dashcard dashcard
        :result   result})
@@ -130,7 +132,7 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes.util/link-card-model->toucan-model model)
+                                 (serdes/link-card-model->toucan-model model)
                                  (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text (assoc link-card :entity instance)))))))

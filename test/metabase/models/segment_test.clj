@@ -4,7 +4,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.revision :as revision]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [toucan.db :as db])
@@ -113,5 +113,5 @@
                       Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                       Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
         (is (= "be199b7c"
-               (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table) now])
-               (serdes.hash/identity-hash segment)))))))
+               (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
+               (serdes/identity-hash segment)))))))

@@ -189,8 +189,7 @@
                   ;; customize the `context` passed to the QP
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                     (binding [qp.perms/*card-id* card-id]
-                       (qp-runner query info context)))))
+                                                    (qp-runner query info context))))
         card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
@@ -211,4 +210,5 @@
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
-    (run query info)))
+    (binding [qp.perms/*card-id* card-id]
+     (run query info))))
