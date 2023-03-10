@@ -57,7 +57,7 @@
   ([f] (load identity f))
   ([constructor ^Path f]
    (try
-     (-> f .toFile from-file constructor)
+     (-> f .toUri from-file constructor)
      (catch Exception e
        (log/error (trs "Error parsing {0}:\n{1}"
                        (.getFileName f)
