@@ -22,20 +22,23 @@
   (testing "GET /api/logs/query_execution/:yyyy-mm"
     (let [test-user :crowberto
           user-id   (mt/user->id test-user)]
-      (mt/with-temp* [QueryExecution [qe-a (merge query-execution-defaults
-                                                  {:executor_id user-id
-                                                   :started_at  (t/minus now (t/days 2))})]
-                      QueryExecution [qe-b (merge query-execution-defaults
-                                                   {:executor_id user-id
-                                                    :started_at  (t/minus now (t/days 32))})]]
-        (testing "Query Executions within `:yyyy-mm` are returned."
-          (premium-features.test/with-premium-features #{:advanced-config}
-            (is (= [(select-keys qe-a [:started_at :id])]
-                   (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/2023-02")
-                        (filter #(#{user-id} (:executor_id %)))
-                        (filter #((set (map :id [qe-a qe-b])) (:id %)))
-                        (map #(select-keys % [:started_at :id])))))))
-        (testing "Logs endpoint only works when `:advanced-config` feature is available."
-          (premium-features.test/with-premium-features #{}
-            (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
-                   (mt/user-http-request test-user :get 402 "ee/logs/query_execution/2023-02")))))))))
+      ;; QueryExecution is an unbounded mega table, so run this test in an empty appdb
+      ;; otherwise calling the API will returns a zillion of log and we'll get OOM or stackoverflow.
+      (mt/with-empty-h2-app-db
+        (mt/with-temp* [QueryExecution [qe-a (merge query-execution-defaults
+                                                    {:executor_id user-id
+                                                     :started_at  (t/minus now (t/days 2))})]
+                        QueryExecution [qe-b (merge query-execution-defaults
+                                                    {:executor_id user-id
+                                                     :started_at  (t/minus now (t/days 32))})]]
+          (testing "Query Executions within `:yyyy-mm` are returned."
+            (premium-features.test/with-premium-features #{:advanced-config}
+              (is (= [(select-keys qe-a [:started_at :id])]
+                     (->> (mt/user-http-request test-user :get 200 "ee/logs/query_execution/2023-02")
+                          (filter #(#{user-id} (:executor_id %)))
+                          (filter #((set (map :id [qe-a qe-b])) (:id %)))
+                          (map #(select-keys % [:started_at :id])))))))
+          (testing "Logs endpoint only works when `:advanced-config` feature is available."
+            (premium-features.test/with-premium-features #{}
+              (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
+                     (mt/user-http-request test-user :get 402 "ee/logs/query_execution/2023-02"))))))))))
