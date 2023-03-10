@@ -11,6 +11,7 @@ import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 import { getInputTypes } from "./constants";
 import { getDefaultValueInputType } from "./utils";
@@ -143,10 +144,13 @@ function PlaceholderInput({
   value: string;
   onChange: (newPlaceholder: string) => void;
 }) {
+  const id = useUniqueId();
+
   return (
     <div>
-      <SectionLabel>{t`Placeholder text`}</SectionLabel>
+      <SectionLabel htmlFor={id}>{t`Placeholder text`}</SectionLabel>
       <Input
+        id={id}
         fullWidth
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -167,6 +171,8 @@ function RequiredInput({
   onChangeRequired,
   onChangeDefaultValue,
 }: RequiredInputProps) {
+  const id = useUniqueId();
+
   const handleDefaultValueChange = ({
     target: { value },
   }: ChangeEvent<HTMLInputElement>) => {
@@ -182,14 +188,22 @@ function RequiredInput({
   return (
     <div>
       <ToggleContainer>
-        <RequiredToggleLabel htmlFor="is-required">{t`Required`}</RequiredToggleLabel>
-        <Toggle id="is-required" value={required} onChange={onChangeRequired} />
+        <RequiredToggleLabel
+          htmlFor={`${id}-required`}
+        >{t`Required`}</RequiredToggleLabel>
+        <Toggle
+          id={`${id}-required`}
+          value={required}
+          onChange={onChangeRequired}
+        />
       </ToggleContainer>
       {required && (
         <>
-          <SectionLabel htmlFor="default-value">{t`Default value`}</SectionLabel>
+          <SectionLabel htmlFor={`${id}-default`}>
+            {t`Default value`}
+          </SectionLabel>
           <Input
-            id="default-value"
+            id={`${id}-default`}
             type={getDefaultValueInputType(inputType)}
             fullWidth
             value={defaultValue ?? ""}
