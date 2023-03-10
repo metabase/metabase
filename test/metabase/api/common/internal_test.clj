@@ -201,8 +201,8 @@
               :specific-errors {:x ["value must be an integer greater than zero., received: \"not-an-int\""]}}
              (:body (post! "/auto-coerce-square/not-an-int" {}))))
 
-      (is (= "chirp! chirp! chirp!"
-             (:body (post! "/auto-coerce-string-repeater" {:n 3 :str "chirp!" :join " "}))))
+      (is (= "chirp! chirp!"
+             (:body (post! "/auto-coerce-string-repeater" {:n 2 :str "chirp!" :join " "}))))
 
       (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
               :specific-errors {:body {:n ["should be a positive int, received: -3"]}}}
