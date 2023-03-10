@@ -110,7 +110,7 @@
 ;;; |                                           Quartz Scheduler Helpers                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; This section of code's purpose is to avoid the migration depending on function in the [[metabase.task]] namespace,
+;; This section of code's purpose is to avoid the migration depending on the [[metabase.task]] namespace,
 ;; which is likely to change, and might not have as tight test coverage as needed for custom migrations.
 
 (defn- load-class ^Class [^String class-name]
