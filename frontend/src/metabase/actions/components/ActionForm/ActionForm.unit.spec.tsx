@@ -740,6 +740,7 @@ describe("Actions > ActionForm", () => {
             "abc-123": makeFieldSettings({
               fieldType: "category",
               inputType: "select",
+              valueOptions: [],
             }),
           },
         });

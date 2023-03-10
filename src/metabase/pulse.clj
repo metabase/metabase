@@ -15,7 +15,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
@@ -132,7 +132,7 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes.util/link-card-model->toucan-model model)
+                                 (serdes/link-card-model->toucan-model model)
                                  (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text (assoc link-card :entity instance)))))))
