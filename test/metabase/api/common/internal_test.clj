@@ -14,8 +14,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty9 :as jetty]))
 
 (set! *warn-on-reflection* true)
@@ -31,13 +30,6 @@
      [:city :string]
      [:zip :int]
      [:lonlat [:tuple :double :double]]]]])
-
-
-(def NonBlankString
-  "Schema for a string that cannot be blank."
-  (mu/with-api-error-message
-    [:string {:min 1}]
-    (deferred-tru "value must be a non-blank string.")))
 
 (def ClosedTestAddress
   (mut/closed-schema TestAddress))
@@ -62,7 +54,7 @@
 
 (api/defendpoint POST "/test-localized-error"
   [:as {address :body :as _request}]
-  {address NonBlankString}
+  {address ms/NonBlankString}
   {:status 200 :body address})
 
 (api/defendpoint POST "/auto-coerce-square/:x"
@@ -299,6 +291,31 @@
      [:id]          [:id "#[0-9]+"]
      [:id :fish]    [:id "#[0-9]+"]
      [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
+
+(deftest add-route-param-schema-test
+  (are [route expected] (= expected
+                           (let [result (internal/add-route-param-schema
+                                         '{id ms/PositiveInt
+                                           card-id ms/PositiveInt
+                                           crazy-id ms/PositiveInt
+                                           uuid ms/UUIDString}
+                                         route)]
+                             (cond (string? result) result
+                                   (coll? result) (mapv
+                                                   (fn [x] (if (= (type x) java.util.regex.Pattern)
+                                                             (str "#" x)
+                                                             x))
+                                                   result))))
+    "/"                                    "/"
+    "/:id"                                 ["/:id" :id "#[0-9]+"]
+    "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
+    "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
+    "/:fish"                               "/:fish"
+    "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
+    ;; don't try to typify route that's already typified
+    ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
+    ;; Check :uuid args
+    "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]))
 
 (deftest add-route-param-regexes-test
   (no-route-regexes

@@ -14,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -254,6 +255,44 @@
       (if (empty? arg-types)
         route
         (apply vector route arg-types)))))
+
+(defn- ->matching-regex
+  "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
+  [schema]
+  (let [schema-type (try (mc/type schema)
+                         (catch clojure.lang.ExceptionInfo _
+                           (mc/type (eval schema))))]
+    (cond
+      ;; can use regex directly
+      (= schema-type :re) (first (try (mc/children schema)
+                                      (catch clojure.lang.ExceptionInfo _
+                                        (mc/children (eval schema)))))
+      (= schema-type :int) #"[0-9]+"
+      (= schema-type int?) #"[0-9]+"
+      (= schema-type :uuid) u/uuid-regex
+      (= schema-type uuid?) u/uuid-regex)))
+
+(defn add-route-param-schema
+  "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
+  malli schemas given in the `arg->schema` map.
+
+  (add-route-param-schema '{id :int} \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]
+  (add-route-param-schema  \"/:id/card\") -> \"/:id/card\""
+  [arg->schema route]
+  (if (vector? route)
+    route
+    (let [[wildcard & wildcards] (for [[k schema] arg->schema
+                                       :when (re-find (re-pattern (str ":" k)) route)
+                                       :let [re (->matching-regex schema)]]
+                                   (if re
+                                     [route (keyword k) re]
+                                     (when config/is-dev?
+                                       (println "Warning: missing route-param regex for schema:" route [k schema]))))]
+      (cond
+        ;; multiple hits -> tack them onto the original route shape.
+        wildcards (reduce into wildcard (mapv #(drop 1 %) wildcards))
+        wildcard wildcard
+        :else route))))
 
 ;;; ## ROUTE ARG AUTO PARSING
 
