@@ -211,4 +211,17 @@ describe("scenarios > visualizations > table", () => {
     cy.wait(100);
     popover().should("not.exist");
   });
+
+  it("should allow the user to hide the column in the formatting popover", () => {
+    openOrdersTable({ limit: 2 });
+
+    cy.findByText("Product ID").click();
+    popover().within(() => {
+      cy.icon("gear").click();
+      cy.findByText("Hide this column").click();
+    });
+
+    popover().should("not.exist");
+    cy.findByText("Product ID").should("not.exist");
+  });
 });

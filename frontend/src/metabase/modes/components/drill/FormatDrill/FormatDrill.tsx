@@ -24,7 +24,11 @@ const FormatDrill: Drill = ({ question, clicked }) => {
 
   const { column } = clicked;
 
-  const FormatPopover = ({ series, onChange }: ClickActionPopoverProps) => {
+  const FormatPopover = ({
+    series,
+    onChange,
+    onClose,
+  }: ClickActionPopoverProps) => {
     const handleChangeSettings = (settings: VisualizationSettings) => {
       onChange(updateSettings(series[0].card.visualization_settings, settings));
     };
@@ -44,6 +48,7 @@ const FormatDrill: Drill = ({ question, clicked }) => {
       props: {
         ...columnSettingsWidget.props,
         initialKey: getColumnKey(column),
+        onClose,
       },
     };
 
