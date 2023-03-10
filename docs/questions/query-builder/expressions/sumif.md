@@ -22,8 +22,8 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 
 ## Parameters
 
-- `column` can be the name of a numeric column, or an expression that returns a numeric column.
-- `condition` is an expression that returns a boolean value (`true` or `false`), like the expression `[Payment] > 100`.
+- `column` can be the name of a numeric column, or a [function](../expressions-list.md#functions) that returns a numeric column.
+- `condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
 
 ## Multiple conditions
 
