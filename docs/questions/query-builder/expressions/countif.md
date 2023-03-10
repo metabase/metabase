@@ -8,21 +8,21 @@ title: CountIf
 
 Syntax: `CountIf(condition)`.
 
-Example: in the table below, `CountIf([Plan] = "Basic")` would return 2.
+Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
 | ID  | Plan        |
 |-----|-------------|
 | 1   | Basic       |
 | 2   | Basic       |
 | 3   | Basic       |
-| 4   | Basic       |
+| 4   | Business    |
 | 5   | Premium     |
 
 > [Aggregation formulas](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
-`condition` is an expression that returns a boolean value (`true` or `false`).
+`condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Multiple conditions
 
@@ -36,7 +36,7 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 2.
 
 ### Mandatory matches
 
-To count the total rows in a table that match multiple _mandatory_ conditions, combine the conditions using the `AND` operator:
+To count the total rows in a table that match multiple mandatory conditions, combine the conditions using the `AND` operator:
 
 ```
 CountIf(([Plan] = "Basic" AND [Active Subscription] = true))
@@ -46,7 +46,7 @@ This expression will return 2 on the sample data above (the total number of Basi
 
 ### Optional matches
 
-To sum a column with multiple _optional_ conditions, combine the conditions using the `OR` operator:
+To count the total rows in a table that match multiple optional conditions, combine the conditions using the `OR` operator:
 
 ```
 CountIf(([Plan] = "Basic" OR [Active Subscription] = true))
@@ -68,10 +68,12 @@ Returns 2 on the sample data.
 
 ## Conditional count by group
 
-In general, to get a conditional count for a category or group, you'll:
+In general, to get a conditional count for a category or group, such as the number of inactive subscriptions per plan, you'll:
 
-1. Write a `CountIf` formula with your conditions.
+1. Write a `CountIf` expression with your conditions.
 2. Add a [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column in the query builder.
+
+Using the sample data:
 
 | ID  | Plan        | Active Subscription |
 |-----|-------------| --------------------|
@@ -81,13 +83,13 @@ In general, to get a conditional count for a category or group, you'll:
 | 4   | Business    | false               |
 | 5   | Premium     | true                |
 
-To count the total number of inactive subscriptions per plan:
+Count the total number of inactive subscriptions per plan:
 
 ```
 CountIf([Active Subscription] = false)
 ```
 
-If your **Active Subscription** column also contains `null` (empty) values that represent inactive plans, you could use:
+Alternatively, if your **Active Subscription** column contains `null` (empty) values that represent inactive plans, you could use:
 
 ```
 {% raw %}CountIf([Payment], [Plan] != true){% endraw %}
@@ -115,7 +117,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 | Boolean                                                                                          | ✅                        |
 | JSON                                                                                             | ❌                        |
 
-Your `condition` must be an expression that returns a boolean value (`true` or `false`).
+Your `condition` must be an [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Related functions
 
@@ -130,13 +132,13 @@ Your `condition` must be an expression that returns a boolean value (`true` or `
 
 ### case
 
-You can combine the `Count` and [`case`](./case.md) formulas
+You can combine [`Count`](../expressions-list.md#count) with [`case`](./case.md):
 
 ```
 Count(case([Plan] = "Basic", [Plan]))
 ```
 
-to do the same thing as the `CountIf` formula:
+to do the same thing as the `CountIf` expression:
 
 ```
 CountIf([Plan] = "Basic")
@@ -152,10 +154,10 @@ The `case` version lets you count a different column when the condition isn't me
 |             | Business     | false               |
 | Premium     |              | true                |
 
-You could create a case expression to:
+You could create a `case` expression to:
 
-- counts the "Active Plan" column when "Active Subscription = true"
-- counts the "Expired Plan" column when "Active Subscription = false"
+- count the "Active Plan" column when "Active Subscription = true"
+- count the "Expired Plan" column when "Active Subscription = false"
 
 ```
 Count(case([Active Subscription] = true, [Active Plan], [Expired Plan]))
@@ -163,7 +165,7 @@ Count(case([Active Subscription] = true, [Active Plan], [Expired Plan]))
 
 ### CumulativeCount
 
-`CountIf` doesn't do running counts. You'll need to combine the [CumulativeCount](../expressions-list.md#cumulativecount) aggregation with the [`case`](./case.md) formula.
+`CountIf` doesn't do running counts. You'll need to combine the [CumulativeCount](../expressions-list.md#cumulativecount) aggregation with the [`case`](./case.md) function.
 
 If our sample data is a time series:
 
@@ -177,10 +179,10 @@ If our sample data is a time series:
 
 And we want to get the running count of _active_ plans like this:
 
-| Created Month   | Total Active Plans to Date |
-|-----------------|----------------------------|
-| October 2022    | 2                          |
-| November 2022   | 3                          |
+| Created Date: Month | Total Active Plans to Date |
+|---------------------|----------------------------|
+| October 2022        | 2                          |
+| November 2022       | 3                          |
 
 Create an aggregation from **Summarize** > **Custom expression**:
 
@@ -194,15 +196,7 @@ You'll also need to set the **Group by** column to "Created Date: Month".
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our sample data is stored in a PostgreSQL database:
-
-| ID  | Plan        | Active Subscription |
-|-----|-------------| --------------------|
-| 1   | Basic       | true                |
-| 2   | Basic       | true                | 
-| 3   | Basic       | false               |
-| 4   | Business    | false               |
-| 5   | Premium     | true                |
+If our [sample data](#multiple-conditions) is stored in a PostgreSQL database:
 
 ```sql
 SELECT COUNT(CASE WHEN plan = "Basic" THEN id END) AS basic_plans
@@ -215,13 +209,7 @@ is equivalent to the Metabase `CountIf` expression:
 CountIf([Plan] = "Basic")
 ```
 
-To add [conditions with a grouping column](#conditional-count-by-group) and get a result like this:
-
-| Plan      | Total Inactive Subscriptions |
-|-----------|------------------------------|
-| Basic     | 1                            | 
-| Business  | 1                            |
-| Premium   | 0                            |
+To add [conditions with a grouping column](#conditional-count-by-group):
 
 ```sql
 SELECT 
@@ -231,25 +219,17 @@ GROUP BY
     plan
 ```
 
-The SQL `SELECT` statement matches the Metabase `CountIf` expression:
+will do the same thing as the Metabase `CountIf` expression:
 
 ```
 CountIf([Active Subscription] = false)
 ```
 
-The SQL `GROUP BY` statement maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
+Note that the SQL `GROUP BY` statement will map to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
 
 ### Spreadsheets
 
-If our sample data is in a spreadsheet where "ID" is in column A:
-
-| ID  | Plan        | Active Subscription |
-|-----|-------------| --------------------|
-| 1   | Basic       | true                |
-| 2   | Basic       | true                | 
-| 3   | Basic       | false               |
-| 4   | Business    | false               |
-| 5   | Premium     | true                |
+If our [sample data](#multiple-conditions) is in a spreadsheet where "ID" is in column A:
 
 ```
 =CountIf(B:B, "Basic")
@@ -261,19 +241,11 @@ produces the same result as:
 CountIf([Plan] = "Basic")
 ```
 
-To add additional conditions, you'll need to switch to a spreadsheet **array formula**.
+To add additional conditions, you'll need to use a spreadsheet **array formula**.
 
 ### Python
 
-If our sample data is in a `pandas` dataframe column called `df`:
-
-| ID  | Plan        | Active Subscription |
-|-----|-------------| --------------------|
-| 1   | Basic       | true                |
-| 2   | Basic       | true                | 
-| 3   | Basic       | false               |
-| 4   | Business    | false               |
-| 5   | Premium     | true                |
+If our [sample data](#multiple-conditions) is in a `pandas` dataframe column called `df`:
 
 ```python
 len(df[df['Plan'] == "Basic"])
@@ -283,12 +255,6 @@ will count the number of rows where the condition is met.
 
 To get a [conditional count with a grouping column](#conditional-count-by-group):
 
-| Plan      | Total Inactive Subscriptions |
-|-----------|------------------------------|
-| Basic     | 1                            | 
-| Business  | 1                            |
-| Premium   | 0                            |
-
 ```python
 import datetime as dt
 
@@ -296,7 +262,7 @@ import datetime as dt
 
     df_filtered = df[df['Active subscription'] == false]
 
-## Count the rows in the group by result
+## Group by a column, and count the rows within each group
 
     len(df_filtered.groupby('Plan'))
 ```
