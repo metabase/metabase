@@ -12,31 +12,10 @@ import { getDashboardBeforeEditing } from "../selectors";
 
 import { updateDashcardId } from "./core";
 import { fetchDashboard } from "./data-fetching";
+import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
-
-function hasDashboardChanged(dashboard, dashboardBeforeEditing) {
-  const dashboardHasChanged = !_.isEqual(
-    { ...dashboard, ordered_cards: dashboard.ordered_cards.length },
-    {
-      ...dashboardBeforeEditing,
-      ordered_cards: dashboardBeforeEditing.ordered_cards.length,
-    },
-  );
-
-  if (dashboardHasChanged) {
-    return true;
-  }
-
-  // sometimes the cards objects change order but all the cards themselves are the same
-  // this should not trigger a save
-  const cardsHaveChanged =
-    _.difference(dashboard.ordered_cards, dashboardBeforeEditing.ordered_cards)
-      .length > 0;
-
-  return cardsHaveChanged;
-}
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
@@ -52,13 +31,21 @@ export const saveDashboardAndCards = createThunkAction(
       };
 
       const dashboardBeforeEditing = getDashboardBeforeEditing(state);
-      const dashboardHasChanged = hasDashboardChanged(
-        dashboard,
-        dashboardBeforeEditing,
-      );
 
-      if (!dashboardHasChanged) {
-        return;
+      if (dashboardBeforeEditing) {
+        const dashboardHasChanged = hasDashboardChanged(
+          dashboard,
+          dashboardBeforeEditing,
+        );
+
+        const cardsHaveChanged = haveDashboardCardsChanged(
+          dashboard.ordered_cards,
+          dashboardBeforeEditing.ordered_cards,
+        );
+
+        if (!cardsHaveChanged && !dashboardHasChanged) {
+          return;
+        }
       }
 
       // clean invalid dashcards
