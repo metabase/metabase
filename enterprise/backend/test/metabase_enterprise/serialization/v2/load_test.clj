@@ -7,23 +7,11 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action
-            Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Field
-            FieldValues
-            Metric
-            NativeQuerySnippet
-            Segment
-            Table
-            Timeline
-            TimelineEvent
-            User]]
+    :refer [Action Card Collection Dashboard DashboardCard Database Field
+            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            TimelineEvent User]]
    [metabase.models.action :as action]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
@@ -45,7 +33,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes.base/serdes-path entity))
+                          [(no-labels (serdes/path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -813,7 +801,7 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes.base/serdes-path)
+                          (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 
@@ -927,7 +915,7 @@
         (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
 
         (testing "on extraction"
-          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (= (:entity_id @snippet1s)
                  (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
 

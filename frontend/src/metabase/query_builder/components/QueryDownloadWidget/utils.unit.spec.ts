@@ -109,6 +109,7 @@ describe("getDownloadButtonParams", () => {
         result,
       }),
     ).toStrictEqual({
+      method: "POST",
       params: { parameters: "[]" },
       url: "api/card/1/query/csv",
     });
@@ -124,6 +125,7 @@ describe("getDownloadButtonParams", () => {
         result,
       }),
     ).toStrictEqual({
+      method: "POST",
       url: "api/dataset/csv",
       params: {
         query: JSON.stringify({ parameters: [] }),

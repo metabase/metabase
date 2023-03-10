@@ -337,7 +337,7 @@ export function isMappableColumn(column) {
 export function clickTargetObjectType(object) {
   if (!object.dataset_query) {
     return "dashboard";
-  } else if (object.dataset_query.type === "native") {
+  } else if (new Question(object).isNative()) {
     return "native";
   } else {
     return "gui";
