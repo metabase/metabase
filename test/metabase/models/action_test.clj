@@ -148,7 +148,6 @@
           (is (false? (t2/select-one-fn :archived Action action-id)))
           (t2/update! Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (false? (t2/select-one-fn :archived Action action-id))))))))
-               (t2/update! Action action-id {:archived false}))))))))
 
 (deftest exclude-auto-increment-fields-for-create-implicit-actions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
