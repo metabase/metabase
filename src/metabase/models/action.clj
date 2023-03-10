@@ -250,7 +250,17 @@
                                 (= "row/delete" (:kind action))
                                 (filter ::pk?)
 
+<<<<<<< Updated upstream
                                 (contains? #{"row/update" "row/delete"} (:kind action))
+=======
+                                (= "row/create" action-kind)
+                                (remove (some-fn
+                                          :is-auto-increment
+                                          ;; non-required PKs like column with default is uuid_generate_v4()
+                                          #(and (::pk? %) (not (:required %)))))
+
+                                (contains? #{"row/update" "row/delete"} action-kind)
+>>>>>>> Stashed changes
                                 (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
                                 :always
