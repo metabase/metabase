@@ -201,7 +201,7 @@
                                   :spec      ::action
                                   :insert!   {:model Action}
                                   :relations {:creator_id [:core-user :id]
-                                              :model_id   [:card :id]}}
+                                              :model_id   [:simple-model :id]}}
    :query-action                 {:prefix    :query-action
                                   :spec      ::query-action
                                   :insert!   {:model QueryAction}
@@ -238,6 +238,15 @@
                                               :database_id   [:database :id]
                                               :table_id      [:table :id]
                                               :collection_id [:collection :id]}}
+   ;; like card but is a model and the query is very simple
+   ;; it's used primarily as model for actions
+   :simple-model                  {:prefix    :sm
+                                   :spec      ::card
+                                   :insert!   {:model Card}
+                                   :relations {:creator_id    [:core-user :id]
+                                               :database_id   [:database :id]
+                                               :table_id      [:table :id]
+                                               :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
