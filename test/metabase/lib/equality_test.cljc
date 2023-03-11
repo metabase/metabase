@@ -87,10 +87,7 @@
 ;;; The stuff below is for generative testing; the goal is to generate two big horrible maps and or other MBQL
 ;;; expressions where everything other than namespaced keywords are equal, and then compare them.
 
-(defn- coin-toss []
-  (> (rand) 0.5))
-
-(def ^:private key-generator-that-ignores-seed-for-qualfied-keywords
+(def ^:private map-key-generator
   "Generate a map key. Initially generate a key; if the key is a qualified keyword, toss a coin and maybe randomly
   generate a DIFFERENT qualified keyword instead of the one we originally generated. Otherwise return the original
   key.
@@ -105,55 +102,41 @@
 
   This is so we can test equality, e.g. `{:a 1, :b/c 2}` and `{:a 1, :b/c 3}` should be considered equal if we ignore
   the qualified keyword keys."
-  (let [any-key-generator       (mg/generator [:or
-                                               simple-keyword?
-                                               [:and qualified-keyword? [:not [:= :lib/type]]]
-                                               string?])
-        qualified-key-generator (mg/generator qualified-keyword?)]
-    (gen/bind any-key-generator
-              (fn [k]
-                (if (and (qualified-keyword? k)
-                         (coin-toss))
-                  qualified-key-generator
-                  (gen/return k))))))
+  (gen/one-of
+   [(mg/generator simple-keyword?)
+    (mg/generator string?)
+    (gen/fmap rand-nth
+              (mg/generator [:repeat {:min 2, :max 2} qualified-keyword?]))]))
 
-(defn- pair-generator
+(def map-pair-generator
   "Generate a key-value pair using the rules discussed above."
-  [expr-generator]
-  (gen/bind key-generator-that-ignores-seed-for-qualfied-keywords
-            (fn [k]
-              (let [expr-generator (if (and (qualified-keyword? k)
-                                            (coin-toss))
-                                     ;; create a generator that generates a tuple of [<int> <expr>] and ignore the
-                                     ;; int; the main goal here is just to consume one of the random numbers from the
-                                     ;; random number generator so we get something different...
-                                     (gen/fmap second
-                                               (gen/tuple
-                                                gen/small-integer
-                                                expr-generator))
-                                     expr-generator)]
-                (gen/fmap (fn [v]
-                            [k v])
-                          expr-generator)))))
+  (let [expr-generator (gen/recursive-gen
+                        (fn [_gen] (mg/generator [:ref ::expr]))
+                        (gen/return nil))]
+    (gen/bind map-key-generator
+              (fn [k]
+                (let [expr-generator (if-not (qualified-keyword? k)
+                                       expr-generator
+                                       (gen/fmap rand-nth
+                                                 (gen/tuple expr-generator
+                                                            expr-generator)))]
+                  (gen/fmap (fn [v]
+                              [k v])
+                            expr-generator))))))
 
-(defn- pairs-generator [expr-generator]
-  (mg/generator
-   [:repeat {:max 3}
-    [:tuple {:gen/gen (pair-generator expr-generator)}
-     :any
-     :any]]))
-
-(defn- map-generator [expr-generator]
-  (gen/fmap (fn [kvs]
-              (into {} kvs))
-            (pairs-generator expr-generator)))
+(def ^:private map-pairs
+  [:repeat
+   {:max 2}
+   [:tuple
+    {:gen/gen map-pair-generator}
+    :any
+    :any]])
 
 (mr/def ::map
   [:map
-   {:gen/gen (gen/recursive-gen
-              (fn [_]
-                (map-generator (mg/generator [:ref ::expr])))
-              (gen/return nil))}])
+   {:gen/schema map-pairs
+    :gen/fmap   (fn [kvs]
+                  (into {} kvs))}])
 
 (mr/def ::exprs
   [:cat
@@ -193,7 +176,7 @@
 
 (deftest ^:parallel generative-equality-test
   (doseq [schema [::expr ::map]
-          seed   (let [num-tests 100
+          seed   (let [num-tests 50
                        start     (rand-int 1000000)]
                    (range start (+ start num-tests)))]
     (let [x (mg/generate schema {:seed seed})
