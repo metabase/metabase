@@ -71,6 +71,13 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+#?(:clj
+   (defmacro register-type-of-first-arg
+     "Registers [[tag]] with [[type-of*]] in terms of its first incoming [[expr]].
+      Useful for clauses that are polymorphic on their argument."
+     [tag]
+     `(defmethod type-of* ~tag [[_tag# _opts# expr# & _#]] (type-of expr#))))
+
 (defn- expression-schema
   "Schema that matches the following rules:
 
