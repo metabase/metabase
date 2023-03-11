@@ -108,6 +108,41 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.icon("ellipsis").click();
     cy.contains("Include this minute").click();
   });
+
+  it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
+    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+    });
+
+    visitDashboard(1);
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
+
+    popover().within(() => {
+      cy.findByText("Heure").click(); // "Time"
+      cy.findByText("Toutes les options").click(); // "All Options"
+    });
+
+    cy.findByText("Sélectionner...").click(); // "Select…"
+    popover().contains("Created At").first().click();
+
+    saveDashboard({
+      buttonLabel: "Sauvegarder",
+      editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
+    });
+
+    cy.findByText("Filtre de date").click(); // "Date Filter"
+    cy.findByText("Exclure...").click(); // "Exclude..."
+    cy.findByText("Mois de l'année...").click(); // "Months of the year..."
+    cy.findByText("janvier").click(); // "January"
+
+    cy.findByText("Mettre à jour le filtre").click(); // "Update filter"
+
+    cy.url().should(
+      "match",
+      /\/dashboard\/1\?filtre_de_date=exclude-months-Jan/,
+    );
+  });
 });
 
 function dateFilterSelector({ filterType, filterValue } = {}) {

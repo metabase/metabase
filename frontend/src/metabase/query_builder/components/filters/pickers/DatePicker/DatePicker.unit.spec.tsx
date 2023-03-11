@@ -356,5 +356,30 @@ describe("DatePicker", () => {
         });
       });
     });
+
+    describe("Exclude", () => {
+      it("should correctly update exclude filter when value is 0 even though it is falsy", async () => {
+        const onChangeMock = jest.fn();
+
+        render(
+          <DatePickerStateWrapper filter={filter} onChange={onChangeMock} />,
+        );
+
+        userEvent.click(screen.getByText("Exclude..."));
+        userEvent.click(screen.getByText("Hours of the day..."));
+
+        expect(screen.getByTestId("exclude-0")).not.toBeChecked();
+
+        userEvent.click(screen.getByText("12 AM"));
+
+        expect(onChangeMock).toHaveBeenCalledWith([
+          "!=",
+          ["field", 1, { "temporal-unit": "hour-of-day" }],
+          0,
+        ]);
+
+        expect(screen.getByTestId("exclude-0")).not.toBeChecked();
+      });
+    });
   });
 });
