@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
@@ -414,28 +415,28 @@
     (is (has-inline-image?
          (render-bar-graph {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-bar-graph {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {}}))))
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-bar-graph {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-bar-graph {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                            :viz-settings {}}))))
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
          (render-multiseries-bar-graph
           {:cols         default-multi-columns
            :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-           :viz-settings {}})))))
+           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
 
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
@@ -451,33 +452,33 @@
     (is (has-inline-image?
          (render-area-graph {:cols         default-columns
                              :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                             :viz-settings {}}))))
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Render a stacked area graph"
     (is (has-inline-image?
          (render-stack-area-graph {:cols         default-multi-columns
                                    :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-                                   :viz-settings {}}))))
+                                   :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-area-graph {:cols         default-columns
                              :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                             :viz-settings {}}))))
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-area-graph {:cols         default-columns
                              :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                             :viz-settings {}}))))
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-area-graph {:cols         default-columns
                              :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                             :viz-settings {}}))))
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
          (render-multiseries-area-graph
           {:cols         default-multi-columns
            :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-           :viz-settings {}})))))
+           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -520,17 +521,16 @@
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
                         :rows         [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]
-                        :viz-settings {}}))))
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}}))))
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
          (render-combo-multi-x {:cols         default-multi-columns
-                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]
-                                :viz-settings {}}))))
+                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
                         :rows         [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]
-                        :viz-settings {}})))))
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
 
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
@@ -629,41 +629,61 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
+(defn- get-axis-classes
+  [viz-tree]
+  (let [nodes (render.tu/nodes-with-tag viz-tree :g)
+        xf    (comp
+               (mapcat #(filter map? %))
+               (map :class)
+               (mapcat #(str/split % #" "))
+               (filter #{"visx-axis-left" "visx-axis-right"}))]
+   (into #{} xf nodes)))
+
 (deftest reasonable-split-axes-test
+  (let [rows [["Category" "Series A" "Series B"]
+              ["A"        1          1.3]
+              ["B"        2          1.9]
+              ["C"        3          4]]]
+    (testing "Single X-axis, multiple series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Single X-axis, multiple series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Multiple series split does not fail when a series has the same value for all of its rows #27427"
+      (let [rows [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        1          1.9]
+                  ["C"        1          4]]]
+        (is (= #{"visx-axis-left"}
+               (-> rows
+                   (render.tu/make-viz-data :bar :single {})
+                   :viz-tree
+                   get-axis-classes)))))))
+
+(deftest multi-x-axis-series-reasonable-split-axes-test
   (let [rows        [["Category" "Series A" "Series B"]
-                     ["A"        1          1.3]
-                     ["B"        2          1.9]
-                     ["C"        3          4]]
-        axes-split? (fn [rows]
-                      (let [text (-> rows first last)]
-                        ;; there is always 1 node with the series name in the legend
-                        ;; so we see if the series name shows up a second time, which will
-                        ;; be the axis label, indicating that there is indeed a split
-                        (< 1 (-> rows
-                                 (render.tu/make-viz-data :bar {})
-                                 :viz-tree
-                                 (render.tu/nodes-with-text text)
-                                 count))))]
-    (testing "Multiple series with close values does not split y-axis."
-      (is (not (axes-split? rows))))
-    (testing "Multiple series with far values does split y-axis."
-      (is (axes-split? (conj rows ["D" 3 70]))))
-    (testing "Multiple axes split does not fail when a series has the same value for all of its rows #27427"
-      (let [rows        [["Category" "Series A" "Series B"]
-                         ["A"        1          1.3]
-                         ["B"        1          1.9]
-                         ["C"        1          4]]
-            axes-split? (fn [rows]
-                          (let [text (-> rows first last)]
-                            ;; there is always 1 node with the series name in the legend
-                            ;; so we see if the series name shows up a second time, which will
-                            ;; be the axis label, indicating that there is indeed a split
-                            (< 1 (-> rows
-                                     (render.tu/make-viz-data :bar {})
-                                     :viz-tree
-                                     (render.tu/nodes-with-text text)
-                                     count))))]
-        (is (axes-split? rows))))))
+                     ["A"        1.0          1.3]
+                     ["B"        2.0          1.9]
+                     ["C"        3.0          3.2]]]
+    (testing "Mulit-x-axis series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Mulit-x-axis series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
