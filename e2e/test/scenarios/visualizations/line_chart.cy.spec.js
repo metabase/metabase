@@ -4,6 +4,7 @@ import {
   popover,
   visitDashboard,
   openSeriesSettings,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -421,7 +422,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.log("Ensure that legend is hidden when not dealing with multi series");
       cy.findByTestId("viz-settings-button").click();
       cy.findByTestId("remove-CATEGORY").click();
-      cy.get("main main").should("not.contain", "Doohickey");
+      queryBuilderMain().should("not.contain", "Doohickey");
     });
 
     it("should display correct axis labels (metabase#12782)", () => {
