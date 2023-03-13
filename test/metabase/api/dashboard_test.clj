@@ -2873,18 +2873,14 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Without actions enabled"
+              (testing "Fails with actions disabled"
                 (is (= "Actions are not enabled."
                        (:cause
                         (mt/user-http-request :crowberto :post 400 execute-path
                                               {:parameters {"id" 1}})))))
-              (testing "Without read rights on the DB"
-                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-                (mt/with-actions-enabled
-                  (is (partial= {:message "You don't have permissions to do that."}
-                                (mt/user-http-request :rasta :post 403 execute-path
-                                                      {:parameters {"id" 1}})))))
-              (testing "With read rights on the DB"
+              ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.
+              ;; See tests in enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
+              (testing "Works with read rights on the DB"
                 (perms/grant-permissions-for-all-schemas! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
@@ -2892,7 +2888,13 @@
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}}))))
                   (finally
-                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
+                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db)))))
+              (testing "Works with no particular permissions"
+                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+                (mt/with-actions-enabled
+                  (is (= {:rows-affected 1}
+                         (mt/user-http-request :rasta :post 200 execute-path
+                                               {:parameters {"id" 1}}))))))))))))
 
 (deftest dashcard-execution-fetch-prefill-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
