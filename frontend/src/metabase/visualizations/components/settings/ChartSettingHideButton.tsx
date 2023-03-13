@@ -1,13 +1,12 @@
 import React, { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { t } from "ttag";
 import cloneDeep from "lodash.clonedeep";
 import _ from "underscore";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 import type { Column } from "metabase-types/types/Dataset";
-import type { State } from "metabase-types/store";
 
 import { TableColumnOrderSetting } from "metabase-types/api";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
@@ -42,7 +41,7 @@ export function ChartSettingHideButton({
 function useHideColumn(column: Column, columns: Array<Column>) {
   const dispatch = useDispatch();
   const visualizationSettings = useSelector(
-    (state: State) => state.qb.card?.visualization_settings,
+    state => state.qb.card?.visualization_settings,
   );
 
   return useCallback(() => {
@@ -67,7 +66,6 @@ function useHideColumn(column: Column, columns: Array<Column>) {
       ...tableCol,
       enabled: false,
     };
-    // @ts-expect-error thunk
     dispatch(updateCardVisualizationSettings(visSettingsClone));
   }, [dispatch, visualizationSettings, column, columns]);
 }
