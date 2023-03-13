@@ -151,7 +151,7 @@
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
-   `old-dashboard-card` can be provided to avoid an extra DB call.
+   `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns true if a row was updated, false otherwise."
   [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
    old-dashboard-card                        :- DashboardCardUpdates]
@@ -163,7 +163,7 @@
                     action_id (conj :card_id))
         updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
     (when (seq updates)
-      (db/transaction (db/update! DashboardCard id updates)))
+      (db/update! DashboardCard id updates))
     (when (not= (:series dashboard-card [])
                 (:series old-dashboard-card []))
       (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
