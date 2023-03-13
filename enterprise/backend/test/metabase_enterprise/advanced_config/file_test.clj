@@ -8,7 +8,7 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 

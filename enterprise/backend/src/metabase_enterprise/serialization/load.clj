@@ -35,25 +35,19 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [yaml.core :as yaml]
-   [yaml.reader :as y.reader])
+   [metabase.util.yaml :as yaml]
+   [toucan.db :as db])
   (:import
-   (java.time.temporal Temporal)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
-
-(extend-type Temporal y.reader/YAMLReader
-             (decode [data]
-               (u.date/parse data)))
 
 (defn- slurp-dir
   [path]
   (doall
    (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
          :when (-> file (.getName) (str/ends-with? ".yaml"))]
-     (yaml/from-file file true))))
+     (yaml/from-file file))))
 
 (defn- slurp-many
   [paths]
@@ -223,7 +217,7 @@
 (defn- load-dimensions
   [path context]
   (maybe-upsert-many! context Dimension
-    (for [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
+    (for [dimension (yaml/from-file (str path "/dimensions.yaml"))]
       (-> dimension
           (update :human_readable_field_id (comp :field fully-qualified-name->context))
           (update :field_id (comp :field fully-qualified-name->context))))))
@@ -779,7 +773,7 @@
 (defn load-settings
   "Load a dump of settings."
   [path context]
-  (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)
+  (doseq [[k v] (yaml/from-file (str path "/settings.yaml"))
           :when (or (= context :update)
                     (nil? (setting/get-value-of-type :string k)))]
     (setting/set-value-of-type! :string k v)))
@@ -788,6 +782,6 @@
   "Is dump at path `path` compatible with the currently running version of Metabase?"
   [path]
   (-> (str path "/manifest.yaml")
-      (yaml/from-file true)
+      yaml/from-file
       :metabase-version
       (= config/mb-version-info)))

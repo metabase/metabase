@@ -672,7 +672,8 @@
   honey-sql-2-namespaces
   {:linters
    {:discouraged-namespace
-    {honeysql.core                     {:message "Use Honey SQL 2"}
+    {clj-yaml.core                     {:message "Use metabase.util.yaml"}
+     honeysql.core                     {:message "Use Honey SQL 2"}
      honeysql.format                   {:message "Use Honey SQL 2"}
      honeysql.helpers                  {:message "Use Honey SQL 2"}
      honeysql.types                    {:message "Use Honey SQL 2"}

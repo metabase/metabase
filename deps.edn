@@ -65,10 +65,7 @@
                                              :exclusions  [org.clojure/clojurescript]}
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
-  io.forward/yaml                           {:mvn/version "1.0.11"              ; Clojure wrapper for YAML library SnakeYAML.
-                                             :exclusions  [org.clojure/clojure
-                                                           org.flatland/ordered
-                                                           org.yaml/snakeyaml]}
+  clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.520"}
   io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.520"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
@@ -143,11 +140,6 @@
   org.slf4j/slf4j-api                       {:mvn/version "2.0.6"}              ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.7.2"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
-  ;; This is needed by io.forward/yaml, which has not been updated to the 2.0 version
-  ;; io.forward/yaml (https://github.com/owainlewis/yaml) hasn't been actively
-  ;; maintained for 2 years, so we'd probably need to start our own branch if we
-  ;; wanted to update this.
-  org.yaml/snakeyaml                        {:mvn/version "1.33"}               ; YAML parser
   potemkin/potemkin                         {:mvn/version "0.4.6"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
