@@ -27,6 +27,7 @@ export function FieldSettingsButtons({
 
   const hasOptions =
     fieldSettings.inputType === "select" || fieldSettings.inputType === "radio";
+  const hasSettings = fieldSettings.fieldType !== "boolean";
 
   return (
     <FieldSettingsButtonsContainer>
@@ -37,7 +38,12 @@ export function FieldSettingsButtons({
           onChange={updateOptions}
         />
       )}
-      <FieldSettingsPopover fieldSettings={fieldSettings} onChange={onChange} />
+      {hasSettings && (
+        <FieldSettingsPopover
+          fieldSettings={fieldSettings}
+          onChange={onChange}
+        />
+      )}
     </FieldSettingsButtonsContainer>
   );
 }
