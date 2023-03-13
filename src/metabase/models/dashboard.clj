@@ -304,14 +304,13 @@
         old-param-field-ids (params/dashboard->param-field-ids dashboard)
         dashcards           (t2/hydrate dashcards :card)
         new-param-field-ids (params/dashcards->param-field-ids dashcards)]
-    (db/transaction
-     (doseq [dashcard dashcards]
-       (let [old-dashcard       (-> (get id->old-dashcard (:id dashcard))
-                                    (update :series #(map :id %)))
+    (doseq [dashcard dashcards]
+      (let [old-dashcard       (-> (get id->old-dashcard (:id dashcard))
+                                   (update :series #(map :id %)))
              ;; update-dashboard-card! requires series to be a sequence of card IDs
-             dashboard-card     (update dashcard :series #(map :id %))]
-         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
-     (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
+            dashboard-card     (update dashcard :series #(map :id %))]
+        (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
+    (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query

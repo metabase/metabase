@@ -155,19 +155,20 @@
    Returns true if a row was updated, false otherwise."
   [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
    old-dashboard-card                        :- DashboardCardUpdates]
-  (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
-                           :parameter_mappings :visualization_settings]
+  (db/transaction
+   (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
+                            :parameter_mappings :visualization_settings]
                     ;; Allow changing card_id for action dashcards, but not for card dashcards.
                     ;; This is to preserve the existing behavior of questions and card_id
                     ;; I don't know why card_id couldn't be changed for cards though.
-                    action_id (conj :card_id))
-        updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
-    (when (seq updates)
-      (db/update! DashboardCard id updates))
-    (when (not= (:series dashboard-card [])
-                (:series old-dashboard-card []))
-      (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
-    nil))
+                     action_id (conj :card_id))
+         updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
+     (when (seq updates)
+       (db/update! DashboardCard id updates))
+     (when (not= (:series dashboard-card [])
+                 (:series old-dashboard-card []))
+       (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
+     nil)))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
