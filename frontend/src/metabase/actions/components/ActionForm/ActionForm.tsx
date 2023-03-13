@@ -39,7 +39,7 @@ export interface ActionFormComponentProps {
   initialValues?: ActionFormInitialValues;
   isEditable?: boolean;
   onClose?: () => void;
-  onSubmit?: (
+  onSubmit: (
     params: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
@@ -75,6 +75,11 @@ export const ActionForm = ({
     [parameters, formSettings?.fields],
   );
 
+  const formInitialValues = useMemo(
+    () => formValidationSchema.cast(initialValues),
+    [initialValues, formValidationSchema],
+  );
+
   const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
     if (!isSettings) {
       return;
@@ -108,15 +113,14 @@ export const ActionForm = ({
     });
   };
 
-  const handleSubmit = (
-    values: ParametersForActionExecution,
-    actions: FormikHelpers<ParametersForActionExecution>,
-  ) => onSubmit?.(formValidationSchema.cast(values), actions);
-
   if (isSettings) {
     const fieldSettings = formSettings.fields || {};
     return (
-      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+      <FormProvider
+        initialValues={formInitialValues}
+        enableReinitialize
+        onSubmit={onSubmit}
+      >
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
@@ -154,37 +158,30 @@ export const ActionForm = ({
     );
   }
 
-  const hasFormFields = !!form.fields.length;
-
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={formInitialValues}
       validationSchema={formValidationSchema}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
       enableReinitialize
     >
-      {({ dirty }) => (
-        <Form
-          disabled={!dirty && hasFormFields}
-          role="form"
-          data-testid="action-form"
-        >
-          {form.fields.map(field => (
-            <FormFieldWidget key={field.name} formField={field} />
-          ))}
+      <Form role="form" data-testid="action-form">
+        {form.fields.map(field => (
+          <FormFieldWidget key={field.name} formField={field} />
+        ))}
 
-          <ActionFormButtonContainer>
-            {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-            <FormSubmitButton
-              disabled={!dirty && hasFormFields}
-              title={submitTitle ?? t`Submit`}
-              {...submitButtonVariant}
-            />
-          </ActionFormButtonContainer>
+        <ActionFormButtonContainer>
+          {onClose && (
+            <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+          )}
+          <FormSubmitButton
+            title={submitTitle ?? t`Submit`}
+            {...submitButtonVariant}
+          />
+        </ActionFormButtonContainer>
 
-          <FormErrorMessage />
-        </Form>
-      )}
+        <FormErrorMessage />
+      </Form>
     </FormProvider>
   );
 };
