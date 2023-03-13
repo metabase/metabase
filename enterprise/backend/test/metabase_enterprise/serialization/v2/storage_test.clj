@@ -10,8 +10,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
 

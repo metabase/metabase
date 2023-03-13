@@ -17,20 +17,12 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [yaml.core :as yaml]
-   [yaml.writer :as y.writer])
-  (:import
-   (java.time.temporal Temporal)))
+   [metabase.util.yaml :as yaml]
+   [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
-
-(extend-type Temporal y.writer/YAMLWriter
-             (encode [data]
-               (u.date/format data)))
 
 (defn spit-yaml
   "Writes obj to filename and creates parent directories if necessary"
