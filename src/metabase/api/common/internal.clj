@@ -14,7 +14,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -261,12 +260,14 @@
   [schema]
   (let [schema-type (try (mc/type schema)
                          (catch clojure.lang.ExceptionInfo _
-                           (mc/type (eval schema))))]
+                           (mc/type #_:clj-kondo/ignore
+                                    (eval schema))))]
     (condp = schema-type
       ;; can use regex directly
       :re (first (try (mc/children schema)
                       (catch clojure.lang.ExceptionInfo _
-                        (mc/children (eval schema)))))
+                        (mc/children #_:clj-kondo/ignore
+                                     (eval schema)))))
       'pos-int? #"[0-9]+"
       :int #"-?[0-9]+"
       'int? #"-?[0-9]+"
@@ -289,7 +290,7 @@
                                    (if re
                                      [route (keyword k) re]
                                      (when config/is-dev?
-                                       (println "Warning: missing route-param regex for schema:" route [k schema]))))]
+                                       (log/fatal "Warning: missing route-param regex for schema:" route [k schema]))))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.
         wildcards (reduce into wildcard (mapv #(drop 1 %) wildcards))
