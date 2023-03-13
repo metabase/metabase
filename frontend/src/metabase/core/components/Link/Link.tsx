@@ -19,8 +19,6 @@ const Link = ({
   children,
   disabled,
   tooltip,
-  onFocus,
-  onBlur,
   ...props
 }: LinkProps): JSX.Element => {
   const link = (

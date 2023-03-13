@@ -21,7 +21,7 @@ describe("ExpressionWidget", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip which leads to documentation page", async () => {
+  it("should render help icon with tooltip which leads to documentation page", () => {
     setup();
 
     const icon = getIcon("info");
