@@ -534,6 +534,5 @@
                                 (format "action/%s/execute" action-id)
                                 {:parameters {:id 1 :name "Darth Vader" :last_login nil}})
           (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]}))) ]
-            (is (= "Darth Vader"
-                   new-name))
+            (is (= "Darth Vader" new-name))
             (is (some? last-login))))))))
