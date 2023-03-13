@@ -167,7 +167,6 @@ export default function ExcludeDatePicker({
               const isValueExcluded = values.find(value => test(value)) != null;
               return (
                 <ExcludeCheckBox
-                  data-testid={`exclude-${value}`}
                   key={value}
                   label={<ExcludeLabel>{displayName}</ExcludeLabel>}
                   checked={!isValueExcluded}

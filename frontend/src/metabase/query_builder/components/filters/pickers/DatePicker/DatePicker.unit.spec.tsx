@@ -368,9 +368,13 @@ describe("DatePicker", () => {
         userEvent.click(screen.getByText("Exclude..."));
         userEvent.click(screen.getByText("Hours of the day..."));
 
-        expect(screen.getByTestId("exclude-0")).not.toBeChecked();
+        const midnightCheckbox = screen.getByRole("checkbox", {
+          name: /12 AM/i,
+        });
 
-        userEvent.click(screen.getByText("12 AM"));
+        expect(midnightCheckbox).toBeChecked();
+
+        userEvent.click(midnightCheckbox);
 
         expect(onChangeMock).toHaveBeenCalledWith([
           "!=",
@@ -378,7 +382,7 @@ describe("DatePicker", () => {
           0,
         ]);
 
-        expect(screen.getByTestId("exclude-0")).not.toBeChecked();
+        expect(midnightCheckbox).not.toBeChecked();
       });
     });
   });
