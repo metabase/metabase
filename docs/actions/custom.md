@@ -17,12 +17,9 @@ There are two ways to create a custom action:
 1. Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model. (NOTE: the **Action** option will only show up in the **+ New** menu if you've first created, or have access to, a [model](../data-modeling/models.md) in Metabase.)
 2. Via the model detail page: from a model, click on the **info** button in the upper right. In the upper right of the sidebar, click **Model detail** > **Actions** > **New action**.
 
-## Custom action editor
+In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table.
 
-Here you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table.
-
-
-### Example `UPDATE` action
+## Example `UPDATE` action
 
 You could write an action that would update the `plan` column for a record in the `invoices` table in the Sample Database:
 
@@ -44,10 +41,10 @@ The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed 
 
 ## Example `INSERT` action
 
-Insert statements are pretty straightforward (we're leading with commas here so it's easy to comment out lines):
+Insert statements are pretty straightforward:
 
 ```
-{% raw %} 
+{% raw %}
 INSERT INTO invoices (
   account_id
   ,payment
@@ -58,25 +55,27 @@ INSERT INTO invoices (
 VALUES (
   {{ account_id }}
   ,{{ payment }}
-  ,{{expected_invoice}}
+  ,CAST ({{expected_invoice}} AS boolean)
   ,{{plan}}
   ,({{date_received}}
 );
-{% endraw %} 
+{% endraw %}
 ```
+
+### `INSERT` statement with optional fields
 
 Though if you want to make a field optional in an `INSERT` statement, you need to get a little fancy. Metabase will only run an optional statement if a value is supplied to a variable in that optional statement, so the trick here is to use a SQL comment to sneak a variable into the optional column.
 
 ```
-{% raw %} 
-  [[, expected_invoice --- {{ expected_invoice}}]] 
-{% endraw %} 
+{% raw %}
+  [[,expected_invoice -- {{ expected_invoice}}]]
+{% endraw %}
 ```
 
 So a full `INSERT` statement with an optional variable would look like so (note that the optional clauses for the `{% raw %}{{ expected_invoice}}{{% endraw %}` variable are in both the column and values lists):
 
 ```
-{% raw %} 
+{% raw %}
 INSERT INTO invoices (
   account_id
   ,payment
@@ -91,7 +90,41 @@ VALUES (
   ,{{ plan }}
   ,({{ date_received }}
 );
-{% endraw %} 
+{% endraw %}
+```
+
+## Casting field values in actions
+
+If you get a type error when you submit a form, you may need to `CAST` the data type in the query so it matches the data type of the target field in the database. Here we're casting a value to a `boolean`:
+
+```
+{% raw %}
+UPDATE invoices
+SET expected_invoice = CAST({{expected_invoice}} AS boolean)
+WHERE id = {{id}};
+{% endraw %}
+```
+
+## Referencing saved questions in actions
+
+You can also reference saved questions in actions. Here we're taking the results of a `SELECT` statement on a saved question ("Potential customers") and inserting the results into a `people_to_write` table.
+
+```
+{% raw %}
+WITH prospects AS {{#6-potential-customers}}
+
+INSERT INTO
+  people_to_write (
+  first_name
+  ,last_name
+  ,email
+  )
+SELECT
+  first_name
+  ,last_name
+  ,email
+FROM prospects;
+{% endraw %}
 ```
 
 ## Field types for action variables

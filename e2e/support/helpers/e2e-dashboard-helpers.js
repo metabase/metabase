@@ -20,9 +20,7 @@ export function editDashboard() {
 }
 
 export function saveDashboard() {
-  cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
   cy.findByText("Save").click();
-  cy.wait("@getDashboard");
   cy.findByText("You're editing this dashboard.").should("not.exist");
   cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
