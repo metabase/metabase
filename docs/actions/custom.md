@@ -107,7 +107,7 @@ WHERE id = {{id}};
 
 ## Referencing saved questions
 
-You can also reference saved questions in actions. Here we're taking the results of `SELECT` statement on a saved question ("Potential customers") and inserting them into a `people_to_write` table.
+You can also reference saved questions in actions. Here we're taking the results of a `SELECT` statement on a saved question ("Potential customers") and inserting the results into a `people_to_write` table.
 
 ```
 {% raw %}
