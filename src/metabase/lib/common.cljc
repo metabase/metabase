@@ -32,7 +32,7 @@
      {:pre [(symbol? op-name)
             (vector? argvec) (every? symbol? argvec)
             (not-any? #{'query 'stage-number} argvec)]}
-     (let [arglist-expr (if (.contains argvec '&)
+     (let [arglist-expr (if (contains? (set argvec) '&)
                           (cons 'list* (remove #{'&} argvec))
                           argvec)]
        `(mu/defn ~op-name :- [:or fn? ~(keyword "mbql.clause" (name op-name))]
