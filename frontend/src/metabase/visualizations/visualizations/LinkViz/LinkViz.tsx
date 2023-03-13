@@ -76,7 +76,7 @@ function LinkViz({
         entity: {
           id: entity.id,
           db_id: entity.model === "table" ? entity.database_id : undefined,
-          name: entity.name ?? entity.model,
+          name: entity.name,
           model: entity.model,
           description: entity.description,
           display: entity.display,
