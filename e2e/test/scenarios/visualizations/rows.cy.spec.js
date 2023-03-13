@@ -9,7 +9,7 @@ describe("scenarios > visualizations > rows", () => {
   // Until we enable multi-browser support, this repro will be skipped by Cypress in CI
   // Issue was specific to Firefox only - it is still possible to test it locally
   ["0", "null"].forEach(testValue => {
-    it(
+    it.only(
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
       () => {
