@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.db :as mdb]
