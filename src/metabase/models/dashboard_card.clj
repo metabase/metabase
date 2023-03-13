@@ -142,8 +142,9 @@
    (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
    s/Keyword                                s/Any})
 
-(defn- shallow-updates [new old]
+(defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
+  [new old]
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
