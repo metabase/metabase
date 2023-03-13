@@ -356,3 +356,11 @@
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]
                        (mt/first-row (qp/process-query query))))))))))))
+
+(deftest interval-test
+  (mt/test-drivers #{:postgres :redshift}
+    (testing "Redshift Interval values should behave the same as postgres (#19501)"
+      (is (= ["0 years 0 mons 5 days 0 hours 0 mins 0.0 secs"]
+             (mt/first-row
+               (qp/process-query
+                 (mt/native-query {:query "select interval '5 days'"}))))))))
