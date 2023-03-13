@@ -110,9 +110,9 @@
     (tu/boolean-ids-and-timestamps (dissoc task-history :duration))))
 
 (deftest task-history-test
-  (let [process-name (tu/random-name)
-        step-1-name  (tu/random-name)
-        step-2-name  (tu/random-name)
+  (let [process-name (mt/random-name)
+        step-1-name  (mt/random-name)
+        step-2-name  (mt/random-name)
         sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
         mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
@@ -146,12 +146,12 @@
                               :log-summary-fn log-summary-fn}]]}))
 
 (deftest log-summary-message-test
-  (let [operation (tu/random-name)
-        db-name   (tu/random-name)
-        step-name (tu/random-name)]
+  (let [operation (mt/random-name)
+        db-name   (mt/random-name)
+        step-name (mt/random-name)]
     (testing (str "Test that we can create the log summary message. This is a big string blob, so validate that it"
                   " contains the important parts and it doesn't throw an exception")
-      (let [step-log-text (tu/random-name)
+      (let [step-log-text (mt/random-name)
             results       (#'sync-util/make-log-sync-summary-str operation
                                                                  (mi/instance Database {:name db-name})
                                                                  (create-test-sync-summary step-name
