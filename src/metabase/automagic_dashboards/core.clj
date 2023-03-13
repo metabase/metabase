@@ -745,9 +745,6 @@
   (let [field (assoc field
                 :link (->> context
                            :tables
-                           ;; Potential landmine -- If the context returned
-                           ;; from make-context is not an actual table this
-                           ;; will blow up
                            (m/find-first (comp #{(:table_id field)} u/the-id))
                            :link)
                 :engine (-> context :source source->engine))]
