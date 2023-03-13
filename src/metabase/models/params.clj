@@ -193,7 +193,7 @@
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
   the Cards in `cards`."
   [cards]
-  (set (mapcat card->template-tag-field-ids cards)))
+  (reduce set/union (map card->template-tag-field-ids cards)))
 
 (s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
