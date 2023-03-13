@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
 
 (deftest basic-ingest-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -68,7 +68,7 @@
                (ingest/ingest-one ingestable [{:model "Collection" :id "1234567890abcdefABCDE" :label "human-readable-things"}]))))
       (testing "fetching the file without the label also works"
         (is (= exp
-               (ingest/ingest-one ingestable [{:model "Collection" :id "1234567890abcdefABCDE" }])))))))
+               (ingest/ingest-one ingestable [{:model "Collection" :id "1234567890abcdefABCDE"}])))))))
 
 (deftest keyword-reconstruction-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

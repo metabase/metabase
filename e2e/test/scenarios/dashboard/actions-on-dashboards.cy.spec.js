@@ -36,7 +36,8 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
           "getCardAssociations",
         );
-        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
+        cy.intercept("GET", "/api/action").as("getActions");
+        cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
         cy.intercept(
           "GET",
@@ -53,7 +54,7 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase(WRITABLE_DB_ID);
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
@@ -69,7 +70,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
+            cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
           });
 
           cy.findByRole("tab", { name: "Actions" }).click();
@@ -250,7 +251,7 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase(WRITABLE_DB_ID);
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         });
 
         it("can update various data types via implicit actions", () => {

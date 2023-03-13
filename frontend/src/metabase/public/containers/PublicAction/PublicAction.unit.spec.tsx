@@ -104,9 +104,9 @@ describe("PublicAction", () => {
     expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
   });
 
-  it("doesn't let to submit a clean form", async () => {
+  it("should allow to submit a clean form if all parameters are optional", async () => {
     await setup();
-    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
   });
 
   it("doesn't let to submit until required parameters are filled", async () => {

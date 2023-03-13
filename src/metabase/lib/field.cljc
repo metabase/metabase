@@ -4,9 +4,11 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util.malli :as mu]))
+
+(comment metabase.lib.schema.ref/keep-me)
 
 (defmulti ^:private ->field
   {:arglists '([query stage-number field])}
@@ -39,9 +41,17 @@
   [[_field options id-or-name] unit]
   [:field (assoc options :temporal-unit unit) id-or-name])
 
-(mu/defn field :- ::lib.schema.ref/field
+(mu/defn field :- :mbql.clause/field
   "Create a `:field` clause."
   ([query x]
    (->field query -1 x))
   ([query stage-number x]
    (->field query stage-number x)))
+
+(defn with-join-alias
+  "Update a `field` so that it has `join-alias`."
+  [field-or-fn join-alias]
+  (if (fn? field-or-fn)
+    (fn [query stage-number]
+      (with-join-alias (field-or-fn query stage-number) join-alias))
+    (lib.options/update-options field-or-fn assoc :join-alias join-alias)))
