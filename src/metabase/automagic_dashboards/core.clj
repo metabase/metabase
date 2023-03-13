@@ -245,7 +245,7 @@
 (defn- source
   [card]
   (cond
-    ;; This is a non-native question with no ancestors (It is a query on a table).
+    ;; This is a model
     (:dataset card) (assoc card :entity_type :entity/GenericTable)
     ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
     ;; problems as other cards -- The x-ray is not done on the card, but on its source.
@@ -385,7 +385,7 @@
                  (str/ends-with? name "_id"))))))
 
 (defn- field-spec-pred
-  "Generate a predicate of the form f(field) -> true | false based on a field spec."
+  "Generate a predicate of the form (f field) -> true | false based on a field spec."
   [fieldspec]
   (if (and (string? fieldspec)
            (rules/ga-dimension? fieldspec))
@@ -398,7 +398,7 @@
         :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
 
 (defn- named-spec-pred
-  "Generate a truthy predicate of the form f(field) -> truthy value based on a regex applied to the field name."
+  "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
   [name-pattern]
   (comp (->> name-pattern
              u/lower-case-en
@@ -408,7 +408,7 @@
         :name))
 
 (defn- max-cardinality-pred
-  "Generate a predicate of the form f(field) -> true | false based on the provided cardinality.
+  "Generate a predicate of the form (f field) -> true | false based on the provided cardinality.
   Returns true if the distinct count of fingerprint values is less than or equal to the cardinality."
   [cardinality]
   (fn [field]
