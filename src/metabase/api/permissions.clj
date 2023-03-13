@@ -54,8 +54,7 @@
   (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
                   {:status-code 402})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
@@ -70,7 +69,7 @@
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
   `:sandboxes` feature flag is not present."
   [:as {body :body}]
-  {body su/Map}
+  {body :map}
   (api/check-superuser)
   (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
@@ -82,8 +81,9 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
                              (pr-str explained))
                         {:status-code 400
-                         :error explained
-                         :humanized (me/humanize explained)}))))
+                         :error (str (me/humanize explained)
+                                     "\n"
+                                     (pr-str explained))}))))
     (db/transaction
      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
      (if-let [sandboxes (:sandboxes body)]

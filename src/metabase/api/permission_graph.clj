@@ -41,6 +41,7 @@
   [:int {:decode/perm-graph kw-int->int-decoder}])
 
 (def ^:private Id DecodableKwInt)
+(def ^:private GroupId DecodableKwInt)
 
 ;; ids come in as keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
@@ -119,12 +120,12 @@
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
-  [:map [:groups [:map-of Id DbGraph]]])
+  [:map [:groups [:map-of GroupId [:maybe DbGraph]]]])
 
 (def StrictData
   "Top level strict data graph schema"
   [:map
-   [:groups [:map-of Id StrictDbGraph]]
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
 
 ;;; --------------------------------------------- Collection Permissions ---------------------------------------------
