@@ -16,7 +16,7 @@
   of a field."
   [{field-name :name :keys [base_type effective_type]}]
   {:field-name field-name
-     :base-type (or effective_type base_type)})
+   :base-type (or effective_type base_type)})
 
 (def ^:private Metadata
   "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."

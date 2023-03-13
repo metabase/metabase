@@ -22,21 +22,23 @@
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
-  {:name                               su/NonBlankString
-   :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
-   :base-type                          su/FieldType
-   :database-position                  su/IntGreaterThanOrEqualToZero
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
-   (s/optional-key :pk?)               s/Bool
-   (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
-   (s/optional-key :nfc-path)          [s/Any]
-   (s/optional-key :custom)            {s/Any s/Any}
-   (s/optional-key :database-required) s/Bool
+
+  {:name                                        su/NonBlankString
+   :database-type                               (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
+   :base-type                                   su/FieldType
+   :database-position                           su/IntGreaterThanOrEqualToZero
+   (s/optional-key :semantic-type)              (s/maybe su/FieldSemanticOrRelationType)
+   (s/optional-key :effective-type)             (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy)          (s/maybe su/CoercionStrategy)
+   (s/optional-key :field-comment)              (s/maybe su/NonBlankString)
+   (s/optional-key :pk?)                        s/Bool
+   (s/optional-key :nested-fields)              #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :nfc-path)                   [s/Any]
+   (s/optional-key :custom)                     {s/Any s/Any}
+   (s/optional-key :database-is-auto-increment) s/Bool
+   (s/optional-key :database-required)          s/Bool
    ;; for future backwards compatability, when adding things
-   s/Keyword                           s/Any})
+   s/Keyword                                    s/Any})
 
 (def TableMetadata
   "Schema for the expected output of `describe-table`."

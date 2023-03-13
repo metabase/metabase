@@ -1,5 +1,6 @@
 (ns metabase.api.action-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
@@ -92,15 +93,15 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          _archived {:name                   "Archived example"
-                                     :type                   :query
-                                     :model_id               card-id
-                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                                     :type name)
-                                     :database_id            (mt/id)
-                                     :parameters             [{:id "x" :type "number"}]
-                                     :visualization_settings {:position "top"}
-                                     :archived               true}]
+                          archived {:name                   "Archived example"
+                                    :type                   :query
+                                    :model_id               card-id
+                                    :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                    :type name)
+                                    :database_id            (mt/id)
+                                    :parameters             [{:id "x" :type "number"}]
+                                    :visualization_settings {:position "top"}
+                                    :archived               true}]
           (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
             (is (= (map :action-id [action-1 action-2 action-3])
                    (map :id response)))
@@ -112,7 +113,23 @@
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                "Should not be able to list actions without read permission on the model")))))))
+                "Should not be able to list actions without read permission on the model"))
+          (testing "Can list all actions"
+            (let [response (mt/user-http-request :crowberto :get 200 "action")
+                  action-ids (into #{} (map :id) response)]
+              (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
+                               action-ids))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (schema= ExpectedGetQueryActionAPIResponse
+                               action))))
+              (testing "Does not have archived actions"
+                (is (not (contains? action-ids (:id archived)))))
+              (testing "Does not return actions on models without permissions"
+                (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
+                  (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
+                                                (into #{} (map :id) rasta-list)))))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
@@ -214,8 +231,10 @@
                   expected-fn    (fn [m]
                                    (cond-> m
                                      (= (:type initial-action) "implicit")
-                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}]
-                                            :database_id (mt/id))))
+                                     (assoc :database_id (mt/id)
+                                            :parameters (if (= "row/create" (:kind initial-action))
+                                                            []
+                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
@@ -227,7 +246,7 @@
                            (:cause
                             (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                 (testing "a plain card instead of a model"
-                  (mt/with-temp Card [{plain-card-id :id}]
+                  (mt/with-temp Card [{plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                     (is (= "Actions must be made with models, not cards."
                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -276,12 +295,25 @@
                   (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
                   (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
 
+(deftest implicit-actions-on-non-raw-model-test
+  (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
+    (mt/with-actions-enabled
+      (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                          :dataset       true}]
+        (is (= "Implicit actions are not supported for models with clauses."
+               (mt/user-http-request :crowberto :post 400 "action"
+                                     {:name       "Implicit example"
+                                      :type       "implicit"
+                                      :model_id   model-id
+                                      :kind       "row/create"
+                                      :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]})))))))
+
 (deftest snowplow-test
   (snowplow-test/with-fake-snowplow-collector
     (mt/with-actions-enabled
       (testing "Should send a snowplow event when"
         (t2.with-temp/with-temp
-          [Card {card-id :id} {:dataset true}]
+          [Card {card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
               (testing (format "adding an action of type %s" type)

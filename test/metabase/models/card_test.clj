@@ -5,15 +5,16 @@
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
    [metabase.models.card :as card]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -107,6 +108,71 @@
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))))
 
+(deftest disable-implicit-actions-if-needed-test
+  (mt/with-actions-enabled
+    (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
+      (testing "happy paths\n"
+        (let [query (mt/mbql-query users)]
+          (doseq [query-change [{:limit       1}
+                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
+                                {:filter      [:> (mt/$ids $users.id) 2]}
+                                {:breakout    [(mt/$ids !month.users.last_login)]}
+                                {:aggregation [[:count]]}
+                                {:joins       [{:fields       :all
+                                                :source-table (mt/id :checkins)
+                                                :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                                :alias        "People"}]}
+                                {:order-by    [[(mt/$ids $users.id) :asc]]}
+                                {:fields      [(mt/$ids $users.id)]}]]
+            (testing (format "when adding %s to the query" (first (keys query-change)))
+              (mt/with-actions [{model-id :id}           {:dataset true :dataset_query query}
+                                {action-id-1 :action-id} {:type :implicit
+                                                          :kind "row/create"}
+                                {action-id-2 :action-id} {:type :implicit
+                                                          :kind "row/update"}]
+                ;; make sure we have thing exists to start with
+                (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (is (= 1 (t2/update! 'Card :id model-id {:dataset_query (update query :query merge query-change)})))
+                ;; should be gone by now
+                (is (= 0 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (is (= 0 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
+                ;; call it twice to make we don't get delete error if no actions are found
+                (is (= 1 (t2/update! 'Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))
+
+    (testing "unhappy paths\n"
+      (testing "should not attempt to delete if it's not a model"
+        (t2.with-temp/with-temp [Card {id :id} {:dataset       false
+                                                :dataset_query (mt/mbql-query users)}]
+          (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
+                                                                  (throw (ex-info "Should not be called" {})))]
+            (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
+
+      (testing "only disable implicit actions, not http and query"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {implicit-id :action-id} {:type :implicit}
+                          {http-id :action-id}     {:type :http}
+                          {query-id :action-id}    {:type :query}]
+          ;; make sure we have thing exists to start with
+          (is (= 3 (t2/count 'Action :id [:in [implicit-id http-id query-id]])))
+
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (not (t2/exists? 'Action :id implicit-id)))
+          (is (t2/exists? 'Action :id http-id))
+          (is (t2/exists? 'Action :id query-id))))
+
+      (testing "should not disable if change source table"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {action-id-1 :action-id} {:type :implicit
+                                                    :kind "row/create"}
+                          {action-id-2 :action-id} {:type :implicit
+                                                    :kind "row/update"}]
+          ;; make sure we have thing exists to start with
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          ;; change source from users to categories
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query categories)})
+          ;; actions still exists
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          (is (= 2 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -363,8 +429,8 @@
       (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
                       Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
-               (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
-               (serdes.hash/identity-hash card)))))))
+               (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
+               (serdes/identity-hash card)))))))
 
 (deftest parameter-card-test
   (let [default-params {:name       "Category Name"
@@ -495,18 +561,18 @@
                     :type :category}]
                   (db/select-one-field :parameters Card :id (:id card)))))))))
 
-(deftest serdes-descendants-test
+(deftest descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp* [Card [card {:name "some card"}]]
-      (is (empty? (serdes.base/serdes-descendants "Card" (:id card))))))
+      (is (empty? (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
-      (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
-             (serdes.base/serdes-descendants "Card" (:id card2))))))
+             (serdes/descendants "Card" (:id card2))))))
 
   (testing "cards that has a native template tag"
     (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
@@ -518,7 +584,7 @@
                                                                                          :snippet-id   (:id snippet)}}
                                                                :query "select * from products where {{snippet}}"}}}]]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
-             (serdes.base/serdes-descendants "Card" (:id card))))))
+             (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have parameter's source is another card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
@@ -528,7 +594,7 @@
                                                :values_source_type   "card"
                                                :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
-             (serdes.base/serdes-descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2)))))))
 
 
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------

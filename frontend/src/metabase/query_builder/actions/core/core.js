@@ -200,7 +200,7 @@ export const apiCreateQuestion = question => {
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
-      createdQuestion.query().datasetQuery().type,
+      createdQuestion.type(),
     );
     trackNewQuestionSaved(
       question,
@@ -256,7 +256,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Update Card",
-      updatedQuestion.query().datasetQuery().type,
+      updatedQuestion.type(),
     );
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());

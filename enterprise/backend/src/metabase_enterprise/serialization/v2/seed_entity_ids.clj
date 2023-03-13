@@ -4,7 +4,7 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.models]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -70,7 +70,7 @@
                         {:model       (name model)
                          :instance    instance
                          :primary-key primary-key})))
-      (let [new-hash (serdes.hash/identity-hash instance)]
+      (let [new-hash (serdes/identity-hash instance)]
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
         (db/update! model pk-value :entity_id new-hash))
       {:update-count 1})

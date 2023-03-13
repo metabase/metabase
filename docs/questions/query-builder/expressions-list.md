@@ -11,7 +11,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Aggregations](#aggregations)
   - [Average](#average)
   - [Count](#count)
-  - [CountIf](#countif)
+  - [CountIf](./expressions/countif.md)
   - [CumulativeCount](#cumulativecount)
   - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
@@ -86,7 +86,7 @@ Syntax: `Count`
 
 Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
-### CountIf
+### [CountIf](./expressions/countif.md)
 
 Only counts rows where the condition is true.
 
