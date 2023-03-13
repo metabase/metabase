@@ -20,11 +20,11 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
    [toucan.db :as db]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [yaml.core :as yaml])
+   [toucan2.tools.with-temp :as t2.with-temp])
  (:import
   (java.io File)
   (java.nio.file Path)))
@@ -99,7 +99,7 @@
 (defn- clean-entity
  "Removes any comparison-confounding fields, like `:created_at`."
  [entity]
- (dissoc entity :created_at))
+ (dissoc entity :created_at :result_metadata))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

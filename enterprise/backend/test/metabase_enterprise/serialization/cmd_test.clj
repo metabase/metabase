@@ -10,8 +10,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [yaml.core :as yaml])
+   [metabase.util.yaml :as yaml]
+   [toucan.db :as db])
   (:import
    (java.util UUID)))
 
