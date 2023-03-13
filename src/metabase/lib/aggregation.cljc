@@ -74,15 +74,3 @@
 (defop stddev [x])
 (defop sum [x])
 (defop sum-where [x y])
-
-(comment
-
-  (require '[malli.core :as mal]
-           '[malli.error]
-              '[metabase.lib.schema.ref :as ref]
-
-           )
-
-  (malli.error/humanize (mal/explain :mbql.clause/count (count {} -1 [:field {:base-type :type/BigInteger, :lib/uuid (str (random-uuid))} "ID"])))
-  (malli.error/humanize (mal/explain ::ref/ref [:field {:base-type :type/BigInteger, :lib/uuid (str (random-uuid))} "ID"]))
-  )
