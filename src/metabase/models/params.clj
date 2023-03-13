@@ -206,15 +206,8 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
-  "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
-  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
-  `dashboard-hydrated-with-cards` must be a Dashboard hydrated with `[:ordered_cards :card]`."
-  [dashboard-hydrated-with-cards]
-  (dashcards->param-field-ids (:ordered_cards dashboard-hydrated-with-cards)))
-
 (defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> dashboard (hydrate [:ordered_cards :card]) dashboard->param-field-ids param-field-ids->fields))
+  (-> dashboard (hydrate [:ordered_cards :card]) :ordered_cards dashcards->param-field-ids param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

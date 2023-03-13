@@ -251,8 +251,9 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
-    (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
+  (let [dash (-> (db/select-one Dashboard :id (u/the-id dashboard-or-id))
+                 (hydrate [:ordered_cards :card]))]
+    (params/dashcards->param-field-ids (:ordered_cards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
   "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
@@ -290,21 +291,22 @@
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   {:style/indent 1}
-  [dashboard dashcards]
+  [dashboard new-dashcards]
   (let [dashboard                  (t2/hydrate dashboard [:ordered_cards :series :card])
-        id->old-dashcard           (m/index-by :id (:ordered_cards dashboard))
+        old-dashcards              (:ordered_cards dashboard)
+        new-dashcards              (t2/hydrate new-dashcards :card)
+        id->old-dashcard           (m/index-by :id old-dashcards)
         old-dashcard-ids           (set (keys id->old-dashcard))
-        new-dashcard-ids           (set (map :id dashcards))
+        new-dashcard-ids           (set (map :id new-dashcards))
         [only-new _only-old _both] (diff new-dashcard-ids old-dashcard-ids)
         ;; ensure the dashcards we are updating are part of the given dashboard
         _ (when (seq only-new)
             (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                                  (u/the-id dashboard) (first only-new))
                             {:status-code 404})))
-        old-param-field-ids (params/dashboard->param-field-ids dashboard)
-        dashcards           (t2/hydrate dashcards :card)
-        new-param-field-ids (params/dashcards->param-field-ids dashcards)]
-    (doseq [dashcard dashcards]
+        old-param-field-ids (params/dashcards->param-field-ids old-dashcards)
+        new-param-field-ids (params/dashcards->param-field-ids new-dashcards)]
+    (doseq [dashcard new-dashcards]
       (let [;; update-dashboard-card! requires series to be a sequence of card IDs
             old-dashcard       (-> (get id->old-dashcard (:id dashcard))
                                    (update :series #(map :id %)))

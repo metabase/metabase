@@ -381,7 +381,7 @@
   (let [dashboard       (-> (db/select-one Dashboard :id dashboard-id)
                             api/check-404
                             (hydrate [:ordered_cards :card]))
-        param-field-ids (params/dashboard->param-field-ids dashboard)]
+        param-field-ids (params/dashcards->param-field-ids (:ordered_cards dashboard))]
     (api/check-404 (contains? param-field-ids field-id))))
 
 (defn card-and-field-id->values
