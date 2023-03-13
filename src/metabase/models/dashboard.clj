@@ -305,9 +305,9 @@
         dashcards           (t2/hydrate dashcards :card)
         new-param-field-ids (params/dashcards->param-field-ids dashcards)]
     (doseq [dashcard dashcards]
-      (let [old-dashcard       (-> (get id->old-dashcard (:id dashcard))
+      (let [;; update-dashboard-card! requires series to be a sequence of card IDs
+            old-dashcard       (-> (get id->old-dashcard (:id dashcard))
                                    (update :series #(map :id %)))
-             ;; update-dashboard-card! requires series to be a sequence of card IDs
             dashboard-card     (update dashcard :series #(map :id %))]
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
     (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))
