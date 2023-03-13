@@ -65,7 +65,11 @@ const ChartSettingsWidgetPopover = ({
               />
             )}
             {sections.current[currentSection]?.map(widget => (
-              <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
+              <ChartSettingsWidget
+                key={widget.id}
+                {...{ ...widget, onClose }}
+                hidden={false}
+              />
             ))}
           </PopoverRoot>
         ) : null
