@@ -58,10 +58,10 @@
   (is (=? {:lib/type :mbql/query
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
+                       :lib/options {:lib/uuid uuid?}
                        :fields      [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins       [{:lib/type    :mbql/join
-                                      :lib/options {:lib/uuid string?}
+                                      :lib/options {:lib/uuid uuid?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
                                       :condition   [:=
                                                     [:field (meta/id :venues :category-id)]
@@ -69,7 +69,7 @@
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
-                                                     :lib/options  {:lib/uuid string?}
+                                                     :lib/options  {:lib/uuid uuid?}
                                                      :source-table (meta/id :venues)}]}]}]
            :database (meta/id)}
           (lib.util/pipeline

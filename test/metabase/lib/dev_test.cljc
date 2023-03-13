@@ -51,6 +51,6 @@
     (is (fn? f))
     (is (=? [:=
              {:lib/uuid uuid?}
-             [:field (meta/id :venues :category-id) {:lib/uuid uuid?}]
-             [:field "ID" {:base-type :type/BigInteger, :lib/uuid uuid?}]]
+             [:field {:lib/uuid uuid?} (meta/id :venues :category-id)]
+             [:field {:base-type :type/BigInteger, :lib/uuid uuid?} "ID"]]
             (f {:lib/metadata meta/metadata} -1)))))

@@ -34,7 +34,7 @@
       #_(bigint 1))))
 
 (deftest ^:parallel integer-expression-test
-  (let [venues-price [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} (meta/id :venues :price)]]
+  (let [venues-price [:field {:lib/uuid (random-uuid), :base-type :type/Integer} (meta/id :venues :price)]]
     (testing "A `:field` clause with an integer base type in its options should be considered to be an integer expression"
       (is (mc/validate
            ::expression/integer
@@ -46,7 +46,7 @@
     (testing "Multiplication with all integer args should be considered to be an integer expression"
       (are [schema] (mc/validate
                      schema
-                     [:* {:lib/uuid (str (random-uuid))} venues-price 2])
+                     [:* {:lib/uuid (random-uuid)} venues-price 2])
         ::expression/*.integer
         ::expression/integer))
     (testing "Multiplication with one or more non-integer args should NOT be considered to be an integer expression."

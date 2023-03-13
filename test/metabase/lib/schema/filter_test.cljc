@@ -73,13 +73,8 @@
 (deftest ^:parallel filter-test
   (testing "valid filters"
     (let [field         [:field {:lib/uuid (random-uuid)} 1]
-          boolean-field [:field
-                         {:lib/uuid  (random-uuid)
-                          :base-type :type/Boolean}
-                         2]
           filter-expr
           [:and
-           boolean-field
            [:not [:!= "a" nil]]
            [:or
             [:inside 2.0 13.4 34 0 1.0 55]
