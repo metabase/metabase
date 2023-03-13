@@ -540,12 +540,7 @@
                                                          (result-metadata-for-query
                                                           source-query))
                                       :dataset         true}]]
-            (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                  temporal-field-ids (for [card (:ordered_cards dashboard)
-                                           :let [fields (get-in card [:card :dataset_query :query :breakout])]
-                                           [_ field-id m] fields
-                                           :when (:temporal-unit m)]
-                                       field-id)]
+            (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
               (ensure-dashboard-sourcing card dashboard)
               ;; We should generate two cards - locations and total values
