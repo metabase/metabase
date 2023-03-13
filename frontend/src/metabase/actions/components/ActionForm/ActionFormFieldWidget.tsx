@@ -8,6 +8,7 @@ import FormRadioWidget, {
 import FormSelectWidget from "metabase/core/components/FormSelect";
 import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
 import FormBooleanWidget from "metabase/core/components/FormToggle";
+import FormCheckBox from "metabase/core/components/FormCheckBox";
 import CategoryFieldPicker from "metabase/components/FormCategoryInput";
 
 import type { InputComponentType } from "metabase-types/api";
@@ -25,6 +26,7 @@ const WIDGETS: Record<InputComponentType, React.FunctionComponent<any>> = {
   textarea: FormTextAreaWidget,
   number: FormNumericInputWidget,
   boolean: FormBooleanWidget,
+  checkbox: FormCheckBox,
   radio: VerticalRadio,
   select: FormSelectWidget,
   category: CategoryFieldPicker,
