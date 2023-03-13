@@ -11,7 +11,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -304,5 +304,5 @@
                     Field       [field {:name "sku" :table_id (:id table)}]
                     FieldValues [fv    {:field_id (:id field)}]]
       (is (= "6f5bb4ba"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash field)])
-             (serdes.hash/identity-hash fv))))))
+             (serdes/raw-hash [(serdes/identity-hash field)])
+             (serdes/identity-hash fv))))))

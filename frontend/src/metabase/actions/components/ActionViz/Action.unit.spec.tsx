@@ -33,7 +33,7 @@ const defaultProps = {
         }),
         createMockActionParameter({
           id: "parameter_2",
-          type: "type/Text",
+          type: "type/Integer",
           target: ["variable", ["template-tag", "2"]],
         }),
       ],
@@ -275,7 +275,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         modelId: 777,
         parameters: {
           parameter_1: "foo",
-          parameter_2: "bar",
+          parameter_2: 5,
         },
       };
 
@@ -288,9 +288,9 @@ describe("Actions > ActionViz > ActionComponent", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.type(screen.getByLabelText("Parameter 2"), "bar");
+      userEvent.type(screen.getByLabelText("Parameter 2"), "5");
       await waitFor(() =>
-        expect(screen.getByLabelText("Parameter 2")).toHaveValue("bar"),
+        expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
       userEvent.click(screen.getByRole("button", { name: "Run" }));
@@ -308,7 +308,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         modelId: 777,
         parameters: {
           parameter_1: "foo",
-          parameter_2: "baz",
+          parameter_2: 5,
         },
       };
 
@@ -316,7 +316,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-2": "baz" },
+        parameterValues: { "dash-param-2": "5" },
       });
 
       userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
