@@ -185,7 +185,7 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Date style"); // shows created_at column settings
     });
 
-    it.skip("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
+    it("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
       const newColumnTitle = "Pre-tax";
 
       const questionDetails = {
