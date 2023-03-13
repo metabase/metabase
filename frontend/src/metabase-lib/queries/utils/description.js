@@ -6,7 +6,6 @@ import inflection from "inflection";
 
 import { stripId } from "metabase/lib/formatting";
 
-import * as FIELD_REF from "./field-ref";
 import { FilterClause, MetricClause } from "./description.styled.tsx";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
@@ -22,13 +21,16 @@ export function formatField(fieldDef, options = {}) {
 // metadata available, and the server side will generate a data structure
 // containing all the applicable data for formatting a user-friendly description
 // of a query.
+//
+// TODO: This is almost 100% duplicated with code in Question.ts, find a way to
+// consolidate them
 // -----------------------------------------------------------------------------
 
-export function formatTableDescription({ table }, options = {}) {
+function formatTableDescription({ table }, options = {}) {
   return [inflection.pluralize(table)];
 }
 
-export function formatAggregationDescription({ aggregation }, options = {}) {
+function formatAggregationDescription({ aggregation }, options = {}) {
   if (!aggregation || !aggregation.length) {
     return [];
   }
@@ -80,21 +82,7 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
   );
 }
 
-export function formatBreakoutDescription({ breakout }, options = {}) {
-  if (!breakout || !breakout.length) {
-    return [];
-  }
-
-  return [
-    t`Grouped by `,
-    joinList(
-      breakout.map(b => b),
-      " and ",
-    ),
-  ];
-}
-
-export function formatFilterDescription({ filter }, options = {}) {
+function formatFilterDescription({ filter }, options = {}) {
   if (!filter || !filter.length) {
     return [];
   }
@@ -118,34 +106,6 @@ export function formatFilterDescription({ filter }, options = {}) {
   ];
 }
 
-export function formatOrderByDescription(parts, options = {}) {
-  const orderBy = parts["order-by"];
-  if (!orderBy || !orderBy.length) {
-    return [];
-  }
-
-  return [
-    t`Sorted by `,
-    joinList(
-      orderBy.map(
-        field =>
-          field["field"] +
-          " " +
-          (field["direction"] === "asc" ? "ascending" : "descending"),
-      ),
-      " and ",
-    ),
-  ];
-}
-
-export function formatLimitDescription({ limit }, options = {}) {
-  if (limit == null) {
-    return [];
-  }
-
-  return [limit, " ", inflection.inflect("row", limit)];
-}
-
 export function formatQueryDescription(parts, options = {}) {
   if (!parts) {
     return "";
@@ -153,24 +113,14 @@ export function formatQueryDescription(parts, options = {}) {
 
   options = {
     jsx: false,
-    sections: [
-      "table",
-      "aggregation",
-      "breakout",
-      "filter",
-      "order-by",
-      "limit",
-    ],
+    sections: ["table", "aggregation", "filter"],
     ...options,
   };
 
   const sectionFns = {
     table: formatTableDescription,
     aggregation: formatAggregationDescription,
-    breakout: formatBreakoutDescription,
     filter: formatFilterDescription,
-    "order-by": formatOrderByDescription,
-    limit: formatLimitDescription,
   };
 
   // these array gymnastics are needed to support JSX formatting
@@ -186,33 +136,6 @@ export function formatQueryDescription(parts, options = {}) {
   } else {
     return description.join("");
   }
-}
-
-export function getDatetimeFieldUnit(field) {
-  if (field && FIELD_REF.isLocalField(field)) {
-    const options = field[2];
-    if (options) {
-      return options["temporal-unit"];
-    }
-  }
-  return null;
-}
-
-export function getAggregationType(aggregation) {
-  return aggregation && aggregation[0];
-}
-
-export function getAggregationField(aggregation) {
-  return aggregation && aggregation[1];
-}
-
-export function getQueryColumn(tableMetadata, field) {
-  const target = FIELD_REF.getFieldTarget(field, tableMetadata);
-  const column = { ...target.field };
-  if (FIELD_REF.isLocalField(field) && getDatetimeFieldUnit(field)) {
-    column.unit = getDatetimeFieldUnit(field);
-  }
-  return column;
 }
 
 export function joinList(list, joiner) {
