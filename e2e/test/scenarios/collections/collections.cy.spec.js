@@ -49,7 +49,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       popover().within(() => {
-        cy.findByText(`Collection ${COLLECTIONS_COUNT}`).click();
+        cy.findByText(`Collection ${COLLECTIONS_COUNT}`).click({
+          waitForAnimations: false,
+        });
       });
 
       cy.findByText("Create").click();
