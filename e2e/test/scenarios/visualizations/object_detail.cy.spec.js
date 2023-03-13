@@ -5,9 +5,13 @@ import {
   openPeopleTable,
   openProductsTable,
   visitQuestionAdhoc,
+  resetTestTable,
+  resyncDatabase,
+  getTableId,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -269,3 +273,55 @@ function changeSorting(columnName, direction) {
   });
   cy.wait("@dataset");
 }
+
+['postgres', 'mysql'].forEach(dialect => {
+  describe(`Object Detail > composite keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "composite_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    });
+
+    it('can show object detail modal for items with composite keys', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
+      });
+    });
+  });
+
+  describe(`Object Detail > no primary keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "no_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    });
+
+    it('can show object detail modal for items with no primary key', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
+      });
+    });
+  });
+});
