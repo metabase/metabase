@@ -16,7 +16,7 @@
   #?(:cljs (:require-macros [metabase.mbql.util])))
 
 (defn- field-metadata-gen
-  [[_ id-or-name]]
+  [[_ _options id-or-name]]
   (if (integer? id-or-name)
     (gen/let [[table fields] (gen/elements (for [table (:tables meta/metadata)]
                                              [(:name table) (map :name (:fields table))]))
@@ -46,8 +46,19 @@
   nil)
 
 (deftest ^:parallel filter-creation
-  (checking "filters can be created"
+  (checking "filters can be created from field metadata"
     [filter-expr filter-expr-gen]
+    (let [[op _options & args] filter-expr
+          f (schema.filter-test/filter-creation-function op)]
+      (is (some? f))
+      (when f
+        (is (fn? f))
+        (is (mc/validate ::schema.filter/filter
+                         (apply f {:lib/metadata meta/metadata} -1 args)))))))
+
+(deftest ^:parallel simple-filter-creation
+  (checking "filters can be created with fields"
+    [filter-expr (mg/generator ::schema.filter/filter)]
     (let [[op _options & args] filter-expr
           f (schema.filter-test/filter-creation-function op)]
       (is (some? f))
