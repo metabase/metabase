@@ -209,6 +209,58 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
+(deftest field-matching-predicates-test
+  (testing "The field spec predicate should match fields by their fieldspec"
+    (mt/dataset sample-dataset
+      (let [price-field (db/select-one Field :id (mt/id :products :price))
+            latitude-field (db/select-one Field :id (mt/id :people :latitude))
+            created-at-field (db/select-one Field :id (mt/id :people :created_at))
+            pred (#'magic/field-spec-pred :type/Latitude)]
+        (is (false? (pred price-field)))
+        (is (true? (pred latitude-field)))
+        (is (true? ((#'magic/field-spec-pred :type/CreationTimestamp) created-at-field)))
+        (is (true? ((#'magic/field-spec-pred :type/*) created-at-field))))))
+  (testing "The named spec predicate should match fields by name"
+    (mt/dataset sample-dataset
+      (let [price-field (db/select-one Field :id (mt/id :products :price))
+            category-field (db/select-one Field :id (mt/id :products :category))
+            ice-pred (#'magic/named-spec-pred "ice")]
+        (is (some? (ice-pred price-field)))
+        (is (nil? (ice-pred category-field))))))
+  (testing "The named spec predicate should match fields by name"
+    (mt/dataset sample-dataset
+      (let [category-field (db/select-one Field :id (mt/id :products :category))]
+        (is (false? ((#'magic/max-cardinality-pred 3) category-field)))
+        (is (true? ((#'magic/max-cardinality-pred 4) category-field)))
+        (is (true? ((#'magic/max-cardinality-pred 100) category-field))))))
+  (testing "Roll the above together and test filter-fields"
+    (mt/dataset sample-dataset
+      (let [category-field (db/select-one Field :id (mt/id :products :category))
+            price-field (db/select-one Field :id (mt/id :products :price))
+            latitude-field (db/select-one Field :id (mt/id :people :latitude))
+            created-at-field (db/select-one Field :id (mt/id :people :created_at))
+            source-field (db/select-one Field :id (mt/id :people :source))
+            fields [category-field price-field latitude-field created-at-field source-field]]
+        ;; Get the lone field that is both a CreationTimestamp and has "at" in the name
+        (is (= #{(mt/id :people :created_at)}
+               (set (map :id (#'magic/filter-fields
+                              {:fieldspec :type/CreationTimestamp
+                               :named "at"}
+                              fields)))))
+        ;; Get all fields with "at" in their names
+        (is (= #{(mt/id :products :category)
+                 (mt/id :people :created_at)
+                 (mt/id :people :latitude)}
+               (set (map :id (#'magic/filter-fields {:named "at"} fields)))))
+        ;; Products.Category has cardinality 4 and People.Source has cardinality 5
+        ;; Both are picked up here
+        (is (= #{(mt/id :products :category)
+                 (mt/id :people :source)}
+               (set (map :id (#'magic/filter-fields {:max-cardinality 5} fields)))))
+        ;; People.Source is rejected here
+        (is (= #{(mt/id :products :category)}
+               (set (map :id (#'magic/filter-fields {:max-cardinality 4} fields)))))))))
+
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
     (mt/dataset sample-dataset
