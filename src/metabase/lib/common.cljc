@@ -7,6 +7,7 @@
   #?(:cljs (:require-macros [metabase.lib.common])))
 
 (defmulti ->op-arg
+  "Ensures that clause arguments are properly unwrapped"
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x)))
@@ -25,6 +26,8 @@
 
 #?(:clj
    (defmacro defop
+     "Defines a clause creating function with given args.
+      Calling the clause without query and stage produces a fn that can be resolved later."
      [op-name argvec]
      {:pre [(symbol? op-name)
             (vector? argvec) (every? symbol? argvec)
