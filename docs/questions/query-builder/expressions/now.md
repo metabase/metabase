@@ -42,9 +42,9 @@ case(now >= [Start] AND now < [Deadline], "In progress",
      now = [Deadline], "DUE RIGHT NOW!")
 ```
 
-## Accepted data types
+## Data type
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `now`  |
+| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Returned by `now`  |
 | ----------------------- | -------------------- |
 | String                  | ❌                   |
 | Number                  | ❌                   |
@@ -52,7 +52,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+`now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` will return a `timestamp without time zone`. For more info about timestamp data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
 ## Limitations
 
@@ -63,8 +63,6 @@ If you need to compare `now` to a column in a different time zone, use [convertT
 ```
 convertTimezone(now, 'UTC', <report timezone>) >= convertTimezone([Deadline], 'UTC', <source time zone>)
 ```
-
-`now` is only available on Mongo versions 4.2 or greater.
 
 ## Related functions
 
