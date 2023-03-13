@@ -262,23 +262,23 @@
   (let [schema-type (try (mc/type schema)
                          (catch clojure.lang.ExceptionInfo _
                            (mc/type (eval schema))))]
-    (cond
+    (condp = schema-type
       ;; can use regex directly
-      (= schema-type :re) (first (try (mc/children schema)
-                                      (catch clojure.lang.ExceptionInfo _
-                                        (mc/children (eval schema)))))
-      (= schema-type 'pos-int?) #"[0-9]+"
-      (= schema-type :int) #"-?[0-9]+"
-      (= schema-type 'int?) #"-?[0-9]+"
-      (= schema-type :uuid) u/uuid-regex
-      (= schema-type 'uuid?) u/uuid-regex)))
+      :re (first (try (mc/children schema)
+                      (catch clojure.lang.ExceptionInfo _
+                        (mc/children (eval schema)))))
+      'pos-int? #"[0-9]+"
+      :int #"-?[0-9]+"
+      'int? #"-?[0-9]+"
+      :uuid u/uuid-regex
+      'uuid? u/uuid-regex)))
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
   malli schemas given in the `arg->schema` map.
 
   (add-route-param-schema '{id :int} \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]
-  (add-route-param-schema  \"/:id/card\") -> \"/:id/card\""
+  (add-route-param-schema {} \"/:id/card\") -> \"/:id/card\""
   [arg->schema route]
   (if (vector? route)
     route
