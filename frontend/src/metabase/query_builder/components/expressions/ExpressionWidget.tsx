@@ -44,6 +44,7 @@ export interface ExpressionWidgetProps {
   onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
+  onChange?: (expression: Expression | null) => void;
 }
 
 const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
@@ -59,6 +60,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     onChangeExpression,
     onRemoveExpression,
     onClose,
+    onChange,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -71,10 +73,10 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const isValidName = withName ? !!name : true;
   const isValidExpression = shouldValidateExpression
-    ? isExpression(expression)
+    ? !!expression && isExpression(expression)
     : true;
 
-  const isValid = !error && expression && isValidName && isValidExpression;
+  const isValid = !error && isValidName && isValidExpression;
 
   const handleCommit = () => {
     if (isValid && isNotNull(expression)) {
@@ -83,9 +85,10 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     }
   };
 
-  const handleExpressionChange = (parsedExpression: Expression) => {
+  const handleExpressionChange = (parsedExpression: Expression | null) => {
     setExpression(parsedExpression);
     setError(null);
+    onChange && onChange(parsedExpression);
   };
 
   return (
@@ -123,7 +126,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             query={query}
             reportTimezone={reportTimezone}
             onChange={handleExpressionChange}
-            onCommit={handleExpressionChange}
+            onCommit={handleCommit}
             onError={(errorMessage: string) => setError(errorMessage)}
           />
         </div>

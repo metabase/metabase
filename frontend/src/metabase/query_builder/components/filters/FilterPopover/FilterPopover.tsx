@@ -165,6 +165,7 @@ export default function FilterPopover({
         shouldValidateExpression={false}
         onChangeExpression={handleExpressionChange}
         onClose={() => setEditingFilter(false)}
+        onChange={handleFilterChange}
       />
     );
   }
