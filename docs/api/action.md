@@ -24,11 +24,12 @@ Delete the publicly-accessible link to this Dashboard.
 
 ## `GET /api/action/`
 
-Returns cards that can be used for QueryActions.
+Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
+  `?model-id=<model-id>` to limit to actions on a particular model.
 
 ### PARAMS:
 
-*  **`model-id`** integer greater than 0
+*  **`model-id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/action/:action-id`
 
