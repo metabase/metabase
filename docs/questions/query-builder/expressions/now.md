@@ -68,7 +68,7 @@ convertTimezone(now, 'UTC', <report timezone>) >= convertTimezone([Deadline], 'U
 
 ## Related functions
 
-Different ways to do the same thing, because you'd love to use custom expressions more, but now's just not the time.
+Different ways to do the same thing, because while you'd love to use custom expressions more, now's just not the time.
 
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
