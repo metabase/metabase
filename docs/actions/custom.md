@@ -93,7 +93,7 @@ VALUES (
 {% endraw %}
 ```
 
-## Casting field values
+## Casting field values in actions
 
 If you get a type error when you submit a form, you may need to `CAST` the data type in the query so it matches the data type of the target field in the database. Here we're casting a value to a `boolean`:
 
@@ -105,7 +105,7 @@ WHERE id = {{id}};
 {% endraw %}
 ```
 
-## Referencing saved questions
+## Referencing saved questions in actions
 
 You can also reference saved questions in actions. Here we're taking the results of a `SELECT` statement on a saved question ("Potential customers") and inserting the results into a `people_to_write` table.
 
