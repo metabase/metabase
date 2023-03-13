@@ -217,6 +217,7 @@
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
                                               :required (:database_required field)
+                                              :is-auto-increment (:database_is_auto_increment field)
                                               ::field-id (:id field)
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
@@ -243,14 +244,20 @@
       (if (= (:type action) :implicit)
         (let [model-id        (:model_id action)
               saved-params    (m/index-by :id parameters)
+              action-kind     (:kind action)
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
                                 (map (fn [param] (merge param (get saved-params (:id param)))))
 
-                                (= "row/delete" (:kind action))
+                                (= "row/delete" action-kind)
                                 (filter ::pk?)
 
-                                (contains? #{"row/update" "row/delete"} (:kind action))
+                                (= "row/create" action-kind)
+                                (remove #(or (:is-auto-increment %)
+                                             ;; non-required PKs like column with default is uuid_generate_v4()
+                                             (and (::pk? %) (not (:required %)))))
+
+                                (contains? #{"row/update" "row/delete"} action-kind)
                                 (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
                                 :always

@@ -20,11 +20,11 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
    [toucan.db :as db]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [yaml.core :as yaml])
+   [toucan2.tools.with-temp :as t2.with-temp])
  (:import
   (java.io File)
   (java.nio.file Path)))
@@ -99,7 +99,7 @@
 (defn- clean-entity
  "Removes any comparison-confounding fields, like `:created_at`."
  [entity]
- (dissoc entity :created_at))
+ (dissoc entity :created_at :result_metadata))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -118,7 +118,7 @@
                                                (for [type [:query :implicit :http]]
                                                  (many-random-fks 10
                                                                   {:spec-gen {:type type}}
-                                                                  {:model_id   [:c 100]
+                                                                  {:model_id   [:sm 10]
                                                                    :creator_id [:u 10]})))
                :query-action            (map-indexed
                                          (fn [idx x]
@@ -158,6 +158,19 @@
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))
+               ;; Simple model is primary used for actions.
+               ;; We can't use :card for actions because implicit actions require the model's query to contain
+               ;; nothing but a source table
+               :simple-model            (mapv #(update-in % [1 :refs] table->db)
+                                               (many-random-fks
+                                                10
+                                                {:spec-gen {:dataset_query {:database 1
+                                                                            :query {:source-table 3}
+                                                                            :type :query}
+                                                            :dataset       true}}
+                                                {:table_id      [:t    10]
+                                                 :collection_id [:coll 10]
+                                                 :creator_id    [:u    10]}))
                :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
                                                                  :creator_id    [:u    10]})
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
@@ -251,7 +264,8 @@
                   "Fields are scattered, so the directories are harder to count"))
 
             (testing "for cards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              ;; 100 from card, and 10 from simple-model
+              (is (= 110 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "cards")))
                               (reduce +)))))

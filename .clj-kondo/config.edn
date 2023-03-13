@@ -442,7 +442,7 @@
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
-  metabase.db.custom-migrations/defmigration                                           clj-kondo.lint-as/def-catch-all
+  metabase.db.custom-migrations/define-migration                                       clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                            clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
@@ -586,6 +586,7 @@
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
    metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
+   metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
@@ -672,7 +673,8 @@
   honey-sql-2-namespaces
   {:linters
    {:discouraged-namespace
-    {honeysql.core                     {:message "Use Honey SQL 2"}
+    {clj-yaml.core                     {:message "Use metabase.util.yaml"}
+     honeysql.core                     {:message "Use Honey SQL 2"}
      honeysql.format                   {:message "Use Honey SQL 2"}
      honeysql.helpers                  {:message "Use Honey SQL 2"}
      honeysql.types                    {:message "Use Honey SQL 2"}

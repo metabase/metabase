@@ -300,9 +300,7 @@ describe("Actions > ActionForm", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("disables form submission when required fields are not provided", async () => {
@@ -338,13 +336,49 @@ describe("Actions > ActionForm", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      expect(
-        await screen.findByText(/this field is required/i),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("disables form submission when no fields are changed", async () => {
+    it("allows form submission when all required fields are set", async () => {
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
+        },
+      });
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+      userEvent.type(screen.getByLabelText(/foo input/i), "baz");
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+    });
+
+    it("allows form submission when all fields are optional", async () => {
       const { onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
@@ -369,11 +403,11 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
 
     it("cannot type a string in a numeric field", async () => {
@@ -423,9 +457,7 @@ describe("Actions > ActionForm", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets a default value for an empty field", async () => {
@@ -442,25 +474,23 @@ describe("Actions > ActionForm", () => {
               id: "abc-123",
               title: "foo input",
               required: true,
+              defaultValue: "foo",
             }),
             "def-456": makeFieldSettings({
               inputType: "boolean",
               id: "def-456",
               title: "bar input",
               required: false,
+              defaultValue: "bar",
             }),
           },
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets types on form submissions correctly", async () => {

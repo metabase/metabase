@@ -14301,6 +14301,14 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v46.00-086
+      author: calherries
+      comment: Added 0.46.0 - Delete the abandonment email task
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+  - changeSet:
       id: v47.00-004
       author: qnkhuat
       comment: Added 0.47.0 - Add auto_incremented to metabase_field
@@ -14315,6 +14323,7 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

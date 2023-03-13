@@ -114,7 +114,7 @@
     {::mb.viz/column-name "TAX"} {::mb.viz/column-title "Tax" ::mb.viz/number-style "currency"},
     {::mb.viz/column-name "SUBTOTAL"} {::mb.viz/column-title "Subtotal" ::mb.viz/number-style "currency" ::mb.viz/decimals 2}}})
 
-(deftest native-query-viz-settings-test
+(deftest ^:parallel native-query-viz-settings-test
   (testing "Viz settings for native queries are pulled out of the query map but not modified"
     (let [query  (test-query [] nil test-native-query-viz-settings :native)
           result (update-viz-settings query)]

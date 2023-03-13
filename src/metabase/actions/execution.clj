@@ -114,7 +114,11 @@
         extra-parameters         (set/difference (set (keys request-parameters))
                                                  (set (keys slug->field-name)))
         pk-field                 (first pk-fields)
-        simple-parameters        (update-keys request-parameters (comp keyword slug->field-name))
+        ;; Ignore params with nil values; the client doesn't reliably omit blank, optional parameters from the
+        ;; request. See discussion at #29049
+        simple-parameters        (->> (update-keys request-parameters (comp keyword slug->field-name))
+                                      (filter (fn [[_k v]] (some? v)))
+                                      (into {}))
         pk-field-name            (keyword (:name pk-field))
         row-parameters           (cond-> simple-parameters
                                    (not= implicit-action :row/create) (dissoc pk-field-name))
