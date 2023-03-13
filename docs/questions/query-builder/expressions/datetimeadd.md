@@ -52,7 +52,7 @@ datetimeAdd([Opened On], 14, 'day')
 
 ## Checking if the current datetime is within an interval
 
-Let's say you want to check if today's date falls inside the coffee freshness window, and "today" is December 1, 2022.
+Let's say you want to check if today's date falls between a start date and an [end date](#calculating-an-end-date). Assume "today" is December 1, 2022.
 
 | Coffee                 | Opened On         | Finish By         | Still Fresh Today |
 | ---------------------- | ----------------- | ----------------- | ----------------- |
@@ -60,7 +60,13 @@ Let's say you want to check if today's date falls inside the coffee freshness wi
 | NO6 Full City Espresso | November 7, 2022  | November 21, 2022 | No                |
 | Ghost Roaster Giakanja | November 27, 2022 | December 11, 2022 | Yes               |
 
-**Still Fresh Today** is a custom column with the expression:
+**Finish By** is a custom column with the expression:
+
+```
+datetimeAdd([Opened On], 14, 'day')
+```
+
+**Still Fresh Today** uses [case](../expressions/case.md) to check if the current date ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the dates in **Opened On** and **Finish By**:
 
 ```
 case(between(now, [Opened On], [Finish By]), "Yes", "No")

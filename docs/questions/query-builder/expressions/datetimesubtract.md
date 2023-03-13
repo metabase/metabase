@@ -49,7 +49,7 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 ## Checking if the current datetime is within an interval
 
-Let's say you want to check the current time against your schedule, and the "current" time is November 12, 7:45 PM.
+Say you want to check if the current datetime falls between a [start date](#calculating-a-start-date) and an end date. Assume the "current" datetime is November 12, 7:45 PM.
 
 | Event   | Arrive By                  | Depart At                   | On My Way     |
 |---------|----------------------------|-----------------------------|---------------|
@@ -57,8 +57,13 @@ Let's say you want to check the current time against your schedule, and the "cur
 | Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | Yes           | 
 | Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  | No            |
 
+**Depart At** is a custom column with the expression:
 
-**On My Way** is a custom column with the expression:
+```
+datetimeSubtract([Arrive By], 30, "minute")
+```
+
+**On My Way** uses [case](../expressions/case.md) to check if the current datetime ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the datetimes in **Arrive By** and **Depart At**:
 
 ```
 case(between(now, [Depart At], [Arrive By]), "Yes", "No")

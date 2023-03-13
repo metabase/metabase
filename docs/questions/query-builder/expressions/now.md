@@ -42,7 +42,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
      now = [Deadline], "DUE RIGHT NOW!")
 ```
 
-## Data type
+## Data types
 
 | [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Returned by `now`  |
 | ----------------------- | -------------------- |
@@ -52,7 +52,9 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-`now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` will return a `timestamp without time zone`. For more info about timestamp data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+`now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`. 
+
+For more info about the way these data types behave in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
 ## Limitations
 
@@ -78,15 +80,13 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 
 By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/localization.md#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 
-For example, let's say you're using a Postgres database.
-
-If your Metabase report time zone is set to EST, you'll get `now` in EST:
+Say you're using a Postgres database. If your Metabase report time zone is set to EST, you'll get `now` in EST:
 
 ```sql
 SELECT CURRENT_TIMESTAMP AT TIME ZONE 'EST'
 ```
 
-If you don't have a report time zone, you'll get `now` in your database's time zone:
+If you don't have a report time zone, you'll get `now` in the Postgres database's time zone (typically UTC):
 
 ```sql
 SELECT CURRENT_TIME
