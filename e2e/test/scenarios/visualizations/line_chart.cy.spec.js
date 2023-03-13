@@ -415,8 +415,13 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it.skip("should not drop the chart legend (metabase#4995)", () => {
+    it("should not drop the chart legend (metabase#4995)", () => {
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
+
+      cy.log("Ensure that legend is hidden when not dealing with multi series");
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("remove-CATEGORY").click();
+      cy.get("main main").should("not.contain", "Doohickey");
     });
 
     it("should display correct axis labels (metabase#12782)", () => {
