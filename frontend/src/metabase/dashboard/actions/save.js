@@ -12,6 +12,7 @@ import { getDashboardBeforeEditing } from "../selectors";
 
 import { updateDashcardId } from "./core";
 import { fetchDashboard } from "./data-fetching";
+import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
@@ -29,11 +30,28 @@ export const saveDashboardAndCards = createThunkAction(
         ),
       };
 
+      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
+
+      if (dashboardBeforeEditing) {
+        const dashboardHasChanged = hasDashboardChanged(
+          dashboard,
+          dashboardBeforeEditing,
+        );
+
+        const cardsHaveChanged = haveDashboardCardsChanged(
+          dashboard.ordered_cards,
+          dashboardBeforeEditing.ordered_cards,
+        );
+
+        if (!cardsHaveChanged && !dashboardHasChanged) {
+          return;
+        }
+      }
+
       // clean invalid dashcards
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
