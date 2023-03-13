@@ -159,7 +159,8 @@
       (db/transaction (db/update! DashboardCard id updates)))
     (when (not= (:series dashboard-card [])
                 (:series old-dashboard-card []))
-      (update-dashboard-card-series! dashboard-card (:series dashboard-card)))))
+      (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
+    nil))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."

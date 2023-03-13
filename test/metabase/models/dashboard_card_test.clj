@@ -171,8 +171,8 @@
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
-      (testing "return value from the update call should be true"
-        (is (true? (dashboard-card/update-dashboard-card!
+      (testing "return value from the update call should be nil"
+        (is (nil? (dashboard-card/update-dashboard-card!
                     {:id                     dashcard-id
                      :actor_id               (mt/user->id :rasta)
                      :dashboard_id           nil
