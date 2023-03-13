@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
+import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/types/Query";
 import { isExpression } from "metabase-lib/expressions";
@@ -71,17 +72,19 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
         <FieldTitle>
           {t`Expression`}
 
-          <InfoLink
-            target="_blank"
-            to={EXPRESSIONS_DOCUMENTATION_URL}
-            tooltip={{
-              tooltip: t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`,
-              placement: "right",
-              maxWidth: 332,
-            }}
+          <Tooltip
+            tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
+            placement="right"
+            maxWidth={332}
           >
-            <StyledFieldTitleIcon name="info" />
-          </InfoLink>
+            <InfoLink
+              target="_blank"
+              href={EXPRESSIONS_DOCUMENTATION_URL}
+              data-testid="expression-widget-info-link"
+            >
+              <StyledFieldTitleIcon name="info" />
+            </InfoLink>
+          </Tooltip>
         </FieldTitle>
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield

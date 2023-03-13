@@ -2,7 +2,6 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import { getIcon, render, screen } from "__support__/ui";
 import { createEntitiesState } from "__support__/store";
-import type { LinkProps } from "metabase/core/components/Link";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockState } from "metabase-types/store/mocks";
 import {
@@ -10,24 +9,6 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
-
-jest.mock(
-  "metabase/core/components/Link",
-  () =>
-    function LinkMock({ to: href, tooltip, children, ...props }: LinkProps) {
-      const tooltipProps = typeof tooltip === "string" ? { tooltip } : tooltip;
-
-      return (
-        <>
-          <a href={href} {...props}>
-            {children}
-          </a>
-          {/* for some reason in Jest Tooltip for link doesn't show properly, so mocking it here */}
-          {tooltipProps && <div>{tooltipProps.tooltip}</div>}
-        </>
-      );
-    },
-);
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -48,6 +29,7 @@ describe("ExpressionWidget", () => {
 
     const link = screen.getByTestId("expression-widget-info-link");
     expect(link).toBeInTheDocument();
+
     expect(link).toHaveAttribute(
       "href",
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
@@ -91,7 +73,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     ...additionalProps,
   };
 
-  render(<ExpressionWidget {...props} />);
+  const view = render(<ExpressionWidget {...props} />);
 
-  return mocks;
+  return { mocks, view };
 }

@@ -1,9 +1,4 @@
-import React, {
-  AnchorHTMLAttributes,
-  CSSProperties,
-  ReactNode,
-  useState,
-} from "react";
+import React, { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
 import { LinkRoot } from "./Link.styled";
@@ -28,17 +23,6 @@ const Link = ({
   onBlur,
   ...props
 }: LinkProps): JSX.Element => {
-  const [isFocused, setIsFocused] = useState(false);
-  const handleFocus = (e: React.FocusEvent<HTMLAnchorElement>) => {
-    setIsFocused(true);
-    onFocus?.(e);
-  };
-
-  const handleBlur = (e: React.FocusEvent<HTMLAnchorElement>) => {
-    setIsFocused(false);
-    onBlur?.(e);
-  };
-
   const link = (
     <LinkRoot
       {...props}
@@ -46,8 +30,6 @@ const Link = ({
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
     >
       {children}
     </LinkRoot>
@@ -61,7 +43,7 @@ const Link = ({
       : tooltip;
 
   return tooltip ? (
-    <Tooltip isOpen={isFocused} {...tooltipProps}>
+    <Tooltip {...tooltipProps}>
       <span>{link}</span>
     </Tooltip>
   ) : (

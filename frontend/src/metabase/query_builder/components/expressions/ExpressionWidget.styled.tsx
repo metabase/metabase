@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const Container = styled.div`
   width: 445px;
@@ -28,7 +28,7 @@ export const FieldTitle = styled.div`
   color: ${color("text-light")};
 `;
 
-export const InfoLink = styled(Link)`
+export const InfoLink = styled(ExternalLink)`
   margin-left: 4px;
 
   &:hover,
