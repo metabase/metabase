@@ -96,7 +96,7 @@ export type OnSubmitActionForm = (
 // Action Forms
 
 export type ActionDisplayType = "form" | "button";
-export type FieldType = "string" | "number" | "date" | "category" | "boolean";
+export type FieldType = "string" | "number" | "date" | "category";
 
 export type DateInputType = "date" | "time" | "datetime";
 

@@ -23,10 +23,6 @@ export const getFieldTypes = (): FieldOptionType[] => [
     value: "category",
     name: t`Category`,
   },
-  {
-    value: "boolean",
-    name: t`Boolean`,
-  },
 ];
 
 interface InputOptionType {
@@ -86,10 +82,4 @@ export const getInputTypes = (): InputOptionsMap => ({
     // },
   ],
   category: [...getSelectInputs()],
-  boolean: [
-    {
-      value: "boolean",
-      name: t`Toggle`,
-    },
-  ],
 });
