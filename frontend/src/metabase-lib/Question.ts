@@ -757,6 +757,21 @@ class QuestionInner {
       }
     }
 
+    if (
+      graphMetrics &&
+      removedColumnNames.length > 0 &&
+      addedColumnNames.length === 0
+    ) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+      return this.updateSettings({
+        "graph.metrics": _.difference(graphMetrics, removedMetricColumnNames),
+      });
+    }
+
     const tableColumns = this.setting("table.columns");
     if (
       tableColumns &&
