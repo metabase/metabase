@@ -6,6 +6,10 @@
    [metabase.lib.schema.ref :as ref]
    [metabase.util.malli.registry :as mr]))
 
+(def ^:private boolean-expr
+  ;; avoid circular refs between these namespaces.
+  [:schema [:ref :metabase.lib.schema.expression/boolean]])
+
 (def ^:private eq-comparable
   ;; avoid circular refs between these namespaces.
   [:schema [:ref :metabase.lib.schema.expression/equality-comparable]])
@@ -26,11 +30,10 @@
 (doseq [op [::and ::or]]
   ;; using [:repeat {:min 2} [:schema [:ref ::filter]]] resulted in
   ;; invalid values being generated
-  (let [s [:schema [:ref ::filter]]]
-    (defclause op [:cat s [:+ s]])))
+  (defclause op [:cat boolean-expr [:+ boolean-expr]]))
 
 (defclause ::not
-  [:schema [:ref ::filter]])
+  boolean-expr)
 
 (doseq [op [::= ::!=]]
   (defclause op
@@ -86,7 +89,7 @@
    [:clause [:= :time-interval]]
    [:options [:merge ::common/options time-interval-options]]
    [:args [:catn
-           [:field ::ref/field]
+           [:expr [:schema [:ref :metabase.lib.schema.expression/temporal]]]
            [:n [:or :int [:enum :current :last :next]]]
            [:unit relative-datetime-unit]]]])
 
@@ -95,8 +98,8 @@
 
 (defclause ::case
   [:+ [:catn
-       [:pred [:schema [:ref ::filter]]]
-       [:expr [:schema [:ref :metabase.lib.schema.expression/boolean]]]]])
+       [:pred boolean-expr]
+       [:expr boolean-expr]]])
 
 ;; Boolean literals are not included here because they are not very portable
 ;; across different databases. In places where they should also be allowed
