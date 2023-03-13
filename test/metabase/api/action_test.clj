@@ -529,10 +529,14 @@
       (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
                         {action-id :action-id} {:type :implicit :kind "row/update"}]
         (testing "It strips out nil values"
-          (mt/user-http-request :crowberto
-                                :post 200
-                                (format "action/%s/execute" action-id)
-                                {:parameters {:id 1 :name "Darth Vader" :last_login nil}})
-          (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]}))) ]
-            (is (= "Darth Vader" new-name))
-            (is (some? last-login))))))))
+          (let [run-action! #(mt/user-http-request :crowberto
+                                                   :post 200
+                                                   (format "action/%s/execute" action-id)
+                                                   {:parameters {:id 1 :name % :last_login nil}})]
+            (try
+              (run-action! "Darth Vader")
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]}))) ]
+                (is (= "Darth Vader" new-name))
+                (is (some? last-login)))
+              (finally
+                (run-action! "Plato Yeshua")))))))))
