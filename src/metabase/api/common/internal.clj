@@ -271,7 +271,8 @@
       :int #"-?[0-9]+"
       'int? #"-?[0-9]+"
       :uuid u/uuid-regex
-      'uuid? u/uuid-regex)))
+      'uuid? u/uuid-regex
+      nil)))
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
