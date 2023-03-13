@@ -47,24 +47,22 @@ Here, **Depart At** is a custom column with the expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-## Comparing a date to a window of time
+## Checking if the current datetime is within an interval
 
-To check if an existing datetime falls between your start and end datetimes, use [`between`](../expressions-list.md#between).
+Let's say you want to check the current time against your schedule, and the "current" time is November 12, 7:45 PM.
 
-Unfortunately, Metabase doesn't currently support datetime functions like `today`. What if you want to check if today's date falls between **Arrive By** and **Depart At** in our [events example](#calculating-a-start-date)?
+| Event   | Arrive By                  | Depart At                   | On My Way     |
+|---------|----------------------------|-----------------------------|---------------|
+| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   | No            |
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | Yes           | 
+| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  | No            |
 
-1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
-2. Create a new question using the date dimension table, with a filter for "Today".
-3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
-4. Create a [left join](../../query-builder/join.md) between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
 
-The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
+**On My Way** is a custom column with the expression:
 
-| Event   | Arrive By                  | Depart At                   | Today                       |
-|---------|----------------------------|-----------------------------|-----------------------------|
-| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   | November 12, 2022  12:00 AM |
-| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | November 12, 2022  12:00 AM |
-| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  |                             |
+```
+case(between(now, [Depart At], [Arrive By]), "Yes", "No")
+```
 
 ## Accepted data types
 
@@ -163,6 +161,4 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 - [Custom expressions documentation](../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
-- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
-- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)
+- [Time series analysis](https://www.metabase.com/learn/time-series/start)
