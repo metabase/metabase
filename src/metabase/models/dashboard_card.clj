@@ -142,6 +142,13 @@
    (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
    s/Keyword                                s/Any})
 
+(defn- shallow-updates [new old]
+  "Returns the keys in `new` that have different values than the corresponding keys in `old`"
+  (into {}
+        (filter (fn [[k v]]
+                  (not= v (get old k)))
+        new)))
+
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` can be provided to avoid an extra DB call.
@@ -154,7 +161,7 @@
                     ;; This is to preserve the existing behavior of questions and card_id
                     ;; I don't know why card_id couldn't be changed for cards though.
                     action_id (conj :card_id))
-        [updates _ _] (data/diff (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
+        updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
     (when (seq updates)
       (db/transaction (db/update! DashboardCard id updates)))
     (when (not= (:series dashboard-card [])

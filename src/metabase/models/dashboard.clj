@@ -292,6 +292,7 @@
   {:style/indent 1}
   [dashboard dashcards]
   (let [dashboard                  (t2/hydrate dashboard [:ordered_cards :series :card])
+        old-param-field-ids        (params/dashboard->param-field-ids dashboard)
         id->old-dashcard           (m/index-by :id (:ordered_cards dashboard))
         old-dashcard-ids           (set (keys id->old-dashcard))
         new-dashcard-ids           (set (map :id dashcards))
@@ -308,8 +309,8 @@
              ;; update-dashboard-card! requires series to be a sequence of card IDs
              dashboard-card     (update dashboard-card :series #(map :id %))]
          (dashboard-card/update-dashboard-card! dashboard-card old-dashboard-card))))
-    (let [new-param-field-ids (params/dashboard->param-field-ids dashboard)
-          old-param-field-ids (params/dashboard->param-field-ids dashboard)]
+    (let [new-dashboard       (t2/hydrate dashboard [:ordered_cards :series :card])
+          new-param-field-ids (params/dashboard->param-field-ids new-dashboard)]
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
