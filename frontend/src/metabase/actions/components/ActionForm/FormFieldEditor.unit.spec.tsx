@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import {
-  render,
-  screen,
   getIcon,
   queryIcon,
+  render,
+  screen,
   waitFor,
   within,
 } from "__support__/ui";
@@ -158,6 +158,58 @@ describe("FormFieldEditor", () => {
           valueOptions: undefined,
         }),
       );
+    });
+  });
+
+  describe("default values", () => {
+    it("keeps default value when converting between input types", async () => {
+      const fieldSettings = getDefaultFieldSettings({
+        fieldType: "string",
+        inputType: "string",
+        defaultValue: "default",
+      });
+
+      const { onChange } = setup({ fieldSettings });
+
+      userEvent.click(screen.getByLabelText("Field settings"));
+      expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+
+      userEvent.click(screen.getByRole("radio", { name: "Long text" }));
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...fieldSettings,
+        inputType: "text",
+        defaultValue: "default",
+      });
+    });
+
+    it("handles default value when switching between field types", async () => {
+      const fieldSettings = getDefaultFieldSettings({
+        fieldType: "string",
+        inputType: "text",
+        defaultValue: "123",
+        valueOptions: undefined,
+      });
+
+      const { onChange } = setup({ fieldSettings });
+      userEvent.click(screen.getByLabelText("Field settings"));
+      expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Number"));
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...fieldSettings,
+        fieldType: "number",
+        inputType: "number",
+        defaultValue: 123,
+      });
+
+      userEvent.click(screen.getByText("Date"));
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...fieldSettings,
+        fieldType: "date",
+        inputType: "date",
+        defaultValue: undefined,
+      });
     });
   });
 });
