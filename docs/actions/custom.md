@@ -58,7 +58,7 @@ INSERT INTO invoices (
 VALUES (
   {{ account_id }}
   ,{{ payment }}
-  ,{{expected_invoice}}
+  ,CAST ({{expected_invoice}} AS boolean)
   ,{{plan}}
   ,({{date_received}}
 );
@@ -92,6 +92,28 @@ VALUES (
   ,({{ date_received }}
 );
 {% endraw %} 
+```
+
+## Referencing saved questions
+
+You can also reference saved questions in actions. Here we're taking the results of `SELECT` statement on a saved question ("Potential customers") and inserting them into a `people_to_write` table.
+
+```
+{% raw %}
+WITH prospects AS {{#6-potential-customers}}
+
+INSERT INTO
+  people_to_write (
+  first_name
+  ,last_name
+  ,email
+  )
+SELECT 
+  first_name
+  ,last_name 
+  ,email 
+FROM prospects;
+{% endraw %}
 ```
 
 ## Field types for action variables
