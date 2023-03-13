@@ -12,6 +12,7 @@ export * from "./e2e-notebook-helpers";
 export * from "./e2e-cloud-helpers";
 export * from "./e2e-collection-helpers";
 export * from "./e2e-data-model-helpers";
+export * from "./e2e-dragndrop-helpers";
 export * from "./e2e-misc-helpers";
 export * from "./e2e-email-helpers";
 export * from "./e2e-ldap-helpers";

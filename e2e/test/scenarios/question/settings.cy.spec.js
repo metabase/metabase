@@ -38,14 +38,14 @@ describe("scenarios > question > settings", () => {
       cy.get("@tableOptions")
         .contains("Total")
         .scrollIntoView()
-        .nextAll(".Icon-eye_outline")
+        .siblings("[data-testid$=hide-button]")
         .click();
 
       // Add people.category
       cy.get("@tableOptions")
         .contains("Category")
         .scrollIntoView()
-        .nextAll(".Icon-add")
+        .siblings("[data-testid$=add-button]")
         .click();
 
       // wait a Category value to appear in the table, so we know the query completed
@@ -55,7 +55,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@tableOptions")
         .contains("Ean")
         .scrollIntoView()
-        .nextAll(".Icon-add")
+        .siblings("[data-testid$=add-button]")
         .click();
 
       // wait a Ean value to appear in the table, so we know the query completed
@@ -185,7 +185,7 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Date style"); // shows created_at column settings
     });
 
-    it.skip("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
+    it("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
       const newColumnTitle = "Pre-tax";
 
       const questionDetails = {

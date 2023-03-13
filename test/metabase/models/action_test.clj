@@ -1,11 +1,14 @@
 (ns metabase.models.action-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -50,7 +53,7 @@
                                        "json_bit → 1234" "json_bit → 1234123412314"
                                        "json_bit → boop" "json_bit → doop" "json_bit → genres"
                                        "json_bit → noop" "json_bit → published" "json_bit → title"
-                                       "json_bit → zoop" })]
+                                       "json_bit → zoop"})]
                 (is (= model-columns (t2/select-one-fn (comp set
                                                              (partial map :name)
                                                              :result_metadata)
@@ -133,4 +136,84 @@
           (is (thrown-with-msg?
                Exception
                #"Actions must be made with models, not cards"
-               (t2/update! Action action-id {:archived false}))))))))
+               (t2/update! Action action-id {:archived false})))))
+      ;; Ngoc: I know this seems like a silly test but we actually made a mistake
+      ;; in the pre-update because `nil` is considered falsy. So have this test
+      ;; here to make sure we don't made that mistake again
+      (testing "Don't archive actions if updates a model dataset_query"
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (is (false? (t2/select-one-fn :archived Action action-id)))
+          (t2/update! Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (false? (t2/select-one-fn :archived Action action-id))))))))
+
+(deftest exclude-auto-increment-fields-for-create-implicit-actions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (doseq [kind ["row/create" "row/update" "row/delete"]]
+        (testing (format "for implicit action with kind=%s we should %s include auto incremented fields"
+                         kind (if (= "row/create" kind) "not" ""))
+          (mt/with-actions [{:keys [action-id]} {:type :implicit
+                                                 :kind kind}]
+            (let [parameters (:parameters (action/select-action :id action-id))
+                  id-parameter (first (filter #(= "id" (:id %)) parameters))]
+              (if (= "row/create" kind)
+                (is (nil? id-parameter))
+                (is (some? id-parameter))))))))))
+
+(deftest exclude-non-required-pks-from-create-implicit-action
+  (one-off-dbs/with-blank-db
+    (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                       "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                       ;; Keep DB open until we say otherwise :)
+                       "SET DB_CLOSE_DELAY -1;"
+                       ;; create table & load data
+                       "DROP TABLE IF EXISTS \"uuid_test\";"
+                       "CREATE TABLE \"DEFAULT_UUID\" (\"uuid\" UUID DEFAULT RANDOM_UUID() PRIMARY KEY)"
+                       "CREATE TABLE \"REQUIRED_UUID\" (\"uuid\" UUID PRIMARY KEY);"
+                       "GRANT ALL ON \"DEFAULT_UUID\" TO GUEST;"
+                       "GRANT ALL ON \"REQUIRED_UUID\" TO GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (mt/db))
+    (testing "make sure we synced the fields correctly"
+      (is (= [{:database_is_auto_increment false
+               :database_required          false
+               :database_type              "UUID"
+               :name                       "uuid"
+               :semantic_type              :type/PK}]
+             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+                        :table_id (mt/id :default_uuid))))
+      (is (= [{:database_is_auto_increment false
+               :database_required          true
+               :database_type              "UUID"
+               :name                       "uuid"
+               :semantic_type              :type/PK}]
+             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+                        :table_id (mt/id :required_uuid)))))
+    (mt/with-actions-enabled
+      (testing "PK with a default should be excluded from implicit create action parameters"
+        (mt/with-actions [_                      {:dataset true :dataset_query (mt/mbql-query default_uuid)}
+                          {create-id :action-id} {:type :implicit
+                                                  :kind "row/create"}
+                          {delete-id :action-id} {:type :implicit
+                                                  :kind "row/delete"}
+                          {update-id :action-id} {:type :implicit
+                                                  :kind "row/update"}]
+          (doseq [[action-id pred] [[create-id nil?]
+                                    [update-id some?]
+                                    [delete-id some?]]]
+            (is (pred (->> (action/select-action :id action-id)
+                           :parameters
+                           (filter #(= "uuid" (:id %)))
+                           first))))))
+      (testing "PK without a default should be included in the parameters for all implicit action types"
+        (mt/with-actions [_                      {:dataset true :dataset_query (mt/mbql-query required_uuid)}
+                          {create-id :action-id} {:type :implicit
+                                                  :kind "row/create"}
+                          {delete-id :action-id} {:type :implicit
+                                                  :kind "row/delete"}
+                          {update-id :action-id} {:type :implicit
+                                                  :kind "row/update"}]
+          (doseq [action-id [create-id update-id delete-id]]
+            (is (some? (->> (action/select-action :id action-id)
+                            :parameters
+                            (filter #(= "uuid" (:id %))))))))))))

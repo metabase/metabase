@@ -17,7 +17,7 @@
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]
+   [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -213,7 +213,7 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (mt/test-drivers #{:h2 :mysql :postgres}
+      (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
 (defmacro test-migrations

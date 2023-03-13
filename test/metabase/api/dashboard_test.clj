@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
@@ -2661,7 +2662,17 @@
               (testing "Sending an invalid number should fail gracefully"
                 (is (has-valid-action-execution-error-message?
                      (mt/user-http-request :crowberto :post 500 execute-path
-                                           {:parameters {"id" "BAD"}})))))))))))
+                                           {:parameters {"id" "BAD"}}))))
+              (testing "should send a snowplow event"
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 execute-path
+                                        {:parameters {"id" 1}})
+                  (is (= {:data {"action_id" action-id
+                                 "event"     "action_executed"
+                                 "source"    "dashboard"
+                                 "type"      "query"}
+                          :user-id (str (mt/user->id :crowberto))}
+                         (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2715,7 +2726,7 @@
                 (is (partial= {:name "Birds"}
                               new-row)))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing other parameters should fail gracefully"

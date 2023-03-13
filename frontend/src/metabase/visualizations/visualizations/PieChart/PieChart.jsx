@@ -121,6 +121,14 @@ export default class PieChart extends Component {
       widget: "toggle",
       default: true,
       inline: true,
+      marginBottom: "1rem",
+    },
+    "pie.show_total": {
+      section: t`Display`,
+      title: t`Show total`,
+      widget: "toggle",
+      default: true,
+      inline: true,
     },
     "pie.percent_visibility": {
       section: t`Display`,
@@ -258,7 +266,16 @@ export default class PieChart extends Component {
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
-      if (groupElement.getBoundingClientRect().width < 120) {
+      const { settings } = this.props;
+
+      if (!groupElement || !detailElement) {
+        return;
+      }
+
+      if (
+        groupElement.getBoundingClientRect().width < 120 ||
+        !settings["pie.show_total"]
+      ) {
         detailElement.classList.add("hide");
       } else {
         detailElement.classList.remove("hide");

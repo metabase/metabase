@@ -5,6 +5,9 @@ import {
   visualize,
   visitDashboard,
   popover,
+  assertSheetRowsCount,
+  filterWidget,
+  saveDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -31,6 +34,45 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+    });
+  });
+
+  describe("from dashboards", () => {
+    it("should allow downloading card data", () => {
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      visitDashboard(1);
+      cy.findByTestId("dashcard").within(() => {
+        cy.findByTestId("legend-caption").realHover();
+      });
+
+      assertOrdersExport(18760);
+
+      cy.icon("pencil").click();
+
+      cy.icon("filter").click();
+
+      popover().within(() => {
+        cy.contains("ID").click();
+      });
+
+      cy.get(".DashCard").contains("Select…").click();
+      popover().contains("ID").eq(0).click();
+
+      saveDashboard();
+
+      filterWidget().contains("ID").click();
+
+      popover().find("input").type("1");
+
+      cy.findByText("Add filter").click();
+
+      cy.wait("@dashboard");
+
+      cy.findByTestId("dashcard").within(() => {
+        cy.findByTestId("legend-caption").realHover();
+      });
+
+      assertOrdersExport(1);
     });
   });
 
@@ -104,3 +146,22 @@ describe("scenarios > question > download", () => {
     });
   });
 });
+
+function assertOrdersExport(length) {
+  downloadAndAssert(
+    {
+      fileType: "xlsx",
+      questionId: 1,
+      dashcardId: 1,
+      dashboardId: 1,
+    },
+    sheet => {
+      expect(sheet["A1"].v).to.eq("ID");
+      expect(sheet["A2"].v).to.eq(1);
+      expect(sheet["B1"].v).to.eq("User ID");
+      expect(sheet["B2"].v).to.eq(1);
+
+      assertSheetRowsCount(length)(sheet);
+    },
+  );
+}

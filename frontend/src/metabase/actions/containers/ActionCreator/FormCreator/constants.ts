@@ -30,12 +30,7 @@ interface InputOptionType {
   name: string;
 }
 
-interface InputOptionsMap {
-  string: InputOptionType[];
-  number: InputOptionType[];
-  date: InputOptionType[];
-  category: InputOptionType[];
-}
+type InputOptionsMap = Record<FieldType, InputOptionType[]>;
 
 const getTextInputs = (): InputOptionType[] => [
   {
