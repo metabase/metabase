@@ -125,11 +125,17 @@
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (testing "Actions are archived if their model is converted to a saved question"
-        (mt/with-actions [{:keys [action-id model-id]} {}]
+      (testing "Non-implicit actions are archived if their model is converted to a saved question"
+        (doseq [type [:http :query]]
+          (mt/with-actions [{:keys [action-id model-id]} {:type type}]
+            (is (false? (t2/select-one-fn :archived Action action-id)))
+            (t2/update! Card model-id {:dataset false})
+            (is (true? (t2/select-one-fn :archived Action action-id))))))
+      (testing "Implicit actions are deleted if their model is converted to a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived Action action-id)))
           (t2/update! Card model-id {:dataset false})
-          (is (true? (t2/select-one-fn :archived Action action-id)))))
+          (is (false? (t2/exists? Action action-id)))))
       (testing "Actions can't be unarchived if their model is a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {}]
           (t2/update! Card model-id {:dataset false})
