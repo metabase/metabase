@@ -191,7 +191,7 @@
 
 (defn- cards->card-param-field-ids
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
-  the Cards in `cards`."
+  `cards`."
   [cards]
   (reduce set/union (map card->template-tag-field-ids cards)))
 
@@ -207,7 +207,10 @@
    (cards->card-param-field-ids (map :card dashcards))))
 
 (defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> dashboard (hydrate [:ordered_cards :card]) :ordered_cards dashcards->param-field-ids param-field-ids->fields))
+  (-> (hydrate dashboard [:ordered_cards :card])
+      :ordered_cards
+      dashcards->param-field-ids
+      param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
