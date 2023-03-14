@@ -69,8 +69,7 @@
    :mbql.clause/share
    :mbql.clause/stddev
    :mbql.clause/sum
-   :mbql.clause/sum-where
-   any?])
+   :mbql.clause/sum-where])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
