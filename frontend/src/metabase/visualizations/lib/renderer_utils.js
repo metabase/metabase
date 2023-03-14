@@ -352,6 +352,37 @@ export function xValueForWaterfallTotal({ settings, series }) {
   return TOTAL_ORDINAL_VALUE;
 }
 
+export function shouldSplitYAxis(
+  { settings, chartType, isScalarSeries, series },
+  datas,
+  yExtents,
+) {
+  if (
+    isScalarSeries ||
+    chartType === "scatter" ||
+    settings["graph.y_axis.auto_split"] === false ||
+    isStacked(settings, datas)
+  ) {
+    return false;
+  }
+
+  const hasDifferentYAxisColTypes =
+    _.uniq(series.map(s => s.data.cols[1].semantic_type)).length > 1;
+  if (hasDifferentYAxisColTypes) {
+    return true;
+  }
+
+  // Note (EmmadUsmani): For charts where the series have the same `semantic_type`
+  // for their y-axis columns, we still want to split the axis if one series has a
+  // disproportionately large range of values compared to another.
+  const minRange = Math.min(...yExtents.map(extent => extent[1] - extent[0]));
+  const maxExtent = Math.max(...yExtents.map(extent => extent[1]));
+  const minExtent = Math.min(...yExtents.map(extent => extent[0]));
+  const chartRange = maxExtent - minExtent;
+
+  return chartRange >= 10 * minRange;
+}
+
 /************************************************************ PROPERTIES ************************************************************/
 
 export const isTimeseries = settings =>
