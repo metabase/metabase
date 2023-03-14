@@ -107,4 +107,39 @@
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
                 (testing "Did not find bad field clauses"
-                  (is (= [] @bad-refs)))))))))))
+                  (is (= [] @bad-refs))))))))))
+
+  (testing "Can use joins with persisted models (#28902)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset sample-dataset
+        (mt/with-persistence-enabled [persist-models!]
+          (mt/with-temp* [Card [model {:dataset true
+                                       :database_id (mt/id)
+                                       :query_type :query
+                                       :dataset_query
+                                       (mt/mbql-query orders
+                                         {:fields [$total &products.products.category]
+                                          :joins [{:source-table $$products
+                                                   :condition [:= $product_id &products.products.id]
+                                                   :strategy :left-join
+                                                   :alias "products"}]})}]]
+            (persist-models!)
+            (let [query   {:type :query
+                           :database (mt/id)
+                           :query {:source-table (str "card__" (:id model))}}
+                  results (qp/process-query query)
+                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+              (testing "Was persisted"
+                (is (str/includes? (-> results :data :native_form :query) persisted-schema))))
+            (let [query {:type :query
+                         :database (mt/id)
+                         :query {:source-table (str "card__" (:id model))
+                                 :aggregation [[:count]]
+                                 :breakout [(mt/$ids $products.category)]}}
+                  results (qp/process-query query)
+                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+              (testing "Was persisted"
+                (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+              (is (= {"Doohickey" 3976, "Gadget" 4939,
+                      "Gizmo"     4784, "Widget" 5061}
+                     (->> results :data :rows (into {})))))))))))

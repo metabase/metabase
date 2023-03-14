@@ -317,12 +317,34 @@
         (when-not (= parameters new-parameters)
           (db/update! model po-id {:parameters new-parameters}))))))
 
+(defn model-supports-implicit-actions?
+  "A model with implicit action supported iff they are a raw table,
+  meaning there are no clauses such as filter, limit, breakout...
+
+  The list of clauses should match with FE, which is defined in the
+  method `hasAnyClauses` of `metabase-lib/queries/StructuredQuery` class"
+  [{dataset-query :dataset_query :as _card}]
+  (and (= :query (:type dataset-query))
+       (every? #(nil? (get-in dataset-query [:query %]))
+               [:expressions :filter :limit :breakout :aggregation :joins :order-by :fields])))
+
+(defn- disable-implicit-action-for-model!
+  "Delete all implicit actions of a model if exists."
+  [model-id]
+  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
+                                                    :from   [:action]
+                                                    :join   [:implicit_action
+                                                             [:= :action.id :implicit_action.action_id]]
+                                                    :where  [:= :action.model_id model-id]})]
+    (t2/delete! 'Action :id [:in action-ids])))
+
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :dataset)
+                                  (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -344,8 +366,13 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
+      (when (and (:dataset_query changes)
+                 (:dataset old-card-info)
+                 (not (model-supports-implicit-actions? changes)))
+        (disable-implicit-action-for-model! id))
       ;; Archive associated actions
-      (when (and (not (:dataset changes))
+      (when (and (false? (:dataset changes))
                  (:dataset old-card-info))
         (t2/update! 'Action {:model_id id} {:archived true}))
       ;; Make sure any native query template tags match the DB in the query.

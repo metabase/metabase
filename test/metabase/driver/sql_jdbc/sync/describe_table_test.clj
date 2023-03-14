@@ -7,7 +7,9 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan.db :as db]))
 
@@ -23,13 +25,48 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true}
+            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false}
+            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false}
+            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
+
+(deftest describe-auto-increment-on-non-pk-field-test
+  (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "CREATE TABLE \"employee_counter\" (\"id\" INTEGER AUTO_INCREMENT PRIMARY KEY, \"count\" INTEGER AUTO_INCREMENT, \"rank\" INTEGER NOT NULL)"
+                         "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+      (is (= {:fields #{{:base-type                 :type/Integer
+                         :database-is-auto-increment true
+                         :database-position         0
+                         :database-required         false
+                         :database-type             "INTEGER"
+                         :name                      "id"
+                         :pk?                       true}
+                        {:base-type                 :type/Integer
+                         :database-is-auto-increment true
+                         :database-position         1
+                         :database-required         false
+                         :database-type             "INTEGER"
+                         :name                      "count"}
+                        {:base-type                 :type/Integer
+                         :database-is-auto-increment false
+                         :database-position         2
+                         :database-required         true
+                         :database-type             "INTEGER"
+                         :name                      "rank"}}
+              :name "employee_counter"}
+             (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
 (deftest describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"

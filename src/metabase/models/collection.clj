@@ -488,10 +488,8 @@
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
        (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
-       ;; if it is a personal Collection, it belongs to the current User.
-       [:or
-        [:= :personal_owner_id nil]
-        [:= :personal_owner_id *current-user-id*]]]
+       ;; don't want personal collections in collection items. Only on the sidebar
+       [:= :personal_owner_id nil]]
       ;; (any additional conditions)
       additional-honeysql-where-clauses)))
 

@@ -4,12 +4,14 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
+  sidebar,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const ccName = "Custom Category";
+const ccDisplayName = "Product.Custom Category";
 
 const questionDetails = {
   name: "22788",
@@ -33,7 +35,7 @@ const dashboardDetails = {
   parameters: [filter],
 };
 
-describe.skip("issue 22788", () => {
+describe("issue 22788", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -76,8 +78,14 @@ describe.skip("issue 22788", () => {
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {
-        cy.findByText(ccName);
+        cy.findByText(ccDisplayName);
       });
+
+    // need to actually change the dashboard to test a real save
+    sidebar().within(() => {
+      cy.findByDisplayValue("Text").clear().type('my filter text');
+      cy.button('Done').click();
+    });
 
     saveDashboard();
 

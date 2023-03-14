@@ -5,15 +5,20 @@
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as http-action]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -49,15 +54,30 @@
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
 (api/defendpoint GET "/"
-  "Returns cards that can be used for QueryActions"
+  "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
+  `?model-id=<model-id>` to limit to actions on a particular model."
   [model-id]
-  {model-id pos-int?}
-  (let [model (api/read-check Card model-id)]
-    ;; We don't check the permissions on the actions, we assume they are
-    ;; readable if the model is readable.
-    (hydrate
-     (action/select-actions [model] :model_id model-id :archived false)
-     :creator)))
+  {model-id [:maybe ms/IntGreaterThanZero]}
+  (letfn [(actions-for [models]
+            (if (seq models)
+              (hydrate (action/select-actions models
+                                              :model_id [:in (map :id models)]
+                                              :archived false)
+                       :creator)
+              []))]
+    ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
+    (let [models (if model-id
+                   [(api/read-check Card model-id)]
+                   (t2/select Card {:where
+                                    [:and
+                                     [:= :dataset true]
+                                     [:= :archived false]
+                                     ;; action permission keyed off of model permission
+                                     (collection/visible-collection-ids->honeysql-filter-clause
+                                      :collection_id
+                                      (collection/permissions-set->visible-collection-ids
+                                       @api/*current-user-permissions-set*))]}))]
+      (actions-for models))))
 
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -75,7 +95,9 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
-  (api/write-check Action action-id)
+  (let [action (api/write-check Action action-id)]
+    (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
+                                                                            :action_id action-id}))
   (db/delete! Action :id action-id)
   api/generic-204-no-content)
 
@@ -104,10 +126,17 @@
                     {:type        type
                      :status-code 400})))
   (let [model (api/write-check Card model_id)]
+    (when (and (= "implicit" type)
+               (not (card/model-supports-implicit-actions? model)))
+      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
+                      {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
        (db/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
+    (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
+                                                                            :action_id      action-id
+                                                                            :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
       ;; db/insert! does not return a value when used with h2
@@ -136,7 +165,11 @@
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
-  (action/select-action :id id))
+  (let [{:keys [parameters type] :as action} (action/select-action :id id)]
+    (snowplow/track-event! ::snowplow/action-updated api/*current-user-id* {:type           type
+                                                                            :action_id      id
+                                                                            :num_parameters (count parameters)})
+    action))
 
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
@@ -173,8 +206,10 @@
   [id :as {{:keys [parameters], :as _body} :body}]
   {id       pos-int?
    parameters [:maybe [:map-of :keyword any?]]}
-  (-> (action/select-action :id id :archived false)
-      (api/check-404)
-      (actions.execution/execute-action! (update-keys parameters name))))
+  (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
+    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
+                                                                             :type      type
+                                                                             :action_id id})
+    (actions.execution/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)
