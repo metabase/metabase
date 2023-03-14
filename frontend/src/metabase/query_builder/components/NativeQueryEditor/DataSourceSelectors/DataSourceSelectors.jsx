@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { getNativeQueryLanguage } from "metabase/lib/engine";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -73,9 +72,7 @@ const DataSourceSelectors = ({
       return allDatabases;
     }
 
-    return allDatabases.filter(database =>
-      checkDatabaseActionsEnabled(database),
-    );
+    return allDatabases.filter(database => database.hasActionsEnabled());
   }, [query, requireWriteback]);
 
   if (!isNativeEditorOpen || databases.length === 0) {
