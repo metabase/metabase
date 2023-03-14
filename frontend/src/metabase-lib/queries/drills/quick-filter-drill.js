@@ -38,6 +38,26 @@ export function quickFilterDrillQuestion({ question, clicked, filter }) {
   if (isLocalColumn(column)) {
     return question.query().filter(filter).question();
   } else {
+    /**
+     * For aggregated and custom columns
+     * with field refs like ["aggregation", 0],
+     * we need to nest the query as filters like ["=", ["aggregation", 0], value] won't work
+     *
+     * So the query like
+     * {
+     *   aggregations: [["count"]]
+     *   source-table: 2,
+     * }
+     *
+     * Becomes
+     * {
+     *   source-query: {
+     *      aggregations: [["count"]]
+     *     source-table: 2,
+     *   },
+     *   filter: ["=", [ "field", "count", {"base-type": "type/BigInteger"} ], value]
+     * }
+     */
     return question.query().nest().filter(filter).question();
   }
 }
