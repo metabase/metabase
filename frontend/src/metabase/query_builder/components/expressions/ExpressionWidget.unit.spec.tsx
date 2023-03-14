@@ -16,7 +16,6 @@ describe("ExpressionWidget", () => {
 
     expect(screen.getByText("Expression")).toBeInTheDocument();
     expect(screen.getByText("Name")).toBeInTheDocument();
-
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
