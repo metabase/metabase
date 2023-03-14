@@ -12,14 +12,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn genericize-exceptions
+(declare api-exception-response)
+
+(defn public-execptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
   information available to bad actors when exceptions occur on public endpoints."
   [handler]
   (fn [request respond _]
     (let [raise (fn [e]
                   (log/warn e (trs "Exception in API call"))
-                  (respond {:status 400, :body "An error occurred."}))]
+                  (if (:public-pass-through (ex-data e))
+                    (respond (api-exception-response e))
+                    (respond {:status 400, :body "An error occurred."})))]
       (try
         (handler request respond raise)
         (catch Throwable e

@@ -323,7 +323,7 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+  (let [action (api/check-404-public (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (select-keys action action-public-keys)))
 
