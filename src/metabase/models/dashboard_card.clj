@@ -141,33 +141,34 @@
    (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
    s/Keyword                                s/Any})
 
+(defn- shallow-updates
+  "Returns the keys in `new` that have different values than the corresponding keys in `old`"
+  [new old]
+  (into {}
+        (filter (fn [[k v]]
+                  (not= v (get old k)))
+        new)))
+
 (s/defn update-dashboard-card!
-  "Update an existing DashboardCard including all DashboardCardSeries.
-   Returns true or throws an Exception."
-  [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
-  (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
-    (db/transaction
-     ;; update the dashcard itself (positional attributes)
-     (when (and size_x size_y row col)
-       (db/update-non-nil-keys! DashboardCard id
-                                (cond->
-                                  {:action_id              action_id
-                                   :size_x                 size_x
-                                   :size_y                 size_y
-                                   :row                    row
-                                   :col                    col
-                                   :parameter_mappings     parameter_mappings
-                                   :visualization_settings visualization_settings}
-                                  ;; Allow changing card for actions
-                                  ;; This is to preserve the existing behavior of questions and card_id
-                                  ;; I don't know why card_id couldn't be changed for questions though.
-                                  action_id (assoc :card_id card_id))))
-     ;; update series (only if they changed)
-     (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
-                                                  :dashboardcard_id id
-                                                  {:order-by [[:position :asc]]})))
-       (update-dashboard-card-series! dashboard-card series)))
-    nil))
+  "Updates an existing DashboardCard including all DashboardCardSeries.
+   `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
+   Returns nil."
+  [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
+   old-dashboard-card                        :- DashboardCardUpdates]
+  (db/transaction
+   (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
+                            :parameter_mappings :visualization_settings]
+                    ;; Allow changing card_id for action dashcards, but not for card dashcards.
+                    ;; This is to preserve the existing behavior of questions and card_id
+                    ;; I don't know why card_id couldn't be changed for cards though.
+                     action_id (conj :card_id))
+         updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
+     (when (seq updates)
+       (db/update! DashboardCard id updates))
+     (when (not= (:series dashboard-card [])
+                 (:series old-dashboard-card []))
+       (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
+     nil)))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
