@@ -218,7 +218,7 @@
        (db/with-call-counting [call-count]
          (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
          (is (= 6 (call-count)))))
-      (testing "Should have fewer calls if there's changes to the dashcards"
+      (testing "Should have more calls if there's changes to the dashcards"
        (db/with-call-counting [call-count]
          (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
                                                   :cardId card-id
