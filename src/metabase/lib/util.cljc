@@ -1,11 +1,28 @@
 (ns metabase.lib.util
+  (:refer-clojure :exclude [format])
   (:require
    [clojure.set :as set]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       ([goog.string :as gstring]
+        [goog.string.format :as gstring.format]))))
+
+;; The formatting functionality is only loaded if you depend on goog.string.format.
+#?(:cljs (comment gstring.format/keep-me))
+
+;;; For convenience: [[metabase.lib.util/format]] maps to [[clojure.core/format]] in Clj and [[goog.string/format]] in
+;;; Cljs. They both work like [[clojure.core/format]], but since that doesn't exist in Cljs, you can use this instead.
+#?(:clj
+   (p/import-vars [clojure.core format])
+
+   :cljs
+   (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.

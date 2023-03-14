@@ -2,13 +2,10 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
-import inflection from "inflection";
-import { t } from "ttag";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
 import * as MLv2 from "cljs/metabase.lib.js";
-import { format as formatExpression } from "metabase-lib/expressions/format";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -28,8 +25,6 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
-import * as DESCRIPTION from "metabase-lib/queries/utils/description";
-import * as FIELD_REF from "metabase-lib/queries/utils/field-ref";
 import * as QUERY from "metabase-lib/queries/utils/query";
 
 // TODO: remove these dependencies

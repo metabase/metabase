@@ -145,7 +145,7 @@ export function joinList(list, joiner) {
   );
 }
 
-export function conjunctList(list, conjunction) {
+function conjunctList(list, conjunction) {
   switch (list.length) {
     case 0:
       return null;

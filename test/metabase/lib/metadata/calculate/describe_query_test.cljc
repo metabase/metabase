@@ -1,8 +1,10 @@
 (ns metabase.lib.metadata.calculate.describe-query-test
   (:require
    [clojure.test :refer [deftest is]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculate.describe-query :as describe-query]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]))
 
@@ -19,89 +21,6 @@
   (let [=-clause (lib/= query -1 x y)]
     (lib.util/update-query-stage query -1 assoc :filter =-clause)))
 
-(deftest ^:parallel TODO-test
-  ;; describe("Question.generateQueryDescription", () => {
-  ;;   const mockTableMetadata = {
-  ;;     display_name: "Order",
-  ;;     fields: [{ id: 1, display_name: "Total" }],
-  ;;   };
-
-  ;;   it("should work with multiple aggregations", () => {
-  ;;     const question = base_question.setDatasetQuery({
-  ;;       query: {
-  ;;         "source-table": ORDERS.id,
-  ;;         aggregation: [["count"], ["sum", ["field", 1, null]]],
-  ;;       },
-  ;;     });
-  ;;     expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
-  ;;       "Orders, Count and Sum of Total",
-  ;;     );
-  ;;   });
-
-  ;;   it("should work with named aggregations", () => {
-  ;;     const question = base_question.setDatasetQuery({
-  ;;       query: {
-  ;;         "source-table": ORDERS.id,
-  ;;         aggregation: [
-  ;;           [
-  ;;             "aggregation-options",
-  ;;             ["sum", ["field", 1, null]],
-  ;;             { "display-name": "Revenue" },
-  ;;           ],
-  ;;         ],
-  ;;       },
-  ;;     });
-  ;;     expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
-  ;;       "Orders, Revenue",
-  ;;     );
-  ;;   });
-  ;; });
-  )
-
-;;; TODO
-(deftest ^:parallel describe-order-by-test
-  ;; describe("Question._getOrderByDescription", () => {
-  ;;   it("should work with fields", () => {
-  ;;     const query = {
-  ;;       "source-table": PRODUCTS.id,
-  ;;       "order-by": [["asc", ["field", PRODUCTS.CATEGORY.id, null]]],
-  ;;     };
-
-  ;;     expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-  ;;       "Sorted by ",
-  ;;       ["Category ascending"],
-  ;;     ]);
-  ;;   });
-
-  ;;   it("should work with aggregations", () => {
-  ;;     const query = {
-  ;;       "source-table": PRODUCTS.id,
-  ;;       aggregation: [["count"]],
-  ;;       breakout: [["field", PRODUCTS.CATEGORY.id, null]],
-  ;;       "order-by": [["asc", ["aggregation", 0, null]]],
-  ;;     };
-  ;;     expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-  ;;       "Sorted by ",
-  ;;       ["Count ascending"],
-  ;;     ]);
-  ;;   });
-
-  ;;   it("should work with expressions", () => {
-  ;;     const query = {
-  ;;       "source-table": PRODUCTS.id,
-  ;;       expressions: {
-  ;;         Foo: ["concat", "Foo ", ["field", 4, null]],
-  ;;       },
-  ;;       "order-by": [["asc", ["expression", "Foo", null]]],
-  ;;     };
-  ;;     expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-  ;;       "Sorted by ",
-  ;;       ["Foo ascending"],
-  ;;     ]);
-  ;;   });
-  ;; });
-  )
-
 (deftest ^:parallel describe-query-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (FIXME-sum (lib/field (meta/id :venues :price)))
@@ -116,3 +35,68 @@
                 " Sorted by ID ascending,"
                 " 100 rows")
            (describe-query/describe-query query)))))
+
+;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
+;;; make sure that given an existing query, the expected description was generated correctly.
+
+(defn- describe-legacy-query [query]
+  (describe-query/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+
+(deftest ^:parallel multiple-aggregations-test
+  (let [query {:database (meta/id)
+               :type     :query
+               :query    {:source-table (meta/id :venues)
+                          :aggregation  [[:count]
+                                         [:sum [:field (meta/id :venues :id) nil]]]}}]
+    (is (= "Venues, Count and Sum of ID"
+           (describe-legacy-query query)))))
+
+(deftest ^:parallel named-aggregations-test
+  (let [query {:database (meta/id)
+               :type     :query
+               :query    {:source-table (meta/id :venues)
+                          :aggregation  [[:aggregation-options
+                                          [:sum [:field (meta/id :venues :id) nil]]
+                                          {:display-name "Revenue"}]]}}]
+    (is (= "Venues, Revenue"
+           (describe-legacy-query query)))))
+
+(defn- describe-legacy-query-order-by [query]
+  (-> (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))
+      (#'describe-query/describe-part -1 :order-by)))
+
+(deftest ^:parallel describe-order-by-test
+  (let [query {:database (meta/id)
+               :type     :query
+               :query    {:source-table (meta/id :venues)
+                          :order-by     [[:asc [:field (meta/id :venues :category-id) nil]]]}}]
+    (is (= "Sorted by Category ID ascending"
+           (describe-legacy-query-order-by query)))))
+
+(deftest ^:parallel describe-order-by-aggregation-reference-test
+  (let [query {:database (meta/id)
+               :type     :query
+               :query    {:source-table (meta/id :venues)
+                          :aggregation  [[:count]]
+                          :breakout     [[:field (meta/id :venues :category-id) nil]]
+                          :order-by     [[:asc [:aggregation 0]]]}}]
+    (is (= "Sorted by Count ascending"
+           (describe-legacy-query-order-by query)))))
+
+(deftest ^:parallel describe-order-by-expression-reference-test
+    ;;   it("should work with expressions", () => {
+  ;;     const query = {
+  ;;       "source-table": PRODUCTS.id,
+  ;;       expressions: {
+  ;;         Foo: ["concat", "Foo ", ["field", 4, null]],
+  ;;       },
+  ;;       "order-by": [["asc", ["expression", "Foo", null]]],
+  ;;     };
+  ;;     expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
+  ;;       "Sorted by ",
+  ;;       ["Foo ascending"],
+  ;;     ]);
+  ;;   });
+  ;; });
+
+  )

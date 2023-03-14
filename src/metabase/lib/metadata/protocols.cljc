@@ -44,6 +44,9 @@
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
     database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
 
+  ;; Card not yet implemented! I commented it out for now with the intention that we'll probably want to uncomment it
+  ;; out and fully implement it in the very near future.
+
   ;; (card [this card-id]
   ;;   "Return metadata for a particular Card aka Saved Question, if it is available. Metadata should match the shape of
   ;;   a `GET /api/card/:id` response? Not actually sure about this yet.")

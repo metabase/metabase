@@ -20,11 +20,8 @@
 (defmethod describe-part :table
   [query stage-number _what]
   (let [stage (lib.util/query-stage query stage-number)]
-    (println "stage:" (pr-str stage)) ; NOCOMMIT
     (when-let [source-table-id (:source-table stage)]
-      (println "source-table-id:" source-table-id) ; NOCOMMIT
       (when-let [table-metadata (lib.metadata/table query source-table-id)]
-        (println "table-metadata:" table-metadata) ; NOCOMMIT
         (calculate.names/display-name query stage-number table-metadata)))))
 
 (defmethod describe-part :aggregations
@@ -73,43 +70,6 @@
 (def ^:private default-options
   {:parts [:table :aggregations :breakout :filter :order-by :limit]})
 
-;;;    if (!tableMetadata || (this.isNative() && !this.displayName())) {
-;;;      return "";
-;;;    }
-;;;
-;;;    options = {
-;;;      sections: [
-;;;        "table",
-;;;        "aggregation",
-;;;        "breakout",
-;;;        "filter",
-;;;        "order-by",
-;;;        "limit",
-;;;      ],
-;;;      ...options,
-;;;    };
-;;;
-;;;    const sectionFns = {
-;;;      table: this._getTableDescription.bind(this),
-;;;      aggregation: this._getAggregationDescription.bind(this),
-;;;      breakout: this._getBreakoutDescription.bind(this),
-;;;      filter: this._getFilterDescription.bind(this),
-;;;      "order-by": this._getOrderByDescription.bind(this),
-;;;      limit: this._getLimitDescription.bind(this),
-;;;    };
-;;;
-;;;    // these array gymnastics are needed to support JSX formatting
-;;;    const query = this.datasetQuery().query;
-;;;    const sections = options.sections
-;;;      .map(section =>
-;;;        _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
-;;;          s => !!s,
-;;;        ),
-;;;      )
-;;;      .filter(s => s && s.length > 0);
-;;;
-;;;    const description = _.flatten(DESCRIPTION.joinList(sections, ", "));
-;;;    return description.join("");
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Generate a one-line description of a query, appropriate as a suggested name when saving a query.
 

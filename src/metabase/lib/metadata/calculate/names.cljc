@@ -92,16 +92,17 @@
                         :stage-number stage-number}
                        e))))))
 
-(defmulti ^:private column-name*
-  "Impl for [[column-name]]."
+(defmulti column-name*
+  "Impl for [[column-name]]. Prefer using [[column-name]] over using this directly; you should really only use this when
+  adding  multimethod implementations."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x)))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
-  [query                                    :- ::lib.schema/query
-   stage-number                             :- :int
+  [query        :- ::lib.schema/query
+   stage-number :- :int
    x]
   (or
    ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
@@ -219,18 +220,7 @@
   [query stage-number [_multiply _opts & args]]
   (infix-column-name* query stage-number "times" args))
 
-(defmethod display-name* :count
-  [query stage-number [_count _opts x]]
-  ;; x is optional.
-  (if x
-    (i18n/tru "Count of {0}" (display-name query stage-number x))
-    (i18n/tru "Count")))
 
-(defmethod column-name* :count
-  [query stage-number [_count _opts x]]
-  (if x
-    (str "count_" (column-name query stage-number x))
-    "count"))
 
 (defmethod display-name* :case
   [_query _stage-number _case]
@@ -240,119 +230,7 @@
   [_query _stage-number _case]
   "case")
 
-(defmethod display-name* :distinct
-  [query stage-number [_distinct _opts x]]
-  (i18n/tru "Distinct values of {0}"  (display-name query stage-number x)))
 
-(defmethod column-name* :distinct
-  [query stage-number [_distinct _opts x]]
-  (str "distinct_" (column-name query stage-number x)))
-
-(defmethod display-name* :avg
-  [query stage-number [_avg _opts x]]
-  (i18n/tru "Average of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :avg
-  [query stage-number [_avg _opts x]]
-  (str "avg_" (column-name query stage-number x)))
-
-(defmethod display-name* :cum-count
-  [query stage-number [_cum-count _opts x]]
-  (i18n/tru "Cumulative count of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :cum-count
-  [query stage-number [_avg _opts x]]
-  (str "cum_count_" (column-name query stage-number x)))
-
-(defmethod display-name* :sum
-  [query stage-number [_sum _opts x]]
-  (i18n/tru "Sum of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :sum
-  [query stage-number [_sum _opts x]]
-  (str "sum_" (column-name query stage-number x)))
-
-(defmethod display-name* :cum-sum
-  [query stage-number [_cum-sum _opts x]]
-  (i18n/tru "Cumulative sum of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :cum-sum
-  [query stage-number [_avg _opts x]]
-  (str "cum_sum_" (column-name query stage-number x)))
-
-(defmethod display-name* :stddev
-  [query stage-number [_stddev _opts x]]
-  (i18n/tru "Standard deviation of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :stddev
-  [query stage-number [_avg _opts x]]
-  (str "std_dev_" (column-name query stage-number x)))
-
-(defmethod display-name* :min
-  [query stage-number [_min _opts x]]
-  (i18n/tru "Min of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :min
-  [query stage-number [_min _opts x]]
-  (str "min_" (column-name query stage-number x)))
-
-(defmethod display-name* :max
-  [query stage-number [_max _opts x]]
-  (i18n/tru "Max of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :max
-  [query stage-number [_max _opts x]]
-  (str "max_" (column-name query stage-number x)))
-
-(defmethod display-name* :var
-  [query stage-number [_var _opts x]]
-  (i18n/tru "Variance of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :var
-  [query stage-number [_var _opts x]]
-  (str "var_" (column-name query stage-number x)))
-
-(defmethod display-name* :median
-  [query stage-number [_median _opts x]]
-  (i18n/tru "Median of {0}" (display-name query stage-number x)))
-
-(defmethod column-name* :median
-  [query stage-number [_median _opts x]]
-  (str "median_" (column-name query stage-number x)))
-
-(defmethod display-name* :percentile
-  [query stage-number [_percentile _opts x p]]
-  (i18n/tru "{0}th percentile of {1}" p (display-name query stage-number x)))
-
-(defmethod column-name* :percentile
-  [query stage-number [_percentile _opts x p]]
-  (format "p%d_%s" p (column-name query stage-number x)))
-
-;;; we don't currently have sophisticated logic for generating nice display names for filter clauses
-
-(defmethod display-name* :sum-where
-  [query stage-number [_sum-where _opts x _pred]]
-  (i18n/tru "Sum of {0} matching condition" (display-name query stage-number x)))
-
-(defmethod column-name* :sum-where
-  [query stage-number [_sum-where _opts x]]
-  (str "sum_where_" (column-name query stage-number x)))
-
-(defmethod display-name* :share
-  [_query _stage-number _share]
-  (i18n/tru "Share of rows matching condition"))
-
-(defmethod column-name* :share
-  [_query _stage-number _share]
-  "share")
-
-(defmethod display-name* :count-where
-  [_query _stage-number _count-where]
-  (i18n/tru "Count of rows matching condition"))
-
-(defmethod column-name* :count-where
-  [_query _stage-number _count-where]
-  "count-where")
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
