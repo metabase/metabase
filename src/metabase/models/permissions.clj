@@ -1322,7 +1322,7 @@
     (throw (ee-permissions-exception perm-type))))
 
 (mu/defn ^:private update-group-permissions!
-  [group-id :- pos-int? new-group-perms :- api.permission-graph/StrictDbGraph]
+  [group-id :- pos-int? new-group-perms :- [:maybe api.permission-graph/StrictDbGraph]]
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
