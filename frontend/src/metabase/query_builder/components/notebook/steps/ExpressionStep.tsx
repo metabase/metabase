@@ -36,7 +36,7 @@ const ExpressionStep = ({
           onChangeExpression={(newName, newExpression) => {
             item?.expression
               ? updateQuery(
-                  query.updateExpression(newName, newExpression, item?.name),
+                  query.updateExpression(newName, newExpression, item.name),
                 )
               : updateQuery(query.addExpression(newName, newExpression));
           }}

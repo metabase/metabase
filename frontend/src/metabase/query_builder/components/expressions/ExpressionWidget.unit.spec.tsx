@@ -27,7 +27,9 @@ describe("ExpressionWidget", () => {
     const icon = getIcon("info");
     expect(icon).toBeInTheDocument();
 
-    const link = screen.getByTestId("expression-widget-info-link");
+    const link = screen.getByRole("link", {
+      name: "Open expressions documentation",
+    });
     expect(link).toBeInTheDocument();
 
     expect(link).toHaveAttribute(
@@ -73,7 +75,5 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     ...additionalProps,
   };
 
-  const view = render(<ExpressionWidget {...props} />);
-
-  return { mocks, view };
+  render(<ExpressionWidget {...props} />);
 }
