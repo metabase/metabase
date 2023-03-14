@@ -80,7 +80,6 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             <InfoLink
               target="_blank"
               href={EXPRESSIONS_DOCUMENTATION_URL}
-              data-testid="expression-widget-info-link"
               aria-label={t`Open expressions documentation`}
             >
               <StyledFieldTitleIcon name="info" />
