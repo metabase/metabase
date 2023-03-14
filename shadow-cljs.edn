@@ -15,15 +15,16 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}}
    :entries    [metabase.domain-entities.queries.util
+                metabase.lib.js
                 metabase.mbql.js
-                metabase.types
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date
                 metabase.shared.formatting.numbers
                 metabase.shared.formatting.time
+                metabase.shared.parameters.parameters
                 metabase.shared.util.currency
                 metabase.shared.util.time
-                metabase.shared.parameters.parameters
+                metabase.types
                 metabase.util.devtools]}
 
   :test

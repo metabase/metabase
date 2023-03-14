@@ -5,6 +5,15 @@
    [metabase.lib.metadata.calculate.names :as calculate.names]
    [metabase.lib.test-metadata :as meta]))
 
+(deftest ^:parallel join-strings-with-conjunction-test
+  (are [coll expected] (= expected
+                          (calculate.names/join-strings-with-conjunction "and" coll))
+    []                nil
+    ["a"]             "a"
+    ["a" "b"]         "a and b"
+    ["a" "b" "c"]     "a, b, and c"
+    ["a" "b" "c" "d"] "a, b, c, and d"))
+
 (def ^:private venues-query
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 

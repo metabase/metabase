@@ -11,6 +11,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:cljs ([goog.string :refer [format]]
               [goog.string.format :as gstring.format]))))
@@ -18,11 +19,53 @@
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
 
-(defmulti ^:private display-name*
+;;; TODO -- probably not the best way to be handling i18n here, but this was ported from the FE code and
+(defn join-strings-with-conjunction
+  "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
+  by a string `conjunction`. Uses Oxford commas for > 2 args.
+
+  (join-strings-with-conjunction \"and\" [\"X\" \"Y\" \"Z\"])
+  ;; => \"X, Y, and Z\""
+  [conjunction coll]
+  (when (seq coll)
+    (if (= (count coll) 1)
+      (first coll)
+      (let [conjunction (str \space (str/trim conjunction) \space)]
+        (if (= (count coll) 2)
+          ;; exactly 2 args: X and Y
+          (str (first coll) conjunction (second coll))
+          ;; > 2 args: X, Y, and Z
+          (str
+           (str/join ", " (butlast coll))
+           ","
+           conjunction
+           (last coll)))))))
+
+(defmulti display-name*
   "Impl for [[display-name]]."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x)))
+
+(defmethod display-name* :default
+  [_query _stage-number x]
+  ;; hopefully this is dev-facing only, so not i18n'ed.
+  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+             (pr-str x)
+             `display-name*
+             (lib.dispatch/dispatch-value x))
+  (if (and (vector? x)
+           (keyword? (first x)))
+    ;; MBQL clause: just use the name of the clause.
+    (name (first x))
+    ;; anything else: use `pr-str` representation.
+    (pr-str x)))
+
+(defmethod display-name* :metadata/table
+  [_query _stage-number table-metadata]
+  ;; TODO -- pluralize
+  (or (:display_name table-metadata)
+      (u.humanization/name->human-readable-name :simple (:name table-metadata))))
 
 (defn- options-when-mbql-clause
   "If this is an MBQL clause, return its options map, if it has one."
@@ -346,6 +389,8 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (column-name query stage-number expr))
 
+;;;; misc literal types
+
 (defmethod display-name* :dispatch-type/number
   [_query _stage-number n]
   (str n))
@@ -353,3 +398,12 @@
 (defmethod display-name* :dispatch-type/string
   [_query _stage-number s]
   (str \" s \"))
+
+(defmethod display-name* :dispatch-type/boolean
+  [_query _stage-number bool]
+  (if bool
+    (i18n/tru "true")
+    (i18n/tru "false")))
+
+;;; TODO -- instead of putting more stuff in here, put it in the appropriate `metabase.lib` namespace
+;;; e.g. [[metabase.lib.filter]]. See https://metaboat.slack.com/archives/C04DN5VRQM6/p1678742327970719

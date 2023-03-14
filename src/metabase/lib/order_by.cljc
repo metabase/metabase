@@ -2,11 +2,21 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata.calculate.names :as calculate.names]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(defmethod calculate.names/display-name* :asc
+  [query stage-number [_tag _opts expr]]
+  (i18n/tru "{0} ascending" (calculate.names/display-name query stage-number expr)))
+
+(defmethod calculate.names/display-name* :desc
+  [query stage-number [_tag _opts expr]]
+  (i18n/tru "{0} descending" (calculate.names/display-name query stage-number expr)))
 
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}

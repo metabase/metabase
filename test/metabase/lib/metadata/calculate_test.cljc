@@ -105,7 +105,7 @@
        :child       70)))
 
 (def ^:private grandparent-parent-child-metadata-provider
-  "A DatabaseMetadataProvider for a Table that nested Fields: grandparent, parent, and child"
+  "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
   (let [grandparent {:lib/type :metadata/field
                      :name     "grandparent"
                      :id       (grandparent-parent-child-id :grandparent)}
@@ -117,7 +117,7 @@
                      :name      "child"
                      :parent_id (grandparent-parent-child-id :parent)
                      :id        (grandparent-parent-child-id :child)}]
-    (reify lib.metadata.protocols/DatabaseMetadataProvider
+    (reify lib.metadata.protocols/MetadataProvider
       (database [_this]
         (dissoc meta/metadata :tables))
       (tables [_this]
