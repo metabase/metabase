@@ -204,14 +204,14 @@
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
   {parameter ms/Parameter
-   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]}
+   field_ids [:maybe [:sequential ms/PositiveInt]]}
   (parameter-values parameter field_ids nil))
 
 (api/defendpoint POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [query :as {{:keys [parameter field_ids]} :body}]
   {parameter ms/Parameter
-   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]
+   field_ids [:maybe [:sequential ms/PositiveInt]]
    query     :string}
   (parameter-values parameter field_ids query))
 
