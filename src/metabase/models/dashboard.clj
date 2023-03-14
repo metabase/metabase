@@ -4,6 +4,7 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -197,8 +198,8 @@
                                                                       :dashboard_id dashboard-id
                                                                       :creator_id   user-id))
 
-          ;; If card is in both we need to change :size_x, :size_y, :row, and :col to match serialized-card as needed
-          :else (dashboard-card/update-dashboard-card! serialized-card)))))
+          ;; If card is in both we need to update it to match serialized-card as needed
+          :else (dashboard-card/update-dashboard-card! serialized-card current-card)))))
 
   serialized-dashboard)
 
@@ -252,9 +253,9 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
-    (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
-
+  (let [dash (-> (db/select-one Dashboard :id (u/the-id dashboard-or-id))
+                 (hydrate [:ordered_cards :card]))]
+    (params/dashcards->param-field-ids (:ordered_cards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
   "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
@@ -267,7 +268,6 @@
                 "Is Now:" new-param-field-ids
                 "Newly Added:" newly-added-param-field-ids)
       (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
-
 
 (defn add-dashcard!
   "Add a Card to a Dashboard.
@@ -287,23 +287,32 @@
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (defn update-dashcards!
-  "Update the `dashcards` belonging to `dashboard-or-id`.
+  "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   {:style/indent 1}
-  [dashboard-or-id dashcards]
-  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
-        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
-    (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
-      ;; ensure the dashcard we are updating is part of the given dashboard
-      (if (contains? dashcard-ids dashcard-id)
-        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))
-        (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
-                             (u/the-id dashboard-or-id) dashcard-id)
-                        {:status-code 404}))))
-    (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-      (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
+  [dashboard new-dashcards]
+  (let [dashboard                  (t2/hydrate dashboard [:ordered_cards :series :card])
+        old-dashcards              (:ordered_cards dashboard)
+        id->old-dashcard           (m/index-by :id old-dashcards)
+        old-dashcard-ids           (set (keys id->old-dashcard))
+        new-dashcard-ids           (set (map :id new-dashcards))
+        only-new                   (set/difference new-dashcard-ids old-dashcard-ids)]
+    ;; ensure the dashcards we are updating are part of the given dashboard
+    (when (seq only-new)
+      (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
+                           (u/the-id dashboard) (first only-new))
+                      {:status-code 404})))
+    (doseq [dashcard new-dashcards]
+      (let [;; update-dashboard-card! requires series to be a sequence of card IDs
+            old-dashcard       (-> (get id->old-dashcard (:id dashcard))
+                                   (update :series #(map :id %)))
+            dashboard-card     (update dashcard :series #(map :id %))]
+        (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
+    (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
+      (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
+
 
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth

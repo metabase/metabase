@@ -5,7 +5,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.card-test :as card-test]
    [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :refer [Dashboard] :as dashboard]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
@@ -156,9 +156,10 @@
                 "ensure the card_id cannot be changed 4. ensure the dashboard_id cannot be changed")
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id}]
-                    DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
-                                                      :card_id            card-id
-                                                      :parameter_mappings [{:foo "bar"}]}]
+                    DashboardCard [{dashcard-id :id
+                                    :as dashboard-card} {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:foo "bar"}]}]
                     Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                     Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
       (testing "unmodified dashcard"
@@ -172,17 +173,18 @@
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
-                   {:id                     dashcard-id
-                    :actor_id               (mt/user->id :rasta)
-                    :dashboard_id           nil
-                    :card_id                nil
-                    :size_x                 5
-                    :size_y                 3
-                    :row                    1
-                    :col                    1
-                    :parameter_mappings     [{:foo "barbar"}]
-                    :visualization_settings {}
-                    :series                 [card-id-2 card-id-1]}))))
+                    {:id                     dashcard-id
+                     :actor_id               (mt/user->id :rasta)
+                     :dashboard_id           nil
+                     :card_id                nil
+                     :size_x                 5
+                     :size_y                 3
+                     :row                    1
+                     :col                    1
+                     :parameter_mappings     [{:foo "barbar"}]
+                     :visualization_settings {}
+                     :series                 [card-id-2 card-id-1]}
+                    dashboard-card))))
       (testing "validate db captured everything"
         (is (= {:size_x                 5
                 :size_y                 3
@@ -201,6 +203,45 @@
                                           :dataset_query          {}
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
+
+(deftest update-dashboard-card!-call-count-test
+  (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
+            PUT /api/dashboard/:id/cards handler"
+    (mt/with-temp* [Dashboard     [{dashboard-id :id :as dashboard}]
+                    Card          [{card-id :id}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id, :card_id card-id}]
+                    Card          [{series-id-1 :id} {:name "Series Card 1"}]
+                    Card          [{series-id-2 :id} {:name "Series Card 2"}]]
+      (testing "Should have fewer DB calls if there's no changes to the dashcards"
+       (db/with-call-counting [call-count]
+         (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+         (is (= 6 (call-count)))))
+      (testing "Should have more calls if there's changes to the dashcards"
+       (db/with-call-counting [call-count]
+         (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
+                                                  :cardId card-id
+                                                  :row    1
+                                                  :col    2
+                                                  :size_x 3
+                                                  :size_y 4
+                                                  :series [{:id series-id-1}]}
+                                                 {:id     (:id dashcard-2)
+                                                  :cardId card-id
+                                                  :row    1
+                                                  :col    2
+                                                  :size_x 3
+                                                  :size_y 4
+                                                  :series [{:id series-id-2}]}
+                                                 {:id     (:id dashcard-3)
+                                                  :cardId card-id
+                                                  :row    1
+                                                  :col    2
+                                                  :size_x 3
+                                                  :size_y 4
+                                                  :series []}])
+         (is (= 15 (call-count))))))))
 
 (deftest normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
