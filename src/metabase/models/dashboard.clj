@@ -293,25 +293,25 @@
   [dashboard new-dashcards]
   (let [dashboard                  (t2/hydrate dashboard [:ordered_cards :series :card])
         old-dashcards              (:ordered_cards dashboard)
-        new-dashcards              (t2/hydrate new-dashcards :card)
         id->old-dashcard           (m/index-by :id old-dashcards)
         old-dashcard-ids           (set (keys id->old-dashcard))
         new-dashcard-ids           (set (map :id new-dashcards))
-        [only-new _only-old _both] (diff new-dashcard-ids old-dashcard-ids)
-        ;; ensure the dashcards we are updating are part of the given dashboard
-        _ (when (seq only-new)
-            (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
-                                 (u/the-id dashboard) (first only-new))
-                            {:status-code 404})))
-        old-param-field-ids (params/dashcards->param-field-ids old-dashcards)
-        new-param-field-ids (params/dashcards->param-field-ids new-dashcards)]
+        only-new                   (set/difference new-dashcard-ids old-dashcard-ids)]
+    ;; ensure the dashcards we are updating are part of the given dashboard
+    (when (seq only-new)
+      (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
+                           (u/the-id dashboard) (first only-new))
+                      {:status-code 404})))
     (doseq [dashcard new-dashcards]
       (let [;; update-dashboard-card! requires series to be a sequence of card IDs
             old-dashcard       (-> (get id->old-dashcard (:id dashcard))
                                    (update :series #(map :id %)))
             dashboard-card     (update dashcard :series #(map :id %))]
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
-    (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))
+    (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
+      (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
+
+
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query
