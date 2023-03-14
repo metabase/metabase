@@ -5,7 +5,8 @@
  {:middleware
   [cider.nrepl/cider-middleware
    cider.piggieback/wrap-cljs-repl
-   refactor-nrepl.middleware/wrap-refactor]}
+   refactor-nrepl.middleware/wrap-refactor]
+  :port 50655}
 
  :builds
  {:app
