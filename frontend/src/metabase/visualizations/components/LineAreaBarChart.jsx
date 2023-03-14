@@ -273,14 +273,10 @@ export default class LineAreaBarChart extends Component {
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
     const hasMultipleSeries = series.length > 1;
-    const hasMultipleDimensions = settings["graph.dimensions"].length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
     const hasLegend =
-      hasMultipleSeries ||
-      canChangeSeries ||
-      hasLegendButtons ||
-      hasMultipleDimensions;
+      hasMultipleSeries || canChangeSeries || hasLegendButtons || hasBreakout;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));

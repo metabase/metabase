@@ -416,7 +416,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it("should not drop the chart legend (metabase#4995)", () => {
+    it.only("should not drop the chart legend (metabase#4995)", () => {
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");

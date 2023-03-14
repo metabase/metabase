@@ -97,5 +97,5 @@ export const moveColumnDown = (column, distance) => {
 };
 
 export const queryBuilderMain = () => {
-  return cy.get("main main");
+  return cy.findByTestId("query-builder-main");
 };
