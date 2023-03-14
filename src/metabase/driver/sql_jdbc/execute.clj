@@ -27,6 +27,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.ssh :as ssh]
    [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
@@ -521,13 +522,15 @@
   {:pre [(string? sql)]}
   (try
     (let [{:keys [details]} (qp.store/database)
-          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
-      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-      (with-open [conn (jdbc/get-connection jdbc-spec)
-                  stmt (statement-or-prepared-statement driver conn sql params nil)]
-        {:rows-affected (if (instance? PreparedStatement stmt)
-                          (.executeUpdate ^PreparedStatement stmt)
-                          (.executeUpdate stmt sql))}))
+          details           (update details :port #(or % (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver)))]
+      (ssh/with-ssh-tunnel [details-with-tunnel details]
+        (let [jdbc-spec (sql-jdbc.conn/connection-details->spec driver details-with-tunnel)]
+          ;; TODO -- should this be done in a transaction? Should we set the isolation level?
+          (with-open [conn (jdbc/get-connection jdbc-spec)
+                      stmt (statement-or-prepared-statement driver conn sql params nil)]
+            {:rows-affected (if (instance? PreparedStatement stmt)
+                              (.executeUpdate ^PreparedStatement stmt)
+                              (.executeUpdate stmt sql))}))))
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type qp.error-type/invalid-query}
