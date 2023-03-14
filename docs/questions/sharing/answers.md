@@ -18,7 +18,7 @@ Now, whenever you want to refer to your question again you can find it by search
 
 You can also convert a question to a [model][model].
 
-## Downloading Your Results
+## Downloading your question's results
 
 You can export the results of a question by clicking on the **Download arrow** (a down arrow in a cloud) in the lower right of the screen, or from a chart on a dashboard by clicking on the **...** in the upper right or a dashboard card.
 
