@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupUnauthorizedDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import type { ActionDashboardCard } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
@@ -81,16 +84,13 @@ async function setup({
   hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
+  const databases = [DATABASE, DATABASE_WITHOUT_ACTIONS];
+
   if (hasDataPermissions) {
-    setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
+    setupDatabasesEndpoints(databases);
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
   } else {
-    const error = {
-      status: 403,
-      body: "You don't have permission to do this",
-    };
-    fetchMock.get(`path:/api/database/${DATABASE.id}`, error);
-    fetchMock.get(`path:/api/database/${DATABASE_WITHOUT_ACTIONS.id}`, error);
+    setupUnauthorizedDatabasesEndpoints(databases);
   }
 
   renderWithProviders(
