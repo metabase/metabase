@@ -122,9 +122,7 @@
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
-  ;; The latest version of tools.namespace is 1.4.2 but there is an issue as described here
-  ;; https://ask.clojure.org/index.php/12732/clojure-tools-namespace-throws-casting-error-calling-jarfile
-  org.clojure/tools.namespace               {:mvn/version "1.4.0"}
+  org.clojure/tools.namespace               {:mvn/version "1.4.4"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.14"}            ; web server
@@ -150,7 +148,7 @@
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
-  user-agent/user-agent                     {:mvn/version "0.1.0"}              ; User-Agent string parser, for Login History page & elsewhere
+  user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -285,6 +283,11 @@
   :oss-dev
   {}
 
+  ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
+  :outdated {;; Note that it is `:deps`, not `:extra-deps`
+             :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
+             :main-opts ["-m" "antq.core"]}
+
   :cljs
   {:extra-paths ["test" "shared/test"]
    :extra-deps
@@ -298,7 +301,7 @@
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.6.0"}
-    thheller/shadow-cljs               {:mvn/version "2.21.0"}}}
+    thheller/shadow-cljs               {:mvn/version "2.22.2"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -596,8 +599,8 @@
   ;;
   ;; clojure -M:dev:nrepl (etc.)
   :nrepl
-  {:extra-deps {nrepl/nrepl {:mvn/version "0.9.0"}}
-   :main-opts  ["-m" "nrepl.cmdline"]}
+  {:extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}}
+   :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
   :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}

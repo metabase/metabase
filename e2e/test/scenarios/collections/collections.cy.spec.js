@@ -37,7 +37,7 @@ describe("scenarios > collection defaults", () => {
 
       cy.visit("/");
 
-      cy.viewport(800, 400);
+      cy.viewport(800, 500);
 
       cy.findByText("New").click();
       cy.findByText("Collection").click();

@@ -1,12 +1,20 @@
 import React from "react";
-import _ from "underscore";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { waitFor } from "@testing-library/react";
 
-import { renderWithProviders, screen } from "__support__/ui";
 import {
-  createMockActionDashboardCard,
+  renderWithProviders,
+  screen,
+  getIcon,
+  waitFor,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
+
+import type { ActionDashboardCard } from "metabase-types/api";
+import type { ParameterTarget } from "metabase-types/types/Parameter";
+import {
+  createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
   createMockFieldSettings,
   createMockQueryAction,
@@ -14,130 +22,128 @@ import {
   createMockDashboard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
 
-import Action, { ActionComponent, ActionProps } from "./Action";
+import Action, { ActionProps } from "./Action";
 
-const defaultProps = {
-  dashcard: {
-    id: 456,
-    card_id: 777, // action model id
-    action: createMockQueryAction({
-      name: "My Awesome Action",
-      database_id: 2,
-      parameters: [
-        createMockActionParameter({
-          id: "parameter_1",
-          type: "type/Text",
-          target: ["variable", ["template-tag", "1"]],
-        }),
-        createMockActionParameter({
-          id: "parameter_2",
-          type: "type/Integer",
-          target: ["variable", ["template-tag", "2"]],
-        }),
-      ],
+const DASHBOARD_ID = 123;
+const DASHCARD_ID = 456;
+const ACTION_MODEL_ID = 777;
+const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
+
+const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
+const DATABASE = createMockDatabase({
+  id: 2,
+  settings: { "database-enable-actions": true },
+});
+
+const ACTION = createMockQueryAction({
+  name: "My Awesome Action",
+  database_id: DATABASE.id,
+  parameters: [
+    createMockActionParameter({
+      id: "parameter_1",
+      type: "type/Text",
+      target: ["variable", ["template-tag", "1"]],
     }),
+    createMockActionParameter({
+      id: "parameter_2",
+      type: "type/Integer",
+      target: ["variable", ["template-tag", "2"]],
+    }),
+  ],
+});
+
+function createMockActionDashboardCard(
+  opts: Partial<ActionDashboardCard> = {},
+) {
+  return _createMockActionDashboardCard({
+    id: DASHCARD_ID,
+    card_id: ACTION_MODEL_ID,
+    dashboard_id: DASHBOARD_ID,
+    action: ACTION,
     parameter_mappings: [
       {
         parameter_id: "dash-param-1",
-        card_id: 1,
         target: ["variable", ["template-tag", "1"]],
       },
       {
         parameter_id: "dash-param-2",
-        card_id: 1,
         target: ["variable", ["template-tag", "2"]],
       },
     ],
-  },
-  dashboard: createMockDashboard({ id: 123 }),
-  dispatch: _.noop,
-  isSettings: false,
-  isEditing: false,
-  settings: {},
-  onVisualizationClick: _.noop,
-  parameterValues: {},
-} as unknown as ActionProps;
+    ...opts,
+  });
+}
 
-const databases: Record<number, any> = {
-  1: createMockDatabase({ id: 1 }),
-  2: createMockDatabase({
-    id: 2,
-    settings: { "database-enable-actions": true },
-  }),
+type SetupOpts = Partial<ActionProps> & {
+  awaitLoading?: boolean;
 };
 
-async function setup(options?: Partial<ActionProps>) {
-  return renderWithProviders(
-    <ActionComponent {...defaultProps} {...options} />,
-  );
-}
+async function setup({
+  dashboard = createMockDashboard({ id: DASHBOARD_ID }),
+  dashcard = createMockActionDashboardCard(),
+  settings = {},
+  parameterValues = {},
+  awaitLoading = true,
+  ...props
+}: SetupOpts = {}) {
+  setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
 
-async function setupActionWrapper(options?: Partial<ActionProps>) {
-  const dbId = options?.dashcard?.action?.database_id ?? 0;
-
-  fetchMock.get(`path:/api/database/${dbId}`, databases[dbId] ?? null);
-
-  return renderWithProviders(<Action {...defaultProps} {...options} />, {
-    withSampleDatabase: true,
-    storeInitialState: {
-      entities: createMockEntitiesState({
-        databases,
-      }),
-    },
-  });
-}
-
-function setupExecutionEndpoint() {
-  fetchMock.post("path:/api/dashboard/123/dashcard/456/execute", {
+  fetchMock.post(ACTION_EXEC_MOCK_PATH, {
     "rows-updated": [1],
   });
+
+  renderWithProviders(
+    <Action
+      dashboard={dashboard}
+      dashcard={dashcard}
+      settings={settings}
+      parameterValues={parameterValues}
+      isSettings={false}
+      isEditing={false}
+      dispatch={jest.fn()}
+      onVisualizationClick={jest.fn()}
+      {...props}
+    />,
+  );
+
+  if (awaitLoading) {
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+  }
 }
 
-describe("Actions > ActionViz > ActionComponent", () => {
-  // button actions are just a modal trigger around forms
+describe("Actions > ActionViz > Action", () => {
   describe("Button actions", () => {
     it("should render an empty state for a button with no action", async () => {
-      await setupActionWrapper({
-        dashcard: {
-          ...defaultProps.dashcard,
-          action: undefined,
-        },
+      await setup({
+        dashcard: createMockActionDashboardCard({ action: undefined }),
+        awaitLoading: false,
       });
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(getIcon("bolt")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeDisabled();
       expect(screen.getByLabelText(/no action assigned/i)).toBeInTheDocument();
     });
 
     it("should render a disabled state for a button with an action from a database where actions are disabled", async () => {
-      await setupActionWrapper({
-        dashcard: {
-          ...defaultProps.dashcard,
+      await setup({
+        dashcard: createMockActionDashboardCard({
           action: createMockQueryAction({
-            name: "My Awesome Action",
-            database_id: 1,
+            database_id: DATABASE_WITHOUT_ACTIONS.id,
           }),
-        },
+        }),
       });
-      expect(await screen.findByLabelText("bolt icon")).toBeInTheDocument();
-      expect(await screen.findByRole("button")).toBeDisabled();
+      expect(getIcon("bolt")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
       expect(
-        await screen.findByLabelText(/actions are not enabled/i),
+        screen.getByLabelText(/actions are not enabled/i),
       ).toBeInTheDocument();
     });
 
     it("should render an enabled state when the action is valid", async () => {
-      await setupActionWrapper({
-        dashcard: {
-          ...defaultProps.dashcard,
-          action: createMockQueryAction({
-            name: "My Awesome Action",
-            database_id: 2,
-          }),
-        },
-      });
-      expect(await screen.findByRole("button")).toBeEnabled();
+      await setup();
+      expect(screen.getByRole("button")).toBeEnabled();
     });
 
     it("should render a button with default text", async () => {
@@ -178,20 +184,25 @@ describe("Actions > ActionViz > ActionComponent", () => {
     });
 
     it("should format dashboard filter values for numeric parameters", async () => {
-      const parameter = createMockActionParameter({
-        id: "parameter_1",
-        name: "parameter_1",
-        type: "number/=",
-        target: ["variable", ["template-tag", "1"]],
-      });
+      const parameterId = "parameter_1";
+      const parameterTarget: ParameterTarget = [
+        "variable",
+        ["template-tag", "1"],
+      ];
 
       const action = createMockQueryAction({
-        name: "My Awesome Action",
-        database_id: 2,
-        parameters: [parameter],
+        database_id: DATABASE.id,
+        parameters: [
+          createMockActionParameter({
+            id: parameterId,
+            name: parameterId,
+            type: "number/=",
+            target: parameterTarget,
+          }),
+        ],
         visualization_settings: {
           fields: {
-            [parameter.id]: createMockFieldSettings({
+            [parameterId]: createMockFieldSettings({
               fieldType: "number",
               inputType: "number",
             }),
@@ -199,18 +210,13 @@ describe("Actions > ActionViz > ActionComponent", () => {
         },
       });
 
-      setupExecutionEndpoint();
       await setup({
         dashcard: createMockActionDashboardCard({
-          id: 456,
-          dashboard_id: 123,
-          card_id: 777, // action model id
           action,
-          card: defaultProps.dashcard.card,
           parameter_mappings: [
             {
               parameter_id: "dash-param-1",
-              target: ["variable", ["template-tag", "1"]],
+              target: parameterTarget,
             },
           ],
         }),
@@ -220,11 +226,9 @@ describe("Actions > ActionViz > ActionComponent", () => {
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual({
-          modelId: 777,
+          modelId: ACTION_MODEL_ID,
           parameters: {
             parameter_1: 44,
           },
@@ -266,20 +270,18 @@ describe("Actions > ActionViz > ActionComponent", () => {
       });
 
       expect(
-        await screen.findByRole("button", { name: "Click me" }),
+        screen.getByRole("button", { name: "Click me" }),
       ).toBeInTheDocument();
     });
 
     it("should submit provided form input values to the action execution endpoint", async () => {
       const expectedBody = {
-        modelId: 777,
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,
         },
       };
-
-      setupExecutionEndpoint();
 
       await setup({ settings: formSettings });
 
@@ -296,23 +298,19 @@ describe("Actions > ActionViz > ActionComponent", () => {
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });
 
     it("should combine data from dashboard parameters and form input when submitting for execution", async () => {
       const expectedBody = {
-        modelId: 777,
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,
         },
       };
-
-      setupExecutionEndpoint();
 
       await setup({
         settings: formSettings,
@@ -327,9 +325,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
       userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(
-          "path:/api/dashboard/123/dashcard/456/execute",
-        );
+        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });
@@ -338,11 +334,11 @@ describe("Actions > ActionViz > ActionComponent", () => {
   describe("Implicit Actions", () => {
     it("shows a confirmation modal when clicking an implicit delete action with a provided parameter", async () => {
       await setup({
-        dashcard: {
-          ...defaultProps.dashcard,
+        dashcard: createMockActionDashboardCard({
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
+            database_id: DATABASE.id,
             parameters: [
               createMockActionParameter({
                 id: "1",
@@ -352,7 +348,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
               }),
             ],
           }),
-        },
+        }),
         parameterValues: { "dash-param-1": "foo" },
       });
 
