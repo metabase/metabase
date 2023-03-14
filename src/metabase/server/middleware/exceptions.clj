@@ -21,7 +21,7 @@
   (fn [request respond _]
     (let [raise (fn [e]
                   (log/warn e (trs "Exception in API call"))
-                  (if (:public-pass-through (ex-data e))
+                  (if (#{404} (:status-code (ex-data e)))
                     (respond (api-exception-response e))
                     (respond {:status 400, :body "An error occurred."})))]
       (try
