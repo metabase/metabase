@@ -2,7 +2,7 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata.calculate.names :as calculate.names]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
@@ -10,13 +10,22 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod calculate.names/display-name* :asc
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} ascending" (calculate.names/display-name query stage-number expr)))
+(defmethod lib.metadata.calculation/describe-top-level-key :order-by
+  [query stage-number _k]
+  (when-let [order-bys (not-empty (:order-by (lib.util/query-stage query stage-number)))]
+    (i18n/tru "Sorted by {0}"
+              (lib.util/join-strings-with-conjunction
+               (i18n/tru "and")
+               (for [order-by order-bys]
+                 (lib.metadata.calculation/display-name query stage-number order-by))))))
 
-(defmethod calculate.names/display-name* :desc
+(defmethod lib.metadata.calculation/display-name-method :asc
   [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} descending" (calculate.names/display-name query stage-number expr)))
+  (i18n/tru "{0} ascending" (lib.metadata.calculation/display-name query stage-number expr)))
+
+(defmethod lib.metadata.calculation/display-name-method :desc
+  [query stage-number [_tag _opts expr]]
+  (i18n/tru "{0} descending" (lib.metadata.calculation/display-name query stage-number expr)))
 
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}

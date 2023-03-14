@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [format])
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -148,3 +149,24 @@
     (cond-> query
       (= (:lib/type (query-stage query -1)) :mbql.stage/native)
       (update :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))))
+
+(defn join-strings-with-conjunction
+  "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
+  by a string `conjunction`. Uses Oxford commas for > 2 args.
+
+  (join-strings-with-conjunction \"and\" [\"X\" \"Y\" \"Z\"])
+  ;; => \"X, Y, and Z\""
+  [conjunction coll]
+  (when (seq coll)
+    (if (= (count coll) 1)
+      (first coll)
+      (let [conjunction (str \space (str/trim conjunction) \space)]
+        (if (= (count coll) 2)
+          ;; exactly 2 args: X and Y
+          (str (first coll) conjunction (second coll))
+          ;; > 2 args: X, Y, and Z
+          (str
+           (str/join ", " (butlast coll))
+           ","
+           conjunction
+           (last coll)))))))

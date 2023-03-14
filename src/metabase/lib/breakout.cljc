@@ -1,9 +1,20 @@
 (ns metabase.lib.breakout
   (:require
+   [clojure.string :as str]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(defmethod lib.metadata.calculation/describe-top-level-key :breakout
+  [query stage-number _k]
+  (when-let [breakouts (not-empty (:breakout (lib.util/query-stage query stage-number)))]
+    (i18n/tru "Grouped by {0}"
+              (str/join (str \space (i18n/tru "and") \space)
+                        (for [breakout breakouts]
+                          (lib.metadata.calculation/display-name query stage-number breakout))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference."

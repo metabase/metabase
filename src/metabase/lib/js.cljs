@@ -2,16 +2,20 @@
   "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
   (:require
    [metabase.lib.convert :as convert]
+   [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
-   [metabase.lib.metadata.calculate.describe-query :as metadata.calculate.describe-query]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util.log :as log]))
 
+;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
+(comment lib.core/keep-me)
+
 (defn ^:export describeQuery
   "Return a nice description of a query."
   [query]
-  (metadata.calculate.describe-query/describe-query query))
+  (lib.metadata.calculation/describe-query query))
 
 (defn- pMBQL [query-map]
   (as-> query-map <>

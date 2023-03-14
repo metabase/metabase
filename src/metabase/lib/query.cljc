@@ -2,10 +2,19 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
+
+(defmethod lib.metadata.calculation/metadata :mbql/query
+  [query stage-number x]
+  (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
+
+(defmethod lib.metadata.calculation/display-name-method :mbql/query
+  [query stage-number x]
+  (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number)))
 
 (defn- query-with-stages [metadata-provider stages]
   {:lib/type     :mbql/query

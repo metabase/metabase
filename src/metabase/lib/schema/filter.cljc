@@ -4,7 +4,8 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]))
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -88,7 +89,7 @@
            [:enum :current :last :next]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [:ref ::expression/integer]]
-   #_unit [:ref ::unit.date-time.interval]])
+   #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean
