@@ -7,7 +7,10 @@ import {
   fireEvent,
   getIcon,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import {
+  setupSearchEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
 
 import type {
   DashboardOrderedCard,
@@ -17,6 +20,9 @@ import {
   createMockDashboardCardWithVirtualCard,
   createMockCollectionItem,
   createMockCollection,
+  createMockRecentItem,
+  createMockTable,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
@@ -226,6 +232,58 @@ describe("LinkViz", () => {
             name: "Question Uno",
             model: "card",
             display: "pie",
+          }),
+        },
+      });
+    });
+
+    it("clicking a recent item should update the entity", async () => {
+      const recentTableItem = createMockRecentItem({
+        cnt: 20,
+        user_id: 20,
+        model: "table",
+        model_id: 121,
+        model_object: createMockTable({
+          id: 121,
+          name: "Table Uno",
+          display_name: "Table Uno",
+          db_id: 20,
+        }),
+      });
+
+      const recentDashboardItem = createMockRecentItem({
+        cnt: 20,
+        user_id: 20,
+        model: "dashboard",
+        model_id: 131,
+        model_object: createMockDashboard({
+          id: 131,
+          name: "Dashboard Uno",
+        }),
+      });
+
+      setupRecentViewsEndpoints([recentTableItem, recentDashboardItem]);
+
+      const { changeSpy } = setup({
+        isEditing: true,
+        dashcard: emptyLinkDashcard,
+        settings:
+          emptyLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      const searchInput = screen.getByPlaceholderText("https://example.com");
+
+      userEvent.click(searchInput);
+
+      await screen.findByText("Dashboard Uno");
+      userEvent.click(await screen.findByText("Table Uno"));
+
+      expect(changeSpy).toHaveBeenCalledWith({
+        link: {
+          entity: expect.objectContaining({
+            id: 121,
+            name: "Table Uno",
+            model: "table",
           }),
         },
       });
