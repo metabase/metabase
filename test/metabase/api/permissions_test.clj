@@ -213,7 +213,14 @@
         (is (= {:data {:schemas :all}}
                (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
         (is (= {:query {:schemas :all}, :data {:native :write}}
-               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
+
+    (testing "permissions when group has no permissions"
+      (mt/with-temp* [PermissionsGroup [group]]
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+        (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
+        (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
