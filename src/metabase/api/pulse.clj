@@ -132,7 +132,7 @@
                     :collection_position collection_position
                     :dashboard_id        dashboard_id
                     :parameters          parameters}]
-   (db/transaction
+    (db/transaction
      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
      ;; check that and fix it if needed
      (api/maybe-reconcile-collection-position! pulse-data)
