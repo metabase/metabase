@@ -7,10 +7,7 @@ import { executeRowAction } from "metabase/dashboard/actions";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
-import {
-  getResponseErrorMessage,
-  GenericErrorResponse,
-} from "metabase/core/utils/errors";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 
 import type {
   ActionDashboardCard,
@@ -52,7 +49,7 @@ interface OwnProps {
 
 interface DatabaseLoaderProps {
   database: Database;
-  error?: GenericErrorResponse;
+  error?: unknown;
 }
 
 export type ActionProps = VisualizationProps & OwnProps & DatabaseLoaderProps;
@@ -181,7 +178,7 @@ function getErrorTooltip({
 }: {
   hasActionAssigned: boolean;
   hasActionsEnabled: boolean;
-  error?: GenericErrorResponse;
+  error?: unknown;
 }) {
   if (error) {
     return getResponseErrorMessage(error);
