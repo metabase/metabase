@@ -227,7 +227,7 @@
                 (binding [qp.perms/*card-id* model-id]
                   (is (thrown-with-msg?
                        ExceptionInfo
-                       (re-pattern #"You do not have permissions to view Card [\d,]+")
+                       #"You do not have permissions to view Card [\d,]+"
                        (check! query)))))
               ;; Are revoked with DB access blocked: requires EE, see test in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
