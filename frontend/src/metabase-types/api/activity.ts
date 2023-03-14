@@ -5,6 +5,10 @@ export interface ModelObject {
 }
 
 export interface RecentItem {
+  cnt: number;
+  max_ts: string;
+  model_id: number;
+  user_id: number;
   model: ModelType;
   model_object: ModelObject;
 }

@@ -1,4 +1,5 @@
 export * from "./action";
+export * from "./activity";
 export * from "./card";
 export * from "./collection";
 export * from "./dashboard";
