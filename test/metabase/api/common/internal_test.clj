@@ -194,12 +194,12 @@
 
       (is (= 16 (:body (post! "/auto-coerce-pos-square/4" {}))))
 
-      ;; Does not match route:
+      ;; Does not match route, since we expected a regex matching an int:
       (is (= nil (:body (post! "/auto-coerce-pos-square/-4" {}))))
 
-      (is (= {:errors {:x "value must be an integer greater than zero."},
-              :specific-errors {:x ["value must be an integer greater than zero., received: \"not-an-int\""]}}
-             (:body (post! "/auto-coerce-square/not-an-int" {}))))
+      (is (= nil
+             ;; Does not match route, since we expected a regex matching an int:
+             (:body (post! "/auto-coerce-pos-square/not-an-int" {}))))
 
       (is (= "chirp! chirp!"
              (:body (post! "/auto-coerce-string-repeater" {:n 2 :str "chirp!" :join " "}))))
@@ -218,7 +218,7 @@
               :specific-errors {:body {:str ["missing required key, received: nil"],
                                        :n ["missing required key, received: nil"],
                                        :join ["missing required key, received: nil"]}}}
-             (:body (post! "/auto-coer ce-string-repeater" {}))))
+             (:body (post! "/auto-coerce-string-repeater" {}))))
 
       (is (= {;; in the defendpoint body, it is coerced properly:
               :pr-strd "#{:c :d/e :b :a}",
@@ -309,10 +309,10 @@
 (deftest add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
-                                         '{id ms/PositiveInt
-                                           card-id ms/PositiveInt
-                                           crazy-id ms/PositiveInt
-                                           uuid ms/UUIDString}
+                                         {'id ms/PositiveInt
+                                          'card-id ms/PositiveInt
+                                          'crazy-id ms/PositiveInt
+                                          'uuid ms/UUIDString}
                                          route)]
                              (cond (string? result) result
                                    (coll? result) (mapv
