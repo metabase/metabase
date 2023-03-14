@@ -521,16 +521,15 @@
   [driver {{sql :query, :keys [params]} :native}]
   {:pre [(string? sql)]}
   (try
-    (let [{:keys [details]} (qp.store/database)
-          details           (update details :port #(or % (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver)))]
-      (ssh/with-ssh-tunnel [details-with-tunnel details]
-        (let [jdbc-spec (sql-jdbc.conn/connection-details->spec driver details-with-tunnel)]
+    (let [{:keys [details]} (qp.store/database)]
+      (sql-jdbc.conn/with-unpooled-connection-spec [jdbc-spec [driver details]]
           ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-          (with-open [conn (jdbc/get-connection jdbc-spec)
-                      stmt (statement-or-prepared-statement driver conn sql params nil)]
-            {:rows-affected (if (instance? PreparedStatement stmt)
-                              (.executeUpdate ^PreparedStatement stmt)
-                              (.executeUpdate stmt sql))}))))
+
+        (with-open [conn (jdbc/get-connection jdbc-spec)
+                    stmt (statement-or-prepared-statement driver conn sql params nil)]
+          {:rows-affected (if (instance? PreparedStatement stmt)
+                            (.executeUpdate ^PreparedStatement stmt)
+                            (.executeUpdate stmt sql))})))
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type qp.error-type/invalid-query}
