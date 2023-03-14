@@ -46,7 +46,7 @@ export interface ActionProps extends VisualizationProps {
   database: Database;
 }
 
-export function ActionComponent({
+function ActionComponent({
   dashcard,
   dashboard,
   dispatch,
@@ -129,7 +129,7 @@ function mapStateToProps(state: State, props: ActionProps) {
   };
 }
 
-export function ActionFn(props: ActionProps) {
+function ActionFn(props: ActionProps) {
   const {
     database,
     dashcard: { action },
