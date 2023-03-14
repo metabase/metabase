@@ -956,7 +956,7 @@ describe("scenarios > question > filter", () => {
       popover().contains("Custom Expression").click();
       popover().within(() => {
         enterCustomColumnDetails({ formula: "CountIf(boolean)" });
-        cy.findByPlaceholderText("Name (required)").type(
+        cy.findByPlaceholderText("Something nice and descriptive").type(
           "count if boolean is true",
         );
         cy.findByText("Done").click();

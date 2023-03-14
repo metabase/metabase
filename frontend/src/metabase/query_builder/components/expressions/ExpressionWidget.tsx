@@ -78,7 +78,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const isValid = !error && isValidName && isValidExpression;
 
-  const handleCommit = () => {
+  const handleCommit = (expression: Expression | null) => {
     if (isValid && isNotNull(expression)) {
       onChangeExpression(name, expression);
       onClose && onClose();
@@ -142,7 +142,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
-                handleCommit();
+                handleCommit(expression);
               }
             }}
           />
@@ -153,7 +153,11 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
       <Footer>
         <ActionButtonsWrapper>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <Button primary={isValid} disabled={!isValid} onClick={handleCommit}>
+          <Button
+            primary={isValid}
+            disabled={!isValid}
+            onClick={() => handleCommit(expression)}
+          >
             {initialName ? t`Update` : t`Done`}
           </Button>
 

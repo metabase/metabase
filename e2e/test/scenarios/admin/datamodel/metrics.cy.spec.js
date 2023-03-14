@@ -106,7 +106,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .type(`{selectall}{del}${customExpression}`)
         .blur();
 
-      cy.findByPlaceholderText("Name (required)").type("Foo");
+      cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
 
       cy.button("Done").click();
       cy.wait("@dataset");

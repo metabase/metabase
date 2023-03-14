@@ -299,7 +299,7 @@ describe("scenarios > question > notebook", () => {
 
         enterCustomColumnDetails({ formula: expression });
 
-        cy.findByPlaceholderText("Name (required)")
+        cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type(filter, { delay: 100 });
 
