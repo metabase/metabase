@@ -367,16 +367,17 @@ export default class Table extends Component {
       widget: ChartSettingHideButton,
       getProps: (
         col,
-        settings,
+        settingsUnused,
         onChange,
         {
+          settings,
           series: [
             {
               data: { cols },
             },
           ],
         },
-      ) => ({ column, columns: cols }),
+      ) => ({ column, columns: cols, visualizationSettings: settings }),
     };
 
     return settings;

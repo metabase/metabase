@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { t } from "ttag";
 import cloneDeep from "lodash.clonedeep";
 import _ from "underscore";
@@ -7,23 +7,27 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 import type { Column } from "metabase-types/types/Dataset";
-import type { State } from "metabase-types/store";
 
-import { TableColumnOrderSetting } from "metabase-types/api";
+import type {
+  TableColumnOrderSetting,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 
 interface ChartSettingHideButtonProps {
   column: Column;
-  columns: Array<Column>;
+  columns: Column[];
+  visualizationSettings: VisualizationSettings;
   onClose?: () => void;
 }
 
 export function ChartSettingHideButton({
   column,
   columns,
+  visualizationSettings,
   onClose,
 }: ChartSettingHideButtonProps) {
-  const hideColumn = useHideColumn(column, columns);
+  const hideColumn = useHideColumn(column, columns, visualizationSettings);
 
   return (
     <Button
@@ -39,11 +43,12 @@ export function ChartSettingHideButton({
   );
 }
 
-function useHideColumn(column: Column, columns: Array<Column>) {
+function useHideColumn(
+  column: Column,
+  columns: Column[],
+  visualizationSettings: VisualizationSettings,
+) {
   const dispatch = useDispatch();
-  const visualizationSettings = useSelector(
-    (state: State) => state.qb.card?.visualization_settings,
-  );
 
   return useCallback(() => {
     let visSettingsClone = cloneDeep(visualizationSettings);
@@ -72,16 +77,16 @@ function useHideColumn(column: Column, columns: Array<Column>) {
   }, [dispatch, visualizationSettings, column, columns]);
 }
 
-export function getDefaultTableColumns(columns: Array<Column>) {
+export function getDefaultTableColumns(columns: Column[]) {
   return columns.map(({ name, field_ref, visibility_type }) => ({
     name,
     fieldRef: field_ref,
     enabled: visibility_type === "normal" || visibility_type === undefined,
-  })) as Array<TableColumnOrderSetting>;
+  })) as TableColumnOrderSetting[];
 }
 
 function findTableColumnIndex(
-  tableColumns: Array<TableColumnOrderSetting>,
+  tableColumns: TableColumnOrderSetting[],
   column: Column,
 ) {
   const fieldRef = normalizeFieldRef(column.field_ref);
