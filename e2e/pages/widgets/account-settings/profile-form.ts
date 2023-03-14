@@ -1,15 +1,28 @@
 import { Select } from "../shared/select";
 import { Input } from "../shared/input";
+import { Button } from "../shared/button";
+
+type ProfileFormValues = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  language?: string;
+};
 
 export class UserProfileForm {
-  firstNameInput = Input.byLabel("First name");
-  lastNameInput = Input.byLabel("Last name");
-  emailInput = Input.byLabel("Email");
+  private firstNameInput = Input.byLabel("First name");
+  private lastNameInput = Input.byLabel("Last name");
+  private emailInput = Input.byLabel("Email");
   // TODO: make it more specific
-  languageSelect = Select.byTestId("select-button");
-  submitButton = () => cy.button("Update");
+  private languageSelect = Select.byTestId("select-button");
+  private submitButton = Button.byLabel("Update");
 
-  verifyValues = ({ firstName, lastName, email, language }) => {
+  verifyValues = ({
+    firstName,
+    lastName,
+    email,
+    language,
+  }: ProfileFormValues) => {
     if (firstName != null) {
       this.firstNameInput.verifyValue(firstName);
     }
@@ -29,7 +42,7 @@ export class UserProfileForm {
     return this;
   };
 
-  fill = ({ firstName, lastName, email, language }) => {
+  fill = ({ firstName, lastName, email, language }: ProfileFormValues) => {
     if (firstName != null) {
       this.firstNameInput.setValue(firstName);
     }
@@ -50,12 +63,14 @@ export class UserProfileForm {
   };
 
   submit = () => {
-    this.submitButton().click();
+    cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
+    this.submitButton.click();
+    cy.wait("@updateUserSettings");
     return this;
   };
 
   verifySubmitDisabled = () => {
-    this.submitButton().should("be.disabled");
+    this.submitButton.verifyDisabled();
     return this;
   };
 }

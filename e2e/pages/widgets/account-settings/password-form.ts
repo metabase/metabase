@@ -1,16 +1,23 @@
 import { Input } from "../shared/input";
+import { Button } from "../shared/button";
+
+type PasswordFormValues = {
+  currentPassword?: string;
+  newPassword?: string;
+  newPasswordConfirmation?: string;
+};
 
 export class PasswordForm {
-  currentPasswordInput = Input.byLabel("Current password");
-  newPasswordInput = Input.byLabel("Create a password");
-  newPasswordConfirmationInput = Input.byLabel("Confirm your password");
-  submitButton = () => cy.button("Save");
+  private currentPasswordInput = Input.byLabel("Current password");
+  private newPasswordInput = Input.byLabel("Create a password");
+  private newPasswordConfirmationInput = Input.byLabel("Confirm your password");
+  private submitButton = Button.byLabel("Save");
 
   verifyValues = ({
     currentPassword,
     newPassword,
     newPasswordConfirmation,
-  }) => {
+  }: PasswordFormValues) => {
     if (currentPassword != null) {
       this.currentPasswordInput.verifyValue(currentPassword);
     }
@@ -26,7 +33,11 @@ export class PasswordForm {
     return this;
   };
 
-  fill = ({ currentPassword, newPassword, newPasswordConfirmation }) => {
+  fill = ({
+    currentPassword,
+    newPassword,
+    newPasswordConfirmation,
+  }: PasswordFormValues) => {
     if (currentPassword != null) {
       this.currentPasswordInput.setValue(currentPassword);
     }
@@ -43,12 +54,12 @@ export class PasswordForm {
   };
 
   submit = () => {
-    this.submitButton().click();
+    this.submitButton.click();
     return this;
   };
 
   verifySubmitDisabled = () => {
-    this.submitButton().should("be.disabled");
+    this.submitButton.verifyDisabled();
     return this;
   };
 }

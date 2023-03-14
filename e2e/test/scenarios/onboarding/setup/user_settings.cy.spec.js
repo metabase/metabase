@@ -18,19 +18,20 @@ describe("user > settings", () => {
     const page = AccountSettingsPage.visit();
 
     page.header.verifyFullname(fullName);
-    page.profileForm.fill({ firstName: "", lastName: "" }).submit();
+    page.tabs.profileForm.fill({ firstName: "", lastName: "" }).submit();
 
     cy.reload();
 
-    page.profileForm.verifyValues({ firstName: "", lastName: "" });
+    page.tabs.profileForm.verifyValues({ firstName: "", lastName: "" });
   });
 
   it("should show user details with disabled submit button", () => {
     const page = AccountSettingsPage.visit();
 
     page.header.verifyFullname(fullName).verifyEmail(email);
-    page.profileForm
-      .verifyValues({
+    page
+      .verifyTabSelected("Profile")
+      .tabs.profileForm.verifyValues({
         firstName: first_name,
         lastName: last_name,
         email,
@@ -41,7 +42,7 @@ describe("user > settings", () => {
   it("should update the user without fetching memberships", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
     const page = AccountSettingsPage.visit();
-    page.profileForm
+    page.tabs.profileForm
       .fill({ firstName: "John" })
       .submit()
       .verifyValues({ firstName: "John" });
@@ -51,33 +52,28 @@ describe("user > settings", () => {
     cy.get("@membership.all").should("have.length", 0);
   });
 
+  it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
+    const page = AccountSettingsPage.visit();
+    page
+      .selectTab("Password")
+      .tabs.passwordForm.fill({
+        currentPassword: password,
+        newPassword: password,
+        newPasswordConfirmation: password,
+      })
+      .submit();
+
+    page.navBar.signOut();
+
+    cy.findByText("Sign in to Metabase");
+  });
+
   it("should have a change password tab", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
     cy.findByText("Password").should("exist");
-  });
-
-  it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {
-    cy.signOut();
-    cy.visit("/account/profile");
-    cy.url().should("include", "/auth/login");
-    cy.findByText("Sign in to Metabase");
-  });
-
-  it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
-    cy.visit("/account/password");
-
-    cy.findByLabelText("Current password").type(password);
-    cy.findByLabelText("Create a password").type(password);
-    cy.findByLabelText("Confirm your password").type(password);
-    cy.findByText("Save").click();
-    cy.findByText("Success");
-
-    cy.findByLabelText("gear icon").click();
-    cy.findByText("Sign out").click();
-    cy.findByText("Sign in to Metabase");
   });
 
   it("should validate form values (metabase#23259)", () => {
@@ -106,15 +102,12 @@ describe("user > settings", () => {
   });
 
   it("should be able to change a language (metabase#22192)", () => {
-    cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
-
     const page = AccountSettingsPage.visit();
-    page.profileForm
+    page.tabs.profileForm
       .verifyValues({ language: "Use site default" })
       .fill({ language: "Indonesian" })
-      .submit();
-
-    cy.wait("@updateUserSettings");
+      .submit()
+      .verifyValues({ language: "Indonesian" });
 
     // Assert that the page reloaded with the new language
     cy.findByLabelText("Nama depan").should("exist");

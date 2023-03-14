@@ -162,7 +162,7 @@ const RadioItem = <TValue,>({
         type="radio"
         name={name}
         value={String(value)}
-        checked={checked}
+        defaultChecked={checked}
         disabled={disabled}
         onChange={handleChange}
       />

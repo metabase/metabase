@@ -48,6 +48,7 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
         <HeaderSubtitle data-testid="user-email">{user.email}</HeaderSubtitle>
       </HeaderSection>
       <Radio
+        data-testid="account-settings-tabs"
         value={path}
         variant="underlined"
         options={tabs}
