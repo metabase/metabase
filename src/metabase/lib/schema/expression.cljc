@@ -5,7 +5,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
 
 (comment metabase.types/keep-me)
 
@@ -70,6 +71,13 @@
     (assert ((some-fn keyword? set?) expr-type)
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
+
+#?(:clj
+   (defmacro register-type-of-first-arg
+     "Registers [[tag]] with [[type-of*]] in terms of its first incoming [[expr]].
+      Useful for clauses that are polymorphic on their argument."
+     [tag]
+     `(defmethod type-of* ~tag [[_tag# _opts# expr# & _#]] (type-of expr#))))
 
 (defn- expression-schema
   "Schema that matches the following rules:
