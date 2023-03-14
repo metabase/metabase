@@ -1206,7 +1206,7 @@ Since: v44.0
 
 Time before inactive users are logged out. By default, sessions last according to [MAX_SESSION_AGE](#max_session_age) and [MB_SESSION_COOKIES](#mb_session_cookies).
 
-Has to be in the format `"{:amount 60 :unit 'minutes'}"` where the unit is one of "seconds", "minutes" or "hours".
+Has to be in the JSON format `"{\"amount\":120,\"unit\":\"minutes\"}"` where the unit is one of "seconds", "minutes" or "hours".
 
 ### `MB_SETUP_TOKEN`
 
