@@ -6,7 +6,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]))
 
 (def +public-exceptions
-  "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
+  "Wrap `routes` so any Exception except 404 thrown is just returned as a generic 400, to prevent details from leaking in public
   endpoints."
   #'mw.exceptions/public-execptions)
 
