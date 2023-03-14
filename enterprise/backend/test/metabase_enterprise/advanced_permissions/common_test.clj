@@ -4,7 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.api.database :as api.database]
-   [metabase.models :refer [Database Field FieldValues Permissions Table]]
+   [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.permissions :as perms]
@@ -433,3 +433,28 @@
                                          :details :yes}}
         (is (partial= {:details {}}
              (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))
+
+(deftest actions-test
+  (mt/with-temp-copy-of-db
+    (mt/with-actions-test-data
+      (mt/with-actions [{:keys [action-id model-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Fails with access to the DB blocked"
+                (with-all-users-data-perms {(u/the-id (mt/db)) {:data    {:native :none :schemas :block}
+                                                                :details :yes}}
+                  (mt/with-actions-enabled
+                    (is (partial= {:message "You don't have permissions to do that."}
+                                  (mt/user-http-request :rasta :post 403 execute-path
+                                                        {:parameters {"id" 1}}))))))
+              (testing "Works with access to the DB not blocked"
+                (mt/with-actions-enabled
+                  (is (= {:rows-affected 1}
+                         (mt/user-http-request :rasta :post 200 execute-path
+                                               {:parameters {"id" 1}}))))))))))))
