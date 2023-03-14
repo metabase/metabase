@@ -210,29 +210,41 @@
             (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
 (deftest field-matching-predicates-test
-  (testing "The field spec predicate should match fields by their fieldspec"
+  (testing "A Google Analytics dimension will match on field name."
+    (let [fa-fieldspec "ga:name"]
+      (is (= fa-fieldspec ((#'magic/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
+  (testing "The fieldspec-matcher does not match on ID columns."
+    (mt/dataset sample-dataset
+      (let [id-field (db/select-one Field :id (mt/id :products :id))]
+        ;; the id-field does have a type...
+        (is (true? (#'magic/field-isa? id-field :type/*)))
+        ;; ...but it isn't a candidate dimension because it is an id column...
+        (is (false? ((#'magic/fieldspec-matcher :type/*) id-field)))
+        ;; ...unless you're looking explicitly for a primary key
+        (is (true? ((#'magic/fieldspec-matcher :type/PK) id-field))))))
+  (testing "The fieldspec-matcher should match fields by their fieldspec"
     (mt/dataset sample-dataset
       (let [price-field (db/select-one Field :id (mt/id :products :price))
             latitude-field (db/select-one Field :id (mt/id :people :latitude))
             created-at-field (db/select-one Field :id (mt/id :people :created_at))
-            pred (#'magic/field-spec-pred :type/Latitude)]
+            pred (#'magic/fieldspec-matcher :type/Latitude)]
         (is (false? (pred price-field)))
         (is (true? (pred latitude-field)))
-        (is (true? ((#'magic/field-spec-pred :type/CreationTimestamp) created-at-field)))
-        (is (true? ((#'magic/field-spec-pred :type/*) created-at-field))))))
-  (testing "The named spec predicate should match fields by name"
+        (is (true? ((#'magic/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
+        (is (true? ((#'magic/fieldspec-matcher :type/*) created-at-field))))))
+  (testing "The name-regex-matcher should return fields with string/regex matches"
     (mt/dataset sample-dataset
       (let [price-field (db/select-one Field :id (mt/id :products :price))
             category-field (db/select-one Field :id (mt/id :products :category))
-            ice-pred (#'magic/named-spec-pred "ice")]
+            ice-pred (#'magic/name-regex-matcher "ice")]
         (is (some? (ice-pred price-field)))
         (is (nil? (ice-pred category-field))))))
-  (testing "The named spec predicate should match fields by name"
+  (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
     (mt/dataset sample-dataset
       (let [category-field (db/select-one Field :id (mt/id :products :category))]
-        (is (false? ((#'magic/max-cardinality-pred 3) category-field)))
-        (is (true? ((#'magic/max-cardinality-pred 4) category-field)))
-        (is (true? ((#'magic/max-cardinality-pred 100) category-field))))))
+        (is (false? ((#'magic/max-cardinality-matcher 3) category-field)))
+        (is (true? ((#'magic/max-cardinality-matcher 4) category-field)))
+        (is (true? ((#'magic/max-cardinality-matcher 100) category-field))))))
   (testing "Roll the above together and test filter-fields"
     (mt/dataset sample-dataset
       (let [category-field (db/select-one Field :id (mt/id :products :category))

@@ -384,8 +384,8 @@
                  (str/starts-with? name "id_")
                  (str/ends-with? name "_id"))))))
 
-(defn- field-spec-pred
-  "Generate a predicate of the form (f field) -> true | false based on a field spec."
+(defn- fieldspec-matcher
+  "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
   [fieldspec]
   (if (and (string? fieldspec)
            (rules/ga-dimension? fieldspec))
@@ -397,7 +397,7 @@
         target (recur target)
         :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
 
-(defn- named-spec-pred
+(defn- name-regex-matcher
   "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
   [name-pattern]
   (comp (->> name-pattern
@@ -407,7 +407,7 @@
         u/lower-case-en
         :name))
 
-(defn- max-cardinality-pred
+(defn- max-cardinality-matcher
   "Generate a predicate of the form (f field) -> true | false based on the provided cardinality.
   Returns true if the distinct count of fingerprint values is less than or equal to the cardinality."
   [cardinality]
@@ -417,9 +417,9 @@
             (<= cardinality))))
 
 (def ^:private field-filters
-  {:fieldspec       field-spec-pred
-   :named           named-spec-pred
-   :max-cardinality max-cardinality-pred})
+  {:fieldspec       fieldspec-matcher
+   :named           name-regex-matcher
+   :max-cardinality max-cardinality-matcher})
 
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
