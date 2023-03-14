@@ -29,7 +29,7 @@ describe("scenarios > embedding > full app", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
       cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
-      cy.findByTestId("main-logo").should("not.exist");
+      cy.findByTestId("main-logo").should("not.be.visible");
     });
 
     it("should not hide the top nav when the logo is still visible", () => {

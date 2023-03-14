@@ -2,7 +2,7 @@
 import React from "react";
 
 const AdminContentTable = ({ columnTitles, children }) => (
-  <table className="ContentTable">
+  <table className="ContentTable" data-testid="admin-content-table">
     <thead>
       <tr>
         {columnTitles &&

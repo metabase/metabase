@@ -37,13 +37,21 @@ describeEE("scenarios > admin > people", () => {
       });
 
       // Edit group name
-      cy.icon("ellipsis").eq(0).click();
-      cy.findByText("Edit Name").click();
-      cy.get("input").type(" updated");
-      cy.button("Done").click();
+      cy.findByTestId("admin-content-table").within(() => {
+        cy.icon("ellipsis").eq(0).click();
+      });
+      popover().within(() => {
+        cy.findByText("Edit Name").click();
+      });
 
-      // Click on the group with the new name
-      cy.findByText("collection updated").click();
+      cy.findByTestId("admin-content-table").within(() => {
+        cy.findByDisplayValue("collection")
+          .type(" updated");
+        cy.button("Done").click();
+        // Click on the group with the new name
+        cy.findByText("collection updated").click();
+      });
+
 
       // Add "No Collection" user as a member
       cy.button("Add members").click();
