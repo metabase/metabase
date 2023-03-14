@@ -30,4 +30,4 @@
        query stage-number
        update :aggregations
        (fn [aggregations]
-         (conj (vec aggregations) (an-aggregate-clause query stage-number)))))))
+         (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))
