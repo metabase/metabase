@@ -26,7 +26,6 @@ function QueryActionEditor({
         hasParametersList={false}
         resizable={false}
         readOnly={!isEditable}
-        requireWriteback
         editorContext="action"
       />
     </>

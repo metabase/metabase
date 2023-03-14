@@ -517,7 +517,6 @@ class NativeQueryEditor extends Component {
       resizableBoxProps = {},
       snippetCollections = [],
       resizable,
-      requireWriteback = false,
       editorContext = "question",
       setDatasetQuery,
     } = this.props;
@@ -545,7 +544,6 @@ class NativeQueryEditor extends Component {
                 readOnly={readOnly}
                 setDatabaseId={this.setDatabaseId}
                 setTableId={this.setTableId}
-                requireWriteback={requireWriteback}
                 editorContext={editorContext}
               />
             </div>

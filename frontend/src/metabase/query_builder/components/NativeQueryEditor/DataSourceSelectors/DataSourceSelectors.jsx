@@ -15,7 +15,6 @@ const DataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
-  requireWriteback: PropTypes.bool,
   editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
@@ -58,7 +57,6 @@ const DataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
-  requireWriteback = false,
   editorContext,
 }) => {
   const database = query.database();
@@ -68,12 +66,12 @@ const DataSourceSelectors = ({
       .metadata()
       .databasesList({ savedQuestions: false });
 
-    if (!requireWriteback) {
-      return allDatabases;
+    if (editorContext === "action") {
+      return allDatabases.filter(database => database.hasActionsEnabled());
     }
 
-    return allDatabases.filter(database => database.hasActionsEnabled());
-  }, [query, requireWriteback]);
+    return allDatabases;
+  }, [query, editorContext]);
 
   if (!isNativeEditorOpen || databases.length === 0) {
     return <Placeholder query={query} editorContext={editorContext} />;
@@ -87,7 +85,6 @@ const DataSourceSelectors = ({
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
-      requireWriteback={requireWriteback}
     />
   );
 };
