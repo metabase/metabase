@@ -274,7 +274,8 @@ export default class LineAreaBarChart extends Component {
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
-    const hasLegend = hasMultipleSeries || canChangeSeries || hasLegendButtons;
+    const hasLegend =
+      hasMultipleSeries || canChangeSeries || hasLegendButtons || hasBreakout;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
