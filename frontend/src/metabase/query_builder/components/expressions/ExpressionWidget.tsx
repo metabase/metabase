@@ -1,25 +1,30 @@
 import React, { useRef, useState } from "react";
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
-import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
+import Tooltip from "metabase/core/components/Tooltip";
+import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/types/Query";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import {
-  Divider,
   ActionButtonsWrapper,
+  Container,
+  Divider,
   ExpressionFieldWrapper,
   FieldTitle,
   FieldWrapper,
   Footer,
-  IconWrapper,
+  InfoLink,
   RemoveLink,
   StyledFieldTitleIcon,
-  Container,
 } from "./ExpressionWidget.styled";
+
+const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
+  "questions/query-builder/expressions",
+);
 
 export interface ExpressionWidgetProps {
   query: StructuredQuery;
@@ -66,14 +71,20 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
       <ExpressionFieldWrapper>
         <FieldTitle>
           {t`Expression`}
+
           <Tooltip
-            tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]).`}
+            tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
             placement="right"
             maxWidth={332}
           >
-            <IconWrapper circle>
+            <InfoLink
+              target="_blank"
+              href={EXPRESSIONS_DOCUMENTATION_URL}
+              data-testid="expression-widget-info-link"
+              aria-label={t`Open expressions documentation`}
+            >
               <StyledFieldTitleIcon name="info" />
-            </IconWrapper>
+            </InfoLink>
           </Tooltip>
         </FieldTitle>
         <div ref={helpTextTargetRef}>

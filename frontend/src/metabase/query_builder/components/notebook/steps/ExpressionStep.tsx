@@ -1,10 +1,16 @@
 import React from "react";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { NotebookStepUiComponentProps } from "metabase/query_builder/components/notebook/lib/steps.types";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import ClauseStep from "./ClauseStep";
 
-type ExpressionStepProps = NotebookStepUiComponentProps;
+export interface ExpressionStepProps {
+  color: string;
+  query: StructuredQuery;
+  updateQuery: (query: StructuredQuery) => Promise<void>;
+  isLastOpened: boolean;
+  reportTimezone: string;
+}
 
 const ExpressionStep = ({
   color,
@@ -27,13 +33,13 @@ const ExpressionStep = ({
           query={query}
           name={item?.name}
           expression={item?.expression}
-          onChangeExpression={(newName, newExpression) =>
+          onChangeExpression={(newName, newExpression) => {
             item?.expression
               ? updateQuery(
-                  query.updateExpression(newName, newExpression, name),
+                  query.updateExpression(newName, newExpression, item.name),
                 )
-              : updateQuery(query.addExpression(newName, newExpression))
-          }
+              : updateQuery(query.addExpression(newName, newExpression));
+          }}
           reportTimezone={reportTimezone}
         />
       )}
