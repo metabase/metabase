@@ -209,13 +209,18 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
+(defn field! [table column]
+  (or (db/select-one Field :id (mt/id table column))
+      (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
+                      {:table table :column column}))))
+
 (deftest field-matching-predicates-test
   (testing "A Google Analytics dimension will match on field name."
     (let [fa-fieldspec "ga:name"]
       (is (= fa-fieldspec ((#'magic/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
     (mt/dataset sample-dataset
-      (let [id-field (db/select-one Field :id (mt/id :products :id))]
+      (let [id-field (field! :products :id)]
         ;; the id-field does have a type...
         (is (true? (#'magic/field-isa? id-field :type/*)))
         ;; ...but it isn't a candidate dimension because it is an id column...
@@ -224,9 +229,9 @@
         (is (true? ((#'magic/fieldspec-matcher :type/PK) id-field))))))
   (testing "The fieldspec-matcher should match fields by their fieldspec"
     (mt/dataset sample-dataset
-      (let [price-field (db/select-one Field :id (mt/id :products :price))
-            latitude-field (db/select-one Field :id (mt/id :people :latitude))
-            created-at-field (db/select-one Field :id (mt/id :people :created_at))
+      (let [price-field (field! :products :price)
+            latitude-field (field! :people :latitude)
+            created-at-field (field! :people :created_at)
             pred (#'magic/fieldspec-matcher :type/Latitude)]
         (is (false? (pred price-field)))
         (is (true? (pred latitude-field)))
@@ -234,24 +239,24 @@
         (is (true? ((#'magic/fieldspec-matcher :type/*) created-at-field))))))
   (testing "The name-regex-matcher should return fields with string/regex matches"
     (mt/dataset sample-dataset
-      (let [price-field (db/select-one Field :id (mt/id :products :price))
-            category-field (db/select-one Field :id (mt/id :products :category))
+      (let [price-field (field! :products :price)
+            category-field (field! :products :category)
             ice-pred (#'magic/name-regex-matcher "ice")]
         (is (some? (ice-pred price-field)))
         (is (nil? (ice-pred category-field))))))
   (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
     (mt/dataset sample-dataset
-      (let [category-field (db/select-one Field :id (mt/id :products :category))]
+      (let [category-field (field! :products :category)]
         (is (false? ((#'magic/max-cardinality-matcher 3) category-field)))
         (is (true? ((#'magic/max-cardinality-matcher 4) category-field)))
         (is (true? ((#'magic/max-cardinality-matcher 100) category-field))))))
   (testing "Roll the above together and test filter-fields"
     (mt/dataset sample-dataset
-      (let [category-field (db/select-one Field :id (mt/id :products :category))
-            price-field (db/select-one Field :id (mt/id :products :price))
-            latitude-field (db/select-one Field :id (mt/id :people :latitude))
-            created-at-field (db/select-one Field :id (mt/id :people :created_at))
-            source-field (db/select-one Field :id (mt/id :people :source))
+      (let [category-field (field! :products :category)
+            price-field (field! :products :price)
+            latitude-field (field! :people :latitude)
+            created-at-field (field! :people :created_at)
+            source-field (field! :people :source)
             fields [category-field price-field latitude-field created-at-field source-field]]
         ;; Get the lone field that is both a CreationTimestamp and has "at" in the name
         (is (= #{(mt/id :people :created_at)}
@@ -278,9 +283,10 @@
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
-                            :query    {:source-table (mt/id :products)
-                                       :fields       [[:field (mt/id :products :category) nil]
-                                                      [:field (mt/id :products :price) nil]]},
+                            :query    (mt/$ids
+                                       {:source-table $$products
+                                        :fields       [&u.products.category
+                                                       &u.products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
@@ -304,22 +310,17 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (mt/id :orders)
-                                       :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]
-                                                                      [:field (mt/id :people :longitude) {:join-alias "People - User"}]
-                                                                      [:field (mt/id :people :latitude) {:join-alias "People - User"}]]
-                                                       :source-table (mt/id :people)
-                                                       :condition    [:=
-                                                                      [:field (mt/id :orders :user_id) nil]
-                                                                      [:field (mt/id :people :id) {:join-alias "People - User"}]]
-                                                       :alias        "People - User"}
-                                                      {:fields       [[:field (mt/id :products :price) {:join-alias "Products"}]]
-                                                       :source-table (mt/id :products)
-                                                       :condition    [:=
-                                                                      [:field (mt/id :orders :product_id) nil]
-                                                                      [:field (mt/id :products :id) {:join-alias "Products"}]]
-                                                       :alias        "Products"}]
-                                       :fields       [[:field (mt/id :orders :created_at) nil]]}}]
+                            :query    (mt/$ids
+                                       {:source-table $$orders
+                                        :joins        [{:fields       [&u.people.state
+                                                                       &u.people.longitude
+                                                                       &u.people.latitude]
+                                                        :source-table $$people
+                                                        :condition    [:= $orders.user_id &u.people.id]}
+                                                       {:fields       [&u.products.price]
+                                                        :source-table $$products
+                                                        :condition    [:= $orders.product_id &u.products.id]}]
+                                        :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
@@ -376,24 +377,19 @@
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
         (let [source-query {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (mt/id :orders)
-                                       :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]
-                                                                      [:field (mt/id :people :source) {:join-alias "People - User"}]
-                                                                      [:field (mt/id :people :longitude) {:join-alias "People - User"}]
-                                                                      [:field (mt/id :people :latitude) {:join-alias "People - User"}]]
-                                                       :source-table (mt/id :people)
-                                                       :condition    [:=
-                                                                      [:field (mt/id :orders :user_id) nil]
-                                                                      [:field (mt/id :people :id) {:join-alias "People - User"}]]
-                                                       :alias        "People - User"}
-                                                      {:fields       [[:field (mt/id :products :category) {:join-alias "Products"}]
-                                                                      [:field (mt/id :products :price) {:join-alias "Products"}]]
-                                                       :source-table (mt/id :products)
-                                                       :condition    [:=
-                                                                      [:field (mt/id :orders :product_id) nil]
-                                                                      [:field (mt/id :products :id) {:join-alias "Products"}]]
-                                                       :alias        "Products"}]
-                                       :fields       [[:field (mt/id :orders :created_at) nil]]}}]
+                            :query    (mt/$ids
+                                       {:source-table $$orders
+                                        :joins        [{:fields       [&u.people.state
+                                                                       &u.people.source
+                                                                       &u.people.longitude
+                                                                       &u.people.latitude]
+                                                        :source-table $$people
+                                                        :condition    [:= $orders.user_id &u.people.id]}
+                                                       {:fields       [&p.products.category
+                                                                       &p.products.price]
+                                                        :source-table $$products
+                                                        :condition    [:= $orders.product_id &p.products.id]}]
+                                        :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
@@ -471,9 +467,10 @@
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
-                            :query    {:source-table (mt/id :products)
-                                       :fields       [[:field (mt/id :products :category) nil]
-                                                      [:field (mt/id :products :price) nil]]},
+                            :query    (mt/$ids
+                                       {:source-table $$products
+                                        :fields       [&p.products.category
+                                                       &p.products.price]}),
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
@@ -508,12 +505,13 @@
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [temporal-field-id (mt/id :products :created_at)
-              source-query {:database (mt/id)
-                            :query    {:source-table (mt/id :products)
-                                       :fields       [[:field (mt/id :products :category) nil]
-                                                      [:field (mt/id :products :price) nil]
-                                                      [:field temporal-field-id nil]]},
-                            :type     :query}]
+              source-query      {:database (mt/id)
+                                 :query    (mt/$ids
+                                            {:source-table $$products
+                                             :fields       [&p.products.category
+                                                            &p.products.price
+                                                            [:field temporal-field-id nil]]}),
+                                 :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
@@ -539,9 +537,10 @@
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
-                            :query    {:source-table (mt/id :people)
-                                       :fields       [[:field (mt/id :people :longitude) nil]
-                                                      [:field (mt/id :people :latitude) nil]]},
+                            :query    (mt/$ids
+                                       {:source-table $$people
+                                        :fields       [&u.people.longitude
+                                                       &u.people.latitude]}),
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :people)
@@ -973,8 +972,8 @@
                                                               [:field (mt/id :products :category) nil]
                                                               "Doohickey"]}}})]
         (testing `magic/filter-referenced-fields
-          (is (= {(mt/id :products :category)   (db/select-one Field :id (mt/id :products :category))
-                  (mt/id :products :created_at) (db/select-one Field :id (mt/id :products :created_at))}
+          (is (= {(mt/id :products :category)   (field! :products :category)
+                  (mt/id :products :created_at) (field! :products :created_at)}
                  (#'magic/filter-referenced-fields
                   {:source   (db/select-one Table :id (mt/id :products))
                    :database (mt/id)
