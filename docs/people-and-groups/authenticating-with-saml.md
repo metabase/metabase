@@ -151,13 +151,13 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ![Group schema](images/saml-group-schema.png)
 
-## Disabling email and password logins
+## Disabling password logins
 
-> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
-
-To require people to authenticate with SSO, you can disable email and password logins from **Admin settings** > **Authentication**.
+To require people to authenticate with SSO, you can disable password logins from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
+
+> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
 ## New user notification emails
 

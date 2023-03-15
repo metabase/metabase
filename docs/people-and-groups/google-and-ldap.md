@@ -113,11 +113,11 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 
 User attributes can't be synced with regular Google Sign-In. You'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
 
-## Disabling email and password logins
+## Disabling password logins
+
+To require people to authenticate with SSO, you can disable password logins from **Admin settings** > **Authentication**.
 
 > This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
-
-To require people to authenticate with SSO, you can disable email and password logins from **Admin settings** > **Authentication**.
 
 ## Troubleshooting login issues
 

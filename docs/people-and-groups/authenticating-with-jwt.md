@@ -64,13 +64,13 @@ You can use your JWT to assign Metabase users to custom groups by following thes
 2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
 3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
 
-## Disabling email and password logins
+## Disabling password logins
 
-> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
-
-To require people to authenticate with SSO, you can disable email and password logins from **Admin settings** > **Authentication**.
+To require people to authenticate with SSO, you can disable password logins from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
+
+> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
 ## Note about Azure
 
