@@ -151,9 +151,11 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ![Group schema](images/saml-group-schema.png)
 
-## Disabling password log-in
+## Disabling email and password logins
 
-Once you have configured SAML authentication, you can choose to disable the option for users to log in via email and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to disable password authentication.
+> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
+
+To require people to authenticate with SSO, you can disable email and password logins from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
 

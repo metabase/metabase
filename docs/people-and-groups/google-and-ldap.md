@@ -113,14 +113,11 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 
 User attributes can't be synced with regular Google Sign-In. You'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
 
-## Changing an account's login method from email to SSO
+## Disabling email and password logins
 
-Once a person creates an account, you cannot change the authentication method for that account. However, you can:
+> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
-- Deactivate password authentication for all users from **Admin settings** > **Authentication**. You'll need to ask people to sign in with Google (if they haven't already).
-- Manually update the account's login method in the Metabase application database. This option is not recommended unless you're familiar with making changes to the application database.
-
-Note that you must have at least one account with email and password login. This account safeguards you from getting locked out of your Metabase if there are any problems with your SSO provider.
+To require people to authenticate with SSO, you can disable email and password logins from **Admin settings** > **Authentication**.
 
 ## Troubleshooting login issues
 
