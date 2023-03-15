@@ -8,6 +8,8 @@
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
+            add-route-param-schema
+            auto-coerce
             auto-parse
             malli-route-dox
             malli-validate-params
@@ -254,7 +256,7 @@
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
           fn-name                                             (route-fn-name method route)
-          route                                               (add-route-param-regexes route)
+          route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
           docstr                                              (malli-route-dox method route docstr args
@@ -363,7 +365,7 @@
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
+                           :body `((auto-coerce ~args ~arg->schema
                                                ~@(malli-validate-params arg->schema)
                                                (wrap-response-if-needed
                                                 (do ~@body))))))))

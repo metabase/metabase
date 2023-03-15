@@ -570,11 +570,11 @@
              ...]}"
   [id :as {{:keys [cards]} :body}]
   {cards (su/non-empty [UpdatedDashboardCard])}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (check-updated-parameter-mapping-permissions id cards)
-  (dashboard/update-dashcards! id cards)
-  (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
-  {:status :ok})
+  (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
+    (check-updated-parameter-mapping-permissions id cards)
+    (dashboard/update-dashcards! dashboard cards)
+    (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
+    {:status :ok}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/cards"
