@@ -15,8 +15,10 @@
     (lib.dispatch/dispatch-value x)))
 
 (defmethod ->op-arg :default
-  [_query _stage-number x]
-  x)
+  [query stage-number x]
+  (if (vector? x)
+    (mapv #(->op-arg query stage-number %) x)
+    x))
 
 (defmethod ->op-arg :metadata/field
   [query stage-number field-metadata]
