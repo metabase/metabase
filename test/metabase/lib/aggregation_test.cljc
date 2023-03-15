@@ -55,12 +55,6 @@
 (defn- aggregation-column-name [aggregation-clause]
   (lib.metadata.calculation/column-name lib.tu/venues-query -1 aggregation-clause))
 
-(defn- field-clause
-  ([table field]
-   (field-clause table field nil))
-  ([table field options]
-   [:field (merge {:lib/uuid (str (random-uuid))} options) (meta/id table field)]))
-
 (deftest ^:parallel aggregation-names-test
   (are [aggregation-clause expected] (= expected
                                         {:column-name  (aggregation-column-name aggregation-clause)
@@ -68,10 +62,10 @@
     [:count {}]
     {:column-name "count", :display-name "Count"}
 
-    [:distinct {} (field-clause :venues :id)]
+    [:distinct {} (lib.tu/field-clause :venues :id)]
     {:column-name "distinct_id", :display-name "Distinct values of ID"}
 
-    [:sum {} (field-clause :venues :id)]
+    [:sum {} (lib.tu/field-clause :venues :id)]
     {:column-name "sum_id", :display-name "Sum of ID"}
 
     [:+ {} [:count {}] 1]
@@ -79,40 +73,40 @@
 
     [:+
      {}
-     [:min {} (field-clause :venues :id)]
-     [:* {} 2 [:avg {} (field-clause :venues :price)]]]
+     [:min {} (lib.tu/field-clause :venues :id)]
+     [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name  "min_id_plus_2_times_avg_price"
      :display-name "Min of ID + (2 × Average of Price)"}
 
     [:+
      {}
-     [:min {} (field-clause :venues :id)]
+     [:min {} (lib.tu/field-clause :venues :id)]
      [:*
       {}
       2
-      [:avg {} (field-clause :venues :price)]
+      [:avg {} (lib.tu/field-clause :venues :price)]
       3
-      [:- {} [:max {} (field-clause :venues :category-id)] 4]]]
+      [:- {} [:max {} (lib.tu/field-clause :venues :category-id)] 4]]]
     {:column-name  "min_id_plus_2_times_avg_price_times_3_times_max_category_id_minus_4"
      :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
 
     ;; user-specified names
     [:+
      {:name "generated_name", :display-name "User-specified Name"}
-     [:min {} (field-clause :venues :id)]
-     [:* {} 2 [:avg {} (field-clause :venues :price)]]]
+     [:min {} (lib.tu/field-clause :venues :id)]
+     [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name "generated_name", :display-name "User-specified Name"}
 
     [:+
      {:name "generated_name"}
-     [:min {} (field-clause :venues :id)]
-     [:* {} 2 [:avg {} (field-clause :venues :price)]]]
+     [:min {} (lib.tu/field-clause :venues :id)]
+     [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name "generated_name", :display-name "Min of ID + (2 × Average of Price)"}
 
     [:+
      {:display-name "User-specified Name"}
-     [:min {} (field-clause :venues :id)]
-     [:* {} 2 [:avg {} (field-clause :venues :price)]]]
+     [:min {} (lib.tu/field-clause :venues :id)]
+     [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name  "min_id_plus_2_times_avg_price"
      :display-name "User-specified Name"}))
 
