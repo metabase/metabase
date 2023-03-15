@@ -865,6 +865,7 @@
 (defn- make-dashboard
   ([{:keys [source] :as base-context} rule]
    (make-dashboard base-context rule {:tables [source]}))
+  ;; The value of comparison? seems to have no effect whatsoever.
   ([{:keys [comparison?]} rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
