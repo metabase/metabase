@@ -8,7 +8,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -297,6 +297,15 @@ describe(
       // to test database picker behavior in the action editor
       setActionsEnabledForDB(SAMPLE_DB_ID);
 
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.ALL_USERS_GROUP]: {
+          [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
+        },
+        [USER_GROUPS.DATA_GROUP]: {
+          [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+        },
+      });
+
       cy.get("@modelId").then(modelId => {
         cy.request("POST", "/api/action", {
           ...SAMPLE_QUERY_ACTION,
@@ -316,7 +325,6 @@ describe(
       cy.findByRole("dialog").within(() => {
         cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
-        // Check database picker isn't shown
         cy.findByText("Sample Database").should("not.exist");
         cy.findByText("QA Postgres12").should("not.exist");
 
@@ -333,23 +341,24 @@ describe(
         cy.findByLabelText("Success message").should("be.disabled");
       });
 
-      cy.signIn("nodata");
-      cy.reload();
-      cy.findByRole("dialog").within(() => {
-        // Check database picker just shows the action database
-        cy.findByText("Sample Database").should("not.exist");
-        cy.findByText("QA Postgres12").should("be.visible");
-      });
-
       cy.signIn("normal");
       cy.reload();
-      cy.findByRole("dialog").findByText("QA Postgres12").click();
 
       // Check can pick between all databases
+      cy.findByRole("dialog").findByText("QA Postgres12").click();
       popover().within(() => {
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("QA Postgres12").should("be.visible");
       });
+
+      cy.signInAsAdmin();
+      setActionsEnabledForDB(SAMPLE_DB_ID, false);
+      cy.signIn("normal");
+      cy.reload();
+
+      // Check can only see the action database
+      cy.findByRole("dialog").findByText("QA Postgres12").click();
+      cy.findByText("Sample Database").should("not.exist");
     });
 
     it("should display parameters for variable template tags only", () => {

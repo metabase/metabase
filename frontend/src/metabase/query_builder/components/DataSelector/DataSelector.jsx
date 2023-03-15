@@ -565,7 +565,13 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
+    const { readOnly } = this.props;
     const { activeStep } = this.state;
+
+    if (readOnly) {
+      return;
+    }
+
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
@@ -1123,7 +1129,7 @@ export class UnconnectedDataSelector extends Component {
           id="DataPopover"
           autoWidth
           ref={this.popover}
-          isInitiallyOpen={this.props.isInitiallyOpen}
+          isInitiallyOpen={this.props.isInitiallyOpen && !this.props.readOnly}
           containerClassName={this.props.containerClassName}
           triggerElement={this.getTriggerElement}
           triggerClasses={this.getTriggerClasses()}
