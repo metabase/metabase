@@ -6,7 +6,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dev :as lib.dev]
-   [metabase.lib.expressions :as lib.expressions]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
@@ -21,7 +21,7 @@
 (comment lib.aggregation/keep-me
          lib.breakout/keep-me
          lib.dev/keep-me
-         lib.expressions/keep-me
+         lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
          lib.join/keep-me

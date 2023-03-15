@@ -1,14 +1,14 @@
-(ns metabase.lib.expressions-test
+(ns metabase.lib.expression-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.expressions]
+   [metabase.lib.expression]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (comment lib/keep-me
-         metabase.lib.expressions/keep-me)
+         metabase.lib.expression/keep-me)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
