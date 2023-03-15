@@ -56,8 +56,7 @@
   [card]
   (mi/instance
    Card
-   (u/select-nested-keys card [:id :name :description :display :visualization_settings
-                               :parameters
+   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
                                [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
