@@ -14,6 +14,12 @@ const NUMBER_AND_DATE_FILTERS = [
   { name: "=", operator: "=" },
   { name: "≠", operator: "!=" },
 ];
+
+const NULL_FILTERS = [
+  { name: "=", operator: "is-null" },
+  { name: "≠", operator: "not-null" },
+];
+
 const OTHER_FILTERS = [
   { name: "=", operator: "=" },
   { name: "≠", operator: "!=" },
@@ -234,6 +240,30 @@ describe("QuickFilterDrill", () => {
         expect(question.datasetQuery().query).toEqual({
           "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
           filter: [operator, fieldRef, cellValue],
+        });
+        expect(question.display()).toBe("table");
+      });
+    });
+  });
+
+  describe("numeric cells with null values", () => {
+    const clickedField = ORDERS.TOTAL;
+    const { actions } = setup({ column: clickedField.column(), value: null });
+
+    it("should return correct filters", () => {
+      const filters = NULL_FILTERS.map(({ name }) => ({
+        name,
+      }));
+      expect(actions).toMatchObject(filters);
+    });
+
+    actions.forEach((action, i) => {
+      const { operator } = NULL_FILTERS[i];
+      it(`should correctly apply "${operator}" filter`, () => {
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
+          "source-table": ORDERS.id,
+          filter: [operator, clickedField.reference()],
         });
         expect(question.display()).toBe("table");
       });
