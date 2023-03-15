@@ -151,7 +151,7 @@
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/card/:uuid/query"
+(api/defendpoint-schema GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
@@ -159,7 +159,7 @@
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/card/:uuid/query/:export-format"
+(api/defendpoint-schema GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
@@ -235,7 +235,7 @@
       (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
@@ -535,7 +535,7 @@
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/card/:uuid/query"
+(api/defendpoint-schema GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
@@ -543,7 +543,7 @@
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
