@@ -121,7 +121,7 @@ describe("sortActionParams", () => {
       );
 
       expect(settings.fieldType).toBe("string");
-      expect(settings.inputType).toBe("category");
+      expect(settings.inputType).toBe("string");
     });
 
     it("should generate settings for a dateTime field", () => {
@@ -389,11 +389,11 @@ describe("sortActionParams", () => {
       });
     });
 
-    it('should return "category" for categories', () => {
+    it('should return "string" for categories', () => {
       const field = createField({
         semantic_type: "type/Category",
       });
-      expect(getInputType(createParameter(), field)).toEqual("category");
+      expect(getInputType(createParameter(), field)).toEqual("string");
     });
 
     it('should return "text" for description', () => {
