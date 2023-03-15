@@ -158,14 +158,16 @@ export default function FilterPopover({
       <ExpressionWidget
         query={query}
         expression={filter?.raw() as Expression}
-        reportTimezone={"UTC"} // TODO: Add reportTimezone
         startRule="boolean"
         title={CUSTOM_SECTION_NAME}
         withName={false}
         shouldValidateExpression={false}
         onChangeExpression={handleExpressionChange}
         onClose={() => setEditingFilter(false)}
-        onChange={handleFilterChange}
+        onChange={expression => {
+          const mbql = Array.isArray(expression) ? expression : undefined;
+          handleFilterChange(mbql);
+        }}
       />
     );
   }

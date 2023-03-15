@@ -39,7 +39,7 @@ export interface ExpressionWidgetProps {
   title?: string;
   shouldValidateExpression?: boolean;
 
-  reportTimezone: string;
+  reportTimezone?: string;
 
   onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;

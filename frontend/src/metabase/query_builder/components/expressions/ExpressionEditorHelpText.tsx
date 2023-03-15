@@ -13,7 +13,7 @@ import {
 } from "./ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
-  helpText: HelpText | undefined;
+  helpText: HelpText | null | undefined;
   width: number;
   target: React.RefObject<HTMLElement>;
 }

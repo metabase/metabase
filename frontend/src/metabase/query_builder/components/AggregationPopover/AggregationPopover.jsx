@@ -348,7 +348,6 @@ export default class AggregationPopover extends Component {
               this.commitAggregation(newAggregation);
             }}
             onClose={this.onClearAggregation}
-            reportTimezone={"UTC"} // TODO: Add reportTimezone
           />
         </ExpressionPopoverRoot>
       );
