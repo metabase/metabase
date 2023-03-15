@@ -165,11 +165,43 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Gizmo");
     });
 
+    it("should be able to use a structured question source when embedded with a text tag", () => {
+      cy.createQuestion(structuredSourceQuestion).then(
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getStructuredTextTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitEmbeddedPage(getQuestionResource(targetQuestionId));
+          });
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
+    });
+
     it("should be able to use a structured question source when public", () => {
       cy.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getStructuredDimensionTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitPublicQuestion(targetQuestionId);
+          });
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
+    });
+
+    it("should be able to use a structured question source when public with a text tag", () => {
+      cy.createQuestion(structuredSourceQuestion).then(
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getStructuredTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             visitPublicQuestion(targetQuestionId);
           });
@@ -216,11 +248,43 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
 
+    it("should be able to use a native question source when embedded with a text tag", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getNativeTextTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitEmbeddedPage(getQuestionResource(targetQuestionId));
+          });
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
+      FieldFilter.selectFilterValueFromList("1018947080336");
+    });
+
     it("should be able to use a native question source when public", () => {
       cy.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getNativeDimensionTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitPublicQuestion(targetQuestionId);
+          });
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
+      FieldFilter.selectFilterValueFromList("1018947080336");
+    });
+
+    it("should be able to use a native question source when public with a text tag", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getNativeTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             visitPublicQuestion(targetQuestionId);
           });
@@ -360,6 +424,23 @@ const getTargetQuestion = ({ tag, parameter }) => ({
   },
 });
 
+const getStructuredTextTargetQuestion = questionId => {
+  return getTargetQuestion({
+    tag: {
+      type: "text",
+    },
+    parameter: {
+      target: ["variable", ["template-tag", "tag"]],
+      values_query_type: "list",
+      values_source_type: "card",
+      values_source_config: {
+        card_id: questionId,
+        value_field: ["field", PRODUCTS.CATEGORY, null],
+      },
+    },
+  });
+};
+
 const getStructuredDimensionTargetQuestion = questionId => {
   return getTargetQuestion({
     tag: {
@@ -373,6 +454,23 @@ const getStructuredDimensionTargetQuestion = questionId => {
       values_source_config: {
         card_id: questionId,
         value_field: ["field", PRODUCTS.CATEGORY, null],
+      },
+    },
+  });
+};
+
+const getNativeTextTargetQuestion = questionId => {
+  return getTargetQuestion({
+    tag: {
+      type: "text",
+    },
+    parameter: {
+      target: ["variable", ["template-tag", "tag"]],
+      values_query_type: "list",
+      values_source_type: "card",
+      values_source_config: {
+        card_id: questionId,
+        value_field: ["field", "EAN", { "base-type": "type/Text" }],
       },
     },
   });
