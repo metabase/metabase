@@ -498,7 +498,7 @@ const getStructuredDimensionTargetQuestion = questionId => {
 };
 
 const getNativeDimensionTargetQuestion = questionId => {
-  return getTargetQuestion({
+  return getDimensionTargetQuestion({
     tag: {
       dimension: ["field", PRODUCTS.EAN, null],
     },
@@ -513,7 +513,7 @@ const getNativeDimensionTargetQuestion = questionId => {
 };
 
 const getListDimensionTargetQuestion = () => {
-  return getTargetQuestion({
+  return getDimensionTargetQuestion({
     tag: {
       dimension: ["field", PRODUCTS.EAN, null],
     },
