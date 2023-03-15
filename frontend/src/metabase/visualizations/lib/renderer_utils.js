@@ -372,15 +372,50 @@ export function shouldSplitYAxis(
     return true;
   }
 
-  // Note (EmmadUsmani): For charts where the series have the same `semantic_type`
-  // for their y-axis columns, we still want to split the axis if one series has a
-  // disproportionately large range of values compared to another.
+  const columnSettings = series.map(s =>
+    normalizeLineAreaBarSettings(
+      settings.column_settings[getColumnSettingsKey(s)],
+    ),
+  );
+  const hasDifferentColumnSettings = columnSettings.some(s1 =>
+    columnSettings.some(s2 => !_.isEqual(s1, s2)),
+  );
+  if (hasDifferentColumnSettings) {
+    return true;
+  }
+
   const minRange = Math.min(...yExtents.map(extent => extent[1] - extent[0]));
   const maxExtent = Math.max(...yExtents.map(extent => extent[1]));
   const minExtent = Math.min(...yExtents.map(extent => extent[0]));
   const chartRange = maxExtent - minExtent;
 
-  return chartRange >= 10 * minRange;
+  // Note (EmmadUsmani): When the series with the smallest range is less than 5%
+  // of the chart's total range, we split the y-axis so it doesn't look too small.
+  return minRange / chartRange <= 0.05;
+}
+
+function getColumnSettingsKey(series) {
+  return JSON.stringify(["name", series.data.cols[1].name]);
+}
+
+function normalizeLineAreaBarSettings(colSettings) {
+  const defaultSettings = {
+    number_style: "decimal",
+    number_separators: ".,",
+    currency: "USD",
+    currency_style: "symbol",
+    prefix: "",
+    suffix: "",
+  };
+
+  if (colSettings === undefined) {
+    return defaultSettings;
+  }
+  if (colSettings.number_style !== "currency") {
+    delete colSettings.currency;
+    delete colSettings.currency_style;
+  }
+  return { ...defaultSettings, ...colSettings };
 }
 
 /************************************************************ PROPERTIES ************************************************************/
