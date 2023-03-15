@@ -1,4 +1,4 @@
-(ns metabase.lib.expressions
+(ns metabase.lib.expression
   (:require
    [clojure.string :as str]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]

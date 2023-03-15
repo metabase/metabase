@@ -2,7 +2,7 @@ const cypress = require("cypress");
 
 const getConfig = baseUrl => {
   return {
-    browser: "chrome",
+    browser: "electron",
     configFile: "e2e/support/cypress-snapshots.config.js",
     config: {
       baseUrl,
