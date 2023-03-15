@@ -73,7 +73,8 @@ const DataSourceSelectors = ({
     return allDatabases;
   }, [query, editorContext]);
 
-  if (!isNativeEditorOpen || databases.length === 0) {
+  const canSelectDatabase = databases.length > 0 && !readOnly;
+  if (!isNativeEditorOpen || !canSelectDatabase) {
     return <Placeholder query={query} editorContext={editorContext} />;
   }
 
