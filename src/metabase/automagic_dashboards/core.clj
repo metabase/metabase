@@ -74,7 +74,7 @@
                     (u/pprint-to-str root))))))
 
 (def ^{:arglists '([root])} source-name
-  "Return the (display) name of the soruce of a given root object."
+  "Return the (display) name of the source of a given root object."
   (comp (some-fn :display_name :name) :source))
 
 (def ^:private op->name
@@ -437,10 +437,10 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (defn- fill-templates
-  [template-type {:keys [root tables]} bindings s]
-  (let [bindings (some-fn (merge {"this" (-> root
+  [template-type {:keys [full-name tables] :as context} bindings s]
+  (let [bindings (some-fn (merge {"this" (-> context
                                              :entity
-                                             (assoc :full-name (:full-name root)))}
+                                             (assoc :full-name full-name))}
                                  bindings)
                           (comp first #(filter-tables % tables) rules/->entity)
                           identity)]
@@ -449,7 +449,7 @@
                    (let [entity    (bindings identifier)
                          attribute (some-> attribute qp.util/normalize-token)]
                      (str (or (and (ifn? entity) (entity attribute))
-                              (root attribute)
+                              (context attribute)
                               (->reference template-type entity))))))))
 
 (defn- field-candidates
@@ -651,14 +651,15 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit query] :as card}]
-  (let [metrics         (map (partial get (:metrics context)) metrics)
-        filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context) (conj {:filter (:query-filter context)}))
+  [{m :metrics d :dimensions f :filters qf :query-filter :as context}
+   {:keys [metrics filters dimensions score limit query] :as card}]
+  (let [metrics         (map (partial get m) metrics)
+        filters         (cond-> (map (partial get f) filters)
+                          qf         (conj {:filter qf}))
         score           (if query
                           score
                           (* (or (->> dimensions
-                                      (map (partial get (:dimensions context)))
+                                      (map (partial get d))
                                       (concat filters metrics)
                                       (transduce (keep :score) stats/mean))
                                  rules/max-score)
@@ -666,7 +667,7 @@
         dimensions      (map (comp (partial into [:dimension]) first) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
         cell-dimension? (->> context :root singular-cell-dimensions)
-        matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
+        matched-dimensions (map (some-fn #(get-in d [% :matches])
                                          (comp #(filter-tables % (:tables context)) rules/->entity))
                                 used-dimensions)]
     (->> matched-dimensions
@@ -713,6 +714,18 @@
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
+                   ;; For field and comparison rules, applies_to is a 2 element vector.
+                   ;; For everything else (question, table, metric) applies_to is single element
+                   ;; so all you have is entity-type
+                   ;;
+                   ;; Also, for all rule types _except_ for table, entity-type is
+                   ;; :entity/GenericTable. The "table" rule category has specificity for
+                   ;; example, GenericTable, TransactionTable, GoogleAnalyticsTable,
+                   ;; EventTable, and UserTable.
+                   ;;
+                   ;; Are GoogleAnalyticsTable, TransactionTable, EventTable ever used?
+                   ;;
+                   ;;
                    (let [[entity-type field-type] applies_to]
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
@@ -799,16 +812,23 @@
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters."
-  [{:keys [source] :as root}]
+  [{:keys [source query-filter cell-query] :as root}]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? Table source)
                                          (linked-tables source)))
         table->fields (relevant-fields root tables)]
-    {:source       (assoc source :fields (table->fields source))
-     :root         root
-     :tables       (map #(assoc % :fields (table->fields %)) tables)
-     :query-filter (filters/inject-refinement (:query-filter root)
-                                              (:cell-query root))}))
+    (-> root
+        (update :source assoc :fields (table->fields source))
+        (assoc
+          :tables       (map #(assoc % :fields (table->fields %)) tables)
+          :query-filter (filters/inject-refinement query-filter cell-query)))
+    (merge
+     root
+     {:source       (assoc source :fields (table->fields source))
+      :root         root
+      :tables       (map #(assoc % :fields (table->fields %)) tables)
+      :query-filter (filters/inject-refinement (:query-filter root)
+                                               (:cell-query root))})))
 
 (s/defn ^:private make-context
   "Create a rule-oriented context for this item, consisting of its source data
@@ -818,14 +838,14 @@
    the rule are used to match to the source data fields.
 
    This data structure is used to generate cards."
-  [{:keys [source] :as root}, rule :- rules/Rule]
+  [{:keys [entity] :as base-context}
+   {:keys [dimensions metrics filters]} :- rules/Rule]
   {:pre [source]}
-  (let [base-context (make-base-context root)]
-    (as-> base-context context
-      (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
-      (assoc context :metrics (resolve-overloading context (:metrics rule)))
-      (assoc context :filters (resolve-overloading context (:filters rule)))
-      (inject-root context (:entity root)))))
+  (as-> base-context context
+    (assoc context :dimensions (bind-dimensions context dimensions))
+    (assoc context :metrics (resolve-overloading context metrics))
+    (assoc context :filters (resolve-overloading context filters))
+    (inject-root context entity)))
 
 (defn- make-cards
   "Create cards from the context using the provided template cards.
@@ -843,14 +863,13 @@
            (apply concat)))
 
 (defn- make-dashboard
-  ([root rule]
-   (make-dashboard root rule {:tables [(:source root)]
-                              :root   root}))
-  ([root rule context]
+  ([{:keys [source] :as base-context} rule]
+   (make-dashboard base-context rule {:tables [source]}))
+  ([{:keys [comparison?]} rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (cond->
-         (:comparison? root)
+         comparison?
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context {}))))
@@ -860,18 +879,18 @@
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [root
+  [base-context
    {rule-name :rule :as rule} :- rules/Rule]
   (log/debugf "Applying rule '%s'" rule-name)
-  (let [context   (make-context root rule)
+  (let [context   (make-context base-context rule)
         cards     (make-cards context rule)]
     (when (or (not-empty cards)
               (-> rule :cards nil?))
-      [(assoc (make-dashboard root rule context)
+      [(assoc (make-dashboard base-context rule context)
          :filters (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context)))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
+                       (remove (comp (singular-cell-dimensions base-context) id-or-name)))
          :cards cards)
        rule
        context])))
@@ -901,13 +920,14 @@
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
-  (->> (rules/get-rules (concat (:rules-prefix root) [(:rule rule)]))
-       (keep (fn [indepth]
-               (when-let [[dashboard _ _] (apply-rule root indepth)]
-                 {:title       ((some-fn :short-title :title) dashboard)
-                  :description (:description dashboard)
-                  :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
-       (hash-map :indepth)))
+  (let [base-context (make-base-context root)]
+    (->> (rules/get-rules (concat (:rules-prefix root) [(:rule rule)]))
+         (keep (fn [indepth]
+                 (when-let [[dashboard _ _] (apply-rule base-context indepth)]
+                   {:title       ((some-fn :short-title :title) dashboard)
+                    :description (:description dashboard)
+                    :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
+         (hash-map :indepth))))
 
 (defn- drilldown-fields
   [context]
@@ -923,21 +943,20 @@
          (hash-map :drilldown-fields))))
 
 (defn- comparisons
-  [root]
+  [{:keys [entity source url database] :as root}]
   {:compare (concat
-             (for [segment (->> root :entity related/related :segments (map ->root))]
-               {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/the-id))
+             (for [segment (->> entity related/related :segments (map ->root))]
+               {:url         (str url "/compare/segment/" (-> segment :entity u/the-id))
                 :title       (tru "Compare with {0}" (:comparison-name segment))
                 :description ""})
              (when ((some-fn :query-filter :cell-query) root)
-               [{:url         (if (->> root :source (mi/instance-of? Table))
-                                (str (:url root) "/compare/table/" (-> root :source u/the-id))
-                                (str (:url root) "/compare/adhoc/"
+               [{:url         (if (mi/instance-of? Table source)
+                                (str url "/compare/table/" (u/the-id source))
+                                (str url "/compare/adhoc/"
                                      (encode-base64-json
-                                      {:database (:database root)
+                                      {:database database
                                        :type     :query
-                                       :query    {:source-table (->> root
-                                                                     :source
+                                       :query    {:source-table (->> source
                                                                      u/the-id
                                                                      (str "card__"))}})))
                  :title       (tru "Compare with entire dataset")
@@ -1032,12 +1051,12 @@
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
-  [{:keys [root] :as context}, rule :- (s/maybe rules/Rule)]
-  (->> (merge (indepth root rule)
+  [{:keys [entity] :as context}, rule :- (s/maybe rules/Rule)]
+  (->> (merge (indepth context rule)
               (drilldown-fields context)
-              (related-entities root)
-              (comparisons root))
-       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
+              (related-entities context)
+              (comparisons context))
+       (fill-related max-related (get related-selectors (mi/model entity)))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
@@ -1051,22 +1070,23 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name] :as root}]
-  (or (when rule
-        (apply-rule root (rules/get-rule rule)))
-      (some
-       (fn [rule]
-         (apply-rule root rule))
-       (matching-rules (rules/get-rules rules-prefix) root))
-      (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                      {:root            root
-                       :available-rules (map :rule (or (some-> rule rules/get-rule vector)
-                                                       (rules/get-rules rules-prefix)))}))))
+  [base-context]
+  (let [{:keys [rule rules-prefix full-name]} base-context]
+    (or (when rule
+          (apply-rule base-context (rules/get-rule rule)))
+        (some
+         (fn [rule]
+           (apply-rule base-context rule))
+         (matching-rules (rules/get-rules rules-prefix) base-context))
+        (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
+                        {:root            base-context
+                         :available-rules (map :rule (or (some-> rule rules/get-rule vector)
+                                                         (rules/get-rules rules-prefix)))})))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name] :as root}]
-  (let [[dashboard rule context] (find-first-match-rule root)
+  [{:keys [show full-name url] :as base-context}]
+  (let [[dashboard rule context] (find-first-match-rule base-context)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
     (log/debug (trs "Dimensions bindings:\n{0}"
@@ -1082,9 +1102,9 @@
         (assoc :related           (related context rule)
                :more              (when (and (not= show :all)
                                              (-> dashboard :cards count (> show)))
-                                    (format "%s#show=all" (:url root)))
+                                    (format "%s#show=all" url))
                :transient_filters (:query-filter context)
-               :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
+               :param_fields      (->> context :query-filter (filter-referenced-fields base-context))))))
 
 
 (defmulti automagic-analysis
@@ -1095,15 +1115,15 @@
 
 (defmethod automagic-analysis Table
   [table opts]
-  (automagic-dashboard (merge (->root table) opts)))
+  (automagic-dashboard (make-base-context (merge (->root table) opts))))
 
 (defmethod automagic-analysis Segment
   [segment opts]
-  (automagic-dashboard (merge (->root segment) opts)))
+  (automagic-dashboard (make-base-context (merge (->root segment) opts))))
 
 (defmethod automagic-analysis Metric
   [metric opts]
-  (automagic-dashboard (merge (->root metric) opts)))
+  (automagic-dashboard (make-base-context (merge (->root metric) opts))))
 
 (s/defn ^:private collect-metrics :- (s/maybe [(mi/InstanceOf Metric)])
   [root question]
@@ -1280,16 +1300,19 @@
      card
      (if (table-like? card)
        (automagic-dashboard
-        (merge (cond-> root
-                 cell-query (merge {:url          cell-url
-                                    :entity       (:source root)
-                                    :rules-prefix ["table"]}))
-               opts))
+        (make-base-context
+         (merge (cond-> root
+                  cell-query (merge {:url          cell-url
+                                     :entity       (:source root)
+                                     :rules-prefix ["table"]}))
+                opts)))
        (let [opts (assoc opts :show :all)]
          (cond-> (reduce populate/merge-dashboards
-                         (automagic-dashboard (merge (cond-> root
-                                                       cell-query (assoc :url cell-url))
-                                                     opts))
+                         (automagic-dashboard
+                          (make-base-context
+                           (merge (cond-> root
+                                    cell-query (assoc :url cell-url))
+                                  opts)))
                          (decompose-question root card opts))
            cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
                                {:transient_name title
@@ -1308,16 +1331,19 @@
      query
      (if (table-like? query)
        (automagic-dashboard
-        (merge (cond-> root
-                 cell-query (merge {:url          cell-url
-                                    :entity       (:source root)
-                                    :rules-prefix ["table"]}))
-               opts))
+        (make-base-context
+         (merge (cond-> root
+                  cell-query (merge {:url          cell-url
+                                     :entity       (:source root)
+                                     :rules-prefix ["table"]}))
+                opts)))
        (let [opts (assoc opts :show :all)]
          (cond-> (reduce populate/merge-dashboards
-                         (automagic-dashboard (merge (cond-> root
-                                                       cell-query (assoc :url cell-url))
-                                                     opts))
+                         (automagic-dashboard
+                          (make-base-context
+                           (merge (cond-> root
+                                    cell-query (assoc :url cell-url))
+                                  opts)))
                          (decompose-question root query opts))
            cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
                                {:transient_name title
@@ -1325,7 +1351,7 @@
 
 (defmethod automagic-analysis Field
   [field opts]
-  (automagic-dashboard (merge (->root field) opts)))
+  (automagic-dashboard (make-base-context (merge (->root field) opts))))
 
 (defn- enhance-table-stats
   "Add a stats field to each provided table with the following data:
