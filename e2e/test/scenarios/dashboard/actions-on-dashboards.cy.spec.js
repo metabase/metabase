@@ -634,6 +634,8 @@ function createDashboardWithActionButton({
 
   if (idFilter) {
     cy.findByRole("dialog").within(() => {
+      cy.findByText(/has no parameters to map/i).should("not.exist");
+      cy.findByText(/Where should the values/i);
       cy.findAllByText(/ask the user/i)
         .first()
         .click();
