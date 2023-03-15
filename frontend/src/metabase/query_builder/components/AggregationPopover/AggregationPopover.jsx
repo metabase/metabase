@@ -319,14 +319,10 @@ export default class AggregationPopover extends Component {
   }
 
   onChangeExpression = (name, expression) => {
-    let newAggregation = AGGREGATION.setContent(
-      this.state.aggregation,
-      expression,
-    );
+    const aggregation = AGGREGATION.setName(expression, name);
 
-    newAggregation = AGGREGATION.setName(newAggregation, name);
-
-    this.commitAggregation(newAggregation);
+    this.setState({ aggregation });
+    this.commitAggregation(aggregation);
   };
 
   render() {
