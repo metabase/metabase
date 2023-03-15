@@ -73,8 +73,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (db/delete! Dimension :id dimension-id)))
-  true)
+      (db/delete! Dimension :id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -97,8 +96,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
-  true)
+      (db/delete! Dimension :id old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
