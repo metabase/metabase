@@ -143,20 +143,23 @@ describe("AppBar", () => {
 function setup(embedOptions: Partial<EmbedOptions>) {
   setupCollectionsEndpoints([]);
 
-  renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
-    withRouter: true,
-    initialRoute: "/question/1",
-    storeInitialState: {
-      app: createMockAppState({ isNavbarOpen: false }),
-      embed: createMockEmbedState({
-        ...DEFAULT_EMBED_OPTIONS,
-        ...embedOptions,
-      }),
-      qb: createMockQueryBuilderState({
-        card: createMockCard(),
-      }),
+  renderWithProviders(
+    <Route path="/question/:slug" component={() => <AppBar isVisible />} />,
+    {
+      withRouter: true,
+      initialRoute: "/question/1",
+      storeInitialState: {
+        app: createMockAppState({ isNavbarOpen: false }),
+        embed: createMockEmbedState({
+          ...DEFAULT_EMBED_OPTIONS,
+          ...embedOptions,
+        }),
+        qb: createMockQueryBuilderState({
+          card: createMockCard(),
+        }),
+      },
     },
-  });
+  );
 }
 
 function getMediaQuery(opts?: Partial<MediaQueryList>): MediaQueryList {

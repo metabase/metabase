@@ -122,6 +122,7 @@ const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
   onLogout: jest.fn(),
+  isVisible: true,
   ...opts,
 });
 
