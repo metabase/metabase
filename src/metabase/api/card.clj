@@ -755,7 +755,7 @@ saved later when it is ready."
 
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/:card-id/query"
+(api/defendpoint-schema POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
@@ -775,7 +775,7 @@ saved later when it is ready."
    :middleware   {:process-viz-settings? false}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
+(api/defendpoint-schema POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
@@ -854,7 +854,7 @@ saved later when it is ready."
   (related/related (query/adhoc-query query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/pivot/:card-id/query"
+(api/defendpoint-schema POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]

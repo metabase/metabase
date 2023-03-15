@@ -40,6 +40,12 @@ The **Trend** visualization is great for displaying how a single number has chan
 
 By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings.
 
+## Detail
+
+The **Detail** visualization shows a single result record (row) in an easy-to-read, two-column display. You can click on the arrows in the bottom right to step through the records in the results.
+ 
+![Detail of a record in the account table](../images/detail.png)
+
 ## Progress bars
 
 **Progress bars** are for comparing a single number to a goal value that you set. Open up the settings for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.

@@ -342,7 +342,7 @@
       :options           options)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/card/:token/query"
+(api/defendpoint-schema GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -353,7 +353,7 @@
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+(api/defendpoint-schema GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
   {export-format api.dataset/ExportFormat}
@@ -412,7 +412,7 @@
       :qp-runner        qp-runner)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
@@ -495,7 +495,7 @@
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+(api/defendpoint-schema GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
@@ -658,7 +658,7 @@
                         :search-prefix  prefix})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"
+(api/defendpoint-schema GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -669,7 +669,7 @@
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
