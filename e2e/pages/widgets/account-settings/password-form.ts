@@ -8,10 +8,10 @@ type PasswordFormValues = {
 };
 
 export class PasswordForm {
-  private currentPasswordInput = Input.byLabel("Current password");
-  private newPasswordInput = Input.byLabel("Create a password");
-  private newPasswordConfirmationInput = Input.byLabel("Confirm your password");
-  private submitButton = Button.byLabel("Save");
+  currentPasswordInput = Input.byLabel("Current password");
+  newPasswordInput = Input.byLabel("Create a password");
+  newPasswordConfirmationInput = Input.byLabel("Confirm your password");
+  submitButton = Button.byLabel("Save");
 
   verifyValues = ({
     currentPassword,

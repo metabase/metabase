@@ -5,12 +5,6 @@ import { Radio } from "./widgets/shared/radio";
 import { AppNavBar } from "./widgets/shared/app-nav-bar";
 
 export class AccountSettingsPage {
-  static url = () => "/account";
-
-  static visit = () => {
-    return new AccountSettingsPage().visit();
-  };
-
   private _tabsSelector = Radio.byTestId("account-settings-tabs");
 
   navBar = new AppNavBar();
@@ -21,7 +15,17 @@ export class AccountSettingsPage {
   };
 
   visit() {
-    cy.visit(AccountSettingsPage.url());
+    cy.visit("/account");
+    return this;
+  }
+
+  visitProfileTab() {
+    cy.visit("/account/profile");
+    return this;
+  }
+
+  visitPasswordTab() {
+    cy.visit("/account/password");
     return this;
   }
 

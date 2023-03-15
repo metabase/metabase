@@ -4,7 +4,7 @@ export class Input {
   static byTestId = (testId: string) =>
     new Input(() => cy.findByTestId(testId));
   static byLabel = (label: string) =>
-    new Input(() => cy.findByLabelText(label));
+    new Input(() => cy.findByLabelText(content => content.startsWith(label)));
 
   constructor(private _locator: LocatorFn) {}
 
@@ -18,6 +18,11 @@ export class Input {
     return this;
   };
 
+  blur = () => {
+    this._locator().blur();
+    return this;
+  };
+
   type = (value: string) => {
     this._locator().type(value);
     return this;
@@ -28,10 +33,22 @@ export class Input {
     return this;
   };
 
-  verifyValue = (value: string) => this._locator().should("have.value", value);
+  verifyValue = (value: string) => {
+    this._locator().should("have.value", value);
+    return this;
+  };
 
-  verifyLabel = (label: string) =>
+  verifyLabel = (label: string) => {
     this._locator()
       .invoke("attr", "id")
       .then(id => cy.get(`[for=${id}]`).should("have.value", label));
+    return this;
+  };
+
+  verifyValidationMessage = (message: string) => {
+    this._locator()
+      .get("[data-testid=field-error]")
+      .should("have.text", `: ${message}`);
+    return this;
+  };
 }

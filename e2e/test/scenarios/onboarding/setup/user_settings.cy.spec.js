@@ -15,7 +15,7 @@ describe("user > settings", () => {
   });
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
-    const page = AccountSettingsPage.visit();
+    const page = new AccountSettingsPage().visit();
 
     page.header.verifyFullname(fullName);
     page.tabs.profileForm.fill({ firstName: "", lastName: "" }).submit();
@@ -26,12 +26,11 @@ describe("user > settings", () => {
   });
 
   it("should show user details with disabled submit button", () => {
-    const page = AccountSettingsPage.visit();
+    const page = new AccountSettingsPage().visit();
 
     page.header.verifyFullname(fullName).verifyEmail(email);
-    page
-      .verifyTabSelected("Profile")
-      .tabs.profileForm.verifyValues({
+    page.tabs.profileForm
+      .verifyValues({
         firstName: first_name,
         lastName: last_name,
         email,
@@ -41,7 +40,8 @@ describe("user > settings", () => {
 
   it("should update the user without fetching memberships", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
-    const page = AccountSettingsPage.visit();
+
+    const page = new AccountSettingsPage().visit();
     page.tabs.profileForm
       .fill({ firstName: "John" })
       .submit()
@@ -53,7 +53,7 @@ describe("user > settings", () => {
   });
 
   it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
-    const page = AccountSettingsPage.visit();
+    const page = new AccountSettingsPage().visit();
     page
       .selectTab("Password")
       .tabs.passwordForm.fill({
@@ -78,31 +78,30 @@ describe("user > settings", () => {
 
   it("should validate form values (metabase#23259)", () => {
     cy.signInAsNormalUser();
-    cy.visit("/account/password");
 
-    // Validate common passwords
-    cy.findByLabelText("Create a password")
-      .as("passwordInput")
+    const page = new AccountSettingsPage().visitPasswordTab();
+
+    page.tabs.passwordForm.newPasswordInput
       .type("qwerty123")
-      .blur();
+      .blur()
+      .verifyValidationMessage("password is too common.")
+      .clear();
 
-    cy.contains("password is too common");
-    cy.get("@passwordInput").clear();
+    page.tabs.passwordForm
+      .fill({
+        currentPassword: "invalid",
+        newPassword: "new_password1",
+        newPasswordConfirmation: "new_password1",
+      })
+      .submit();
 
-    // Validate invalid current password
-    cy.findByLabelText("Current password")
-      .as("currentPassword")
-      .type("invalid");
-
-    cy.get("@passwordInput").type("new_password1");
-    cy.findByLabelText("Confirm your password").type("new_password1");
-
-    cy.button("Save").click();
-    cy.contains("Invalid password");
+    page.tabs.passwordForm.currentPasswordInput.verifyValidationMessage(
+      "Invalid password",
+    );
   });
 
   it("should be able to change a language (metabase#22192)", () => {
-    const page = AccountSettingsPage.visit();
+    const page = new AccountSettingsPage().visit();
     page.tabs.profileForm
       .verifyValues({ language: "Use site default" })
       .fill({ language: "Indonesian" })
