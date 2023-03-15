@@ -18,13 +18,13 @@
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata]
-  (:name card-metadata))
+  ((some-fn :display_name :name) card-metadata))
 
 (defn- describe-source-query [query stage-number source-table-card-str]
   (when-let [card-id-str (second (re-find #"^card__(\d+)$" source-table-card-str))]
     (let [card-id (parse-long card-id-str)]
       (or (when-let [card-metadata (lib.metadata/card query card-id)]
-            (describe-source-query query stage-number card-metadata))
+            (lib.metadata.calculation/display-name query stage-number card-metadata))
           ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
           (i18n/tru "Saved Question {0}" card-id)))))
 

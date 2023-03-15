@@ -60,7 +60,7 @@
   [:and
    ::stage.mbql
    [:map
-    [:source-table ::id/table]]])
+    [:source-table [:or ::id/table #"^card__\d+$"]]]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
