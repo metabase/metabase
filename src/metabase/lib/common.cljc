@@ -32,17 +32,14 @@
      {:pre [(symbol? op-name)
             (vector? argvec) (every? symbol? argvec)
             (not-any? #{'query 'stage-number} argvec)]}
-     (let [vararg? (contains? (set argvec) '&)
-           args (remove #{'&} argvec)
-           arglist-expr (if vararg?
-                          (cons 'list* args)
+     (let [arglist-expr (if (contains? (set argvec) '&)
+                          (cons 'list* (remove #{'&} argvec))
                           argvec)]
        `(mu/defn ~op-name :- [:or fn? ~(keyword "mbql.clause" (name op-name))]
           ~(format "Create a clause of type `%s`." (name op-name))
-          (~argvec
+          ([~@argvec]
            (fn [~'query ~'stage-number]
-             ~(cond->> (concat [op-name 'query 'stage-number] args)
-                vararg? (cons `apply))))
+             (~op-name ~'query ~'stage-number ~@argvec)))
           ([~'query ~'stage-number ~@argvec]
            (-> (into [~(keyword op-name)]
                      (map (fn [~'arg]
