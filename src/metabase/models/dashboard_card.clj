@@ -162,7 +162,8 @@
                     ;; This is to preserve the existing behavior of questions and card_id
                     ;; I don't know why card_id couldn't be changed for cards though.
                      action_id (conj :card_id))
-         updates (shallow-updates (select-keys dashboard-card update-ks) (select-keys old-dashboard-card update-ks))]
+         updates (shallow-updates (select-keys dashboard-card update-ks)
+                                  (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
        (db/update! DashboardCard id updates))
      (when (not= (:series dashboard-card [])

@@ -214,11 +214,11 @@
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id} {:name "Series Card 1"}]
                     Card          [{series-id-2 :id} {:name "Series Card 2"}]]
-      (testing "Should have fewer DB calls if there's no changes to the dashcards"
+      (testing "Should have fewer DB calls if there are no changes to the dashcards"
        (db/with-call-counting [call-count]
          (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
          (is (= 6 (call-count)))))
-      (testing "Should have more calls if there's changes to the dashcards"
+      (testing "Should have more calls if there are changes to the dashcards"
        (db/with-call-counting [call-count]
          (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
                                                   :cardId card-id
