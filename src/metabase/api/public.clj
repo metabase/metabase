@@ -57,13 +57,14 @@
   (mi/instance
    Card
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
+                               :parameters
                                [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
       (hydrate :param_fields)))
