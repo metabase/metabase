@@ -100,6 +100,10 @@
         (is (= nil
                (get id->member :trashbird)))))
 
+    (testing "returns 404 for nonexistent id"
+      (is (= "API endpoint does not exist."
+             (mt/user-http-request :rasta :get 404 (format "permissions/group/%d" (:id 10000))))))
+
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))

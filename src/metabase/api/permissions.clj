@@ -153,8 +153,8 @@
   "Fetch the details for a certain permissions group."
   [id]
   (validation/check-group-manager id)
-  (-> (db/select-one PermissionsGroup :id id)
-      (hydrate :members)))
+  (api/check-404 (-> (db/select-one PermissionsGroup :id id)
+      (hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"
