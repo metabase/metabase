@@ -123,8 +123,8 @@
       ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
       ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
       (testing "should return 400 if Card doesn't exist"
-        (is (= "An error occurred."
-               (client/client :get 400 (str "public/card/" (UUID/randomUUID))))))
+        (is (= "Not found."
+               (client/client :get 404 (str "public/card/" (UUID/randomUUID))))))
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
@@ -138,8 +138,8 @@
 
         (testing "Check that we cannot fetch a public Card that has been archived"
           (mt/with-temp-vals-in-db Card card-id {:archived true}
-            (is (= "An error occurred."
-                   (client/client :get 400 (str "public/card/" uuid))))))))))
+            (is (= "Not found."
+                   (client/client :get 404 (str "public/card/" uuid))))))))))
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
@@ -149,16 +149,16 @@
       (is (= "An error occurred."
              (client/client :get 400 (str "public/card/" uuid "/query")))))))
 
-(deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist-query
+(deftest check-that-we-get-a-404-if-the-publiccard-doesn-t-exist-query
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (is (= "An error occurred."
-           (client/client :get 400 (str "public/card/" (UUID/randomUUID) "/query"))))))
+    (is (= "Not found."
+           (client/client :get 404 (str "public/card/" (UUID/randomUUID) "/query"))))))
 
 (deftest check-that-we--cannot--execute-a-publiccard-if-the-card-has-been-archived
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid} {:archived true}]
-      (is (= "An error occurred."
-             (client/client :get 400 (str "public/card/" uuid "/query")))))))
+      (is (= "Not found."
+             (client/client :get 404 (str "public/card/" uuid "/query")))))))
 
 (defn- parse-xlsx-response [response]
   (->> (ByteArrayInputStream. response)
@@ -344,8 +344,8 @@
 
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        (is (= "An error occurred."
-               (client/client :get 400 (str "public/dashboard/" (UUID/randomUUID)))))))))
+        (is (= "Not found."
+               (client/client :get 404 (str "public/dashboard/" (UUID/randomUUID)))))))))
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
@@ -381,26 +381,26 @@
           (is (= "An error occurred."
                  (client/client :get 400 (dashcard-url dash card dashcard)))))))
 
-    (testing "Should get a 400"
+    (testing "Should get a 404"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (testing "if the Dashboard doesn't exist"
-            (is (= "An error occurred."
-                   (client/client :get 400 (dashcard-url {:public_uuid (UUID/randomUUID)} card dashcard)))))
+            (is (= "Not found."
+                   (client/client :get 404 (dashcard-url {:public_uuid (UUID/randomUUID)} card dashcard)))))
 
           (testing "if the Card doesn't exist"
-            (is (= "An error occurred."
-                   (client/client :get 400 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
+            (is (= "Not found."
+                   (client/client :get 404 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
 
           (testing "if the Card exists, but it's not part of this Dashboard"
             (mt/with-temp Card [card]
-              (is (= "An error occurred."
-                     (client/client :get 400 (dashcard-url dash card dashcard))))))
+              (is (= "Not found."
+                     (client/client :get 404 (dashcard-url dash card dashcard))))))
 
           (testing "if the Card has been archived."
             (db/update! Card (u/the-id card), :archived true)
-            (is (= "An error occurred."
-                   (client/client :get 400 (dashcard-url dash card dashcard))))))))))
+            (is (= "Not found."
+                   (client/client :get 404 (dashcard-url dash card dashcard))))))))))
 
 (deftest execute-public-dashcard-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -777,17 +777,15 @@
   (testing "GET /api/public/action/:uuid"
     (mt/with-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
-        ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
-        (testing "should return 400 if Action doesn't exist"
-          (is (= "An error occurred."
-                 (client/client :get 400 (str "public/action/" (UUID/randomUUID))))))
+        (testing "should return 404 if Action doesn't exist"
+          (is (= "Not found."
+                 (client/client :get 404 (str "public/action/" (UUID/randomUUID))))))
         (let [action-opts (shared-obj)
               uuid        (:public_uuid action-opts)]
-          (testing "should return 400 if Action is archived"
+          (testing "should return 404 if Action is archived"
             (mt/with-actions [{} (assoc action-opts :archived true)]
-              (is (= "An error occurred."
-                     (client/client :get 400 (str "public/action/" uuid))))))
+              (is (= "Not found."
+                     (client/client :get 404 (str "public/action/" uuid))))))
           (mt/with-actions [{} action-opts]
             (testing "Happy path -- should be able to fetch the Action"
               (is (= #{:name
@@ -842,9 +840,9 @@
                (update :values (partial take 5)))))))
 
 (deftest but-for-fields-that-are-not-referenced-we-should-get-an-exception
-  (is (= "An error occurred."
+  (is (= "Not found."
          (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
-           (client/client :get 400 (field-values-url card (mt/id :venues :price)))))))
+           (client/client :get 404 (field-values-url card (mt/id :venues :price)))))))
 
 (deftest field-value-endpoint-should-fail-if-public-sharing-is-disabled
   (is (= "An error occurred."
@@ -887,8 +885,8 @@
 
 (deftest shound-not-be-able-to-use-the-endpoint-with-a-field-not-referenced-by-the-dashboard
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-values-url dashboard (mt/id :venues :price)))))))
+    (is (= "Not found."
+           (client/client :get 404 (field-values-url dashboard (mt/id :venues :price)))))))
 
 (deftest endpoint-should-fail-if-public-sharing-is-disabled
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
@@ -1003,8 +1001,8 @@
 
 (deftest shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
   (with-sharing-enabled-and-temp-card-referencing :venues :price [card]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
+    (is (= "Not found."
+           (client/client :get 404 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
                           :value "10")))))
 
 
@@ -1032,8 +1030,8 @@
 
 (deftest field-remapping-shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
+    (is (= "Not found."
+           (client/client :get 404 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                           :value "10")))))
 
 (deftest remapping-or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
@@ -1371,16 +1369,16 @@
         (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
           (mt/with-actions [{} (assoc action-opts :archived true)]
             (testing "Check that we get a 400 if the action is archived"
-              (is (= "An error occurred."
+              (is (= "Not found."
                      (client/client
-                      :post 400
+                      :post 404
                       (format "public/action/%s/execute" (str (UUID/randomUUID)))
                       {:parameters {:id 1 :name "European"}})))))
           (mt/with-actions [{} action-opts]
             (testing "Check that we get a 400 if the action doesn't exist"
-              (is (= "An error occurred."
+              (is (= "Not found."
                      (client/client
-                      :post 400
+                      :post 404
                       (format "public/action/%s/execute" (str (UUID/randomUUID)))
                       {:parameters {:id 1 :name "European"}}))))
             (testing "Check that we get a 400 if sharing is disabled."
