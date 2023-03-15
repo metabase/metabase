@@ -36,6 +36,11 @@
   (field [this field-id]
     "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]].")
 
+  (card [this card-id]
+    "Return information about a specific Saved Question, aka a Card. This should
+    match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
+    source query.")
+
   (metric [this metric-id]
     "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
     database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
@@ -43,13 +48,6 @@
   (segment [this segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
     database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
-
-  ;; Card not yet implemented! I commented it out for now with the intention that we'll probably want to uncomment it
-  ;; out and fully implement it in the very near future.
-
-  ;; (card [this card-id]
-  ;;   "Return metadata for a particular Card aka Saved Question, if it is available. Metadata should match the shape of
-  ;;   a `GET /api/card/:id` response? Not actually sure about this yet.")
 
   ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
   ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.
@@ -101,9 +99,9 @@
                         (:segments table-metadata)))
         (:tables metadata-graph)))
 
-;; (defn- graph-card [_metadata-graph _card-id]
-;;   ;; not implemented for the simple graph metadata provider.
-;;   nil)
+(defn- graph-card [_metadata-graph _card-id]
+  ;; not implemented for the simple graph metadata provider.
+  nil)
 
 (defn- graph-tables [metadata-graph]
   (for [table-metadata (:tables metadata-graph)]
@@ -123,7 +121,7 @@
   (field    [_this field-id]   (graph-field    metadata-graph field-id))
   (metric   [_this metric-id]  (graph-metric   metadata-graph metric-id))
   (segment  [_this segment-id] (graph-segment  metadata-graph segment-id))
-  ;; (card     [_this card-id]    (graph-card     metadata-graph card-id))
+  (card     [_this card-id]    (graph-card     metadata-graph card-id))
   (tables   [_this]            (graph-tables   metadata-graph))
   (fields   [_this table-id]   (graph-fields   metadata-graph table-id))
 

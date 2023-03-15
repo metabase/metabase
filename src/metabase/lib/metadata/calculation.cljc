@@ -29,6 +29,8 @@
   [query                                    :- ::lib.schema/query
    stage-number                             :- :int
    x]
+  (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
+  (println "(pr-str x):" (pr-str x)) ; NOCOMMIT
   (or
    ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
    (:display-name (lib.options/options x))

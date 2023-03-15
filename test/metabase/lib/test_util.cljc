@@ -41,7 +41,7 @@
   Normally you can probably get away with using [[metabase.lib.test-metadata/metadata-provider]] instead of using
   this; but this is available for situations when you need to test something not covered by the default test metadata,
   e.g. nested Fields."
-  [{:keys [database tables fields metrics segments]}]
+  [{:keys [database tables fields cards metrics segments]}]
   (reify
     metadata.protocols/MetadataProvider
     (database [_this]            (some-> database
@@ -52,6 +52,7 @@
                                          (dissoc :fields)))
     (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) fields)
                                          (assoc :lib/type :metadata/field)))
+    (card )
     (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) metrics)
                                          (assoc :lib/type :metadata/metric)))
     (segment  [_this segment-id] (some-> (m/find-first #(= (:id %) segment-id) segments)

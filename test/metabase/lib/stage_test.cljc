@@ -51,3 +51,12 @@
                   :display_name "0.8 × Average of Price"
                   :field_ref    [:aggregation {:lib/uuid string?} 1]}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
+
+(deftest ^:parallel stage-display-name-card-source-query
+  (let [query {:lib/type :mbql/query
+               :lib/metadata (lib.tu/mock-metadata-provider)
+               :type     :pipeline
+               :database (meta/id)
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :lib/options  {:lib/uuid (str (random-uuid))}
+                           :source-table (str "card__1")}]}]))
