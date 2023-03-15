@@ -286,14 +286,14 @@ describe(
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        cy.findByText("Not found.").should("be.visible");
+        cy.findByText("Not found").should("be.visible");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        cy.findByText("Not found.").should("be.visible");
+        cy.findByText("Not found").should("be.visible");
       });
     });
 
