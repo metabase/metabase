@@ -44,7 +44,6 @@ export interface ExpressionWidgetProps {
   onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
-  onChange?: (expression: Expression | null) => void;
 }
 
 const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
@@ -60,7 +59,6 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     onChangeExpression,
     onRemoveExpression,
     onClose,
-    onChange,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -88,7 +86,6 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const handleExpressionChange = (parsedExpression: Expression | null) => {
     setExpression(parsedExpression);
     setError(null);
-    onChange && onChange(parsedExpression);
   };
 
   return (

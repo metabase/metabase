@@ -157,17 +157,13 @@ export default function FilterPopover({
     return (
       <ExpressionWidget
         query={query}
-        expression={filter?.raw() as Expression}
+        expression={filter?.raw() as Expression | undefined}
         startRule="boolean"
         title={CUSTOM_SECTION_NAME}
         withName={false}
         shouldValidateExpression={false}
         onChangeExpression={handleExpressionChange}
         onClose={() => setEditingFilter(false)}
-        onChange={expression => {
-          const mbql = Array.isArray(expression) ? expression : undefined;
-          handleFilterChange(mbql);
-        }}
       />
     );
   }

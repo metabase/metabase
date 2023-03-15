@@ -318,6 +318,17 @@ export default class AggregationPopover extends Component {
     }));
   }
 
+  onChangeExpression = (name, expression) => {
+    let newAggregation = AGGREGATION.setContent(
+      this.state.aggregation,
+      expression,
+    );
+
+    newAggregation = AGGREGATION.setName(newAggregation, name);
+
+    this.commitAggregation(newAggregation);
+  };
+
   render() {
     const { query } = this.props;
     const table = query.table();
@@ -336,17 +347,7 @@ export default class AggregationPopover extends Component {
             startRule="aggregation"
             title={CUSTOM_SECTION_NAME}
             shouldValidateExpression={false}
-            onChangeExpression={(name, expression) => {
-              let newAggregation = AGGREGATION.setContent(
-                this.state.aggregation,
-                expression,
-              );
-              newAggregation = name
-                ? AGGREGATION.setName(newAggregation, name)
-                : aggregation;
-
-              this.commitAggregation(newAggregation);
-            }}
+            onChangeExpression={this.onChangeExpression}
             onClose={this.onClearAggregation}
           />
         </ExpressionPopoverRoot>

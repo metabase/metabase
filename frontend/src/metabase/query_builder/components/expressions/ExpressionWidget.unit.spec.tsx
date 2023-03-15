@@ -8,6 +8,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+import { Expression } from "metabase-types/types/Query";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
@@ -20,7 +21,7 @@ describe("ExpressionWidget", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip which leads to documentation page", () => {
+  it("should render help icon with tooltip which opens documentation page", () => {
     setup();
 
     const icon = getIcon("info");
@@ -45,22 +46,72 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not render Name field if withName=false", () => {
-    setup({ withName: false });
+  it("should validate name value", () => {
+    const expression: Expression = ["+", 1, 1];
+    const { onChangeExpression } = setup({ expression });
 
-    expect(screen.queryByText("Name")).not.toBeInTheDocument();
+    const doneButton = screen.getByRole("button", { name: "Done" });
+
+    expect(doneButton).toBeDisabled();
+
+    userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+
+    // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
+    expect(onChangeExpression).toHaveBeenCalledTimes(0);
+
+    userEvent.type(
+      screen.getByPlaceholderText("Something nice and descriptive"),
+      "some name",
+    );
+
+    expect(doneButton).toBeEnabled();
+
+    userEvent.click(doneButton);
+
+    expect(onChangeExpression).toHaveBeenCalledTimes(1);
+    expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
   });
 
-  it("should render interactive header if title is passed", () => {
+  it(`should render interactive header if "title" and "onClose" props passed`, () => {
     const mockTitle = "Custom Expression";
     const { onClose } = setup({ title: mockTitle });
 
-    const title = screen.getByText(mockTitle);
-    expect(title).toBeInTheDocument();
+    const titleEl = screen.getByText(mockTitle);
+    expect(titleEl).toBeInTheDocument();
 
-    userEvent.click(title);
+    userEvent.click(titleEl);
 
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe("withName=false", () => {
+    it("should not render Name field", () => {
+      setup({ withName: false });
+
+      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+    });
+
+    it("should trigger onChangeExpression if expression is valid", () => {
+      const { onChangeExpression } = setup({
+        withName: false,
+      });
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      const expressionInput = screen.getByRole("textbox");
+      expect(expressionInput).toHaveClass("ace_text-input");
+
+      userEvent.type(expressionInput, "1 + 1");
+      userEvent.tab();
+
+      expect(doneButton).toBeEnabled();
+
+      userEvent.click(doneButton);
+
+      expect(onChangeExpression).toHaveBeenCalledTimes(1);
+      expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
+    });
   });
 });
 

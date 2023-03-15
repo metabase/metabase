@@ -14,7 +14,7 @@ import {
 
 export interface ExpressionEditorHelpTextProps {
   helpText: HelpText | null | undefined;
-  width: number;
+  width: number | undefined;
   target: React.RefObject<HTMLElement>;
 }
 
