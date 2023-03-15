@@ -244,7 +244,7 @@
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
-    (testing "Late-binding view with with data types that cause a JDBC error can still be synced succesfully (#21215)"
+    (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             view-nm      "weird_late_binding_view"
             qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
