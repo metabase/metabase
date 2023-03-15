@@ -7,6 +7,7 @@
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]))
 
 (def ^:private UserAttributes
@@ -21,7 +22,8 @@
 (api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
-  {login_attributes [:maybe UserAttributes]}
+  {id ms/PositiveInt
+   login_attributes [:maybe UserAttributes]}
   (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 

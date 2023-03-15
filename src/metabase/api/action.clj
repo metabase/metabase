@@ -57,7 +57,7 @@
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [model-id]
-  {model-id [:maybe ms/IntGreaterThanZero]}
+  {model-id [:maybe ms/PositiveInt]}
   (letfn [(actions-for [models]
             (if (seq models)
               (hydrate (action/select-actions models
@@ -88,6 +88,7 @@
 
 (api/defendpoint GET "/:action-id"
   [action-id]
+  {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
       (hydrate :creator)
       api/read-check))
@@ -108,14 +109,14 @@
                 database_id dataset_query
                 template response_handle error_handle] :as action} :body}]
   {name                   :string
-   model_id               pos-int?
+   model_id               ms/PositiveInt
    type                   [:maybe supported-action-type]
    description            [:maybe :string]
    parameters             [:maybe [:sequential map?]]
    parameter_mappings     [:maybe map?]
    visualization_settings [:maybe map?]
    kind                   [:maybe implicit-action-kind]
-   database_id            [:maybe pos-int?]
+   database_id            [:maybe ms/PositiveInt]
    dataset_query          [:maybe map?]
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
@@ -144,24 +145,23 @@
       (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
-  [id :as
-   {{:keys [archived database_id dataset_query description error_handle kind model_id name parameter_mappings parameters
-            response_handle template type visualization_settings] :as action} :body}]
-  {id                     pos-int?
-   archived               [:maybe boolean?]
-   database_id            [:maybe pos-int?]
-   dataset_query          [:maybe map?]
-   description            [:maybe :string]
-   error_handle           [:maybe json-query-schema]
-   kind                   [:maybe implicit-action-kind]
-   model_id               [:maybe pos-int?]
-   name                   [:maybe :string]
-   parameter_mappings     [:maybe map?]
-   parameters             [:maybe [:sequential map?]]
-   response_handle        [:maybe json-query-schema]
-   template               [:maybe http-action-template]
-   type                   [:maybe supported-action-type]
-   visualization_settings [:maybe map?]}
+  [id :as {action :body}]
+  {id     ms/PositiveInt
+   action [:map
+           [:archived               {:optional true} [:maybe :boolean]]
+           [:database_id            {:optional true} [:maybe ms/PositiveInt]]
+           [:dataset_query          {:optional true} [:maybe :map]]
+           [:description            {:optional true} [:maybe :string]]
+           [:error_handle           {:optional true} [:maybe json-query-schema]]
+           [:kind                   {:optional true} [:maybe implicit-action-kind]]
+           [:model_id               {:optional true} [:maybe ms/PositiveInt]]
+           [:name                   {:optional true} [:maybe :string]]
+           [:parameter_mappings     {:optional true} [:maybe :map]]
+           [:parameters             {:optional true} [:maybe [:sequential :map]]]
+           [:response_handle        {:optional true} [:maybe json-query-schema]]
+           [:template               {:optional true} [:maybe http-action-template]]
+           [:type                   {:optional true} [:maybe supported-action-type]]
+           [:visualization_settings {:optional true} [:maybe :map]]]}
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
@@ -176,7 +176,7 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [id]
-  {id pos-int?}
+  {id ms/PositiveInt}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (let [action (api/read-check Action id :archived false)]
@@ -190,7 +190,7 @@
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
-  {id pos-int?}
+  {id ms/PositiveInt}
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
@@ -204,7 +204,7 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [id :as {{:keys [parameters], :as _body} :body}]
-  {id       pos-int?
+  {id         ms/PositiveInt
    parameters [:maybe [:map-of :keyword any?]]}
   (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
     (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
