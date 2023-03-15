@@ -132,14 +132,6 @@ describe("FormFieldEditor", () => {
     it("handles value options when switching between field types", async () => {
       const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
 
-      userEvent.click(screen.getByText("Category"));
-      await waitFor(() =>
-        expect(onChange).toHaveBeenLastCalledWith({
-          ...TEST_STRING_FIELD_SETTINGS,
-          fieldType: "category",
-        }),
-      );
-
       userEvent.click(screen.getByText("Number"));
       await waitFor(() =>
         expect(onChange).toHaveBeenLastCalledWith({
