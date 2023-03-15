@@ -34,12 +34,11 @@
    (:display-name (lib.options/options x))
    (try
      (display-name-method query stage-number x)
+     ;; if this errors, just catch the error and return something like `Unknown :field`. We shouldn't blow up the
+     ;; whole Query Builder if there's a bug
      (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
-                       {:x            x
-                        :query        query
-                        :stage-number stage-number}
-                       e))))))
+       (log/error e (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e)))
+       (i18n/tru "Unknown {0}" (pr-str (lib.dispatch/dispatch-value x)))))))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
