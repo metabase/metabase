@@ -310,8 +310,7 @@ const FieldGeneralPane = ({
           <Select
             className="inline-block"
             value={
-              field.json_unfolding ||
-              (database.details["json-unfolding"] ?? true)
+              field.json_unfolding ?? database.details["json-unfolding"] ?? true
             }
             onChange={({ target: { value } }) => {
               return onUpdateFieldProperties({
