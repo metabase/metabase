@@ -512,7 +512,7 @@
   ;; the db on the correct port. So we do the tests twice, once expecting the correct answer, and then again with the
   ;; wrong password for the ssh tunnel and we expect failures. This ensures that the correct result is actually going
   ;; through the ssh tunnel
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (let [username "username", password "password"]
       (with-open [ssh-server (basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
