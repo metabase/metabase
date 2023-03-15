@@ -23,7 +23,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
 
@@ -99,6 +100,24 @@
       (db/delete! Dimension :id old-dim-id)))
   true)
 
+(defn- update-nested-fields-on-json-unfolding-change!
+  "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
+   If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
+   Returns nil."
+  [old-field json_unfolding]
+  (cond
+    (and json_unfolding (not (:json_unfolding old-field)))
+    (t2/update! Field
+                :table_id (:table_id old-field)
+                :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                {:active true})
+    (and (not json_unfolding) (:json_unfolding old-field))
+    (t2/update! Field
+                :table_id (:table_id old-field)
+                :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                {:active false}))
+  nil)
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
@@ -117,17 +136,17 @@
    settings           (s/maybe su/Map)
    nfc_path           (s/maybe [su/NonBlankString])
    json_unfolding     (s/maybe s/Bool)}
-  (let [field              (hydrate (api/write-check Field id) :dimensions)
-        new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
+  (let [old-field         (hydrate (api/write-check Field id) :dimensions)
+        new-semantic-type (keyword (get body :semantic_type (:semantic_type old-field)))
         [effective-type coercion-strategy]
         (or (when-let [coercion_strategy (keyword coercion_strategy)]
               (let [effective (types/effective-type-for-coercion coercion_strategy)]
                 ;; throw an error in an else branch?
-                (when (types/is-coercible? coercion_strategy (:base_type field) effective)
+                (when (types/is-coercible? coercion_strategy (:base_type old-field) effective)
                   [effective coercion_strategy])))
-            [(:base_type field) nil])
-        removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
-        fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
+            [(:base_type old-field) nil])
+        removed-fk?        (removed-fk-semantic-type? (:semantic_type old-field) new-semantic-type)
+        fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id old-field))]
 
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
@@ -137,23 +156,21 @@
     ;; everything checks out, now update the field
     (api/check-500
      (db/transaction
-       (and
-        (if removed-fk?
-          (clear-dimension-on-fk-change! field)
-          true)
-        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (db/update! Field id
-          (u/select-keys-when (assoc body
-                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                     :effective_type effective-type
-                                     :coercion_strategy coercion-strategy)
-                              :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                         :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                              :non-nil #{:display_name :settings})))))
+      (when removed-fk? (clear-dimension-on-fk-change! old-field))
+      (clear-dimension-on-type-change! old-field (:base_type old-field) new-semantic-type)
+      (update-nested-fields-on-json-unfolding-change! old-field json_unfolding)
+      (db/update! Field id
+                  (u/select-keys-when (assoc body
+                                             :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                             :effective_type effective-type
+                                             :coercion_strategy coercion-strategy)
+                                      :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                                 :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                      :non-nil #{:display_name :settings}))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
-      (when (not= effective-type (:effective_type field))
+      (when (not= effective-type (:effective_type old-field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
