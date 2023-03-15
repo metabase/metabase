@@ -138,10 +138,10 @@
                 ;; having the entire thing fail.
                 [id (delay
                       (try
-                        (log/infof "Parse metadata for %s %s from:\n%s" metadata-type id (pr-str obj))
+                        (log/debugf "Parse metadata for %s %s from:\n%s" metadata-type id (pr-str obj))
                         (let [parsed (parse-object metadata-type obj)]
-                          (log/infof "Parsed metadata for %s %s:\n%s" metadata-type id (binding [pprint/*print-right-margin* 160]
-                                                                                         (u/pprint-to-str parsed)))
+                          (log/debugf "Parsed metadata for %s %s:\n%s" metadata-type id (binding [pprint/*print-right-margin* 160]
+                                                                                          (u/pprint-to-str parsed)))
                           parsed)
                         (catch js/Error e
                           (log/errorf e "Error parsing %s: %s" metadata-type (ex-message e))
@@ -201,6 +201,8 @@
                        (parse-objects* :database databases)))
    :tables    (delay (when-let [tables (gobject/get metadata "tables")]
                        (parse-objects* :table tables)))
+   :fields    (delay (when-let [fields (gobject/get metadata "fields")]
+                       (parse-objects :field fields)))
    :cards     (delay (merge
                       (when-let [cards (gobject/get metadata "questions")]
                         (parse-objects* :card cards))
@@ -271,7 +273,7 @@
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id metadata]
   (let [metadata (metadata->clj metadata)]
-    (log/infof "metadata: %s" (pr-str metadata))
+    (log/debugf "metadata: %s" (pr-str metadata))
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
       (table    [_this table-id]   (table    metadata table-id))
