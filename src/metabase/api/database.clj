@@ -406,7 +406,7 @@
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
   [id]
-  {id ms/IntGreaterThanZero}
+  {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
   (let [table-ids (db/select-ids Table :db_id id)]
@@ -1104,11 +1104,13 @@
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
+  {id ms/PositiveInt}
   (api/check-404 (seq (schema-tables-list id schema))))
 
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [id]
+  {id ms/PositiveInt}
   (api/check-404 (seq (concat (schema-tables-list id nil)
                               (schema-tables-list id "")))))
 

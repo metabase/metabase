@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -251,6 +252,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
+  {id ms/PositiveInt}
   (check-perms-and-return-field-values id))
 
 ;; match things like GET /field%2Ccreated_at%2options

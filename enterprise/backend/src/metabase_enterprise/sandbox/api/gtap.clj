@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -14,8 +15,8 @@
 (api/defendpoint GET "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [group_id table_id]
-  {group_id [:maybe pos-int?]
-   table_id [:maybe pos-int?]}
+  {group_id [:maybe ms/PositiveInt]
+   table_id [:maybe ms/PositiveInt]}
   (if (and group_id table_id)
     (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
     (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
@@ -23,6 +24,7 @@
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
+  {id ms/PositiveInt}
   (api/check-404 (db/select-one GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
@@ -66,14 +68,15 @@
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
   sandbox is saved, but doesn't actually save the sandbox."
   [:as {{:keys [table_id card_id]} :body}]
-  {table_id             pos-int?
-   card_id              [:maybe pos-int?]}
+  {table_id             ms/PositiveInt
+   card_id              [:maybe ms/PositiveInt]}
   (gtap/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 
 (api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
   [id]
+  {id ms/PositiveInt}
   (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
