@@ -396,10 +396,10 @@ const getQuestionResource = questionId => ({
   params: {},
 });
 
-const getTargetQuestion = ({ tag, parameter }) => ({
+const getTargetQuestion = ({ query, tag, parameter }) => ({
   name: "Embedded",
   native: {
-    query: "SELECT * FROM PRODUCTS WHERE {{tag}}",
+    query,
     "template-tags": {
       tag: {
         id: "93961154-c3d5-7c93-7b59-f4e494fda499",
@@ -424,14 +424,25 @@ const getTargetQuestion = ({ tag, parameter }) => ({
   },
 });
 
-const getStructuredTextTargetQuestion = questionId => {
+const getTextTargetQuestion = ({ query, tag, parameter }) => {
   return getTargetQuestion({
+    query,
     tag: {
       type: "text",
+      ...tag,
     },
     parameter: {
       target: ["variable", ["template-tag", "tag"]],
       values_query_type: "list",
+      ...parameter,
+    },
+  });
+};
+
+const getStructuredTextTargetQuestion = questionId => {
+  return getTextTargetQuestion({
+    query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
+    parameter: {
       values_source_type: "card",
       values_source_config: {
         card_id: questionId,
@@ -441,11 +452,38 @@ const getStructuredTextTargetQuestion = questionId => {
   });
 };
 
-const getStructuredDimensionTargetQuestion = questionId => {
+const getNativeTextTargetQuestion = questionId => {
+  return getTextTargetQuestion({
+    query: "SELECT * FROM PRODUCTS WHERE EAN = {{tag}}",
+    parameter: {
+      values_source_type: "card",
+      values_source_config: {
+        card_id: questionId,
+        value_field: ["field", "EAN", { "base-type": "type/Text" }],
+      },
+    },
+  });
+};
+
+const getDimensionTargetQuestion = ({ tag, parameter }) => {
   return getTargetQuestion({
+    query: "SELECT * FROM PRODUCTS WHERE {{tag}}",
     tag: {
       type: "dimension",
       "widget-type": "string/=",
+      dimension: ["field", PRODUCTS.CATEGORY, null],
+      ...tag,
+    },
+    parameter: {
+      target: ["dimension", ["template-tag", "tag"]],
+      ...parameter,
+    },
+  });
+};
+
+const getStructuredDimensionTargetQuestion = questionId => {
+  return getDimensionTargetQuestion({
+    tag: {
       dimension: ["field", PRODUCTS.CATEGORY, null],
     },
     parameter: {
@@ -459,32 +497,12 @@ const getStructuredDimensionTargetQuestion = questionId => {
   });
 };
 
-const getNativeTextTargetQuestion = questionId => {
-  return getTargetQuestion({
-    tag: {
-      type: "text",
-    },
-    parameter: {
-      target: ["variable", ["template-tag", "tag"]],
-      values_query_type: "list",
-      values_source_type: "card",
-      values_source_config: {
-        card_id: questionId,
-        value_field: ["field", "EAN", { "base-type": "type/Text" }],
-      },
-    },
-  });
-};
-
 const getNativeDimensionTargetQuestion = questionId => {
   return getTargetQuestion({
     tag: {
-      type: "dimension",
-      "widget-type": "string/=",
       dimension: ["field", PRODUCTS.EAN, null],
     },
     parameter: {
-      target: ["dimension", ["template-tag", "tag"]],
       values_source_type: "card",
       values_source_config: {
         card_id: questionId,
@@ -497,12 +515,9 @@ const getNativeDimensionTargetQuestion = questionId => {
 const getListDimensionTargetQuestion = () => {
   return getTargetQuestion({
     tag: {
-      type: "dimension",
-      "widget-type": "string/=",
       dimension: ["field", PRODUCTS.EAN, null],
     },
     parameter: {
-      target: ["dimension", ["template-tag", "tag"]],
       values_source_type: "static-list",
       values_source_config: {
         values: ["1018947080336", "7663515285824"],
