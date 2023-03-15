@@ -1,5 +1,5 @@
 import {
-  enableActionsForDB,
+  setActionsEnabledForDB,
   modal,
   popover,
   restore,
@@ -75,7 +75,7 @@ describe(
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
-      enableActionsForDB(PG_DB_ID);
+      setActionsEnabledForDB(PG_DB_ID);
 
       cy.createQuestion(SAMPLE_ORDERS_MODEL, {
         wrapId: true,
@@ -295,7 +295,7 @@ describe(
     it("should respect permissions", () => {
       // Enabling actions for sample database as well
       // to test database picker behavior in the action editor
-      enableActionsForDB(SAMPLE_DB_ID);
+      setActionsEnabledForDB(SAMPLE_DB_ID);
 
       cy.get("@modelId").then(modelId => {
         cy.request("POST", "/api/action", {
