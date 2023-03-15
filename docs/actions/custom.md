@@ -155,11 +155,6 @@ You can include placeholder text for all fields in the action form.
 - Date
 - Date + Time
 
-**Category**
-
-- Dropdown
-- Inline select
-
 For both **Dropdown** and **Inline select**, you can specify a list of options to present on the form, with each option on its own line.
 
 ![Dropdown select](./images/dropdown.png)

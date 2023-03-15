@@ -44,7 +44,7 @@ function cleanFieldValue(
 ) {
   if (value == null) {
     return value;
-  } else if (fieldType === "string" || fieldType === "category") {
+  } else if (fieldType === "string") {
     return String(value);
   } else if (fieldType === "number") {
     const number = Number(value);
@@ -76,7 +76,7 @@ function FormFieldEditor({
       option => option.value,
     );
 
-    // Allows to preserve dropdown/radio input types across number/string/category field types
+    // Allows to preserve dropdown/radio input types across number/string field types
     const nextInputType = inputTypesForNextFieldType.includes(inputType)
       ? inputType
       : inputTypesForNextFieldType[0];
