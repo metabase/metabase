@@ -134,9 +134,9 @@
   is manager of."
   []
   (try
-   (validation/check-group-manager)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :setting)))
+    (validation/check-group-manager)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :setting)))
   (let [query (when (and (not api/*is-superuser?*)
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)
@@ -153,8 +153,9 @@
   "Fetch the details for a certain permissions group."
   [id]
   (validation/check-group-manager id)
-  (api/check-404 (-> (db/select-one PermissionsGroup :id id)
-      (hydrate :members))))
+  (api/check-404
+   (-> (db/select-one PermissionsGroup :id id)
+       (hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"
@@ -163,7 +164,7 @@
   {name su/NonBlankString}
   (api/check-superuser)
   (db/insert! PermissionsGroup
-    :name name))
+              :name name))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/group/:group-id"
@@ -173,7 +174,7 @@
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
-    :name name)
+              :name name)
   ;; return the updated group
   (db/select-one PermissionsGroup :id group-id))
 
@@ -243,8 +244,8 @@
     (api/check-404 old)
     (validation/check-manager-of-group (:group_id old))
     (api/check
-       (db/exists? User :id (:user_id old) :is_superuser false)
-       [400 (tru "Admin cant be a group manager.")])
+     (db/exists? User :id (:user_id old) :is_superuser false)
+     [400 (tru "Admin cant be a group manager.")])
     (db/update! PermissionsGroupMembership (:id old)
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
