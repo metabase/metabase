@@ -76,7 +76,8 @@
 
     If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
     created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
-    and a subset of the default items returned for admins. This is used to power the /account/notifications page."
+    and a subset of the default items returned for admins. This is used to power the /account/notifications page.
+    Some pulse metadata, namely subscription cards and the recipients list, are also stripped when this flag is used."
     [archived dashboard_id creator_or_recipient]
     {archived           (s/maybe su/BooleanString)
      dashboard_id       (s/maybe su/IntGreaterThanZero)

@@ -784,22 +784,32 @@
                  [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)]
                  (map #(update % :collection_id boolean) results)))))
 
-        (testing "when `can_read=true`, all users only see pulses they created or are a recipient of"
-          (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse?can_read=true")
-                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
-            (is (= 2 (count results)))
-            (is (partial=
-                 [(assoc (pulse-details pulse-2) :can_write true, :collection_id true)
-                  (assoc (pulse-details pulse-3) :can_write true, :collection_id true)]
-                 (map #(update % :collection_id boolean) results))))
+        (testing "when `creator_or_recipient=true`, all users only see pulses they created or are a recipient of"
+          (let [expected-pulse-shape (fn [pulse] (-> pulse
+                                                     pulse-details
+                                                     (assoc :can_write true, :collection_id true)
+                                                     (dissoc :cards)))]
+            (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse?creator_or_recipient=true")
+                              (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+              (is (= 2 (count results)))
+              (is (partial=
+                   [(expected-pulse-shape pulse-2) (expected-pulse-shape pulse-3)]
+                   (map #(update % :collection_id boolean) results))))
 
-          (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?can_read=true")
-                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
-            (is (= 2 (count results)))
-            (is (partial=
-                 [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
-                  (assoc (pulse-details pulse-3) :can_write false, :collection_id true)]
-                 (map #(update % :collection_id boolean) results)))))))
+            (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                              (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+              (is (= 2 (count results)))
+              (is (partial=
+                   [(expected-pulse-shape pulse-1)
+                    (assoc (expected-pulse-shape pulse-3) :can_write false)]
+                   (map #(update % :collection_id boolean) results))))))
+
+        (testing "when `creator_or_recipient=true`, cards and recipients are not included in results"
+          (let [result (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                           (filter-pulse-results :id #{pulse-3-id})
+                           first)]
+            (is (nil? (:cards result)))
+            (is (nil? (get-in result [:channels 0 :recipients])))))))
 
     (testing "should not return alerts"
       (mt/with-temp* [Pulse [pulse-1 {:name "ABCDEF"}]
