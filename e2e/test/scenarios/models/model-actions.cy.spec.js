@@ -8,6 +8,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
 } from "e2e/support/helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -292,6 +293,10 @@ describe(
     });
 
     it("should respect permissions", () => {
+      // Enabling actions for sample database as well
+      // to test database picker behavior in the action editor
+      enableActionsForDB(SAMPLE_DB_ID);
+
       cy.get("@modelId").then(modelId => {
         cy.request("POST", "/api/action", {
           ...SAMPLE_QUERY_ACTION,
@@ -311,6 +316,10 @@ describe(
       cy.findByRole("dialog").within(() => {
         cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
+        // Check database picker isn't shown
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("QA Postgres12").should("not.exist");
+
         cy.button("Save").should("not.exist");
         cy.button("Update").should("not.exist");
 
@@ -322,6 +331,24 @@ describe(
 
         cy.findByLabelText("Action settings").click();
         cy.findByLabelText("Success message").should("be.disabled");
+      });
+
+      cy.signIn("nodata");
+      cy.reload();
+      cy.findByRole("dialog").within(() => {
+        // Check database picker just shows the action database
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("QA Postgres12").should("be.visible");
+      });
+
+      cy.signIn("normal");
+      cy.reload();
+      cy.findByRole("dialog").findByText("QA Postgres12").click();
+
+      // Check can pick between all databases
+      popover().within(() => {
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("QA Postgres12").should("be.visible");
       });
     });
 
