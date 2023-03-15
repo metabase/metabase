@@ -12,10 +12,10 @@
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
-(defn ^:export describeQuery
+(defn ^:export suggestedName
   "Return a nice description of a query."
   [query]
-  (lib.metadata.calculation/describe-query query))
+  (lib.metadata.calculation/suggested-name query))
 
 (defn- pMBQL [query-map]
   (as-> query-map <>

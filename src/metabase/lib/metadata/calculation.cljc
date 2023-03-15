@@ -6,6 +6,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -106,7 +107,14 @@
    :name         (column-name query stage-number x)
    :display_name (display-name query stage-number x)})
 
-(defn describe-query
+(mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Convenience for calling [[display-name]] on a query to describe the results of its final stage."
   [query]
   (display-name query -1 query))
+
+(mu/defn suggested-name :- [:maybe ::lib.schema.common/non-blank-string]
+  "Name you might want to use for a query when saving an previously-unsaved query. This is the same
+  as [[describe-query]] except for native queries, where we don't describe anything."
+  [query]
+  (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
+    (describe-query query)))

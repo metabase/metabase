@@ -1337,15 +1337,17 @@ class QuestionInner {
           )
         : this._metadata;
 
-    for (const fieldMetadata of tableMetadata?.fields) {
-      metadata = assocIn(
-        metadata,
-        ["fields", String(fieldMetadata.id)],
-        fieldMetadata,
-      );
+    if (tableMetadata) {
+      for (const fieldMetadata of tableMetadata?.fields) {
+        metadata = assocIn(
+          metadata,
+          ["fields", String(fieldMetadata.id)],
+          fieldMetadata,
+        );
+      }
     }
 
-    return MLv2.describeQuery(this._getMLv2Query(metadata));
+    return MLv2.suggestedName(this._getMLv2Query(metadata));
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
