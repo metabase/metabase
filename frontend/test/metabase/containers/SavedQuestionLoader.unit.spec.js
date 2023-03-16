@@ -1,83 +1,104 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
-import { delay } from "metabase/lib/promise";
-
-// import the un-connected component so we can test its internal logic sans
-// redux
-import { SavedQuestionLoader } from "metabase/containers/SavedQuestionLoader";
+import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+import { renderWithProviders } from "__support__/ui";
+import { setupCardEndpoints } from "__support__/server-mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import Question from "metabase-lib/Question";
 
+jest.mock("metabase/questions/actions", () => ({
+  loadMetadataForCard: jest.fn(() => Promise.resolve(1)),
+}));
+
+const childrenRenderFn = ({ loading, question, error }) => {
+  if (error) {
+    return <div>error</div>;
+  }
+
+  if (loading) {
+    return <div>loading</div>;
+  }
+
+  return <div>{question.displayName()}</div>;
+};
+
+const setupQuestion = ({ id, name }) => {
+  const card = createMockCard({
+    id,
+    name,
+    result_metadata: [createMockColumn()],
+  });
+  const q = new Question(card, null);
+
+  setupCardEndpoints(q.card());
+
+  return card;
+};
+
+const setup = ({ questionId }) => {
+  const card = setupQuestion({ id: questionId, name: "Question 1" });
+
+  const { rerender } = renderWithProviders(
+    <SavedQuestionLoader questionId={questionId}>
+      {childrenRenderFn}
+    </SavedQuestionLoader>,
+  );
+
+  return { rerender, card };
+};
+
 describe("SavedQuestionLoader", () => {
-  let loadQuestionSpy, loadMetadataSpy, mockChild;
   beforeEach(() => {
-    // reset mocks between tests so we have fresh spies, etc
     jest.resetAllMocks();
-    mockChild = jest.fn().mockReturnValue(<div />);
-    loadMetadataSpy = jest.fn();
-    loadQuestionSpy = jest.spyOn(
-      SavedQuestionLoader.prototype,
-      "_loadQuestion",
-    );
   });
 
   it("should load a question given a questionId", async () => {
-    const questionId = 1;
-    const q = Question.create({ databaseId: 1, tableId: 2 });
-    const mockFetchQuestion = jest
-      .fn()
-      .mockResolvedValue(q._doNotCallSerializableCard());
+    const { card } = setup({ questionId: 1 });
 
-    render(
-      <SavedQuestionLoader
-        questionId={questionId}
-        loadMetadataForCard={loadMetadataSpy}
-        fetchQuestion={mockFetchQuestion}
-      >
-        {mockChild}
-      </SavedQuestionLoader>,
-    );
-    expect(mockChild.mock.calls[0][0].loading).toEqual(true);
-    expect(mockChild.mock.calls[0][0].error).toEqual(null);
+    expect(screen.getByText("loading")).toBeInTheDocument();
 
-    // stuff happens asynchronously
-    await delay(0);
+    await waitFor(async () => {
+      expect(loadMetadataForCard).toHaveBeenCalledWith(card);
+    });
 
-    expect(loadQuestionSpy).toHaveBeenCalledWith(questionId);
-
-    const calls = mockChild.mock.calls;
-    const { question, loading, error } = calls[calls.length - 1][0];
-    expect(question.isEqual(q)).toBe(true);
-    expect(loading).toEqual(false);
-    expect(error).toEqual(null);
+    expect(await screen.findByText("Question 1")).toBeInTheDocument();
   });
 
-  it("should load a new question if the question ID changes", () => {
-    const originalQuestionId = 1;
-    const newQuestionId = 2;
+  it("should handle errors", async () => {
+    loadMetadataForCard.mockImplementation(() => Promise.reject("error"));
+    const { card } = setup({ questionId: 1 });
 
-    const { rerender } = render(
-      <SavedQuestionLoader
-        questionId={originalQuestionId}
-        loadMetadataForCard={loadMetadataSpy}
-      >
-        {mockChild}
-      </SavedQuestionLoader>,
-    );
+    expect(screen.getByText("loading")).toBeInTheDocument();
 
-    expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionId);
+    await waitFor(async () => {
+      expect(loadMetadataForCard).toHaveBeenCalledWith(card);
+    });
 
-    // update the question ID, a new question id param in the url would do this
+    expect(await screen.findByText("error")).toBeInTheDocument();
+  });
+
+  it("should load a new question if the question ID changes", async () => {
+    const nextQuestionId = 2;
+    const nextCard = setupQuestion({ id: nextQuestionId, name: "Question 2" });
+
+    const { rerender } = setup({ questionId: 1 });
+
+    expect(await screen.findByText("Question 1")).toBeInTheDocument();
+
     rerender(
-      <SavedQuestionLoader
-        questionId={newQuestionId}
-        loadMetadataForCard={loadMetadataSpy}
-      >
-        {mockChild}
+      <SavedQuestionLoader questionId={nextQuestionId}>
+        {childrenRenderFn}
       </SavedQuestionLoader>,
     );
 
-    // question loading should begin with the new ID
-    expect(loadQuestionSpy).toHaveBeenCalledWith(newQuestionId);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+
+    await waitFor(async () => {
+      expect(loadMetadataForCard).toHaveBeenCalledWith(nextCard);
+    });
+
+    expect(await screen.findByText("Question 2")).toBeInTheDocument();
   });
 });
