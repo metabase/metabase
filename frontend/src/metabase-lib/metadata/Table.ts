@@ -116,12 +116,8 @@ class TableInner extends Base {
   }
 
   aggregationOperator(short) {
-    return this.aggregation_operators_lookup[short];
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
+    // this is the refactor as well, remove a deprecated function.
+    return this.aggregationOperatorsLookup()[short];
   }
 
   // FIELDS
