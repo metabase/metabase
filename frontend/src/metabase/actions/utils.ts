@@ -12,7 +12,7 @@ import type {
   FieldSettingsMap,
   ParameterId,
   ParametersForActionExecution,
-  ImplicitQueryAction,
+  WritebackImplicitQueryAction,
 } from "metabase-types/api";
 
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
@@ -205,7 +205,9 @@ function hasDataFromExplicitAction(result: any) {
   return !isInsert && !isUpdate && !isDelete;
 }
 
-function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+function getImplicitActionExecutionMessage(
+  action: WritebackImplicitQueryAction,
+) {
   if (action.kind === "row/create") {
     return t`Successfully saved`;
   }
