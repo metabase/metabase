@@ -43,8 +43,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.tools.transformed :as transformed])
+   [toucan.hydrate :refer [hydrate]])
   (:import
    (java.util UUID)))
 
