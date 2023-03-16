@@ -22,6 +22,7 @@ import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
 
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
+import { getLineAreaBarComparisonSettings } from "./settings";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -372,7 +373,9 @@ export function shouldSplitYAxis(
     return true;
   }
 
-  const columnSettings = series.map(s => normalizeColumnSettings(settings, s));
+  const columnSettings = series.map(s =>
+    getLineAreaBarComparisonSettings(settings.column(s.data.cols[1])),
+  );
   const hasDifferentColumnSettings = columnSettings.some(s1 =>
     columnSettings.some(s2 => !_.isEqual(s1, s2)),
   );
@@ -388,17 +391,6 @@ export function shouldSplitYAxis(
   // Note (EmmadUsmani): When the series with the smallest range is less than 5%
   // of the chart's total range, we split the y-axis so it doesn't look too small.
   return minRange / chartRange <= 0.05;
-}
-
-function normalizeColumnSettings(settings, series) {
-  const colSettings = { ...settings.column(series.data.cols[1]) };
-  delete colSettings._column_title_full;
-  delete colSettings._numberFormatter;
-  delete colSettings.column;
-  delete colSettings.prefix;
-  delete colSettings.suffix;
-
-  return colSettings;
 }
 
 /************************************************************ PROPERTIES ************************************************************/
