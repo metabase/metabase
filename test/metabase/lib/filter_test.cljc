@@ -16,7 +16,7 @@
       (is (=? result-filter
               (f' {:lib/metadata meta/metadata} -1))))))
 
-(deftest ^:parallel filter-test
+(deftest ^:parallel filter-clause-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
         q3                          (lib/query-for-table-name meta/metadata-provider "CHECKINS")
