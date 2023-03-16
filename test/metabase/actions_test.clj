@@ -12,7 +12,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (org.apache.sshd.server SshServer)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
@@ -518,8 +518,8 @@
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled
             (let [ssh-port (.getPort ^SshServer ssh-server)]
-              (let [details (db/select-one-field :details 'Database :id (mt/id))]
-                (db/update! 'Database (mt/id)
+              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
+                (t2/update! 'Database (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
                                              :tunnel-enabled true
