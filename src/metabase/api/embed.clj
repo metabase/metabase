@@ -159,7 +159,6 @@
 
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
-  [card]
   [{:keys [parameters] :as card}]
   (assoc card :parameters (->> parameters
                                 ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
