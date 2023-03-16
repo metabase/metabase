@@ -160,13 +160,20 @@
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
   [{:keys [parameters] :as card}]
-  (assoc card :parameters (->> parameters
-                               ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-                               ;; because doing such migration is costly.
-                               ;; so there are cards where some parameters in template-tags does not exist in card.parameters
-                               ;; that why we need to keep concat both of them then dedupe by id
-                               (concat (card/template-tag-parameters card))
-                               (m/distinct-by :id))))
+  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+  ;; because doing such migration is costly.
+  ;; so there are (rare)cases where some template-tag.id does not exist in card.parameters
+  ;; That said, to be extra safe, we merge info from both tempalte-tag and parameter
+  ;; for cases a paramter-id exists in both places.
+  (let [template-tag-parameters     (card/template-tag-parameters card)
+        id->template-tags-parameter (m/index-by :id template-tag-parameters)
+        id->parameter               (m/index-by :id parameters)
+        all-parameter-ids           (set (concat (map :id template-tag-parameters)
+                                                 (map :id parameters)))
+        parameters                  (for [id all-parameter-ids]
+                                      (merge (get id->parameter id {})
+                                             (get id->template-tags-parameter id {})))]
+    (assoc card :parameters parameters)))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword

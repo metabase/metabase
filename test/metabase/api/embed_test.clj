@@ -226,23 +226,30 @@
                                                                            :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
                              :parameters       [{:type "date", :name "a", :display_name "a" :id "a"}
                                                 {:type "date", :name "b", :display_name "b" :id "b"}
-                                                {:type "date", :name "c", :display_name "c" :id "c"}]
+                                                {:type "date", :name "c", :display_name "c" :id "c"
+                                                 :values_source_type "static-list"  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (=? {:parameters [{:id "c",
-                               :type "date/single",
-                               :target ["variable" ["template-tag" "c"]],
-                               :name "c",
-                               :slug "c",
-                               :default nil}
-                              ;; the parameter id = "d" is what we care about in this test
-                              ;; it's in template-tags, but not card.parameters, yet when fetching card we shuld get it returned
-                              {:id "d",
-                               :type "date/single",
-                               :target ["variable" ["template-tag" "d"]],
-                               :name "d",
-                               :slug "d",
-                               :default nil}]}
-                (client/client :get 200 (card-url card))))))))
+        (let [parameters (:parameters (client/client :get 200 (card-url card)))]
+          (is (= [;; the parameter id = "d" is in template-tags, but not card.parameters,
+                  ;; when fetching card we should get it returned
+                  {:id "d",
+                   :type "date/single",
+                   :target ["variable" ["template-tag" "d"]],
+                   :name "d",
+                   :slug "d",
+                   :default nil}
+                  ;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                  ;; merge of both places
+                  {:id "c",
+                   :type "date/single",
+                   :display_name "c",
+                   :target ["variable" ["template-tag" "c"]],
+                   :name "c",
+                   :slug "c",
+                   :default nil
+                   :values_source_type    "static-list"
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                 parameters)))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
