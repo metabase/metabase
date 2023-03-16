@@ -2,7 +2,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/core/utils/errors";
-import { sortActionParams, isEditableField } from "metabase/actions/utils";
+import { sortActionParams } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
@@ -19,6 +19,9 @@ import type {
   ActionFormFieldProps,
   FieldSettings,
 } from "metabase/actions/types";
+import type Field from "metabase-lib/metadata/Field";
+
+import { TYPE } from "metabase-lib/types/constants";
 
 export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
@@ -46,6 +49,48 @@ function getSampleOptions(fieldType: FieldType) {
     ? getOptionsFromArray([1, 2, 3])
     : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
 }
+
+const AUTOMATIC_DATE_TIME_FIELDS = [
+  TYPE.CreationDate,
+  TYPE.CreationTemporal,
+  TYPE.CreationTime,
+  TYPE.CreationTimestamp,
+
+  TYPE.DeletionDate,
+  TYPE.DeletionTemporal,
+  TYPE.DeletionTime,
+  TYPE.DeletionTimestamp,
+
+  TYPE.UpdatedDate,
+  TYPE.UpdatedTemporal,
+  TYPE.UpdatedTime,
+  TYPE.UpdatedTimestamp,
+];
+
+const isAutomaticDateTimeField = (field: Field) => {
+  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
+};
+
+const isEditableField = (field: Field, parameter: Parameter) => {
+  const isRealField = typeof field.id === "number";
+  if (!isRealField) {
+    // Filters out custom, aggregated columns, etc.
+    return false;
+  }
+
+  if (field.isPK()) {
+    // Most of the time PKs are auto-generated,
+    // but there are rare cases when they're not
+    // In this case they're marked as `required`
+    return parameter.required;
+  }
+
+  if (isAutomaticDateTimeField(field)) {
+    return parameter.required;
+  }
+
+  return true;
+};
 
 const getFormField = (parameter: Parameter, fieldSettings: FieldSettings) => {
   if (

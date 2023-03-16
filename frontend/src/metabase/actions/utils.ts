@@ -24,48 +24,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-const AUTOMATIC_DATE_TIME_FIELDS = [
-  TYPE.CreationDate,
-  TYPE.CreationTemporal,
-  TYPE.CreationTime,
-  TYPE.CreationTimestamp,
-
-  TYPE.DeletionDate,
-  TYPE.DeletionTemporal,
-  TYPE.DeletionTime,
-  TYPE.DeletionTimestamp,
-
-  TYPE.UpdatedDate,
-  TYPE.UpdatedTemporal,
-  TYPE.UpdatedTime,
-  TYPE.UpdatedTimestamp,
-];
-
-const isAutomaticDateTimeField = (field: Field) => {
-  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
-};
-
-export const isEditableField = (field: Field, parameter: Parameter) => {
-  const isRealField = typeof field.id === "number";
-  if (!isRealField) {
-    // Filters out custom, aggregated columns, etc.
-    return false;
-  }
-
-  if (field.isPK()) {
-    // Most of the time PKs are auto-generated,
-    // but there are rare cases when they're not
-    // In this case they're marked as `required`
-    return parameter.required;
-  }
-
-  if (isAutomaticDateTimeField(field)) {
-    return parameter.required;
-  }
-
-  return true;
-};
-
 export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
   actions.some(isImplicitAction);
 
