@@ -213,6 +213,9 @@ export const apiCreateQuestion = question => {
     const card = createdQuestion.lockDisplay().card();
 
     dispatch.action(API_CREATE_QUESTION, card);
+
+    const metadataOptions = { reload: createdQuestion.isDataset() };
+    await dispatch(loadMetadataForCard(card, metadataOptions));
   };
 };
 

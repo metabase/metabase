@@ -1,7 +1,7 @@
 import {
   restore,
   modal,
-  enableActionsForDB,
+  setActionsEnabledForDB,
   createAction,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -180,7 +180,7 @@ describe("scenarios > admin > settings > public sharing", () => {
   });
 
   it("should see public actions", () => {
-    enableActionsForDB();
+    setActionsEnabledForDB(SAMPLE_DB_ID);
     const expectedActionName = "Public action";
 
     cy.createQuestion({
