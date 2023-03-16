@@ -28,12 +28,11 @@ import type {
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 import FormFieldEditor from "../../containers/ActionCreator/FormCreator/FormFieldEditor";
+import { reorderFields } from "../../containers/ActionCreator/FormCreator/utils";
 import {
   ActionFormButtonContainer,
   FormFieldEditorDragContainer,
 } from "./ActionForm.styled";
-
-import { reorderFields } from "./utils";
 
 interface ActionFormProps {
   parameters: WritebackParameter[] | Parameter[];
