@@ -6,7 +6,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { ActionsApi, PublicApi } from "metabase/services";
 
 import ActionForm from "metabase/actions/components/ActionForm";
-import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
@@ -17,9 +16,6 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type Field from "metabase-lib/metadata/Field";
-
-import { getChangedValues, getInitialValues } from "./utils";
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
@@ -87,28 +83,10 @@ function ActionParametersInputForm({
     fetchInitialValues,
   ]);
 
-  const fieldSettings = useMemo(
-    () =>
-      action.visualization_settings?.fields ??
-      // if there are no field settings, we generate them from the parameters and field metadata
-      generateFieldSettingsFromParameters(
-        missingParameters,
-        dashcard?.card?.result_metadata as unknown as Field[],
-      ),
-    [action, missingParameters, dashcard],
-  );
-
-  const initialValues = useMemo(
-    () => getInitialValues(fieldSettings, prefetchValues),
-    [fieldSettings, prefetchValues],
-  );
-
   const handleSubmit = useCallback(
-    async (params, actions) => {
+    async (parameters, actions) => {
       actions.setSubmitting(true);
-      const paramsWithChangedValues = getChangedValues(params, initialValues);
-
-      const { success, error } = await onSubmit(paramsWithChangedValues);
+      const { success, error } = await onSubmit(parameters);
 
       if (success) {
         actions.setErrors({});
@@ -119,13 +97,7 @@ function ActionParametersInputForm({
         throw new Error(error);
       }
     },
-    [
-      onSubmit,
-      onSubmitSuccess,
-      initialValues,
-      fetchInitialValues,
-      shouldPrefetch,
-    ],
+    [shouldPrefetch, onSubmit, onSubmitSuccess, fetchInitialValues],
   );
 
   const hasPrefetchedValues = !!Object.keys(prefetchValues).length;
@@ -137,7 +109,7 @@ function ActionParametersInputForm({
   return (
     <ActionForm
       action={action}
-      initialValues={initialValues}
+      initialValues={prefetchValues}
       parameters={missingParameters}
       onSubmit={handleSubmit}
       onClose={onCancel}

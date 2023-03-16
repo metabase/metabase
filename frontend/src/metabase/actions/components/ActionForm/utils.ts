@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 import { isEmpty } from "metabase/lib/validate";
 
 import type {
+  FieldSettingsMap,
   InputSettingType,
   ParametersForActionExecution,
 } from "metabase-types/api";
@@ -38,4 +39,21 @@ export const formatInitialValue = (
     }
   }
   return value;
+};
+
+export const cleanValues = (
+  values: ParametersForActionExecution,
+  fieldSettings: FieldSettingsMap,
+) => {
+  const clean: ParametersForActionExecution = {};
+
+  Object.entries(values).forEach(([fieldId, fieldValue]) => {
+    const formField = fieldSettings[fieldId];
+    const isNumericField = formField?.fieldType === "number";
+    if (isNumericField && !isEmpty(fieldValue)) {
+      clean[fieldId] = Number(fieldValue) ?? null;
+    }
+  });
+
+  return clean;
 };

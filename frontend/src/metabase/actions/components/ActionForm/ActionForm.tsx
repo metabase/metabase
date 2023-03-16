@@ -28,7 +28,7 @@ import type {
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { formatInitialValue, getChangedValues } from "./utils";
+import { cleanValues, formatInitialValue, getChangedValues } from "./utils";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
@@ -87,11 +87,11 @@ function ActionForm({
       values: ParametersForActionExecution,
       actions: FormikHelpers<ParametersForActionExecution>,
     ) => {
-      const validatedValues = formValidationSchema.cast(values);
-      const changed = getChangedValues(validatedValues, formInitialValues);
+      const clean = cleanValues(values, fieldSettings);
+      const changed = getChangedValues(clean, formInitialValues);
       onSubmit(changed, actions);
     },
-    [formInitialValues, formValidationSchema, onSubmit],
+    [formInitialValues, fieldSettings, onSubmit],
   );
 
   return (
