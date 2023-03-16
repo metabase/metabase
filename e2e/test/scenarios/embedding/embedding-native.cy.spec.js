@@ -112,7 +112,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByText("CO");
       cy.findByText("Sid Mills").should("not.exist");
 
-      cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
+      cy.location("search").should("eq", "?product_id=10&state=KS&id=926");
     });
   });
 
