@@ -14,11 +14,11 @@ import {
   getFormValidationSchema,
   getSubmitButtonColor,
   getSubmitButtonLabel,
+  generateFieldSettingsFromParameters,
 } from "metabase/actions/utils";
 
 import type {
   ActionFormInitialValues,
-  ActionFormSettings,
   WritebackParameter,
   Parameter,
   ParametersForActionExecution,
@@ -32,7 +32,6 @@ interface ActionFormProps {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
   parameters?: WritebackParameter[] | Parameter[];
-  formSettings?: ActionFormSettings;
   onSubmit: (
     params: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
@@ -44,18 +43,24 @@ function ActionForm({
   action,
   initialValues = {},
   parameters = action.parameters,
-  formSettings = action.visualization_settings,
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
+  const fieldSettings = useMemo(
+    () =>
+      action.visualization_settings?.fields ||
+      generateFieldSettingsFromParameters(action.parameters),
+    [action],
+  );
+
   const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+    () => getForm(parameters, fieldSettings),
+    [parameters, fieldSettings],
   );
 
   const formValidationSchema = useMemo(
-    () => getFormValidationSchema(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+    () => getFormValidationSchema(parameters, fieldSettings),
+    [parameters, fieldSettings],
   );
 
   const formInitialValues = useMemo(

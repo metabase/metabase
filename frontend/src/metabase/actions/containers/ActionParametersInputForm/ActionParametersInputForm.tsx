@@ -15,7 +15,6 @@ import type {
   Dashboard,
   ActionDashboardCard,
   ParametersForActionExecution,
-  ActionFormSettings,
   WritebackAction,
 } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
@@ -135,17 +134,11 @@ function ActionParametersInputForm({
     return <EmptyState message={t`Choose a record to update`} />;
   }
 
-  const formSettings: ActionFormSettings = action.visualization_settings ?? {
-    type: "button",
-    fields: fieldSettings,
-  };
-
   return (
     <ActionForm
       action={action}
       initialValues={initialValues}
       parameters={missingParameters}
-      formSettings={formSettings}
       onSubmit={handleSubmit}
       onClose={onCancel}
     />

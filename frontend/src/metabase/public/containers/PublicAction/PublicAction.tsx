@@ -64,11 +64,7 @@ function PublicAction({ action, publicId, onError }: Props) {
   return (
     <FormContainer>
       <FormTitle>{getFormTitle(action)}</FormTitle>
-      <ActionForm
-        action={action}
-        formSettings={formSettings}
-        onSubmit={handleSubmit}
-      />
+      <ActionForm action={action} onSubmit={handleSubmit} />
     </FormContainer>
   );
 }
