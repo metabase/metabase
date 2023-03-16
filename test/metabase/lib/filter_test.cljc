@@ -114,13 +114,9 @@
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        q3                          (lib/query-for-table-name meta/metadata-provider "CHECKINS")
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        venues-latitude-metadata    (lib.metadata/field q1 nil "VENUES" "LATITUDE")
-        venues-longitude-metadata   (lib.metadata/field q1 nil "VENUES" "LONGITUDE")
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
-        checkins-date-metadata      (lib.metadata/field q3 nil "CHECKINS" "DATE")
         simple-filtered-query
         {:lib/type :mbql/query,
          :database (meta/id)

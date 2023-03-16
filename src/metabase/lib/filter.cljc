@@ -17,7 +17,7 @@
     (lib.dispatch/dispatch-value x)))
 
 (defmethod ->filter-arg :default
-  [query stage-number x]
+  [_query _stage-number x]
   x)
 
 (defmethod ->filter-arg :metadata/field
