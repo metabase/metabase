@@ -40,9 +40,8 @@ describeEE("scenarios > admin > people", () => {
       cy.findByTestId("admin-content-table").within(() => {
         cy.icon("ellipsis").eq(0).click();
       });
-      popover().within(() => {
-        cy.findByText("Edit Name").click();
-      });
+
+      popover().findByText("Edit Name").click();
 
       cy.findByTestId("admin-content-table").within(() => {
         cy.findByDisplayValue("collection")

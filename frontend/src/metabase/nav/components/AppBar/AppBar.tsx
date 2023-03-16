@@ -22,10 +22,9 @@ export interface AppBarProps {
   onLogout: () => void;
 }
 
-const AppBar = (props: AppBarProps): JSX.Element | null => {
+const AppBar = (props: AppBarProps): React.ReactNode => {
   const isSmallScreen = useIsSmallScreen();
 
-  // don't render the app bar if there is no logged-in user
   if (!props.currentUser) {
     return null;
   }
