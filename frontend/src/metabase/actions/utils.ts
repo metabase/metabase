@@ -230,3 +230,10 @@ export function getActionErrorMessage(error: unknown) {
     t`Something went wrong while executing the action`
   );
 }
+
+export const getSubmitButtonColor = (action: WritebackAction): string => {
+  if (action.type === "implicit" && action.kind === "row/delete") {
+    return "danger";
+  }
+  return action.visualization_settings?.submitButtonColor ?? "primary";
+};

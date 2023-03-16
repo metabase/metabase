@@ -7,13 +7,6 @@ import {
   WritebackAction,
 } from "metabase-types/api";
 
-export const getSubmitButtonColor = (action: WritebackAction): string => {
-  if (action.type === "implicit" && action.kind === "row/delete") {
-    return "danger";
-  }
-  return action.visualization_settings?.submitButtonColor ?? "primary";
-};
-
 export const getSubmitButtonLabel = (action: WritebackAction): string => {
   if (action.visualization_settings?.submitButtonLabel) {
     return action.visualization_settings.submitButtonLabel;
