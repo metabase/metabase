@@ -169,26 +169,6 @@ class TableInner extends Base {
     newTable._plainObject = plainObject;
     return newTable;
   }
-
-  /**
-   * @private
-   * @param {string} description
-   * @param {Database} db
-   * @param {Schema?} schema
-   * @param {SchemaName} [schema_name]
-   * @param {Field[]} fields
-   * @param {EntityType} entity_type
-   */
-
-  /* istanbul ignore next */
-  _constructor(description, db, schema, schema_name, fields, entity_type) {
-    this.description = description;
-    this.db = db;
-    this.schema = schema;
-    this.schema_name = schema_name;
-    this.fields = fields;
-    this.entity_type = entity_type;
-  }
 }
 
 export default class Table extends memoizeClass<TableInner>(

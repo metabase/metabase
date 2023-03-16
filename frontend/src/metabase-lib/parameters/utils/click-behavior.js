@@ -197,7 +197,7 @@ function baseTypeFilterForParameterType(parameterType) {
 }
 
 export function clickBehaviorIsValid(clickBehavior) {
-  // opens action menu
+  // opens drill-through menu
   if (clickBehavior == null) {
     return true;
   }

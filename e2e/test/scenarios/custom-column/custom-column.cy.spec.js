@@ -566,11 +566,6 @@ describe("scenarios > question > custom column", () => {
 
     enterCustomColumnDetails({ formula: "1 + 2" });
 
-    // next focus: a link
-    cy.realPress("Tab");
-    cy.focused().should("have.attr", "class").and("contain", "link");
-    cy.focused().should("have.attr", "target").and("eq", "_blank");
-
     // next focus: the textbox for the name
     cy.realPress("Tab");
     cy.focused().should("have.attr", "value").and("eq", "");
@@ -578,8 +573,7 @@ describe("scenarios > question > custom column", () => {
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
 
-    // Shift+Tab twice and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
+    // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
@@ -614,16 +608,14 @@ describe("scenarios > question > custom column", () => {
     // Focus remains on the expression editor
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
 
-    // Tab twice to focus on the name box
-    cy.realPress("Tab");
+    // Tab to focus on the name box
     cy.realPress("Tab");
     cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
 
-    // Shift+Tab twice and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
+    // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
