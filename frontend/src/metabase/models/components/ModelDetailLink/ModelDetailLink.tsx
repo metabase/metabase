@@ -11,7 +11,7 @@ import type { Card, CollectionItem } from "metabase-types/api";
 type ModelCard = Card & { dataset: true };
 
 interface Props extends ButtonProps {
-  model: ModelCard | CollectionItem<"dataset">;
+  model: ModelCard | CollectionItem;
 }
 
 function ModelDetailLink({ model, ...props }: Props) {
