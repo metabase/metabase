@@ -6,7 +6,6 @@
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require
    [clojure.core.async :as a]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time :as t]
    [metabase.db.query :as mdb.query]
@@ -369,7 +368,9 @@
   (doto (statement driver conn)
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
-(defn- statement-or-prepared-statement ^Statement [driver conn sql params canceled-chan]
+(defn statement-or-prepared-statement
+  "Create a statement or a prepared statement. Should be called from [[with-open]]."
+  ^Statement [driver conn sql params canceled-chan]
   (if (use-statement? driver params)
     (statement* driver conn canceled-chan)
     (prepared-statement* driver conn sql params canceled-chan)))
@@ -511,27 +512,6 @@
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 Actions Stuff                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{:keys [details]} (qp.store/database)
-          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
-      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-      (with-open [conn (jdbc/get-connection jdbc-spec)
-                  stmt (statement-or-prepared-statement driver conn sql params nil)]
-        {:rows-affected (if (instance? PreparedStatement stmt)
-                          (.executeUpdate ^PreparedStatement stmt)
-                          (.executeUpdate stmt sql))}))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |
