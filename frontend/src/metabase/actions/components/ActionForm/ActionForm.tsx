@@ -15,6 +15,8 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
+import { getForm, getFormValidationSchema } from "metabase/actions/utils";
+
 import type {
   ActionFormInitialValues,
   ActionFormSettings,
@@ -31,7 +33,7 @@ import {
   FormFieldEditorDragContainer,
 } from "./ActionForm.styled";
 
-import { getForm, getFormValidationSchema, reorderFields } from "./utils";
+import { reorderFields } from "./utils";
 
 interface ActionFormProps {
   parameters: WritebackParameter[] | Parameter[];
