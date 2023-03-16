@@ -8,7 +8,7 @@ import type {
   Dashboard,
   ParametersForActionExecution,
   VisualizationSettings,
-  WritebackQueryAction,
+  WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
@@ -21,7 +21,7 @@ import { shouldShowConfirmation } from "./utils";
 import { FormWrapper, FormTitle } from "./ActionForm.styled";
 
 interface ActionFormProps {
-  action: WritebackQueryAction;
+  action: WritebackAction;
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   missingParameters: WritebackParameter[];

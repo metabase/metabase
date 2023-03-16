@@ -19,7 +19,7 @@ import type {
   ActionDashboardCard,
   Dashboard,
   ParametersForActionExecution,
-  WritebackQueryAction,
+  WritebackAction,
 } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -113,7 +113,7 @@ function ActionComponent({
 
   return (
     <ActionVizForm
-      action={dashcard.action as WritebackQueryAction}
+      action={dashcard.action as WritebackAction}
       dashboard={dashboard}
       dashcard={dashcard}
       missingParameters={missingParameters}
