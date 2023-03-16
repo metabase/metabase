@@ -1,1 +1,1 @@
-export * from "./ActionForm";
+export { default } from "./ActionForm";

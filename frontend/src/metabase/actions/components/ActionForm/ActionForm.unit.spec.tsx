@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
-import { ActionForm } from "./ActionForm";
+import ActionForm from "./ActionForm";
 
 const makeFieldSettings = (
   overrides: Partial<FieldSettings> = {},

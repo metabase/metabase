@@ -35,7 +35,7 @@ interface ActionFormProps {
   onClose?: () => void;
 }
 
-export const ActionForm = ({
+function ActionForm({
   parameters,
   initialValues = {},
   formSettings,
@@ -43,7 +43,7 @@ export const ActionForm = ({
   submitButtonColor = "primary",
   onSubmit,
   onClose,
-}: ActionFormProps): JSX.Element => {
+}: ActionFormProps): JSX.Element {
   // allow us to change the color of the submit button
   const submitButtonVariant = { [submitButtonColor]: true };
 
@@ -88,4 +88,6 @@ export const ActionForm = ({
       </Form>
     </FormProvider>
   );
-};
+}
+
+export default ActionForm;
