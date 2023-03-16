@@ -1,4 +1,5 @@
 const { exec } = require("child_process");
+const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
 
@@ -31,10 +32,16 @@ function executeYarnCommand({ command, message } = {}) {
   });
 }
 
+const args = arg(
+  {
+    "--folder": String, // The name of the folder to run files from
+    "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
+  },
+  { permissive: true }, // Passes all other flags and args to the Cypress parser
+);
+
 async function parseArguments(args) {
   const cliArgs = args._;
-  console.log("cliArgs");
-  console.log(cliArgs);
 
   // cypress.cli.parseArguments requires `cypress run` as the first two arguments
   if (cliArgs[0] !== "cypress") {
@@ -54,4 +61,5 @@ module.exports = {
   printCyan,
   executeYarnCommand,
   parseArguments,
+  args,
 };
