@@ -19,10 +19,7 @@ import type {
 } from "metabase-types/api";
 
 import { ActionsApi, PublicApi } from "metabase/services";
-import {
-  shouldPrefetchValues,
-  generateFieldSettingsFromParameters,
-} from "metabase/actions/utils";
+import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type Field from "metabase-lib/metadata/Field";
@@ -40,6 +37,9 @@ export interface ActionParamatersInputFormProps {
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
 }
+
+const shouldPrefetchValues = (action: WritebackAction) =>
+  action.type === "implicit" && action.kind === "row/update";
 
 function ActionParametersInputForm({
   action,

@@ -24,12 +24,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-export const shouldPrefetchValues = (action: WritebackAction) => {
-  // in the future there should be a setting to configure this
-  // for custom actions
-  return action.type === "implicit" && action.kind === "row/update";
-};
-
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
     const fields = formSettings.fields || {};
