@@ -24,7 +24,7 @@ import type {
   ParametersForActionExecution,
 } from "metabase-types/api";
 
-import { FormFieldWidget } from "./ActionFormFieldWidget";
+import ActionFormFieldWidget from "../ActionFormFieldWidget";
 import FormFieldEditor from "./FormFieldEditor";
 import {
   ActionFormButtonContainer,
@@ -166,7 +166,7 @@ export const ActionForm = ({
     >
       <Form role="form" data-testid="action-form">
         {form.fields.map(field => (
-          <FormFieldWidget key={field.name} formField={field} />
+          <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
 
         <ActionFormButtonContainer>

@@ -14,9 +14,9 @@ import type {
 import type { ActionFormFieldProps } from "metabase/actions/types";
 
 import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
+import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
 import { inputTypeHasOptions } from "./utils";
-import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
   Column,
   DragHandle,
@@ -130,7 +130,7 @@ function FormFieldEditor({
         <Column />
         <Column full>
           <InputContainer>
-            <FormFieldWidget formField={field} />
+            <ActionFormFieldWidget formField={field} />
           </InputContainer>
         </Column>
       </PreviewContainer>
