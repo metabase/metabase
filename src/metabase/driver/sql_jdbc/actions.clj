@@ -111,7 +111,9 @@
 ;;; 2. [[jdbc/with-db-transaction]] does a lot of magic that we don't necessarily want. Writing raw JDBC code is barely
 ;;;    any more code and lets us have complete control over what happens and lets us see at a glance exactly what's
 ;;;    happening without having to keep [[clojure.java.jdbc]] magic in mind or work around it.
-(defn- do-with-jdbc-transaction [database-id f]
+(defn do-with-jdbc-transaction
+  "Impl function for [[with-jdbc-transaction]]."
+  [database-id f]
   (if *connection*
     (f *connection*)
     (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
@@ -134,7 +136,7 @@
             (.rollback conn)
             (throw e)))))))
 
-(defmacro ^:private with-jdbc-transaction
+(defmacro with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
   otherwise fetches a new Connection from the Database's Connection pool and executes `f` inside of a transaction."
   {:style/indent 1}

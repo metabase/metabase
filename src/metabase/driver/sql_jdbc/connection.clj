@@ -296,19 +296,6 @@
   [[jdbc-spec-binding [driver details]] & body]
   `(do-with-connection-spec-for-testing-connection ~driver ~details (^:once fn* [~jdbc-spec-binding] ~@body)))
 
-(defmacro with-unpooled-connection-spec
-  "Execute `body` with an appropriate [[clojure.java.jdbc]] connection spec based on connection `details`. Handles SSH
-  tunneling as needed and properly cleans up after itself. Identical
-  to [[with-connection-spec-for-testing-connection]] but with a name that does not imply it is only for testing
-  connections. You should almost never need this. Use the pooled connections by default. Only use this in special
-  circumstances.
-
-    (with-unpooled-connection-spec [jdbc-spec [:my-driver conn-details]]
-      (do-something-with-spec jdbc-spec)"
-  {:added "0.45.0", :style/indent 1}
-  [[jdbc-spec-binding [driver details]] & body]
-  `(do-with-connection-spec-for-testing-connection ~driver ~details (^:once fn* [~jdbc-spec-binding] ~@body)))
-
 (defn can-connect-with-spec?
   "Can we connect to a JDBC database with [[clojure.java.jdbc]] `jdbc-spec` and run a simple query?"
   [jdbc-spec]

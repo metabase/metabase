@@ -9,6 +9,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -520,12 +521,9 @@
   [driver {{sql :query, :keys [params]} :native}]
   {:pre [(string? sql)]}
   (try
-    (let [{:keys [details]} (qp.store/database)]
-      (sql-jdbc.conn/with-unpooled-connection-spec [jdbc-spec [driver details]]
-          ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-
-        (with-open [conn (jdbc/get-connection jdbc-spec)
-                    stmt (statement-or-prepared-statement driver conn sql params nil)]
+    (let [{db-id :id} (qp.store/database)]
+      (sql-jdbc.actions/with-jdbc-transaction [conn db-id]
+        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
           {:rows-affected (if (instance? PreparedStatement stmt)
                             (.executeUpdate ^PreparedStatement stmt)
                             (.executeUpdate stmt sql))})))
