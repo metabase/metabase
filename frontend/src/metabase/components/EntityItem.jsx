@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import { xrayQuestion } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
@@ -116,7 +116,7 @@ function EntityItemMenu({
         },
         isXrayShown && {
           title: t`X-ray this`,
-          link: xrayQuestion(item.id),
+          link: Urls.xrayQuestion(item.id),
           icon: "bolt",
           event: `${analyticsContext};Entity Item;X-ray Item;${item.model}`,
         },
