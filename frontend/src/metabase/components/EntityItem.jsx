@@ -14,7 +14,6 @@ import {
   isFullyParametrized,
   isItemModel,
   isItemPinned,
-  isItemQuestion,
 } from "metabase/collections/utils";
 
 import {
@@ -103,9 +102,8 @@ function EntityItemMenu({
   const isPinned = isItemPinned(item);
   const isPreviewed = isPreviewShown(item);
   const isParametrized = isFullyParametrized(item);
-  const isQuestion = isItemQuestion(item);
   const isModel = isItemModel(item);
-  const isXrayShown = (isQuestion || isModel) && isXrayEnabled;
+  const isXrayShown = isModel && isXrayEnabled;
 
   const actions = useMemo(
     () =>
@@ -117,7 +115,7 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
         isXrayShown && {
-          title: isModel ? t`X-ray this model` : t`X-ray this question`,
+          title: t`X-ray this`,
           link: xrayQuestion(item.id),
           icon: "bolt",
           event: `${analyticsContext};Entity Item;X-ray Item;${item.model}`,
@@ -163,7 +161,6 @@ function EntityItemMenu({
       item.id,
       item.model,
       isPinned,
-      isModel,
       isXrayShown,
       isPreviewed,
       isParametrized,
