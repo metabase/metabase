@@ -3,10 +3,9 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.filter]
    metabase.lib.options
    metabase.lib.schema.filter
+   #_{:clj-kondo/ignore [:unused-namespace]}
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.filter])))
 
@@ -38,7 +37,7 @@
             (vector? argvec) (every? symbol? argvec)
             (not-any? #{'query 'stage-number} argvec)]}
      (let [filter-name-str (name filter-name)
-           vararg? (.contains argvec '&)
+           vararg? (.contains ^java.util.Collection argvec '&)
            args (remove #{'&} argvec)
            arglist-expr (if vararg?
                           (cons 'list* args)
