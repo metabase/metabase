@@ -555,14 +555,6 @@
      s/Keyword                            s/Any}
     "value must be a valid DashboardCard map."))
 
-;; TODO: move this to a more general place
-(defn- out-transform [model data]
-  (let [transforms (transformed/transforms model)]
-    (reduce (fn [acc [k {:keys [_in out]}]]
-              (cond-> acc out (m/update-existing k out)))
-            data
-            transforms)))
-
 ;; TODO - we should use schema to validate the format of the Cards :D
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/cards"
@@ -579,12 +571,11 @@
              ...]}"
   [id :as {{:keys [cards]} :body}]
   {cards (su/non-empty [UpdatedDashboardCard])}
-  (let [dashboard (api/check-not-archived (api/write-check Dashboard id))
-        ;; transform the card data to the format of the DashboardCard model
-        ;; so update-dashcards! can compare them with existing cards
-        cards     (map (partial out-transform DashboardCard) cards)]
+  (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
     (check-updated-parameter-mapping-permissions id cards)
-    (dashboard/update-dashcards! dashboard cards)
+    ;; transform the card data to the format of the DashboardCard model
+    ;; so update-dashcards! can compare them with existing cards
+    (dashboard/update-dashcards! dashboard (map dashboard-card/from-json cards))
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 

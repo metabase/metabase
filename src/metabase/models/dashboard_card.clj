@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [java-time :as t]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -52,6 +53,17 @@
   :types      (constantly {:parameter_mappings     :parameters-list
                            :visualization_settings :visualization-settings})
   :pre-insert pre-insert})
+
+(defn from-json
+  "Transform dashboard-card data coming from the serialized JSON from an API request to the same format as
+   if it were selected from the DB."
+  [data]
+  (t2/instance DashboardCard
+    (-> data
+        (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+        (m/update-existing :created_at (comp t/offset-date-time u.date/parse))
+        (m/update-existing :updated_at (comp t/offset-date-time u.date/parse))
+        (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields DashboardCard
   [_dashboard-card]

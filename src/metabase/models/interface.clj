@@ -145,7 +145,7 @@
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
-(defn- normalize-visualization-settings [viz-settings]
+(defn normalize-visualization-settings [viz-settings]
   ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
   ;; to modern MBQL clauses so things work correctly
   (letfn [(normalize-column-settings-key [k]
