@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type {
   ActionFormSettings,
-  Database,
   Parameter,
   WritebackAction,
   WritebackActionBase,
@@ -24,9 +23,6 @@ import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
-
-export const checkDatabaseActionsEnabled = (database: Database) =>
-  !!database.settings?.["database-enable-actions"];
 
 const AUTOMATIC_DATE_TIME_FIELDS = [
   TYPE.CreationDate,
