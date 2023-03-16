@@ -115,9 +115,9 @@ User attributes can't be synced with regular Google Sign-In. You'll need to set 
 
 ## Disabling password logins
 
-> **Avoid locking yourself out of your Metabase!** Disabling password login applies to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
+> **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
-To require people to authenticate with SSO, you can disable password logins from **Admin settings** > **Authentication**.
+To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
 
 ## Troubleshooting login issues
 
