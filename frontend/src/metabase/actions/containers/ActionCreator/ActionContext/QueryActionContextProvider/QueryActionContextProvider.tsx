@@ -9,15 +9,15 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
-import { getDefaultFormSettings } from "../../../utils";
+import { getDefaultFormSettings } from "../../../../utils";
 import {
   newQuestion,
   convertActionToQuestion,
   convertQuestionToAction,
-} from "../utils";
+} from "../../utils";
 
-import { ActionContext } from "./ActionContext";
-import type { ActionContextProviderProps, EditorBodyProps } from "./types";
+import { ActionContext } from "../ActionContext";
+import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 export interface QueryActionContextProviderProps
   extends ActionContextProviderProps<WritebackQueryAction> {
