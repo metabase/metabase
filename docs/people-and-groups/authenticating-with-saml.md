@@ -153,11 +153,11 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ## Disabling password logins
 
+> **Avoid locking yourself out of your Metabase!** Disabling password login applies to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
+
 To require people to authenticate with SSO, you can disable password logins from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
-
-> This setting applies to all Metabase accounts, including your Metabase admin account. We recommend that you keep password logins **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
 ## New user notification emails
 
