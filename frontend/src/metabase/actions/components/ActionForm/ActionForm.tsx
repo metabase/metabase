@@ -33,32 +33,32 @@ import {
 
 import { getForm, getFormValidationSchema, reorderFields } from "./utils";
 
-export interface ActionFormComponentProps {
+interface ActionFormProps {
   parameters: WritebackParameter[] | Parameter[];
   initialValues?: ActionFormInitialValues;
+  formSettings?: ActionFormSettings;
   isEditable?: boolean;
-  onClose?: () => void;
+  submitTitle?: string;
+  submitButtonColor?: string;
+  setFormSettings?: (formSettings: ActionFormSettings) => void;
   onSubmit: (
     params: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
-  submitTitle?: string;
-  submitButtonColor?: string;
-  formSettings?: ActionFormSettings;
-  setFormSettings?: (formSettings: ActionFormSettings) => void;
+  onClose?: () => void;
 }
 
 export const ActionForm = ({
   parameters,
   initialValues = {},
+  formSettings,
   isEditable = false,
-  onClose,
-  onSubmit,
   submitTitle,
   submitButtonColor = "primary",
-  formSettings,
   setFormSettings,
-}: ActionFormComponentProps): JSX.Element => {
+  onSubmit,
+  onClose,
+}: ActionFormProps): JSX.Element => {
   // allow us to change the color of the submit button
   const submitButtonVariant = { [submitButtonColor]: true };
 
