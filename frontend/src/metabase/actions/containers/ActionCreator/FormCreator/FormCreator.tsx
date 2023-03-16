@@ -17,17 +17,19 @@ import { syncFieldsWithParameters } from "../utils";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
 import { FormContainer, InfoText } from "./FormCreator.styled";
 
-function FormCreator({
-  params,
-  isEditable,
-  formSettings: passedFormSettings,
-  onChange,
-}: {
-  params: Parameter[];
-  isEditable: boolean;
+interface FormCreatorProps {
+  parameters: Parameter[];
   formSettings?: ActionFormSettings;
+  isEditable: boolean;
   onChange: (formSettings: ActionFormSettings) => void;
-}) {
+}
+
+function FormCreator({
+  parameters,
+  formSettings: passedFormSettings,
+  isEditable,
+  onChange,
+}: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
   );
@@ -38,14 +40,14 @@ function FormCreator({
 
   useEffect(() => {
     // add default settings for new parameters
-    if (formSettings && params) {
-      setFormSettings(syncFieldsWithParameters(formSettings, params));
+    if (formSettings && parameters) {
+      setFormSettings(syncFieldsWithParameters(formSettings, parameters));
     }
-  }, [params, formSettings]);
+  }, [parameters, formSettings]);
 
   const sortedParams = useMemo(
-    () => params.sort(sortActionParams(formSettings)),
-    [params, formSettings],
+    () => parameters.sort(sortActionParams(formSettings)),
+    [parameters, formSettings],
   );
 
   if (!sortedParams.length) {
