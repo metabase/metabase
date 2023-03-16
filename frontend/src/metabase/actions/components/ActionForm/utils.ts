@@ -4,7 +4,7 @@ import * as Yup from "yup";
 
 import { moveElement } from "metabase/core/utils/arrays";
 import * as Errors from "metabase/core/utils/errors";
-import { sortActionParams } from "metabase/actions/utils";
+import { inputTypeHasOptions, sortActionParams } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
@@ -24,9 +24,6 @@ import type {
 import type Field from "metabase-lib/metadata/Field";
 
 import { TYPE } from "metabase-lib/types/constants";
-
-export const inputTypeHasOptions = (inputType: InputSettingType) =>
-  ["select", "radio"].includes(inputType);
 
 type FieldPropTypeMap = Record<InputSettingType, InputComponentType>;
 

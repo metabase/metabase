@@ -11,6 +11,7 @@ import type {
   Card,
   FieldSettings,
   FieldSettingsMap,
+  InputSettingType,
   Parameter,
   ParameterId,
   ParametersForActionExecution,
@@ -23,6 +24,9 @@ import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
+
+export const inputTypeHasOptions = (inputType: InputSettingType) =>
+  ["select", "radio"].includes(inputType);
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {

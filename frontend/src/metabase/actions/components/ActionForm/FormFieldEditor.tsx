@@ -5,6 +5,7 @@ import Radio from "metabase/core/components/Radio";
 import { isNotNull } from "metabase/core/utils/types";
 
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
+import { inputTypeHasOptions } from "metabase/actions/utils";
 
 import type {
   FieldSettings,
@@ -16,7 +17,6 @@ import type { ActionFormFieldProps } from "metabase/actions/types";
 import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { inputTypeHasOptions } from "./utils";
 import {
   Column,
   DragHandle,
