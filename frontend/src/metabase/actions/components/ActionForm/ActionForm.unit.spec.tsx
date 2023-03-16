@@ -43,36 +43,23 @@ type SetupOpts = {
   initialValues?: ParametersForActionExecution;
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
-  isSettings?: boolean;
 };
 
-const setup = ({
-  initialValues,
-  parameters,
-  formSettings,
-  isSettings = false,
-}: SetupOpts) => {
-  const setFormSettings = jest.fn();
+const setup = ({ initialValues, parameters, formSettings }: SetupOpts) => {
   const onSubmit = jest.fn();
 
   render(
     <ActionForm
       initialValues={initialValues}
       parameters={parameters}
-      isEditable
-      submitTitle="Save"
       formSettings={formSettings}
-      setFormSettings={isSettings ? setFormSettings : undefined}
+      submitTitle="Save"
       onSubmit={onSubmit}
     />,
   );
 
-  return { setFormSettings, onSubmit };
+  return { onSubmit };
 };
-
-function setupSettings(opts: Omit<SetupOpts, "isSettings">) {
-  return setup({ ...opts, isSettings: true });
-}
 
 describe("Actions > ActionForm", () => {
   describe("Form Display", () => {
@@ -610,166 +597,6 @@ describe("Actions > ActionForm", () => {
           },
           expect.any(Object),
         );
-      });
-    });
-  });
-
-  describe("Form Creation", () => {
-    it("renders the form editor", () => {
-      setupSettings({
-        parameters: [makeParameter()],
-        formSettings: {
-          type: "form",
-          fields: {
-            "abc-123": makeFieldSettings({ inputType: "string" }),
-          },
-        },
-      });
-
-      expect(screen.getByTestId("action-form-editor")).toBeInTheDocument();
-      expect(screen.getByRole("textbox")).toBeInTheDocument();
-    });
-
-    it("can change a string field to a numeric field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("Number"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "number",
-              inputType: "number",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a string field to a text(area) field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("Long text"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "string",
-              inputType: "text",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a numeric field to a date field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "number" }),
-        },
-      };
-
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("Date"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "date",
-              inputType: "date",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a date field to a number field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "date" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByText("Number"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "number",
-              inputType: "number",
-            }),
-          },
-        });
-      });
-    });
-    it("can toggle required state", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("Field settings"));
-      userEvent.click(await screen.findByRole("switch"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              required: true,
-              inputType: "string",
-            }),
-          },
-        });
       });
     });
   });
