@@ -6,7 +6,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel ParameterCard :parameter_card)
 
@@ -59,7 +60,7 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (db/update-where! ParameterCard conditions :card_id card-id)
+      (or (t2/update! ParameterCard conditions {:card_id card-id})
           (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!

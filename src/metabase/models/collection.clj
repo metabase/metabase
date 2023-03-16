@@ -27,6 +27,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
@@ -625,13 +626,13 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
     (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived false}
-        :archived true)
+      (t2/update! Collection {:id       [:in affected-collection-ids]
+                              :archived false}
+                  {:archived true})
      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-       (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                :archived      false}
-                         :archived true)))))
+       (t2/update! model {:collection_id [:in affected-collection-ids]
+                          :archived      false}
+                   {:archived true})))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -639,13 +640,13 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
     (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived true}
-        :archived false)
+      (t2/update! Collection {:id       [:in affected-collection-ids]
+                              :archived true}
+                  {:archived false})
       (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      true}
-          :archived false)))))
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      true}
+                    {:archived false})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

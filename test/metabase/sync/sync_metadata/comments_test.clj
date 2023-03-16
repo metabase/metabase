@@ -10,7 +10,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- db->fields [db]
   (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
@@ -43,7 +44,7 @@
     (mt/dataset update-desc
       (mt/with-temp-copy-of-db
         ;; change the description in metabase while the source table comment remains the same
-        (db/update-where! Field {:id (mt/id "update_desc" "updated_desc")}, :description "updated description")
+        (t2/update! Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
         ;; now sync the DB again, this should NOT overwrite the manually updated description
         (sync/sync-table! (db/select-one Table :id (mt/id "update_desc")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
@@ -102,7 +103,7 @@
       (mt/dataset (basic-table "table_with_updated_desc" "table comment")
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (db/update-where! Table {:id (mt/id "table_with_updated_desc")}, :description "updated table description")
+          (t2/update! Table {:id (mt/id "table_with_updated_desc")}, {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync-tables/sync-tables-and-database! (mt/db))
           (is (= #{{:name (mt/format-name "table_with_updated_desc"), :description "updated table description"}}

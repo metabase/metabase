@@ -131,6 +131,7 @@
    clojure.pprint/pprint     {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
    clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   toucan.db/update-where!   {:message "Use toucan2.core/update! instead of toucan.db/update-where!"}
    honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock      {:message "Use mt/with-clock"}

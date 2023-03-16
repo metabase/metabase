@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private KeypathComponents
   {:table-name (s/maybe su/NonBlankString)
@@ -53,7 +54,7 @@
                              :name   table-name
                              :active true)]
          (if field-name
-           (db/update-where! Field {:name field-name, :table_id table-id} k value)
+           (t2/update! Field {:name field-name, :table_id table-id} {k value})
            (db/update! Table table-id k value)))
        (db/update! Database (u/the-id database) k value)))))
 

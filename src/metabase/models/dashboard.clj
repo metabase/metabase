@@ -136,9 +136,9 @@
                                     :position          position})]
         (db/transaction
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (db/update-where! Pulse {:dashboard_id dashboard-id}
-              :name (:name dashboard)
-              :collection_id (:collection_id dashboard))
+            (t2/update! Pulse {:dashboard_id dashboard-id}
+                        {:name (:name dashboard)
+                         :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- post-update
@@ -481,7 +481,7 @@
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                             (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [card_id parameter_mappings visualization_settings]}]

@@ -88,9 +88,9 @@
   [^bytes query-hash ^bytes results]
   (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
   (try
-    (or (db/update-where! QueryCache {:query_hash query-hash}
-          :updated_at (t/offset-date-time)
-          :results    results)
+    (or (t2/update! QueryCache {:query_hash query-hash}
+                    {:updated_at (t/offset-date-time)
+                     :results    results})
         (db/insert! QueryCache
           :updated_at (t/offset-date-time)
           :query_hash query-hash
