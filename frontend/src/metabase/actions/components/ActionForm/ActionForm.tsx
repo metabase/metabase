@@ -9,7 +9,12 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import { getForm, getFormValidationSchema } from "metabase/actions/utils";
+import {
+  getForm,
+  getFormValidationSchema,
+  getSubmitButtonColor,
+  getSubmitButtonLabel,
+} from "metabase/actions/utils";
 
 import type {
   ActionFormInitialValues,
@@ -17,17 +22,17 @@ import type {
   WritebackParameter,
   Parameter,
   ParametersForActionExecution,
+  WritebackAction,
 } from "metabase-types/api";
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
-  parameters: WritebackParameter[] | Parameter[];
+  action: WritebackAction;
   initialValues?: ActionFormInitialValues;
+  parameters?: WritebackParameter[] | Parameter[];
   formSettings?: ActionFormSettings;
-  submitTitle?: string;
-  submitButtonColor?: string;
   onSubmit: (
     params: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
@@ -36,17 +41,13 @@ interface ActionFormProps {
 }
 
 function ActionForm({
-  parameters,
+  action,
   initialValues = {},
-  formSettings,
-  submitTitle,
-  submitButtonColor = "primary",
+  parameters = action.parameters,
+  formSettings = action.visualization_settings,
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
-  // allow us to change the color of the submit button
-  const submitButtonVariant = { [submitButtonColor]: true };
-
   const form = useMemo(
     () => getForm(parameters, formSettings?.fields),
     [parameters, formSettings?.fields],
@@ -61,6 +62,14 @@ function ActionForm({
     () => formValidationSchema.cast(initialValues),
     [initialValues, formValidationSchema],
   );
+
+  const submitButtonProps = useMemo(() => {
+    const variant = getSubmitButtonColor(action);
+    return {
+      title: getSubmitButtonLabel(action),
+      [variant]: true,
+    };
+  }, [action]);
 
   return (
     <FormProvider
@@ -78,10 +87,7 @@ function ActionForm({
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton
-            title={submitTitle ?? t`Submit`}
-            {...submitButtonVariant}
-          />
+          <FormSubmitButton {...submitButtonProps} />
         </ActionFormButtonContainer>
 
         <FormErrorMessage />

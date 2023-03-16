@@ -5,6 +5,7 @@ import { PublicApi } from "metabase/services";
 
 import ActionForm from "metabase/actions/components/ActionForm";
 import {
+  getFormTitle,
   generateFieldSettingsFromParameters,
   getSuccessMessage,
   setNumericValues,
@@ -62,9 +63,9 @@ function PublicAction({ action, publicId, onError }: Props) {
 
   return (
     <FormContainer>
-      <FormTitle>{action.name}</FormTitle>
+      <FormTitle>{getFormTitle(action)}</FormTitle>
       <ActionForm
-        parameters={action.parameters}
+        action={action}
         formSettings={formSettings}
         onSubmit={handleSubmit}
       />

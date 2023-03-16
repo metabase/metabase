@@ -8,7 +8,10 @@ import type {
   ParametersForActionExecution,
   WritebackParameter,
 } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
 
 import ActionForm from "./ActionForm";
 
@@ -46,14 +49,17 @@ type SetupOpts = {
 };
 
 const setup = ({ initialValues, parameters, formSettings }: SetupOpts) => {
+  const action = createMockQueryAction({
+    parameters,
+    visualization_settings: formSettings,
+  });
+
   const onSubmit = jest.fn();
 
   render(
     <ActionForm
+      action={action}
       initialValues={initialValues}
-      parameters={parameters}
-      formSettings={formSettings}
-      submitTitle="Save"
       onSubmit={onSubmit}
     />,
   );
@@ -242,7 +248,7 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
       userEvent.type(screen.getByLabelText(/number input/i), "12345");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -284,7 +290,7 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -318,10 +324,10 @@ describe("Actions > ActionForm", () => {
       userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled(),
+        expect(screen.getByRole("button", { name: "Run" })).toBeDisabled(),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
@@ -352,14 +358,14 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
 
       userEvent.type(screen.getByLabelText(/foo input/i), "baz");
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
       });
@@ -390,9 +396,9 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
@@ -441,7 +447,7 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -474,7 +480,7 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -515,7 +521,7 @@ describe("Actions > ActionForm", () => {
       userEvent.type(await screen.findByLabelText(/foo input/i), "1");
       userEvent.type(await screen.findByLabelText(/bar input/i), "1");
       userEvent.type(await screen.findByLabelText(/baz input/i), "1");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -555,7 +561,7 @@ describe("Actions > ActionForm", () => {
         fireEvent.change(screen.getByLabelText(/input/i), {
           target: { value: "" },
         });
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        userEvent.click(screen.getByRole("button", { name: "Run" }));
 
         await waitFor(() => {
           expect(onSubmit).toHaveBeenCalledWith(
@@ -588,7 +594,7 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.clear(screen.getByLabelText(/input/i));
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Run" }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(

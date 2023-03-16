@@ -6,11 +6,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { ActionsApi, PublicApi } from "metabase/services";
 
 import ActionForm from "metabase/actions/components/ActionForm";
-import {
-  generateFieldSettingsFromParameters,
-  getSubmitButtonColor,
-  getSubmitButtonLabel,
-} from "metabase/actions/utils";
+import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
@@ -139,8 +135,6 @@ function ActionParametersInputForm({
     return <EmptyState message={t`Choose a record to update`} />;
   }
 
-  const submitButtonLabel = getSubmitButtonLabel(action);
-
   const formSettings: ActionFormSettings = action.visualization_settings ?? {
     type: "button",
     fields: fieldSettings,
@@ -148,13 +142,12 @@ function ActionParametersInputForm({
 
   return (
     <ActionForm
+      action={action}
+      initialValues={initialValues}
       parameters={missingParameters}
       formSettings={formSettings}
-      initialValues={initialValues}
-      onClose={onCancel}
       onSubmit={handleSubmit}
-      submitTitle={submitButtonLabel}
-      submitButtonColor={getSubmitButtonColor(action)}
+      onClose={onCancel}
     />
   );
 }
