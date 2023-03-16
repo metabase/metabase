@@ -24,9 +24,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-export const isImplicitAction = (action: WritebackAction): boolean =>
-  action.type === "implicit";
-
 export const shouldPrefetchValues = (action: WritebackAction) => {
   // in the future there should be a setting to configure this
   // for custom actions
