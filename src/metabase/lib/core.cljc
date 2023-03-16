@@ -1,7 +1,7 @@
 (ns metabase.lib.core
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
-  (:refer-clojure :exclude [remove replace = count distinct max min])
+  (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.dev :as lib.dev]
@@ -42,7 +42,35 @@
   [lib.field
    with-join-alias]
   [lib.filter
-   =]
+  filter
+  and
+  or
+  not
+  = !=
+  < <=
+  > >=
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  time-interval
+  segment
+  ->and
+  ->or
+  ->not
+  ->= ->!=
+  ->< -><=
+  ->> ->>=
+  ->between
+  ->inside
+  ->is-null ->not-null
+  ->is-empty ->not-empty
+  ->starts-with ->ends-with
+  ->contains ->does-not-contain
+  ->time-interval
+  ->segment]
   [lib.join
    join
    join-clause
