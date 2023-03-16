@@ -22,25 +22,26 @@
          lib.temporal-bucket/keep-me)
 
 (shared.ns/import-fns
- [lib.aggregation
-  count
-  avg
-  count-where
-  distinct
-  max
-  median
-  min
-  percentile
-  share
-  stddev
-  sum
-  sum-where]
- [lib.dev
-  field
-  query-for-table-name]
- [lib.field
-  with-join-alias]
- [lib.filter
+  [lib.aggregation
+   aggregate
+   count
+   avg
+   count-where
+   distinct
+   max
+   median
+   min
+   percentile
+   share
+   stddev
+   sum
+   sum-where]
+  [lib.dev
+   field
+   query-for-table-name]
+  [lib.field
+   with-join-alias]
+  [lib.filter
   filter
   and
   or
@@ -70,17 +71,17 @@
   ->contains ->does-not-contain
   ->time-interval
   ->segment]
- [lib.join
-  join
-  join-clause
-  joins]
- [lib.order-by
-  order-by
-  order-by-clause
-  order-bys]
- [lib.query
-  native-query
-  query
-  saved-question-query]
- [lib.temporal-bucket
-  temporal-bucket])
+  [lib.join
+   join
+   join-clause
+   joins]
+  [lib.order-by
+   order-by
+   order-by-clause
+   order-bys]
+  [lib.query
+   native-query
+   query
+   saved-question-query]
+  [lib.temporal-bucket
+   temporal-bucket])
