@@ -25,7 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
-import FormFieldEditor from "./FormFieldEditor";
+import FormFieldEditor from "../../containers/ActionCreator/FormCreator/FormFieldEditor";
 import {
   ActionFormButtonContainer,
   FormFieldEditorDragContainer,
