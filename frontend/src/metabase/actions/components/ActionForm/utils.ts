@@ -1,7 +1,21 @@
 import moment from "moment-timezone";
 import { isEmpty } from "metabase/lib/validate";
 
-import type { InputSettingType } from "metabase-types/api";
+import type {
+  InputSettingType,
+  ParametersForActionExecution,
+} from "metabase-types/api";
+
+export const getChangedValues = (
+  values: ParametersForActionExecution,
+  initialValues: Partial<ParametersForActionExecution>,
+) => {
+  const changedValues = Object.entries(values).filter(([key, value]) => {
+    const initialValue = initialValues[key];
+    return value !== initialValue;
+  });
+  return Object.fromEntries(changedValues);
+};
 
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)

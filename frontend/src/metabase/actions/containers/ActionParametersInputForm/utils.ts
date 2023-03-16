@@ -21,6 +21,11 @@ export const getChangedValues = (
   return Object.fromEntries(changedValues);
 };
 
+export function stripTZInfo(dateOrTimeString: string) {
+  // strip everything after a trailing tz (e.g. +08:00)
+  return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
+}
+
 export const formatValue = (
   value: string | number | null,
   inputType?: InputSettingType,
@@ -39,7 +44,6 @@ export const formatValue = (
   return value;
 };
 
-// maps initial values, if any, into an initialValues map
 export const getInitialValues = (
   fieldSettings: FieldSettingsMap,
   prefetchValues: ParametersForActionExecution,
@@ -51,8 +55,3 @@ export const getInitialValues = (
     ]),
   );
 };
-
-export function stripTZInfo(dateOrTimeString: string) {
-  // strip everything after a trailing tz (e.g. +08:00)
-  return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
-}

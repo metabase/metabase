@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -28,7 +28,7 @@ import type {
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { formatInitialValue } from "./utils";
+import { formatInitialValue, getChangedValues } from "./utils";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
@@ -82,11 +82,23 @@ function ActionForm({
     };
   }, [action]);
 
+  const handleSubmit = useCallback(
+    (
+      values: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => {
+      const validatedValues = formValidationSchema.cast(values);
+      const changed = getChangedValues(validatedValues, formInitialValues);
+      onSubmit(changed, actions);
+    },
+    [formInitialValues, formValidationSchema, onSubmit],
+  );
+
   return (
     <FormProvider
       initialValues={formInitialValues}
       validationSchema={formValidationSchema}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
