@@ -1,7 +1,6 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
-   [java-time :as t]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
