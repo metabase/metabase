@@ -3,13 +3,13 @@ import React, { useState } from "react";
 import { getFormTitle } from "metabase/actions/utils";
 
 import type {
-  WritebackQueryAction,
-  WritebackParameter,
-  OnSubmitActionForm,
   ActionDashboardCard,
+  OnSubmitActionForm,
+  Dashboard,
   ParametersForActionExecution,
   VisualizationSettings,
-  Dashboard,
+  WritebackQueryAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import ActionParametersInputForm, {
@@ -21,29 +21,29 @@ import { shouldShowConfirmation } from "./utils";
 import { FormWrapper, FormTitle } from "./ActionForm.styled";
 
 interface ActionFormProps {
-  onSubmit: OnSubmitActionForm;
+  action: WritebackQueryAction;
   dashcard: ActionDashboardCard;
-  settings: VisualizationSettings;
-  isSettings: boolean;
   dashboard: Dashboard;
   missingParameters: WritebackParameter[];
   dashcardParamValues: ParametersForActionExecution;
-  action: WritebackQueryAction;
+  settings: VisualizationSettings;
+  isSettings: boolean;
   shouldDisplayButton: boolean;
   isEditingDashcard: boolean;
+  onSubmit: OnSubmitActionForm;
 }
 
 function ActionVizForm({
-  onSubmit,
+  action,
   dashcard,
-  settings,
-  isSettings,
   dashboard,
+  settings,
   missingParameters,
   dashcardParamValues,
-  action,
+  isSettings,
   shouldDisplayButton,
   isEditingDashcard,
+  onSubmit,
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
@@ -72,24 +72,24 @@ function ActionVizForm({
     return (
       <>
         <ActionButtonView
-          onClick={onClick}
           settings={settings}
           isFullHeight={!isSettings}
           focus={isEditingDashcard}
+          onClick={onClick}
         />
         {showModal && (
           <ActionParametersInputModal
-            onClose={() => setShowModal(false)}
-            title={title}
-            onSubmit={onModalSubmit}
-            showConfirmMessage={!!showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
+            action={action}
             dashboard={dashboard}
             dashcard={dashcard}
             missingParameters={missingParameters}
             dashcardParamValues={dashcardParamValues}
+            title={title}
+            showConfirmMessage={!!showConfirmMessage}
+            confirmMessage={action.visualization_settings?.confirmMessage}
+            onSubmit={onModalSubmit}
+            onClose={() => setShowModal(false)}
             onCancel={() => setShowModal(false)}
-            action={action}
           />
         )}
       </>
@@ -100,12 +100,12 @@ function ActionVizForm({
     <FormWrapper>
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
-        onSubmit={onSubmit}
+        action={action}
         dashboard={dashboard}
         dashcard={dashcard}
         missingParameters={missingParameters}
         dashcardParamValues={dashcardParamValues}
-        action={action}
+        onSubmit={onSubmit}
       />
     </FormWrapper>
   );
