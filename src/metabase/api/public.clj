@@ -51,14 +51,18 @@
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
-(defn add-implicit-card-parameters
-  "Add template tag parameter information to `card`'s `:parameters`."
+(defn combine-parameters-and-template-tags
+  "Update `card.parameters` to include parameters from template-tags.
+
+  On native queries parameters exists in 2 forms:
+  - parameters
+  - dataset_query.native.template-tags
+
+  In most cases, these 2 are sync, meaning, if you have a template-tag, there will be a parameter.
+  However, since card.parameters is a recently added feature, there may be instances where a template-tag
+  is not present in the parameters.
+  This function ensures that all template-tags are converted to parameters and added to card.parameters."
   [{:keys [parameters] :as card}]
-  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-  ;; because doing such migration is costly.
-  ;; so there are (rare)cases where some template-tag.id does not exist in card.parameters
-  ;; That said, to be extra safe, we merge info from both tempalte-tag and parameter
-  ;; for cases a paramter-id exists in both places.
   (let [template-tag-parameters     (card/template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         id->parameter               (m/index-by :id parameters)
@@ -84,7 +88,7 @@
   (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
-      add-implicit-card-parameters
+      combine-parameters-and-template-tags
       (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))

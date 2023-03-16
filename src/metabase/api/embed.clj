@@ -181,7 +181,7 @@
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
   (-> (db/select-one [Card :dataset_query :parameters], :id (u/the-id card-or-id))
-      api.public/add-implicit-card-parameters
+      api.public/combine-parameters-and-template-tags
       :parameters))
 
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
@@ -221,7 +221,7 @@
   (let [card-id      (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
-        api.public/add-implicit-card-parameters
+        api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Card :id card-id))))))
