@@ -24,9 +24,6 @@ import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
 
-export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
-  actions.some(isImplicitAction);
-
 export const isImplicitAction = (action: WritebackAction): boolean =>
   action.type === "implicit";
 
