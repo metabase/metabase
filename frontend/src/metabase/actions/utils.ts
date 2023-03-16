@@ -1,23 +1,23 @@
 import { t } from "ttag";
 
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { slugify, humanize } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
+
 import type {
-  ActionFormSettings,
-  Parameter,
-  WritebackAction,
-  WritebackActionBase,
   ActionDashboardCard,
+  ActionFormSettings,
   BaseDashboardOrderedCard,
   Card,
   FieldSettings,
   FieldSettingsMap,
+  Parameter,
   ParameterId,
   ParametersForActionExecution,
+  WritebackAction,
+  WritebackActionBase,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
-
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
