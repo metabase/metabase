@@ -197,12 +197,12 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                           :b {:type "date", :name "b", :display_name "b"}
-                                                                           :c {:type "date", :name "c", :display_name "c"}
-                                                                           :d {:type "date", :name "d", :display_name "d"}}}}
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (=? {:parameters [{:id      nil
+        (is (=? {:parameters [{:id      "d"
                                :type    "date/single"
                                :target  ["variable" ["template-tag" "d"]]
                                :name    "d"

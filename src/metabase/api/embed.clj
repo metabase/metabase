@@ -160,9 +160,14 @@
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
   [card]
-  (if (seq (:parameters card))
-    card
-    (update card :parameters concat (card/template-tag-parameters card))))
+  [{:keys [parameters] :as card}]
+  (assoc card :parameters (->> parameters
+                                ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+                                ;; because doing such migration is costly.
+                                ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+                                ;; that why we need to keep concat both of them then dedupe by id
+                                (concat (card/template-tag-parameters card))
+                                (m/distinct-by :id))))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
@@ -187,7 +192,7 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (db/select-one [Card :dataset_query], :id (u/the-id card-or-id))
+  (-> (db/select-one [Card :dataset_query :parameters], :id (u/the-id card-or-id))
       add-implicit-card-parameters
       :parameters))
 
