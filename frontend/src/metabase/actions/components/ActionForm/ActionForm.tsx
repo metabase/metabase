@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import type { FormikHelpers } from "formik";
 
@@ -26,6 +27,8 @@ import type {
 } from "metabase-types/api";
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
+
+import { formatInitialValue } from "./utils";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
@@ -63,10 +66,13 @@ function ActionForm({
     [parameters, fieldSettings],
   );
 
-  const formInitialValues = useMemo(
-    () => formValidationSchema.cast(initialValues),
-    [initialValues, formValidationSchema],
-  );
+  const formInitialValues = useMemo(() => {
+    const values = formValidationSchema.cast(initialValues);
+    return _.mapObject(values, (value, fieldId) => {
+      const formField = fieldSettings[fieldId];
+      return formatInitialValue(value, formField?.inputType);
+    });
+  }, [initialValues, fieldSettings, formValidationSchema]);
 
   const submitButtonProps = useMemo(() => {
     const variant = getSubmitButtonColor(action);
