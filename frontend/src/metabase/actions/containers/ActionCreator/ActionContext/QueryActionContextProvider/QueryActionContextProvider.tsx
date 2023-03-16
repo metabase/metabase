@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CreateQueryActionParams } from "metabase/entities/actions";
-import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 
 import type {
   ActionFormSettings,
@@ -27,6 +26,7 @@ import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
+import QueryActionEditor from "./QueryActionEditor";
 
 export interface QueryActionContextProviderProps
   extends ActionContextProviderProps<WritebackQueryAction> {
