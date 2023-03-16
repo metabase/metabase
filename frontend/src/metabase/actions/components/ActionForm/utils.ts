@@ -1,6 +1,8 @@
+import _ from "underscore";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { moveElement } from "metabase/core/utils/arrays";
 import * as Errors from "metabase/core/utils/errors";
 import { sortActionParams } from "metabase/actions/utils";
 
@@ -183,4 +185,28 @@ export const getFormValidationSchema = (
       return [fieldSetting.id, yupType];
     });
   return Yup.object(Object.fromEntries(schema));
+};
+
+export const reorderFields = (
+  fields: FieldSettingsMap,
+  oldIndex: number,
+  newIndex: number,
+) => {
+  // we have to jump through some hoops here because fields settings are an unordered map
+  // with order properties
+  const fieldsWithIds = _.mapObject(fields, (field, key) => ({
+    ...field,
+    id: key,
+  }));
+  const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
+  const reorderedFields = moveElement(orderedFields, oldIndex, newIndex);
+
+  const fieldsWithUpdatedOrderProperty = reorderedFields.map(
+    (field, index) => ({
+      ...field,
+      order: index,
+    }),
+  );
+
+  return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
 };
