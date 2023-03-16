@@ -22,7 +22,7 @@ export interface AppBarProps {
   onLogout: () => void;
 }
 
-const AppBar = (props: AppBarProps): React.ReactNode => {
+const AppBar = (props: AppBarProps) => {
   const isSmallScreen = useIsSmallScreen();
 
   if (!props.currentUser) {
