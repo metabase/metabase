@@ -531,17 +531,12 @@ describe("scenarios > collection defaults", () => {
       );
     });
 
-    it("should allow to x-ray questions and models from collection views", () => {
-      cy.request("PUT", "/api/card/2", { dataset: true });
+    it("should allow to x-ray models from collection views", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
       cy.visit("/collection/root");
 
       openEllipsisMenuFor("Orders");
-      popover().findByText("X-ray this question").click();
-      cy.wait("@dashboard");
-
-      cy.findByText("Our analytics").click();
-      openEllipsisMenuFor("Orders, Count");
-      popover().findByText("X-ray this model").click();
+      popover().findByText("X-ray this").click();
       cy.wait("@dashboard");
     });
   });
