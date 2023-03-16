@@ -189,24 +189,25 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defn views-for-user
-  "Query for the recent views for a user with ID `user-id`."
-  [user-id]
-  (let [vl-a  {:select   [[[:max :id] :id] [[:max :timestamp] :timestamp]
-                          :model :model_id :user_id ]
-               :from     [:view_log]
-               :where    [:= :user_id [:inline user-id]]
-               :group-by [:model :model_id :user_id]}
+(defn views-and-runs-for-user
+    [user-id]
+  (let [vl-a  {:select    [[[:max :view_log.id] :id] [[:max :timestamp] :timestamp]
+                           :model :model_id :user_id
+                           [:report_card.dataset :dataset]]
+               :from      [:view_log]
+               :left-join [:report_card
+                           [:and
+                            [:= :view_log.model [:inline "card"]]
+                            [:= :view_log.model_id :report_card.id]]]
+               :where     [:= :user_id [:inline user-id]]
+               :group-by  [:model :model_id :user_id :report_card.dataset]}
         vl-b  {:select   [:*]
                :from     [[vl-a :views-a]]
-               #_#_:where    [:not= :model [:inline "card"]]
-               :order-by [[:model :asc] [:id :desc]]}]
-      (t2/query vl-b)))
-
-(defn runs-for-user
-  "Query for the recent views for a user with ID `user-id`."
-  [user-id]
-  (let [qe-a  {:select   [[[:max :id] :id] [[:max :started_at] :timestamp]
+               :where    [:or
+                          [:= :dataset true]
+                          [:not= :model [:inline "card"]]]
+               :order-by [[:model :asc] [:id :desc]]}
+        qe-a  {:select   [[[:max :id] :id] [[:max :started_at] :timestamp]
                           :context [:card_id :model_id] [:executor_id :user_id]]
                :from     [:query_execution]
                :where    [:and
@@ -220,16 +221,19 @@
                 (-> qe
                     (assoc :model "card")
                     (dissoc :context :executor_id :card_id)))
-        runs (->> (t2/query qe-b)
-                   (map norm)
+        cards (->> (t2/query qe-b) (map norm))
+        other (t2/query vl-b)
+        views (->> (concat cards other)
                    (group-by :model)
                    (#(update-keys % keyword)))]
-      runs))
+      (->> (apply concat ((juxt :dashboard :card :table) views))
+           (sort-by :timestamp)
+           reverse)))
 
 (api/defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-for-user *current-user-id*)
+  (let [views (views-and-runs-for-user *current-user-id*)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
