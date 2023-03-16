@@ -193,11 +193,7 @@
               (testing "succeed if users access group that they are manager of,"
                 (t2/update! PermissionsGroupMembership {:user_id  (:id user)
                                                         :group_id (:id group)}
-<<<<<<< Updated upstream
                             {:is_group_manager true})
-=======
-                                  :is_group_manager true)
->>>>>>> Stashed changes
                 (testing "can set is_group_manager=true"
                   (add-membership :crowberto 200 group true)
                   (add-membership user 200 group true))
@@ -296,13 +292,8 @@
 
             (testing "succeed if users is a group manager and returns additional fields"
               (t2/update! PermissionsGroupMembership {:user_id  (:id user)
-<<<<<<< Updated upstream
                                                       :group_id (:id group)}
                           {:is_group_manager true})
-=======
-                                                            :group_id (:id group)}
-                                :is_group_manager true)
->>>>>>> Stashed changes
               (is (= [{:id               (:id (perms-group/all-users))
                        :is_group_manager false}]
                      (:user_group_memberships (get-user user 200)))))))))))
