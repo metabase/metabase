@@ -14,6 +14,7 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan.hydrate :refer [hydrate]]))
 
 (defn- dashcard-activity? [activity]
@@ -188,11 +189,47 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/recent_views"
+(defn views-for-user
+  "Query for the recent views for a user with ID `user-id`."
+  [user-id]
+  (let [vl-a  {:select   [[[:max :id] :id] [[:max :timestamp] :timestamp]
+                          :model :model_id :user_id ]
+               :from     [:view_log]
+               :where    [:= :user_id [:inline user-id]]
+               :group-by [:model :model_id :user_id]}
+        vl-b  {:select   [:*]
+               :from     [[vl-a :views-a]]
+               #_#_:where    [:not= :model [:inline "card"]]
+               :order-by [[:model :asc] [:id :desc]]}]
+      (t2/query vl-b)))
+
+(defn runs-for-user
+  "Query for the recent views for a user with ID `user-id`."
+  [user-id]
+  (let [qe-a  {:select   [[[:max :id] :id] [[:max :started_at] :timestamp]
+                          :context [:card_id :model_id] [:executor_id :user_id]]
+               :from     [:query_execution]
+               :where    [:and
+                          [:= :executor_id [:inline user-id]]
+                          [:= :context [:inline "question"]]]
+               :group-by [:context :card_id :executor_id]}
+        qe-b  {:select   [:*]
+               :from     [[qe-a :views-a]]
+               :order-by [[:id :desc]]}
+        norm  (fn [qe]
+                (-> qe
+                    (assoc :model "card")
+                    (dissoc :context :executor_id :card_id)))
+        runs (->> (t2/query qe-b)
+                   (map norm)
+                   (group-by :model)
+                   (#(update-keys % keyword)))]
+      runs))
+
+(api/defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit false)
+  (let [views (views-for-user *current-user-id*)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
