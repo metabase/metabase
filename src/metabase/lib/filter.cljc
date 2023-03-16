@@ -1,11 +1,11 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [and or not = < <= > ->> >= not-empty case])
+  (:refer-clojure :exclude [filter and or not = < <= > ->> >= not-empty case])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
-   metabase.lib.options
+   [metabase.lib.options :as lib.options]
    metabase.lib.schema.filter
-   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.filter])))
 
@@ -18,9 +18,7 @@
 
 (defmethod ->filter-arg :default
   [query stage-number x]
-  (if (vector? x)
-    (mapv #(->filter-arg query stage-number %) x)
-    x))
+  x)
 
 (defmethod ->filter-arg :metadata/field
   [query stage-number field-metadata]
@@ -80,3 +78,31 @@
 (metabase.lib.filter/deffilter does-not-contain [whole part])
 (metabase.lib.filter/deffilter time-interval [x amount unit])
 (metabase.lib.filter/deffilter segment [segment-id])
+
+(defmulti ^:private ->filter-clause
+  {:arglists '([query stage-number x])}
+  (fn [_query _stage-number x]
+    (lib.dispatch/dispatch-value x)))
+
+(defmethod ->filter-clause :default
+  [query stage-number x]
+  (if (vector? x)
+    (-> (mapv #(clojure.core/->> %
+                                 (->filter-arg query stage-number)
+                                 (->filter-clause query stage-number)) x)
+        lib.options/ensure-uuid)
+    x))
+
+(defmethod ->filter-clause :dispatch-type/fn
+  [query stage-number f]
+  (->filter-clause query stage-number (f query stage-number)))
+
+(mu/defn filter :- :metabase.lib.schema/query
+  "Sets `boolean-expression` as a filter on `query`."
+  ([query boolean-expression]
+   (metabase.lib.filter/filter query -1 boolean-expression))
+
+  ([query stage-number boolean-expression]
+   (let [stage-number (clojure.core/or stage-number -1)
+         new-filter   (->filter-clause query stage-number boolean-expression)]
+     (lib.util/update-query-stage query stage-number assoc :filter new-filter))))
