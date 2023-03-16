@@ -237,3 +237,25 @@ export const getSubmitButtonColor = (action: WritebackAction): string => {
   }
   return action.visualization_settings?.submitButtonColor ?? "primary";
 };
+
+export const getSubmitButtonLabel = (action: WritebackAction): string => {
+  if (action.visualization_settings?.submitButtonLabel) {
+    return action.visualization_settings.submitButtonLabel;
+  }
+
+  if (action.type === "implicit") {
+    if (action.kind === "row/delete") {
+      return t`Delete`;
+    }
+
+    if (action.kind === "row/update") {
+      return t`Update`;
+    }
+
+    if (action.kind === "row/create") {
+      return t`Save`;
+    }
+  }
+
+  return t`Run`;
+};

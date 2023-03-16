@@ -1,33 +1,6 @@
-import { t } from "ttag";
 import _ from "underscore";
 import { moveElement } from "metabase/core/utils/arrays";
-import {
-  FieldSettingsMap,
-  InputSettingType,
-  WritebackAction,
-} from "metabase-types/api";
-
-export const getSubmitButtonLabel = (action: WritebackAction): string => {
-  if (action.visualization_settings?.submitButtonLabel) {
-    return action.visualization_settings.submitButtonLabel;
-  }
-
-  if (action.type === "implicit") {
-    if (action.kind === "row/delete") {
-      return t`Delete`;
-    }
-
-    if (action.kind === "row/update") {
-      return t`Update`;
-    }
-
-    if (action.kind === "row/create") {
-      return t`Save`;
-    }
-  }
-
-  return t`Run`;
-};
+import { FieldSettingsMap, InputSettingType } from "metabase-types/api";
 
 export const reorderFields = (
   fields: FieldSettingsMap,

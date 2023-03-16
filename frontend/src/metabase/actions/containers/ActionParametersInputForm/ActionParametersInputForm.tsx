@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import { ActionForm } from "metabase/actions/components/ActionForm";
 
-import { getSubmitButtonLabel } from "metabase/actions/containers/ActionCreator/FormCreator";
 import EmptyState from "metabase/components/EmptyState";
 
 import type {
@@ -19,6 +18,7 @@ import { ActionsApi, PublicApi } from "metabase/services";
 import {
   generateFieldSettingsFromParameters,
   getSubmitButtonColor,
+  getSubmitButtonLabel,
 } from "metabase/actions/utils";
 import { getDashboardType } from "metabase/dashboard/utils";
 
