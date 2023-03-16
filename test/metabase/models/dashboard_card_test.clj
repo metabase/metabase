@@ -311,8 +311,8 @@
 (deftest from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
             deserialized, and finally transformed with `from-parsed-json`."
-    (mt/with-temp* [Dashboard     [dash     {:name "my dashboard"   :created_at now}]
-                    Card          [card     {:name "some question"  :created_at now}]
+    (mt/with-temp* [Dashboard     [dash     {:name "my dashboard"}]
+                    Card          [card     {:name "some question"}]
                     DashboardCard [dashcard {:card_id (:id card)
                                              :dashboard_id (:id dash)
                                              :visualization_settings {:click_behavior {:type         "link",
