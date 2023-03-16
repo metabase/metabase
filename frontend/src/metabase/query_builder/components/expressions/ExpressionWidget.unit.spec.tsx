@@ -9,6 +9,7 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import { Expression } from "metabase-types/types/Query";
+import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
@@ -72,9 +73,13 @@ describe("ExpressionWidget", () => {
     expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
   });
 
-  it(`should render interactive header if "title" and "onClose" props passed`, () => {
-    const mockTitle = "Custom Expression";
-    const { onClose } = setup({ title: mockTitle });
+  it(`should render interactive header if it is passed`, () => {
+    const mockTitle = "Some Title";
+    const onClose = jest.fn();
+    setup({
+      header: <ExpressionWidgetHeader title={mockTitle} onBack={onClose} />,
+      onClose,
+    });
 
     const titleEl = screen.getByText(mockTitle);
     expect(titleEl).toBeInTheDocument();

@@ -10,10 +10,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import ExpressionWidget from "../expressions/ExpressionWidget";
+import ExpressionWidgetHeader from "../expressions/ExpressionWidgetHeader";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
 
 import {
-  ExpressionPopoverRoot,
   AggregationItemList,
   AggregationFieldList,
 } from "./AggregationPopover.styled";
@@ -335,18 +335,15 @@ export default class AggregationPopover extends Component {
 
     if (editingAggregation) {
       return (
-        <ExpressionPopoverRoot>
-          <ExpressionWidget
-            name={AGGREGATION.getName(this.state.aggregation)}
-            query={query}
-            expression={aggregation}
-            startRule="aggregation"
-            title={CUSTOM_SECTION_NAME}
-            shouldValidateExpression={false}
-            onChangeExpression={this.onChangeExpression}
-            onClose={this.onClearAggregation}
-          />
-        </ExpressionPopoverRoot>
+        <ExpressionWidget
+          name={AGGREGATION.getName(this.state.aggregation)}
+          query={query}
+          expression={aggregation}
+          startRule="aggregation"
+          header={<ExpressionWidgetHeader onBack={this.onClearAggregation} />}
+          onChangeExpression={this.onChangeExpression}
+          onClose={this.onClearAggregation}
+        />
       );
     }
 

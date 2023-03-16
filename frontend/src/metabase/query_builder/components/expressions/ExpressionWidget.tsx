@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { ReactNode, useRef, useState } from "react";
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
@@ -21,8 +21,6 @@ import {
   InfoLink,
   RemoveLink,
   StyledFieldTitleIcon,
-  Header,
-  HeaderButton,
 } from "./ExpressionWidget.styled";
 
 const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
@@ -35,11 +33,8 @@ export interface ExpressionWidgetProps {
   name?: string;
   withName?: boolean;
   startRule?: string;
-
-  title?: string;
-  shouldValidateExpression?: boolean;
-
   reportTimezone?: string;
+  header?: ReactNode;
 
   onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;
@@ -52,10 +47,9 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     name: initialName,
     expression: initialExpression,
     withName = true,
-    shouldValidateExpression = true,
     startRule,
-    title,
     reportTimezone,
+    header,
     onChangeExpression,
     onRemoveExpression,
     onClose,
@@ -70,9 +64,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const helpTextTargetRef = useRef(null);
 
   const isValidName = withName ? !!name : true;
-  const isValidExpression = shouldValidateExpression
-    ? !!expression && isExpression(expression)
-    : true;
+  const isValidExpression = !!expression && isExpression(expression);
 
   const isValid = !error && isValidName && isValidExpression;
 
@@ -90,13 +82,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   return (
     <Container>
-      {title && onClose && (
-        <Header>
-          <HeaderButton icon="chevronleft" onlyText onClick={onClose}>
-            {title}
-          </HeaderButton>
-        </Header>
-      )}
+      {header}
       <ExpressionFieldWrapper>
         <FieldTitle>
           {t`Expression`}

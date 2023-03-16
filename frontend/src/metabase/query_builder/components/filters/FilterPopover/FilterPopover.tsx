@@ -8,6 +8,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Expression } from "metabase-types/types/Query";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -153,17 +154,20 @@ export default function FilterPopover({
     }
   };
 
+  const handleExpressionWidgetClose = () => {
+    setEditingFilter(false);
+  };
+
   if (editingFilter) {
     return (
       <ExpressionWidget
         query={query}
         expression={filter?.raw() as Expression | undefined}
         startRule="boolean"
-        title={CUSTOM_SECTION_NAME}
         withName={false}
-        shouldValidateExpression={false}
+        header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
         onChangeExpression={handleExpressionChange}
-        onClose={() => setEditingFilter(false)}
+        onClose={handleExpressionWidgetClose}
       />
     );
   }
