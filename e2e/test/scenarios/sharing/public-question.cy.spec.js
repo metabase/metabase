@@ -36,7 +36,7 @@ const questionData = {
   },
 };
 
-const EXPECTED_QUERY_PARAMS = "?birthdate=past30years&source=Affiliate";
+const EXPECTED_QUERY_PARAMS = "?source=Affiliate&birthdate=past30years";
 
 describe("scenarios > question > public", () => {
   beforeEach(() => {
