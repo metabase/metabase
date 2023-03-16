@@ -32,15 +32,6 @@
     (seq joined-fields) (update :fields (fn [fields]
                                           (m/distinct-by add/normalize-clause (concat fields joined-fields))))))
 
-(defn- keep-source+alias-props [field]
-  (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
-
-(defn- remove-unused-fields [inner-query source]
-  (let [used-fields (-> #{}
-                        (into (map keep-source+alias-props) (mbql.u/match inner-query :field))
-                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))]
-    (update source :fields #(filterv (comp used-fields keep-source+alias-props) %))))
-
 (defn- nest-source [inner-query]
   (classloader/require 'metabase.query-processor)
   (let [filter-clause (:filter inner-query)
@@ -57,7 +48,6 @@
                  (:query source)
                  (dissoc source :limit)
                  (add-joined-fields-to-fields (joined-fields inner-query) source)
-                 (remove-unused-fields inner-query source)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query
