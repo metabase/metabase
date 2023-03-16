@@ -8,6 +8,7 @@ import {
   EDITOR_QUOTES,
   EDITOR_FK_SYMBOLS,
   getMBQLName,
+  SHORTHAND_FILTERS,
 } from "./config";
 
 // Return a copy with brackets (`[` and `]`) being escaped
@@ -221,6 +222,7 @@ export function isExpression(expr) {
     isLiteral(expr) ||
     isOperator(expr) ||
     isFunction(expr) ||
+    isShorthand(expr) ||
     isDimension(expr) ||
     isBooleanLiteral(expr) ||
     isMetric(expr) ||
@@ -267,6 +269,16 @@ export function isFunction(expr) {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
+    expr
+      .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
+      .every(isExpression)
+  );
+}
+
+export function isShorthand(expr) {
+  return (
+    Array.isArray(expr) &&
+    SHORTHAND_FILTERS.has(expr[0]) &&
     expr
       .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
       .every(isExpression)

@@ -556,3 +556,9 @@ export const STANDARD_AGGREGATIONS = new Set([
   "max",
   "median",
 ]);
+
+export const SHORTHAND_FILTERS = new Set([
+  "does-not-contain",
+  "not-null",
+  "not-empty",
+]);

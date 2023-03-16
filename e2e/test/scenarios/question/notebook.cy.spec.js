@@ -139,7 +139,9 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
+
     enterCustomColumnDetails({ formula: "[Price] > 1" });
+    cy.get("@formula").blur();
 
     cy.button("Done").click();
 
@@ -275,6 +277,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
+      cy.get("@formula").blur();
 
       cy.contains(/^redundant input/i).should("not.exist");
 

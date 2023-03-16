@@ -367,6 +367,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "NOT IsNull([Rating])" });
+    cy.get("@formula").blur();
 
     cy.button("Done").should("not.be.disabled").click();
 
@@ -374,10 +375,8 @@ describe("scenarios > question > filter", () => {
 
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula")
-      .click({ force: true })
-      .clear()
-      .type("NOT IsEmpty([Reviewer])");
+    enterCustomColumnDetails({ formula: "NOT IsEmpty([Reviewer])" });
+    cy.get("@formula").blur();
 
     cy.button("Done").should("not.be.disabled").click();
 
@@ -555,7 +554,9 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "3.14159" });
-    cy.button("Done").should("not.be.disabled").click();
+    cy.get("@formula").blur();
+
+    cy.button("Done").should("be.disabled");
     cy.findByText("Expecting boolean but found 3.14159");
   });
 
@@ -565,7 +566,9 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: '"TheAnswer"' });
-    cy.button("Done").should("not.be.disabled").click();
+    cy.get("@formula").blur();
+
+    cy.button("Done").should("be.disabled");
     cy.findByText('Expecting boolean but found "TheAnswer"');
   });
 
@@ -597,6 +600,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Total] < [Subtotal]" });
+    cy.get("@formula").blur();
 
     cy.button("Done").click();
     cy.findByText("Total < Subtotal");
@@ -899,6 +903,8 @@ describe("scenarios > question > filter", () => {
         popover().contains("Custom Expression").click();
         popover().within(() => {
           enterCustomColumnDetails({ formula: `boolean = ${condition}` });
+          cy.get("@formula").blur();
+
           cy.button("Done").click();
         });
 
@@ -934,6 +940,7 @@ describe("scenarios > question > filter", () => {
         formula: "Case(boolean, 45, -10)",
         name: "Test",
       });
+
       cy.button("Done").click();
 
       filter({ mode: "notebook" });
@@ -941,6 +948,8 @@ describe("scenarios > question > filter", () => {
       popover().contains("Custom Expression").click();
       popover().within(() => {
         enterCustomColumnDetails({ formula: `boolean = true` });
+        cy.get("@formula").blur();
+
         cy.button("Done").click();
       });
 
