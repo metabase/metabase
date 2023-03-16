@@ -26,7 +26,7 @@ import type Field from "metabase-lib/metadata/Field";
 
 import { getChangedValues, getInitialValues } from "./utils";
 
-export interface ActionParamatersInputFormProps {
+export interface ActionParametersInputFormProps {
   action: WritebackAction;
   missingParameters?: WritebackParameter[];
   dashcardParamValues?: ParametersForActionExecution;
@@ -50,7 +50,7 @@ function ActionParametersInputForm({
   onCancel,
   onSubmit,
   onSubmitSuccess,
-}: ActionParamatersInputFormProps) {
+}: ActionParametersInputFormProps) {
   const [prefetchValues, setPrefetchValues] =
     useState<ParametersForActionExecution>({});
 
