@@ -54,12 +54,22 @@
                            :visualization_settings :visualization-settings})
   :pre-insert pre-insert})
 
-(defn from-json
-  "Transform dashboard-card data coming from the serialized JSON from an API request to the same format as
-   if it were selected from the DB."
-  [data]
+(defn from-parsed-json
+  "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
+   been keywordized. This is useful if the data from a request body inside a `defendpoint` body, and you need it in the
+   same format as if it were selected from the DB with toucan.
+
+   For example:
+   ```
+   (= dashcard ;; from toucan select
+      (-> (json/generate-string dashcard)
+          (json/parse-string true)
+          from-parsed-json))
+   =>
+   true
+   ```"
   (t2/instance DashboardCard
-    (-> data
+    (-> dashboard-card
         (m/update-existing :parameter_mappings mi/normalize-parameters-list)
         (m/update-existing :created_at (comp t/offset-date-time u.date/parse))
         (m/update-existing :updated_at (comp t/offset-date-time u.date/parse))

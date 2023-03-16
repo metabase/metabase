@@ -308,9 +308,9 @@
                (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
                (serdes/identity-hash dashcard)))))))
 
-(deftest from-json-test
+(deftest from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
-            deserialized, and finally transformed with `from-json`."
+            deserialized, and finally transformed with `from-parsed-json`."
     (mt/with-temp* [Dashboard     [dash     {:name "my dashboard"   :created_at now}]
                     Card          [card     {:name "some question"  :created_at now}]
                     DashboardCard [dashcard {:card_id (:id card)
@@ -326,6 +326,6 @@
       (let [dashcard     (db/select-one DashboardCard :id (u/the-id dashcard))
             serialized   (json/generate-string dashcard)
             deserialized (json/parse-string serialized true)
-            transformed  (dashboard-card/from-json deserialized)]
+            transformed  (dashboard-card/from-parsed-json deserialized)]
         (is (= dashcard
                transformed))))))

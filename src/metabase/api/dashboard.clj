@@ -574,7 +574,7 @@
     (check-updated-parameter-mapping-permissions id cards)
     ;; transform the card data to the format of the DashboardCard model
     ;; so update-dashcards! can compare them with existing cards
-    (dashboard/update-dashcards! dashboard (map dashboard-card/from-json cards))
+    (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 
