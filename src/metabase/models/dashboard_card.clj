@@ -68,12 +68,13 @@
    =>
    true
    ```"
+  [dashboard-card]
   (t2/instance DashboardCard
-    (-> dashboard-card
-        (m/update-existing :parameter_mappings mi/normalize-parameters-list)
-        (m/update-existing :created_at (comp t/offset-date-time u.date/parse))
-        (m/update-existing :updated_at (comp t/offset-date-time u.date/parse))
-        (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
+               (-> dashboard-card
+                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :created_at (comp t/offset-date-time u.date/parse))
+                   (m/update-existing :updated_at (comp t/offset-date-time u.date/parse))
+                   (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields DashboardCard
   [_dashboard-card]
