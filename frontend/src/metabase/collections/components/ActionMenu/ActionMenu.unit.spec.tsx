@@ -135,18 +135,6 @@ describe("ActionMenu", () => {
   });
 
   describe("x-rays", () => {
-    it("should allow to x-ray a question when xrays are enabled", () => {
-      const item = createMockCollectionItem({
-        id: 1,
-        model: "card",
-      });
-
-      setup({ item, isXrayAvailable: true });
-
-      userEvent.click(getIcon("ellipsis"));
-      expect(screen.getByText("X-ray this question")).toBeInTheDocument();
-    });
-
     it("should allow to x-ray a model when xrays are enabled", () => {
       const item = createMockCollectionItem({
         id: 1,
@@ -156,22 +144,34 @@ describe("ActionMenu", () => {
       setup({ item, isXrayAvailable: true });
 
       userEvent.click(getIcon("ellipsis"));
-      expect(screen.getByText("X-ray this model")).toBeInTheDocument();
+      expect(screen.getByText("X-ray this")).toBeInTheDocument();
     });
 
-    it("should not allow to x-ray when xrays are not enabled", () => {
+    it("should not allow to x-ray a model when xrays are not enabled", () => {
       const item = createMockCollectionItem({
         id: 1,
-        model: "card",
+        model: "dataset",
       });
 
       setup({ item, isXrayAvailable: false });
 
       userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("X-ray this question")).not.toBeInTheDocument();
+      expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
     });
 
-    it("should not allow to x-ray non-questions", () => {
+    it("should not allow to x-ray a question when xrays are enabled", () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "card",
+      });
+
+      setup({ item, isXrayAvailable: true });
+
+      userEvent.click(getIcon("ellipsis"));
+      expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
+    });
+
+    it("should not allow to x-ray non-models", () => {
       const item = createMockCollectionItem({
         id: 1,
         model: "dashboard",
@@ -180,7 +180,7 @@ describe("ActionMenu", () => {
       setup({ item, isXrayAvailable: true });
 
       userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("X-ray this question")).not.toBeInTheDocument();
+      expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
     });
   });
 });
