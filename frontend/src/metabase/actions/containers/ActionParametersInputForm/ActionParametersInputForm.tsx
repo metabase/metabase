@@ -1,8 +1,17 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
-import { ActionForm } from "metabase/actions/components/ActionForm";
 
 import EmptyState from "metabase/components/EmptyState";
+
+import { ActionsApi, PublicApi } from "metabase/services";
+
+import { ActionForm } from "metabase/actions/components/ActionForm";
+import {
+  generateFieldSettingsFromParameters,
+  getSubmitButtonColor,
+  getSubmitButtonLabel,
+} from "metabase/actions/utils";
+import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
   WritebackParameter,
@@ -13,15 +22,6 @@ import type {
   ActionFormSettings,
   WritebackAction,
 } from "metabase-types/api";
-
-import { ActionsApi, PublicApi } from "metabase/services";
-import {
-  generateFieldSettingsFromParameters,
-  getSubmitButtonColor,
-  getSubmitButtonLabel,
-} from "metabase/actions/utils";
-import { getDashboardType } from "metabase/dashboard/utils";
-
 import type Field from "metabase-lib/metadata/Field";
 
 import { getChangedValues, getInitialValues } from "./utils";
