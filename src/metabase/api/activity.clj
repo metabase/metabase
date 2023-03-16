@@ -14,8 +14,8 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan2.core :as t2]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -190,7 +190,8 @@
 (def ^:private card-runs-limit 8)
 
 (defn views-and-runs-for-user
-    [user-id]
+  "Query of view_log and query_execution for the recent_views endpoint."
+  [user-id]
   (let [vl-a  {:select    [[[:max :view_log.id] :id] [[:max :timestamp] :timestamp]
                            :model :model_id :user_id
                            [:report_card.dataset :dataset]]
