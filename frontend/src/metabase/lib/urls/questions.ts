@@ -153,6 +153,6 @@ export function tableRowsQuery(
   return question(null, { hash: query });
 }
 
-export function xrayQuestion(id: CardId) {
-  return `/auto/dashboard/question/${id}`;
+export function xrayModel(id: CardId) {
+  return `/auto/dashboard/model/${id}`;
 }

@@ -116,7 +116,7 @@ function EntityItemMenu({
         },
         isXrayShown && {
           title: t`X-ray this`,
-          link: Urls.xrayQuestion(item.id),
+          link: Urls.xrayModel(item.id),
           icon: "bolt",
           event: `${analyticsContext};Entity Item;X-ray Item;${item.model}`,
         },
