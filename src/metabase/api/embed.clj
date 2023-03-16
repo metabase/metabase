@@ -161,12 +161,12 @@
   "Add template tag parameter information to `card`'s `:parameters`."
   [{:keys [parameters] :as card}]
   (assoc card :parameters (->> parameters
-                                ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-                                ;; because doing such migration is costly.
-                                ;; so there are cards where some parameters in template-tags does not exist in card.parameters
-                                ;; that why we need to keep concat both of them then dedupe by id
-                                (concat (card/template-tag-parameters card))
-                                (m/distinct-by :id))))
+                               ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+                               ;; because doing such migration is costly.
+                               ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+                               ;; that why we need to keep concat both of them then dedupe by id
+                               (concat (card/template-tag-parameters card))
+                               (m/distinct-by :id))))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
