@@ -188,6 +188,7 @@ msgstr "u polju:"
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:41
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:36
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:114
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:123
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetForm/SnippetForm.tsx:200
 #: frontend/src/metabase/reference/components/EditHeader.jsx:32
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
@@ -335,6 +336,7 @@ msgstr "Dodaj bazu podataka"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield/helper-text-strings.ts:581
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:105
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
 #: frontend/src/metabase/visualizations/lib/settings/column.js:340
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
@@ -1088,6 +1090,7 @@ msgstr "Ukloni grupu"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:492
 msgid "Done"
 msgstr "Urađeno"
@@ -1630,6 +1633,7 @@ msgstr "Metabejs {0} je dostupan. Vi ste na {1}"
 #: frontend/src/metabase/components/form/FormikStandardForm.tsx:38
 #: frontend/src/metabase/entities/actions/actions.ts:75
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:113
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:67
 msgid "Update"
@@ -1661,6 +1665,7 @@ msgstr "Obriši prilagođenu mapu"
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:105
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:139
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:135
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:175
 msgid "Remove"
 msgstr "Ukloni"
@@ -3763,6 +3768,7 @@ msgstr "Metabejs neće preuzeti ovo polje. Koristite ovo za osetljive ili nebit
 #: frontend/src/metabase-lib/queries/utils/description.js:72
 #: frontend/src/metabase-lib/queries/utils/description.js:262
 #: frontend/src/metabase/visualizations/lib/utils.js:144
+#: metabase/lib/metadata/calculate/names.cljc:184
 #: metabase/query_processor/middleware/annotate.clj:393
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
@@ -5440,10 +5446,13 @@ msgstr "Ova metrika je povučena. Više nije dostupna za upotrebu."
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:59
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:266
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:62
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:114
 msgid "Download full results"
 msgstr "Preuzmite pune rezultate"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:267
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:117
 msgid "Download this data"
 msgstr "Preuzmite ove podatke"
 
@@ -5452,10 +5461,12 @@ msgid "Warning"
 msgstr "Upozorenje"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:63
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:66
 msgid "Your answer has a large number of rows so it could take a while to download."
 msgstr "Vaš odgovor ima veliki broj redova, pa bi preuzimanje moglo potrajati."
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:31
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:32
 msgid "The maximum download size is 1 million rows."
 msgstr "Maksimalna veličina preuzimanja je milion redova."
 
@@ -5761,6 +5772,7 @@ msgid "Give it a name"
 msgstr "Dajte mu ime"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:98
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:109
 msgid "Something nice and descriptive"
 msgstr "Nešto lepo i opisno"
 
@@ -6020,6 +6032,8 @@ msgstr "Nema tipa polja"
 msgid "by"
 msgstr "od strane"
 
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:118
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:122
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:140
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:145
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:23
@@ -6220,6 +6234,7 @@ msgstr "Povežite se sa bazom podataka"
 #. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
 #. cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:37
+#: metabase/lib/metadata/calculate/names.cljc:183
 #: metabase/query_processor/middleware/annotate.clj:396
 #: metabase/query_processor/middleware/annotate.clj:399
 msgid "Count of {0}"
@@ -6950,7 +6965,7 @@ msgstr "greška"
 msgid "Click and drag to change their order"
 msgstr "Kliknite i prevucite da im promenite redosled"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:102
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:99
 msgid "Add fields from the list below"
 msgstr "Dodajte polja sa donje liste"
 
@@ -13559,14 +13574,17 @@ msgstr "Očekivane kolone {0}, ali prvi red rezultata ima {1} kolona."
 msgid "No expression named {0} found. Found: {1}"
 msgstr "Nije pronađen izraz pod nazivom {0}. Pronađeno: {1}"
 
+#: metabase/lib/metadata/calculate/names.cljc:202
 #: metabase/query_processor/middleware/annotate.clj:395
 msgid "Distinct values of {0}"
 msgstr "Jedinstvene vrednosti {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:210
 #: metabase/query_processor/middleware/annotate.clj:397
 msgid "Average of {0}"
 msgstr "Prosek od {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:226
 #: metabase/query_processor/middleware/annotate.clj:400
 #: metabase/query_processor/middleware/annotate.clj:402
 msgid "Sum of {0}"
@@ -13576,23 +13594,28 @@ msgstr "Zbir od {0}"
 msgid "SD of {0}"
 msgstr "SD od {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:250
 #: metabase/query_processor/middleware/annotate.clj:403
 msgid "Min of {0}"
 msgstr "Min od {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:258
 #: metabase/query_processor/middleware/annotate.clj:404
 msgid "Max of {0}"
 msgstr "Max od {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
+#: metabase/lib/metadata/calculate/names.cljc:292
 #: metabase/query_processor/middleware/annotate.clj:410
 msgid "Sum of {0} matching condition"
 msgstr "Zbir {0} uslova podudaranja"
 
+#: metabase/lib/metadata/calculate/names.cljc:300
 #: metabase/query_processor/middleware/annotate.clj:411
 msgid "Share of rows matching condition"
 msgstr "Udeo redova koji se podudaraju"
 
+#: metabase/lib/metadata/calculate/names.cljc:308
 #: metabase/query_processor/middleware/annotate.clj:412
 msgid "Count of rows matching condition"
 msgstr "Broj redova koji se podudaraju"
@@ -15320,6 +15343,7 @@ msgid "Unable to resolve driver for query"
 msgstr "Nije moguće razrešiti upravljački program za upit"
 
 #: metabase/query_processor/middleware/resolve_referenced.clj:30
+#: metabase/query_processor/util/tag_referenced_cards.clj:23
 msgid "Referenced question #{0} could not be found"
 msgstr "Referentno pitanje br {0} nije moguće pronaći"
 
@@ -15762,18 +15786,22 @@ msgstr "Upit je istekao nakon {0}, povećavajući izuzetak za vremensko ograni
 msgid "No fields found for table {0}."
 msgstr "Za tabelu {0} nisu pronađena polja."
 
+#: metabase/lib/metadata/calculate/names.cljc:194
 #: metabase/query_processor/middleware/annotate.clj:394
 msgid "Case"
 msgstr "Slučaj"
 
+#: metabase/lib/metadata/calculate/names.cljc:266
 #: metabase/query_processor/middleware/annotate.clj:405
 msgid "Variance of {0}"
 msgstr "Odstupanje od {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:274
 #: metabase/query_processor/middleware/annotate.clj:406
 msgid "Median of {0}"
 msgstr "Medijana od {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:282
 #: metabase/query_processor/middleware/annotate.clj:407
 msgid "{0}th percentile of {1}"
 msgstr "{0}th percentile of {1}"
@@ -18686,6 +18714,7 @@ msgid "Unknown aggregation type!"
 msgstr "Nepoznati tip agregacije!"
 
 #: metabase/driver/druid/query_processor.clj:89
+#: metabase/lib/metadata/calculate/resolve.cljc:74
 msgid "No aggregation at index {0}"
 msgstr "Nema agregacije u indeksu {0}"
 
@@ -21420,7 +21449,7 @@ msgstr "Cannot determine the source table or query for Field clause {0}"
 msgid "Aggregation does not exist at index {0}"
 msgstr "Agregacija ne postoji na indeksu {0}"
 
-#: src/metabase/query_processor/util/nest_query.clj
+#: metabase/lib/metadata/calculate/resolve.cljc:88
 msgid "No expression named {0}"
 msgstr "Nema izraza pod nazivom {0}"
 
@@ -22856,6 +22885,7 @@ msgid "Custom columns do not support boolean expressions"
 msgstr "Prilagođene kolone ne podržavaju logičke izraze"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:272
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:125
 msgid "Downloading…"
 msgstr "Preuzimanje…"
 
@@ -23672,21 +23702,26 @@ msgid "Display our little friend on the homepage"
 msgstr "Prikažite našeg malog prijatelja na početnoj stranici"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:9
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:23
 msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
 msgstr "Da biste uklonili Metabase logo iz ugrađenih, uvek možete da nadogradite na {0}"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:11
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:25
 msgid "one of our paid plans."
 msgstr "jedan od naših plaćenih planova."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:23
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:10
 msgid "embedding the entire metabase app"
 msgstr "ugrađivanje cele aplikacije metabase"
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:24
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:11
 msgid "With {0} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
 msgstr "Pomoću {0} možete da ugradite kompletnu aplikaciju Metabase i omogućite svojim korisnicima da analiziraju grafikone, pregledaju kolekcije i koriste grafički kreator upita. Takođe možete dobiti prioritetnu podršku, više alata koji će vam pomoći da podelite svoje uvide sa svojim timovima i moćne opcije koje će vam pomoći da kreirate besprekorna, interaktivna iskustva podataka za svoje klijente."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:26
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:13
 msgid "some of our paid plans,"
 msgstr "neki od naših plaćenih planova,"
@@ -23981,6 +24016,7 @@ msgid "Remove Official badge"
 msgstr "Uklonite zvaničnu značku"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:34
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:128
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:68
 msgid "Appearance"
 msgstr "Izgled"
@@ -24153,7 +24189,7 @@ msgstr "Prikaži još filtera"
 msgid "New row"
 msgstr "Novi red"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:106
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:103
 msgid "More columns"
 msgstr "Više kolona"
 
@@ -27243,4 +27279,125 @@ msgstr "Vrednost mora biti mapa."
 #: metabase_enterprise/sandbox/api/util.clj:50
 msgid "No current user found"
 msgstr "Nije pronađen trenutni korisnik"
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:29
+msgid "Open the Metabase drill-through menu"
+msgstr "Отворите мени за детаљну анализу Метабазе"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:73
+msgid "Expression"
+msgstr "Израз"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:76
+msgid "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation."
+msgstr "Овде можете референцирати колоне у функцијама или једначинама, као што су: флоор([Цена] - [Попуст]). Кликните за документацију."
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:83
+msgid "Open expressions documentation"
+msgstr "Документација отворених израза"
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/TableClickBehaviorView.tsx:28
+#: frontend/src/metabase/lib/click-behavior.js:6
+msgid "Open the drill-through menu"
+msgstr "Отворите мени за детаљну анализу"
+
+#: metabase/lib/metadata/calculate/names.cljc:77
+msgid "plus"
+msgstr "плус"
+
+#: metabase/lib/metadata/calculate/names.cljc:78
+msgid "minus"
+msgstr "минус"
+
+#: metabase/lib/metadata/calculate/names.cljc:95
+msgid "Native Query"
+msgstr "Нативе Куери"
+
+#: metabase/lib/metadata/calculate/names.cljc:69
+msgid "Error calculating column name for {0}: {1}"
+msgstr "Грешка при израчунавању назива колоне за {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:242
+msgid "Standard deviation of {0}"
+msgstr "Стандардна девијација од {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:46
+msgid "Error calculating display name for {0}: {1}"
+msgstr "Грешка при израчунавању приказаног имена за {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:234
+msgid "Cumulative sum of {0}"
+msgstr "Кумулативни збир од {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:94
+msgid "Saved Question #{0}"
+msgstr "Сачувано питање #{0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:218
+msgid "Cumulative count of {0}"
+msgstr "Кумулативни број од {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:62
+msgid "No join named {0}"
+msgstr "Нема придруживања под називом {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:41
+msgid "Invalid :field clause: column {0} does not exist"
+msgstr "Неважећа клаузула :фиелд: колона {0} не постоји"
+
+#: metabase/lib/metadata/protocols.cljc:68
+msgid "Cannot find Table {0}"
+msgstr "Не могу да пронађем табелу {0}"
+
+#: metabase/lib/options.cljc:57
+msgid "Don''t know how to set options for {0}"
+msgstr "Не знам како да подесим опције за {0}"
+
+#: metabase/lib/schema/expression.cljc:72
+msgid "type-of {0} returned an invalid type {1}"
+msgstr "типе-оф {0} је вратио неважећи тип {1}"
+
+#: metabase/lib/schema/expression.cljc:34
+msgid "Don''t know how to determine the base type of {0}"
+msgstr "Не знам како да одредим основни тип {0}"
+
+#: metabase/lib/schema/join.cljc:52
+msgid "Join aliases must be unique at a given stage of a query"
+msgstr "Алијаси придруживања морају бити јединствени у датој фази упита"
+
+#: metabase/lib/util.cljc:92
+msgid "Stage {0} does not exist"
+msgstr "Фаза {0} не постоји"
+
+#: metabase/models/serialization.clj:167
+msgid "Extracting {0} {1}"
+msgstr "Издвајање {0} {1}"
+
+#: metabase/task/truncate_audit_log.clj:54
+msgid "query_execution cleanup successful, no rows were deleted"
+msgstr "куери_екецутион чишћење успешно, ниједан ред није обрисан"
+
+#: metabase/task/truncate_audit_log.clj:46
+msgid "Cleaning up query_execution table"
+msgstr "Чишћење табеле куери_екецутион"
+
+#: metabase/task/truncate_audit_log.clj:53
+msgid "query_execution cleanup successful, {0} rows were deleted"
+msgstr "куери_екецутион чишћење је успешно, {0} редова је избрисано"
+
+#: metabase/task/truncate_audit_log.clj:56
+msgid "query_execution cleanup failed"
+msgstr "куери_екецутион чишћење није успело"
+
+#: metabase/task/truncate_audit_log/interface.clj:11
+msgid "Retention policy for the `query_execution` table."
+msgstr "Политика задржавања за табелу `куери_екецутион`."
+
+#: metabase/task/truncate_audit_log/interface.clj:23
+msgid "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
+msgstr "МБ_АУДИТ_МАКС_РЕТЕНТИОН_ДАИС је подешено на {0}; уместо тога користећи минималну вредност {1}."
+
+#: metabase_enterprise/advanced_config/api/logs.clj:40
+msgid "Must be a string like 2020-04 or 2222-11."
+msgstr "Мора бити стринг као 2020-04 или 2222-11."
 

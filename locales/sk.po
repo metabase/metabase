@@ -183,6 +183,7 @@ msgstr "do tohto poľa:"
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:41
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:36
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:114
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:123
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetForm/SnippetForm.tsx:200
 #: frontend/src/metabase/reference/components/EditHeader.jsx:32
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
@@ -330,6 +331,7 @@ msgstr "Pridať databázu"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield/helper-text-strings.ts:581
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:105
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
 #: frontend/src/metabase/visualizations/lib/settings/column.js:340
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
@@ -1086,6 +1088,7 @@ msgstr "Odstrániť skupinu"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:492
 msgid "Done"
 msgstr "Hotovo"
@@ -1629,6 +1632,7 @@ msgstr "Metabase {0} je k dispozícii. Používate {1}"
 #: frontend/src/metabase/components/form/FormikStandardForm.tsx:38
 #: frontend/src/metabase/entities/actions/actions.ts:75
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:113
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:67
 msgid "Update"
@@ -1660,6 +1664,7 @@ msgstr "Odstránte vlastnú mapu"
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:105
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:139
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:135
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:175
 msgid "Remove"
 msgstr "Odstrániť"
@@ -3759,6 +3764,7 @@ msgstr "Metabase toto pole nikdy nezíska. Použite na citlivé alebo irelevantn
 #: frontend/src/metabase-lib/queries/utils/description.js:72
 #: frontend/src/metabase-lib/queries/utils/description.js:262
 #: frontend/src/metabase/visualizations/lib/utils.js:144
+#: metabase/lib/metadata/calculate/names.cljc:184
 #: metabase/query_processor/middleware/annotate.clj:393
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
@@ -5439,10 +5445,13 @@ msgstr "Táto metrika už bola zrušená. Už nie je k dispozícii na ďalšie p
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:59
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:266
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:62
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:114
 msgid "Download full results"
 msgstr "Stiahnuť všetky výsledky"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:267
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:117
 msgid "Download this data"
 msgstr "Stiahnuť tieto dáta"
 
@@ -5451,10 +5460,12 @@ msgid "Warning"
 msgstr "Varovanie"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:63
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:66
 msgid "Your answer has a large number of rows so it could take a while to download."
 msgstr "Vaša odpoveď obsahuje veľké množstvo riadkov, takže stiahnutie môže chvíľu trvať."
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:31
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:32
 msgid "The maximum download size is 1 million rows."
 msgstr "Maximálna veľkosť súboru na stiahnutie je 1 milión riadkov."
 
@@ -5761,6 +5772,7 @@ msgid "Give it a name"
 msgstr "Pridajte názov"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:98
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:109
 msgid "Something nice and descriptive"
 msgstr "Niečo opisné a praktické"
 
@@ -6020,6 +6032,8 @@ msgstr "Žiadny typ poľa"
 msgid "by"
 msgstr "podľa"
 
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:118
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:122
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:140
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:145
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:23
@@ -6220,6 +6234,7 @@ msgstr "Pripojte databázu"
 #. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
 #. cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:37
+#: metabase/lib/metadata/calculate/names.cljc:183
 #: metabase/query_processor/middleware/annotate.clj:396
 #: metabase/query_processor/middleware/annotate.clj:399
 msgid "Count of {0}"
@@ -6950,7 +6965,7 @@ msgstr "chyba"
 msgid "Click and drag to change their order"
 msgstr "Kliknutím a potiahnutím zmeníte ich poradie"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:102
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:99
 msgid "Add fields from the list below"
 msgstr "Pridajte polia zo zoznamu nižšie"
 
@@ -13571,14 +13586,17 @@ msgstr "Očakávané stĺpce {0}, ale prvý riadok výsledkov má stĺpce {1}."
 msgid "No expression named {0} found. Found: {1}"
 msgstr "Nenašiel sa žiadny výraz s názvom {0}. Nájdené: {1}"
 
+#: metabase/lib/metadata/calculate/names.cljc:202
 #: metabase/query_processor/middleware/annotate.clj:395
 msgid "Distinct values of {0}"
 msgstr "Odlišné hodnoty {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:210
 #: metabase/query_processor/middleware/annotate.clj:397
 msgid "Average of {0}"
 msgstr "Priemer {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:226
 #: metabase/query_processor/middleware/annotate.clj:400
 #: metabase/query_processor/middleware/annotate.clj:402
 msgid "Sum of {0}"
@@ -13588,23 +13606,28 @@ msgstr "Súčet {0}"
 msgid "SD of {0}"
 msgstr "SD z {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:250
 #: metabase/query_processor/middleware/annotate.clj:403
 msgid "Min of {0}"
 msgstr "Min. z {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:258
 #: metabase/query_processor/middleware/annotate.clj:404
 msgid "Max of {0}"
 msgstr "Max. z {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
+#: metabase/lib/metadata/calculate/names.cljc:292
 #: metabase/query_processor/middleware/annotate.clj:410
 msgid "Sum of {0} matching condition"
 msgstr "Súčet {0} zodpovedajúcich podmienok"
 
+#: metabase/lib/metadata/calculate/names.cljc:300
 #: metabase/query_processor/middleware/annotate.clj:411
 msgid "Share of rows matching condition"
 msgstr "Zdieľať riadky zodpovedajúce podmienke"
 
+#: metabase/lib/metadata/calculate/names.cljc:308
 #: metabase/query_processor/middleware/annotate.clj:412
 msgid "Count of rows matching condition"
 msgstr "Počet zodpovedajúcich riadkov"
@@ -15337,6 +15360,7 @@ msgid "Unable to resolve driver for query"
 msgstr "Nepodarilo sa vyriešiť ovládač pre dotaz"
 
 #: metabase/query_processor/middleware/resolve_referenced.clj:30
+#: metabase/query_processor/util/tag_referenced_cards.clj:23
 msgid "Referenced question #{0} could not be found"
 msgstr "Odkaz na otázku #{0} sa nepodarilo nájsť"
 
@@ -15779,18 +15803,22 @@ msgstr "Časový limit dopytu vypršal po {0}, čím sa zvýšila výnimka časo
 msgid "No fields found for table {0}."
 msgstr "Pre tabuľku {0} sa nenašli žiadne polia."
 
+#: metabase/lib/metadata/calculate/names.cljc:194
 #: metabase/query_processor/middleware/annotate.clj:394
 msgid "Case"
 msgstr "púzdro"
 
+#: metabase/lib/metadata/calculate/names.cljc:266
 #: metabase/query_processor/middleware/annotate.clj:405
 msgid "Variance of {0}"
 msgstr "Varianta {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:274
 #: metabase/query_processor/middleware/annotate.clj:406
 msgid "Median of {0}"
 msgstr "Medián {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:282
 #: metabase/query_processor/middleware/annotate.clj:407
 msgid "{0}th percentile of {1}"
 msgstr "{0} percentil z {1}"
@@ -18709,6 +18737,7 @@ msgid "Unknown aggregation type!"
 msgstr "Neznámy typ agregácie!"
 
 #: metabase/driver/druid/query_processor.clj:89
+#: metabase/lib/metadata/calculate/resolve.cljc:74
 msgid "No aggregation at index {0}"
 msgstr "Žiadna agregácia pri indexe {0}"
 
@@ -21451,7 +21480,7 @@ msgstr "Nie je možné určiť zdrojovú tabuľku alebo dotaz pre klauzulu Pole 
 msgid "Aggregation does not exist at index {0}"
 msgstr "Agregácia neexistuje na indexe {0}"
 
-#: src/metabase/query_processor/util/nest_query.clj
+#: metabase/lib/metadata/calculate/resolve.cljc:88
 msgid "No expression named {0}"
 msgstr "Žiadny výraz s názvom {0}"
 
@@ -22896,6 +22925,7 @@ msgid "Custom columns do not support boolean expressions"
 msgstr "Vlastné stĺpce nepodporujú logické výrazy"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:272
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:125
 msgid "Downloading…"
 msgstr "Sťahovanie..."
 
@@ -23728,21 +23758,26 @@ msgid "Display our little friend on the homepage"
 msgstr "Zobrazte nášho malého priateľa na domovskej stránke"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:9
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:23
 msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
 msgstr "Ak chcete odstrániť logo metabázy z vložených prvkov, vždy môžete inovovať na {0}"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:11
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:25
 msgid "one of our paid plans."
 msgstr "jeden z našich platených plánov."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:23
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:10
 msgid "embedding the entire metabase app"
 msgstr "vloženie celej aplikácie metabázy"
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:24
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:11
 msgid "With {0} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
 msgstr "Pomocou {0} môžete vložiť úplnú aplikáciu Metabáza a umožniť svojim používateľom prechádzať do grafov, prehliadať kolekcie a používať grafický nástroj na tvorbu dotazov. Môžete tiež získať prioritnú podporu, viac nástrojov, ktoré vám pomôžu podeliť sa o vaše štatistiky s vašimi tímami, a výkonné možnosti, ktoré vám pomôžu vytvoriť bezproblémové interaktívne dátové prostredie pre vašich zákazníkov."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:26
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:13
 msgid "some of our paid plans,"
 msgstr "niektoré z našich platených plánov,"
@@ -24037,6 +24072,7 @@ msgid "Remove Official badge"
 msgstr "Odstráňte oficiálny odznak"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:34
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:128
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:68
 msgid "Appearance"
 msgstr "Vzhľad"
@@ -24209,7 +24245,7 @@ msgstr "Zobraziť viac filtrov"
 msgid "New row"
 msgstr "Nový riadok"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:106
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:103
 msgid "More columns"
 msgstr "Viac stĺpcov"
 
@@ -27306,4 +27342,125 @@ msgstr "Hodnota musí byť mapa."
 #: metabase_enterprise/sandbox/api/util.clj:50
 msgid "No current user found"
 msgstr "Nenašiel sa žiadny aktuálny používateľ"
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:29
+msgid "Open the Metabase drill-through menu"
+msgstr "Otvorte ponuku Metabase drill-through"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:73
+msgid "Expression"
+msgstr "Vyjadrenie"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:76
+msgid "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation."
+msgstr "Na stĺpce tu môžete odkazovať vo funkciách alebo rovniciach, napríklad: floor([Cena] - [Zľava]). Kliknite na dokumentáciu."
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:83
+msgid "Open expressions documentation"
+msgstr "Dokumentácia otvorených výrazov"
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/TableClickBehaviorView.tsx:28
+#: frontend/src/metabase/lib/click-behavior.js:6
+msgid "Open the drill-through menu"
+msgstr "Otvorte ponuku vŕtania"
+
+#: metabase/lib/metadata/calculate/names.cljc:77
+msgid "plus"
+msgstr "plus"
+
+#: metabase/lib/metadata/calculate/names.cljc:78
+msgid "minus"
+msgstr "mínus"
+
+#: metabase/lib/metadata/calculate/names.cljc:95
+msgid "Native Query"
+msgstr "Natívny dotaz"
+
+#: metabase/lib/metadata/calculate/names.cljc:69
+msgid "Error calculating column name for {0}: {1}"
+msgstr "Chyba pri výpočte názvu stĺpca pre {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:242
+msgid "Standard deviation of {0}"
+msgstr "Štandardná odchýlka {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:46
+msgid "Error calculating display name for {0}: {1}"
+msgstr "Chyba pri výpočte zobrazovaného názvu pre {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:234
+msgid "Cumulative sum of {0}"
+msgstr "Kumulatívny súčet {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:94
+msgid "Saved Question #{0}"
+msgstr "Uložená otázka #{0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:218
+msgid "Cumulative count of {0}"
+msgstr "Kumulatívny počet {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:62
+msgid "No join named {0}"
+msgstr "Žiadne spojenie s názvom {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:41
+msgid "Invalid :field clause: column {0} does not exist"
+msgstr "Neplatná doložka :field: stĺpec {0} neexistuje"
+
+#: metabase/lib/metadata/protocols.cljc:68
+msgid "Cannot find Table {0}"
+msgstr "Nie je možné nájsť tabuľku {0}"
+
+#: metabase/lib/options.cljc:57
+msgid "Don''t know how to set options for {0}"
+msgstr "Neviem, ako nastaviť možnosti pre {0}"
+
+#: metabase/lib/schema/expression.cljc:72
+msgid "type-of {0} returned an invalid type {1}"
+msgstr "type-of {0} vrátil neplatný typ {1}"
+
+#: metabase/lib/schema/expression.cljc:34
+msgid "Don''t know how to determine the base type of {0}"
+msgstr "Neviem, ako určiť základný typ {0}"
+
+#: metabase/lib/schema/join.cljc:52
+msgid "Join aliases must be unique at a given stage of a query"
+msgstr "Aliasy Join musia byť v danej fáze dotazu jedinečné"
+
+#: metabase/lib/util.cljc:92
+msgid "Stage {0} does not exist"
+msgstr "Etapa {0} neexistuje"
+
+#: metabase/models/serialization.clj:167
+msgid "Extracting {0} {1}"
+msgstr "Extrakcia {0} {1}"
+
+#: metabase/task/truncate_audit_log.clj:54
+msgid "query_execution cleanup successful, no rows were deleted"
+msgstr "query_execution cleanup successful, no rows were deleted"
+
+#: metabase/task/truncate_audit_log.clj:46
+msgid "Cleaning up query_execution table"
+msgstr "Vyčistenie tabuľky query_execution"
+
+#: metabase/task/truncate_audit_log.clj:53
+msgid "query_execution cleanup successful, {0} rows were deleted"
+msgstr "query_execution cleanup successful, {0} rows were deleted"
+
+#: metabase/task/truncate_audit_log.clj:56
+msgid "query_execution cleanup failed"
+msgstr "query_execution cleanup failed"
+
+#: metabase/task/truncate_audit_log/interface.clj:11
+msgid "Retention policy for the `query_execution` table."
+msgstr "Zásady uchovávania pre tabuľku `query_execution`."
+
+#: metabase/task/truncate_audit_log/interface.clj:23
+msgid "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
+msgstr "MB_AUDIT_MAX_RETENTION_DAYS je nastavená na hodnotu {0}; namiesto nej sa použije minimálna hodnota {1}."
+
+#: metabase_enterprise/advanced_config/api/logs.clj:40
+msgid "Must be a string like 2020-04 or 2222-11."
+msgstr "Musí to byť reťazec ako 2020-04 alebo 2222-11."
 

@@ -187,6 +187,7 @@ msgstr "en esta casilla:"
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:41
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:36
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:114
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:123
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetForm/SnippetForm.tsx:200
 #: frontend/src/metabase/reference/components/EditHeader.jsx:32
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
@@ -334,6 +335,7 @@ msgstr "Añadir base de datos"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield/helper-text-strings.ts:581
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:105
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
 #: frontend/src/metabase/visualizations/lib/settings/column.js:340
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
@@ -1084,6 +1086,7 @@ msgstr "Borrar Grupo"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:492
 msgid "Done"
 msgstr "Hecho"
@@ -1623,6 +1626,7 @@ msgstr "Metabase {0} está disponible.  Estás ejecutando {1}"
 #: frontend/src/metabase/components/form/FormikStandardForm.tsx:38
 #: frontend/src/metabase/entities/actions/actions.ts:75
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:128
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:125
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:113
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:67
 msgid "Update"
@@ -1654,6 +1658,7 @@ msgstr "Elimina mapa personalizado"
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:105
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:139
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:135
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:175
 msgid "Remove"
 msgstr "Borrar"
@@ -3753,6 +3758,7 @@ msgstr "Metabase nunca recuperará este campo. Úsalo para información sensible
 #: frontend/src/metabase-lib/queries/utils/description.js:72
 #: frontend/src/metabase-lib/queries/utils/description.js:262
 #: frontend/src/metabase/visualizations/lib/utils.js:144
+#: metabase/lib/metadata/calculate/names.cljc:184
 #: metabase/query_processor/middleware/annotate.clj:393
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
@@ -5428,10 +5434,13 @@ msgstr "Esta métrica ha sido retirada. Ya no está disponible para su uso."
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:59
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:266
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:62
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:114
 msgid "Download full results"
 msgstr "Descarga los resultados completos"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:267
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:117
 msgid "Download this data"
 msgstr "Descargar esta información"
 
@@ -5440,10 +5449,12 @@ msgid "Warning"
 msgstr "Aviso"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:63
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:66
 msgid "Your answer has a large number of rows so it could take a while to download."
 msgstr "Tu respuesta tiene una gran cantidad de filas, por lo que podría tardar un tiempo en descargarse."
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:31
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:32
 msgid "The maximum download size is 1 million rows."
 msgstr "El tamaño máximo de descarga es de 1 millón de filas."
 
@@ -5748,6 +5759,7 @@ msgid "Give it a name"
 msgstr "Dale un nombre"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:98
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:109
 msgid "Something nice and descriptive"
 msgstr "Algo agradable y descriptivo"
 
@@ -6007,6 +6019,8 @@ msgstr "Sin tipo de campo"
 msgid "by"
 msgstr "por"
 
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:118
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:122
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:140
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx:145
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:23
@@ -6207,6 +6221,7 @@ msgstr "Conecta una base de datos"
 #. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
 #. cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:37
+#: metabase/lib/metadata/calculate/names.cljc:183
 #: metabase/query_processor/middleware/annotate.clj:396
 #: metabase/query_processor/middleware/annotate.clj:399
 msgid "Count of {0}"
@@ -6937,7 +6952,7 @@ msgstr "error"
 msgid "Click and drag to change their order"
 msgstr "Pulsa y arrastra para cambiar el orden"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:102
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:99
 msgid "Add fields from the list below"
 msgstr "Añade campos de la lista inferior"
 
@@ -13532,14 +13547,17 @@ msgstr "Se esperaban {0} columnas, pero la primera fila de resultados tiene {1} 
 msgid "No expression named {0} found. Found: {1}"
 msgstr "No he encontrado una expresión de nombre {0}. He encontrado {1}"
 
+#: metabase/lib/metadata/calculate/names.cljc:202
 #: metabase/query_processor/middleware/annotate.clj:395
 msgid "Distinct values of {0}"
 msgstr "Valores únicos de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:210
 #: metabase/query_processor/middleware/annotate.clj:397
 msgid "Average of {0}"
 msgstr "Media de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:226
 #: metabase/query_processor/middleware/annotate.clj:400
 #: metabase/query_processor/middleware/annotate.clj:402
 msgid "Sum of {0}"
@@ -13549,23 +13567,28 @@ msgstr "Suma de {0}"
 msgid "SD of {0}"
 msgstr "DS de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:250
 #: metabase/query_processor/middleware/annotate.clj:403
 msgid "Min of {0}"
 msgstr "Mínimo de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:258
 #: metabase/query_processor/middleware/annotate.clj:404
 msgid "Max of {0}"
 msgstr "Máximo de {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
+#: metabase/lib/metadata/calculate/names.cljc:292
 #: metabase/query_processor/middleware/annotate.clj:410
 msgid "Sum of {0} matching condition"
 msgstr "Suma de {0} con condición"
 
+#: metabase/lib/metadata/calculate/names.cljc:300
 #: metabase/query_processor/middleware/annotate.clj:411
 msgid "Share of rows matching condition"
 msgstr "Cuota de filas con condición"
 
+#: metabase/lib/metadata/calculate/names.cljc:308
 #: metabase/query_processor/middleware/annotate.clj:412
 msgid "Count of rows matching condition"
 msgstr "Número de filas coincidentes con la condición"
@@ -15288,6 +15311,7 @@ msgid "Unable to resolve driver for query"
 msgstr "No se puede resolver el controlador para la consulta"
 
 #: metabase/query_processor/middleware/resolve_referenced.clj:30
+#: metabase/query_processor/util/tag_referenced_cards.clj:23
 msgid "Referenced question #{0} could not be found"
 msgstr "La pregunta de referencia #{0} no se ha podido encontrar"
 
@@ -15730,18 +15754,22 @@ msgstr "La consulta expiró después de {0}, generando una excepción de tiempo 
 msgid "No fields found for table {0}."
 msgstr "No se encontraron campos para la tabla {0}."
 
+#: metabase/lib/metadata/calculate/names.cljc:194
 #: metabase/query_processor/middleware/annotate.clj:394
 msgid "Case"
 msgstr "Caso"
 
+#: metabase/lib/metadata/calculate/names.cljc:266
 #: metabase/query_processor/middleware/annotate.clj:405
 msgid "Variance of {0}"
 msgstr "Varianza de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:274
 #: metabase/query_processor/middleware/annotate.clj:406
 msgid "Median of {0}"
 msgstr "Mediana de {0}"
 
+#: metabase/lib/metadata/calculate/names.cljc:282
 #: metabase/query_processor/middleware/annotate.clj:407
 msgid "{0}th percentile of {1}"
 msgstr "percentil {0} de {1}"
@@ -18651,6 +18679,7 @@ msgid "Unknown aggregation type!"
 msgstr "¡Tipo de agregación desconocido!"
 
 #: metabase/driver/druid/query_processor.clj:89
+#: metabase/lib/metadata/calculate/resolve.cljc:74
 msgid "No aggregation at index {0}"
 msgstr "Sin agregación en el índice {0}"
 
@@ -21371,7 +21400,7 @@ msgstr "No se puede determinar la tabla de origen o la consulta para la cláusul
 msgid "Aggregation does not exist at index {0}"
 msgstr "La agregación no existe en el índice {0}"
 
-#: src/metabase/query_processor/util/nest_query.clj
+#: metabase/lib/metadata/calculate/resolve.cljc:88
 msgid "No expression named {0}"
 msgstr "No hay ninguna expresión con el nombre {0}"
 
@@ -22798,6 +22827,7 @@ msgid "Custom columns do not support boolean expressions"
 msgstr "Las columnas personalizadas no admiten expresiones booleanas"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:272
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget/QueryDownloadWidget.jsx:125
 msgid "Downloading…"
 msgstr "Descargando..."
 
@@ -23597,21 +23627,26 @@ msgid "Display our little friend on the homepage"
 msgstr "Muestra nuestro pequeño amigo en la página de inicio"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:9
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:23
 msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
 msgstr "Para eliminar el logotipo de Metabase de las incrustaciones, siempre puedes actualizar a {0}"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:11
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo/EmbeddingCustomizationInfo.tsx:25
 msgid "one of our paid plans."
 msgstr "uno de nuestros planes de pago."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:23
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:10
 msgid "embedding the entire metabase app"
 msgstr "incrustando toda la aplicación de metabase"
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:24
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:11
 msgid "With {0} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
 msgstr "Con {0} puedes incrustar la aplicación Metabase completa y permitir que tus usuarios obtengan detalles de los gráficos, busquen colecciones y utilicen el generador gráfico de consultas. También puedes obtener soporte prioritario, más herramientas para ayudarte a compartir tus conocimientos con tus equipos y opciones poderosas para ayudarte a crear experiencias de datos interactivas y fluidas para tus clientes."
 
+#: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:26
 #: frontend/src/metabase/admin/settings/components/widgets/PremiumEmbeddingLinkWidget/PremiumEmbeddingLinkWidget.tsx:13
 msgid "some of our paid plans,"
 msgstr "alguno de nuestros planes de pago,"
@@ -23906,6 +23941,7 @@ msgid "Remove Official badge"
 msgstr "Eliminar insignia oficial"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:34
+#: frontend/src/metabase/actions/components/ActionForm/FormFieldEditor.tsx:128
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:68
 msgid "Appearance"
 msgstr "Apariencia"
@@ -24078,7 +24114,7 @@ msgstr "Mostrar más filtros"
 msgid "New row"
 msgstr "Nueva fila"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:106
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:103
 msgid "More columns"
 msgstr "Más columnas"
 
@@ -27161,4 +27197,125 @@ msgstr "Valor debe ser un mapa."
 #: metabase_enterprise/sandbox/api/util.clj:50
 msgid "No current user found"
 msgstr "No se ha encontrado un usuario actual."
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:29
+msgid "Open the Metabase drill-through menu"
+msgstr "Abrir el menú Metabase drill-through"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:73
+msgid "Expression"
+msgstr "Expresión"
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:76
+msgid "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation."
+msgstr "Aquí puede hacer referencia a columnas en funciones o ecuaciones, como: floor([Precio] - [Descuento]). Haga clic para ver la documentación."
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:83
+msgid "Open expressions documentation"
+msgstr "Documentación sobre expresiones abiertas"
+
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/TableClickBehaviorView.tsx:28
+#: frontend/src/metabase/lib/click-behavior.js:6
+msgid "Open the drill-through menu"
+msgstr "Abrir el menú de perforación"
+
+#: metabase/lib/metadata/calculate/names.cljc:77
+msgid "plus"
+msgstr "y"
+
+#: metabase/lib/metadata/calculate/names.cljc:78
+msgid "minus"
+msgstr "menos"
+
+#: metabase/lib/metadata/calculate/names.cljc:95
+msgid "Native Query"
+msgstr "Consulta nativa"
+
+#: metabase/lib/metadata/calculate/names.cljc:69
+msgid "Error calculating column name for {0}: {1}"
+msgstr "Error al calcular el nombre de columna para {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:242
+msgid "Standard deviation of {0}"
+msgstr "Desviación típica de {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:46
+msgid "Error calculating display name for {0}: {1}"
+msgstr "Error al calcular el nombre para {0}: {1}"
+
+#: metabase/lib/metadata/calculate/names.cljc:234
+msgid "Cumulative sum of {0}"
+msgstr "Suma acumulada de {0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:94
+msgid "Saved Question #{0}"
+msgstr "Pregunta guardada #{0}"
+
+#: metabase/lib/metadata/calculate/names.cljc:218
+msgid "Cumulative count of {0}"
+msgstr "Recuento acumulado de {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:62
+msgid "No join named {0}"
+msgstr "No join named {0}"
+
+#: metabase/lib/metadata/calculate/resolve.cljc:41
+msgid "Invalid :field clause: column {0} does not exist"
+msgstr "Cláusula :field no válida: la columna {0} no existe"
+
+#: metabase/lib/metadata/protocols.cljc:68
+msgid "Cannot find Table {0}"
+msgstr "No se encuentra la tabla {0}"
+
+#: metabase/lib/options.cljc:57
+msgid "Don''t know how to set options for {0}"
+msgstr "No sé cómo configurar las opciones para {0}"
+
+#: metabase/lib/schema/expression.cljc:72
+msgid "type-of {0} returned an invalid type {1}"
+msgstr "type-of {0} devuelve un tipo inválido {1}"
+
+#: metabase/lib/schema/expression.cljc:34
+msgid "Don''t know how to determine the base type of {0}"
+msgstr "No sé cómo determinar el tipo base de {0}"
+
+#: metabase/lib/schema/join.cljc:52
+msgid "Join aliases must be unique at a given stage of a query"
+msgstr "Los alias de unión deben ser únicos en una fase determinada de una consulta"
+
+#: metabase/lib/util.cljc:92
+msgid "Stage {0} does not exist"
+msgstr "La etapa {0} no existe"
+
+#: metabase/models/serialization.clj:167
+msgid "Extracting {0} {1}"
+msgstr "Extrayendo {0} {1}"
+
+#: metabase/task/truncate_audit_log.clj:54
+msgid "query_execution cleanup successful, no rows were deleted"
+msgstr "query_execution cleanup successful, no rows were deleted"
+
+#: metabase/task/truncate_audit_log.clj:46
+msgid "Cleaning up query_execution table"
+msgstr "Limpieza de la tabla query_execution"
+
+#: metabase/task/truncate_audit_log.clj:53
+msgid "query_execution cleanup successful, {0} rows were deleted"
+msgstr "query_execution cleanup successful, {0} rows were deleted"
+
+#: metabase/task/truncate_audit_log.clj:56
+msgid "query_execution cleanup failed"
+msgstr "query_execution cleanup failed"
+
+#: metabase/task/truncate_audit_log/interface.clj:11
+msgid "Retention policy for the `query_execution` table."
+msgstr "Política de retención para la tabla `query_execution`."
+
+#: metabase/task/truncate_audit_log/interface.clj:23
+msgid "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
+msgstr "MB_AUDIT_MAX_RETENTION_DAYS está fijado en {0}; utilizando en su lugar el valor mínimo de {1}."
+
+#: metabase_enterprise/advanced_config/api/logs.clj:40
+msgid "Must be a string like 2020-04 or 2222-11."
+msgstr "Debe ser una cadena como 2020-04 o 2222-11."
 
