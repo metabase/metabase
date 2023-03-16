@@ -17,6 +17,7 @@ export default function FilterStep({
       color={color}
       initialAddText={t`Add filters to narrow your answer`}
       items={query.filters()}
+      renderName={item => item.displayName()}
       renderPopover={filter => (
         <FilterPopover
           query={query}

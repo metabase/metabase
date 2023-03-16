@@ -15,13 +15,26 @@ describe("getHelpText", () => {
     expect(helpText).toBeUndefined();
   });
 
-  it("should return help text if a supported name is passed", () => {
-    const helpText = getHelpText("count", database, reportTimezone);
+  describe("should return help text if a supported name is passed", () => {
+    it("count", () => {
+      const helpText = getHelpText("count", database, reportTimezone);
 
-    expect(helpText?.structure).toBe("Count");
-    expect(helpText?.example).toBe("Count");
-    expect(helpText?.description).toMatch(/returns the count of rows/i);
-    expect(helpText?.args).toHaveLength(0);
+      expect(helpText?.structure).toBe("Count");
+      expect(helpText?.example).toBe("Count");
+      expect(helpText?.description).toMatch(/returns the count of rows/i);
+      expect(helpText?.args).toBe(undefined);
+    });
+
+    it("percentile", () => {
+      const helpText = getHelpText("percentile", database, reportTimezone);
+
+      expect(helpText?.structure).toBe("Percentile");
+      expect(helpText?.example).toBe("Percentile([Score], 0.9)");
+      expect(helpText?.description).toBe(
+        "Returns the value of the column at the percentile value.",
+      );
+      expect(helpText?.args).toHaveLength(2);
+    });
   });
 
   describe("help texts customized per database engine", () => {

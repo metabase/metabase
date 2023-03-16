@@ -56,7 +56,7 @@ class ExpressionEditorTextfield extends React.Component {
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
     onBlankChange: PropTypes.func,
-    helpTextTarget: PropTypes.instanceOf(Element).isRequired,
+    helpTextTarget: PropTypes.instanceOf(Element),
   };
 
   static defaultProps = {
@@ -287,7 +287,7 @@ class ExpressionEditorTextfield extends React.Component {
     const { source } = this.state;
     const { query, startRule, name } = this.props;
     if (!source || source.length === 0) {
-      return { message: "Empty expression" };
+      return { message: t`Empty expression` };
     }
     return diagnose(source, startRule, query, name);
   }
