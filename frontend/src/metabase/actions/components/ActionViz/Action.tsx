@@ -17,9 +17,9 @@ import { getEditingDashcardId } from "metabase/dashboard/selectors";
 
 import type {
   ActionDashboardCard,
+  Dashboard,
   ParametersForActionExecution,
   WritebackQueryAction,
-  Dashboard,
 } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -113,16 +113,16 @@ function ActionComponent({
 
   return (
     <ActionVizForm
-      onSubmit={onSubmit}
-      dashcard={dashcard}
+      action={dashcard.action as WritebackQueryAction}
       dashboard={dashboard}
-      settings={settings}
-      isSettings={isSettings}
+      dashcard={dashcard}
       missingParameters={missingParameters}
       dashcardParamValues={dashcardParamValues}
-      action={dashcard.action as WritebackQueryAction}
+      settings={settings}
+      isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      onSubmit={onSubmit}
     />
   );
 }
