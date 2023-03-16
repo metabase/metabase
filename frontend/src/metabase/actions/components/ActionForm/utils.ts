@@ -47,10 +47,7 @@ function getSampleOptions(fieldType: FieldType) {
     : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
 }
 
-export const getFormField = (
-  parameter: Parameter,
-  fieldSettings: FieldSettings,
-) => {
+const getFormField = (parameter: Parameter, fieldSettings: FieldSettings) => {
   if (
     fieldSettings.field &&
     !isEditableField(fieldSettings.field, parameter as Parameter)
