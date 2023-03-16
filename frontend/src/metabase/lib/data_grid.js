@@ -420,7 +420,7 @@ function addSubtotal(
         },
       ]
     : [];
-  if (item.isCollapsed) {
+  if (item.isCollapsed && hasSubtotal) {
     return subtotal;
   }
   const node = {
