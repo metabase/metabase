@@ -2,28 +2,23 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/core/utils/errors";
+import { sortActionParams, isEditableField } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
   ActionFormOption,
+  FieldType,
   FieldSettingsMap,
   InputSettingType,
   InputComponentType,
   Parameter,
   WritebackParameter,
-  FieldType,
 } from "metabase-types/api";
 import type {
   ActionFormProps,
   ActionFormFieldProps,
   FieldSettings,
 } from "metabase/actions/types";
-
-import { sortActionParams, isEditableField } from "metabase/actions/utils";
-
-const getOptionsFromArray = (
-  options: (number | string)[],
-): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
 
 export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
@@ -41,6 +36,10 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   select: "select",
   radio: "radio",
 };
+
+const getOptionsFromArray = (
+  options: (number | string)[],
+): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
 
 function getSampleOptions(fieldType: FieldType) {
   return fieldType === "number"
