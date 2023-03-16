@@ -372,11 +372,7 @@ export function shouldSplitYAxis(
     return true;
   }
 
-  const columnSettings = series.map(s =>
-    normalizeLineAreaBarSettings(
-      settings.column_settings[getColumnSettingsKey(s)],
-    ),
-  );
+  const columnSettings = series.map(s => normalizeColumnSettings(settings, s));
   const hasDifferentColumnSettings = columnSettings.some(s1 =>
     columnSettings.some(s2 => !_.isEqual(s1, s2)),
   );
@@ -394,28 +390,15 @@ export function shouldSplitYAxis(
   return minRange / chartRange <= 0.05;
 }
 
-function getColumnSettingsKey(series) {
-  return JSON.stringify(["name", series.data.cols[1].name]);
-}
+function normalizeColumnSettings(settings, series) {
+  const colSettings = { ...settings.column(series.data.cols[1]) };
+  delete colSettings._column_title_full;
+  delete colSettings._numberFormatter;
+  delete colSettings.column;
+  delete colSettings.prefix;
+  delete colSettings.suffix;
 
-function normalizeLineAreaBarSettings(colSettings) {
-  const defaultSettings = {
-    number_style: "decimal",
-    number_separators: ".,",
-    currency: "USD",
-    currency_style: "symbol",
-    prefix: "",
-    suffix: "",
-  };
-
-  if (colSettings === undefined) {
-    return defaultSettings;
-  }
-  if (colSettings.number_style !== "currency") {
-    delete colSettings.currency;
-    delete colSettings.currency_style;
-  }
-  return { ...defaultSettings, ...colSettings };
+  return colSettings;
 }
 
 /************************************************************ PROPERTIES ************************************************************/
