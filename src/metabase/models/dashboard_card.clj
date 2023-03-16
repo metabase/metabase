@@ -57,11 +57,12 @@
 (defn from-parsed-json
   "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
    been keywordized. This is useful if the data from a request body inside a `defendpoint` body, and you need it in the
-   same format as if it were selected from the DB with toucan.
+   same format as if it were selected from the DB with toucan. It doesn't transform the `:created_at` or `:updated_at`
+   fields, as the types of timestamp values differ by the application database driver.
 
    For example:
    ```
-   (= dashcard ;; from toucan select
+   (= dashcard ;; from toucan select, excluding :created_at and :updated_at
       (-> (json/generate-string dashcard)
           (json/parse-string true)
           from-parsed-json))
@@ -72,8 +73,6 @@
   (t2/instance DashboardCard
                (-> dashboard-card
                    (m/update-existing :parameter_mappings mi/normalize-parameters-list)
-                   (m/update-existing :created_at (comp t/offset-date-time u.date/parse))
-                   (m/update-existing :updated_at (comp t/offset-date-time u.date/parse))
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields DashboardCard

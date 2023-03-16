@@ -323,7 +323,10 @@
                                                                        :target [:dimension [:field 1 nil]]}]
                                              :row                    4
                                              :col                    3}]]
-      (let [dashcard     (db/select-one DashboardCard :id (u/the-id dashcard))
+      ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
+      ;; transformed by `from-parsed-json`
+      (let [dashcard     (dissoc (db/select-one DashboardCard :id (u/the-id dashcard))
+                                 :created_at :updated_at)
             serialized   (json/generate-string dashcard)
             deserialized (json/parse-string serialized true)
             transformed  (dashboard-card/from-parsed-json deserialized)]
