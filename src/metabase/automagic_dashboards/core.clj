@@ -216,10 +216,12 @@
      :rules-prefix ["field"]}))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
-  (comp qp.util/query->source-card-id :dataset_query))
+  "Is this card or question derived from another model or question?"
+  (comp some? qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
-  (comp #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
+  "Is this card or question native (SQL)?"
+  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
 (defn- source-question
   [card-or-question]
@@ -243,11 +245,15 @@
 (defn- source
   [card]
   (cond
+    ;; This is a model
+    (:dataset card) (assoc card :entity_type :entity/GenericTable)
+    ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
+    ;; problems as other cards -- The x-ray is not done on the card, but on its source.
     (nested-query? card) (-> card
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (->> card table-id (db/select-one Table :id))))
+    :else (->> card table-id (db/select-one Table :id))))
 
 (defmethod ->root Card
   [card]
@@ -378,39 +384,46 @@
                  (str/starts-with? name "id_")
                  (str/ends-with? name "_id"))))))
 
+(defn- fieldspec-matcher
+  "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
+  [fieldspec]
+  (if (and (string? fieldspec)
+           (rules/ga-dimension? fieldspec))
+    (comp #{fieldspec} :name)
+    (fn [{:keys [semantic_type target] :as field}]
+      (cond
+        ;; This case is mostly relevant for native queries
+        (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
+        target (recur target)
+        :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
+
+(defn- name-regex-matcher
+  "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
+  [name-pattern]
+  (comp (->> name-pattern
+             u/lower-case-en
+             re-pattern
+             (partial re-find))
+        u/lower-case-en
+        :name))
+
+(defn- max-cardinality-matcher
+  "Generate a predicate of the form (f field) -> true | false based on the provided cardinality.
+  Returns true if the distinct count of fingerprint values is less than or equal to the cardinality."
+  [cardinality]
+  (fn [field]
+    (some-> field
+            (get-in [:fingerprint :global :distinct-count])
+            (<= cardinality))))
+
 (def ^:private field-filters
-  {:fieldspec       (fn [fieldspec]
-                      (if (and (string? fieldspec)
-                               (rules/ga-dimension? fieldspec))
-                        (comp #{fieldspec} :name)
-                        (fn [{:keys [semantic_type target] :as field}]
-                          (cond
-                            ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec)
-                            (isa? semantic_type fieldspec)
-
-                            target
-                            (recur target)
-
-                            :else
-                            (and (not (key-col? field))
-                                 (field-isa? field fieldspec))))))
-   :named           (fn [name-pattern]
-                      (comp (->> name-pattern
-                                 u/lower-case-en
-                                 re-pattern
-                                 (partial re-find))
-                            u/lower-case-en
-                            :name))
-   :max-cardinality (fn [cardinality]
-                      (fn [field]
-                        (some-> field
-                                (get-in [:fingerprint :global :distinct-count])
-                                (<= cardinality))))})
+  {:fieldspec       fieldspec-matcher
+   :named           name-regex-matcher
+   :max-cardinality max-cardinality-matcher})
 
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
-   `preds` are true."
+   `preds` are true. `preds` is a map with keys :fieldspec, :named, and :max-cardinality."
   [preds fields]
   (filter (->> preds
                (keep (fn [[k v]]
@@ -440,6 +453,8 @@
                               (->reference template-type entity))))))))
 
 (defn- field-candidates
+  "Given a context and a dimension definition, find all fields from the context
+   that match the definition of this dimension."
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to (:tables context))
@@ -462,16 +477,25 @@
                         :max-cardinality max_cardinality}
                        (-> context :source :fields))))))
 
-(defn- make-binding
-  [context [identifier definition]]
-  (->> definition
-       (field-candidates context)
-       (map #(->> (merge % definition)
-                  vector ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
-                  (assoc definition :matches)
-                  (hash-map (name identifier))))))
+(defn- score-bindings
+  "Assign a value to each potential binding.
+  Takes a seq of potential bindings and returns a seq of vectors in the shape
+  of [score binding], where score is a 3 element vector. This is computed as:
+     1) Number of ancestors `field_type` has (if field_type has a table prefix,
+        ancestors for both table and field are counted);
+     2) Number of fields in the definition, which would include additional filters
+        (`named`, `max_cardinality`, `links_to`, ...) etc.;
+     3) The manually assigned score for the binding definition
+  "
+  [candidate-binding-values]
+  (letfn [(score [a]
+            (let [[_ definition] a]
+              [(reduce + (map (comp count ancestors) (:field_type definition)))
+               (count definition)
+               (:score definition)]))]
+    (map (juxt (comp score first) identity) candidate-binding-values)))
 
-(def ^:private ^{:arglists '([definitions])} most-specific-definition
+(defn- most-specific-definition
   "Return the most specific definition among `definitions`.
    Specificity is determined based on:
    1) how many ancestors `field_type` has (if field_type has a table prefix,
@@ -479,13 +503,20 @@
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
       `links_to`, ...) are used;
    3) if there is still a tie, `score`."
-  (comp last (partial sort-by (comp (fn [[_ definition]]
-                                      [(transduce (map (comp count ancestors))
-                                                  +
-                                                  (:field_type definition))
-                                       (count definition)
-                                       (:score definition)])
-                                    first))))
+  [candidate-binding-values]
+  (let [scored-bindings (score-bindings candidate-binding-values)]
+    (second (last (sort-by first scored-bindings)))))
+
+(defn- candidate-bindings
+  "For every field in a given context determine all potential dimensions each field may map to.
+  This will return a map of field id (or name) to collection of potential matching dimensions."
+  [context dimensions]
+  (let [all-bindings (for [dimension dimensions
+                           :let [[identifier definition] (first dimension)]
+                           candidate (field-candidates context definition)]
+                       {(name identifier)
+                        (assoc definition :matches [(merge candidate definition)])})]
+    (group-by (comp id-or-name first :matches val first) all-bindings)))
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
@@ -493,9 +524,7 @@
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
   [context dimensions]
-  (->> dimensions
-       (mapcat (comp (partial make-binding context) first))
-       (group-by (comp id-or-name first :matches val first))
+  (->> (candidate-bindings context dimensions)
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
@@ -569,7 +598,7 @@
                         (max-key :score a b)))
          definitions))
 
-(defn- instantate-visualization
+(defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
@@ -597,7 +626,7 @@
                s))
            form))
        x)
-      (m/update-existing :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (m/update-existing :visualization #(instantiate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
   [{:keys [base_type engine fingerprint aggregation]}]
@@ -636,10 +665,11 @@
                              (/ score rules/max-score)))
         dimensions      (map (comp (partial into [:dimension]) first) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
-        cell-dimension? (->> context :root singular-cell-dimensions)]
-    (->> used-dimensions
-         (map (some-fn #(get-in (:dimensions context) [% :matches])
-                       (comp #(filter-tables % (:tables context)) rules/->entity)))
+        cell-dimension? (->> context :root singular-cell-dimensions)
+        matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
+                                         (comp #(filter-tables % (:tables context)) rules/->entity))
+                                used-dimensions)]
+    (->> matched-dimensions
          (apply math.combo/cartesian-product)
          (map (partial zipmap used-dimensions))
          (filter (fn [bindings]
@@ -676,7 +706,7 @@
                              :score         score))))))))
 
 (defn- matching-rules
-  "Return matching rules orderd by specificity.
+  "Return matching rules ordered by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules {:keys [source entity]}]
@@ -690,7 +720,7 @@
          (sort-by :specificity >))))
 
 (defn- linked-tables
-  "Return all tables accessable from a given table with the paths to get there.
+  "Return all tables accessible from a given table with the paths to get there.
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
@@ -713,10 +743,10 @@
 (defmethod inject-root Field
   [context field]
   (let [field (assoc field
-                :link   (->> context
-                             :tables
-                             (m/find-first (comp #{(:table_id field)} u/the-id))
-                             :link)
+                :link (->> context
+                           :tables
+                           (m/find-first (comp #{(:table_id field)} u/the-id))
+                           :link)
                 :engine (-> context :source source->engine))]
     (update context :dimensions
             (fn [dimensions]
@@ -742,44 +772,64 @@
   [context _]
   context)
 
-(s/defn ^:private make-context
-  [root, rule :- rules/Rule]
-  {:pre [(:source root)]}
-  (let [source        (:source root)
-        tables        (concat [source] (when (mi/instance-of? Table source)
+(defn- relevant-fields
+  "Source fields from tables that are applicable to the entity being x-rayed."
+  [{:keys [source _entity] :as _root} tables]
+  (let [engine (source->engine source)]
+    (if (mi/instance-of? Table source)
+      (comp (->> (db/select Field
+                   :table_id [:in (map u/the-id tables)]
+                   :visibility_type "normal"
+                   :preview_display true
+                   :active true)
+                 field/with-targets
+                 (map #(assoc % :engine engine))
+                 (group-by :table_id))
+            u/the-id)
+      (let [source-fields (->> source
+                               :result_metadata
+                               (map (fn [field]
+                                      (as-> field field
+                                        (update field :base_type keyword)
+                                        (update field :semantic_type keyword)
+                                        (mi/instance Field field)
+                                        (classify/run-classifiers field {})
+                                        (assoc field :engine engine)))))]
+        (constantly source-fields)))))
+
+(s/defn ^:private make-base-context
+  "Create the underlying context to which we will add metrics, dimensions, and filters."
+  [{:keys [source] :as root}]
+  {:pre [source]}
+  (let [tables        (concat [source] (when (mi/instance-of? Table source)
                                          (linked-tables source)))
-        engine        (source->engine source)
-        table->fields (if (mi/instance-of? Table source)
-                        (comp (->> (db/select Field
-                                     :table_id        [:in (map u/the-id tables)]
-                                     :visibility_type "normal"
-                                     :preview_display true
-                                     :active          true)
-                                   field/with-targets
-                                   (map #(assoc % :engine engine))
-                                   (group-by :table_id))
-                              u/the-id)
-                        (->> source
-                             :result_metadata
-                             (map (fn [field]
-                                    (as-> field field
-                                      (update field :base_type keyword)
-                                      (update field :semantic_type keyword)
-                                      (mi/instance Field field)
-                                      (classify/run-classifiers field {})
-                                      (assoc field :engine engine))))
-                             constantly))]
-    (as-> {:source       (assoc source :fields (table->fields source))
-           :root         root
-           :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :query-filter (filters/inject-refinement (:query-filter root)
-                                                    (:cell-query root))} context
+        table->fields (relevant-fields root tables)]
+    {:source       (assoc source :fields (table->fields source))
+     :root         root
+     :tables       (map #(assoc % :fields (table->fields %)) tables)
+     :query-filter (filters/inject-refinement (:query-filter root)
+                                              (:cell-query root))}))
+
+(s/defn ^:private make-context
+  "Create a rule-oriented context for this item, consisting of its source data
+   along with detected metrics, dimensions, and filters.
+
+   Note that the 'rule' aspect of this function means the dimensions defined in
+   the rule are used to match to the source data fields.
+
+   This data structure is used to generate cards."
+  [{:keys [source] :as root}, rule :- rules/Rule]
+  {:pre [source]}
+  (let [base-context (make-base-context root)]
+    (as-> base-context context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
       (inject-root context (:entity root)))))
 
 (defn- make-cards
+  "Create cards from the context using the provided template cards.
+  Note that card, as destructured here, is a template baked into a rule and is not a db entity Card."
   [context {:keys [cards]}]
   (some->> cards
            (map first)
@@ -806,19 +856,23 @@
        (instantiate-metadata context {}))))
 
 (s/defn ^:private apply-rule
-  [root, rule :- rules/Rule]
+  "Apply a 'rule' (a card template) to the root entity to produce a dashboard
+  (including filters and cards).
+
+  Returns nil if no cards are produced."
+  [root
+   {rule-name :rule :as rule} :- rules/Rule]
+  (log/debugf "Applying rule '%s'" rule-name)
   (let [context   (make-context root rule)
-        dashboard (make-dashboard root rule context)
-        filters   (->> rule
-                       :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context)))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
         cards     (make-cards context rule)]
     (when (or (not-empty cards)
               (-> rule :cards nil?))
-      [(assoc dashboard
-         :filters filters
-         :cards   cards)
+      [(assoc (make-dashboard root rule context)
+         :filters (->> rule
+                       :dashboard_filters
+                       (mapcat (comp :matches (:dimensions context)))
+                       (remove (comp (singular-cell-dimensions root) id-or-name)))
+         :cards cards)
        rule
        context])))
 
@@ -977,7 +1031,7 @@
 
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
-   root type individually via `related-selectors`. That recepie is then filled round-robin style."
+   root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [{:keys [root] :as context}, rule :- (s/maybe rules/Rule)]
   (->> (merge (indepth root rule)
               (drilldown-fields context)
@@ -995,20 +1049,25 @@
        (remove (comp nil? second))
        (into {})))
 
+(defn- find-first-match-rule
+  "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
+  [{:keys [rule rules-prefix full-name] :as root}]
+  (or (when rule
+        (apply-rule root (rules/get-rule rule)))
+      (some
+       (fn [rule]
+         (apply-rule root rule))
+       (matching-rules (rules/get-rules rules-prefix) root))
+      (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
+                      {:root            root
+                       :available-rules (map :rule (or (some-> rule rules/get-rule vector)
+                                                       (rules/get-rules rules-prefix)))}))))
+
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [rule show rules-prefix full-name] :as root}]
-  (let [[dashboard rule context] (or (when rule
-                                       (apply-rule root (rules/get-rule rule)))
-                                     (some
-                                      (fn [rule]
-                                        (apply-rule root rule))
-                                      (matching-rules (rules/get-rules rules-prefix) root))
-                                     (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                                                     {:root            root
-                                                      :available-rules (map :rule (or (some-> rule rules/get-rule vector)
-                                                                                      (rules/get-rules rules-prefix)))})))
-        show                     (or show max-cards)]
+  [{:keys [show full-name] :as root}]
+  (let [[dashboard rule context] (find-first-match-rule root)
+        show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
     (log/debug (trs "Dimensions bindings:\n{0}"
                     (->> context
@@ -1261,14 +1320,18 @@
                                                      opts))
                          (decompose-question root query opts))
            cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
-                               {:transient_name  title
-                                :name            title}))))))))
+                               {:transient_name title
+                                :name           title}))))))))
 
 (defmethod automagic-analysis Field
   [field opts]
   (automagic-dashboard (merge (->root field) opts)))
 
 (defn- enhance-table-stats
+  "Add a stats field to each provided table with the following data:
+  - num-fields: The number of Fields in each table
+  - list-like?: Is this field 'list like'
+  - link-table?: Is every Field a foreign key to another table"
   [tables]
   (when (not-empty tables)
     (let [field-count (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
