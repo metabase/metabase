@@ -76,7 +76,7 @@
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mbql-clause/define-mbql-clause :time-interval :- :type/Boolean
-  ;; TODO -- we should probably further constraint this so you can't do weird stuff like
+  ;; TODO -- we should probably further constrain this so you can't do weird stuff like
   ;;
   ;;    [:time-interval {} <time> :current :year]
   ;;

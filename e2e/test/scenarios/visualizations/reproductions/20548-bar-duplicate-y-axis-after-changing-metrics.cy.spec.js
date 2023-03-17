@@ -18,7 +18,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 20548", () => {
+describe("issue 20548", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -42,7 +42,7 @@ describe.skip("issue 20548", () => {
 
     cy.findByTestId("viz-settings-button").click();
     // Implicit assertion - it would fail if it finds more than one "Count" in the sidebar
-    sidebar().findByDisplayValue("Count");
+    sidebar().findAllByText("Count").should("have.length", 1);
   });
 });
 
