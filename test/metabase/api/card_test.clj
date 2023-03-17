@@ -248,7 +248,7 @@
              (fn [[f timestamp] [card-or-id username]]
                [(fn []
                   (let [card-id   (u/the-id card-or-id)
-                        card-name (db/select-one-field :name Card :id card-id)]
+                        card-name (t2/select-one-fn :name Card :id card-id)]
                     (testing (format "\nCard %d %s viewed by %s on %s" card-id (pr-str card-name) username timestamp)
                       (mt/with-temp ViewLog [_ {:model     "card"
                                                 :model_id  card-id
@@ -581,7 +581,7 @@
                        :semantic_type :type/Quantity
                        :source        :aggregation
                        :field_ref     [:aggregation 0]}]
-                     (db/select-one-field :result_metadata Card :name card-name))))))))))
+                     (t2/select-one-fn :result_metadata Card :name card-name))))))))))
 
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query venues {:fields [$id $name]})
@@ -608,7 +608,7 @@
                :rasta :put 200 (str "card/" card-id)
                (assoc card :dataset_query modified-query))
               (is (= ["ID" "NAME" "PRICE"]
-                     (map norm (db/select-one-field :result_metadata Card :id card-id)))))))))
+                     (map norm (t2/select-one-fn :result_metadata Card :id card-id)))))))))
     (testing "Updating other parts but not query does not update the metadata"
       (let [orig   qp.async/result-metadata-for-query-async
             called (atom 0)]
@@ -682,7 +682,7 @@
                                                   :nil%           0.0},
                                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
                          :field_ref     [:field "count" {:base-type (count-base-type)}]}]
-                       (db/select-one-field :result_metadata Card :name card-name))))
+                       (t2/select-one-fn :result_metadata Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
                        (boolean
@@ -847,13 +847,13 @@
   (mt/with-temp Card [card {:name "Original Name"}]
     (with-cards-in-writeable-collection card
       (is (= "Original Name"
-             (db/select-one-field :name Card, :id (u/the-id card))))
+             (t2/select-one-fn :name Card, :id (u/the-id card))))
       (is (= {:timestamp true, :first_name "Rasta", :last_name "Toucan", :email "rasta@metabase.com", :id true}
              (-> (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:name "Updated Name"})
                  mt/boolean-ids-and-timestamps
                  :last-edit-info)))
       (is (= "Updated Name"
-             (db/select-one-field :name Card, :id (u/the-id card)))))))
+             (t2/select-one-fn :name Card, :id (u/the-id card)))))))
 
 (deftest can-we-update-a-card-s-archived-status-
   (mt/with-temp Card [card]
@@ -890,14 +890,14 @@
     (mt/with-temp Card [card {:description "What a nice Card"}]
       (with-cards-in-writeable-collection card
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
-        (is (nil? (db/select-one-field :description Card :id (u/the-id card))))))))
+        (is (nil? (t2/select-one-fn :description Card :id (u/the-id card))))))))
 
 (deftest description-should-be-blankable-as-well
   (mt/with-temp Card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
-             (db/select-one-field :description Card :id (u/the-id card)))))))
+             (t2/select-one-fn :description Card :id (u/the-id card)))))))
 
 (deftest update-card-parameters-test
   (testing "PUT /api/card/:id"
@@ -962,7 +962,7 @@
           (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
-                 (db/select-one-field :embedding_params Card :id (u/the-id card)))))))))
+                 (t2/select-one-fn :embedding_params Card :id (u/the-id card)))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp Card [card]
@@ -970,7 +970,7 @@
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= 1
-             (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
 
 (deftest can-we-change-the-collection-preview-flag-of-a-card-
   (mt/with-temp Card [card]
@@ -978,7 +978,7 @@
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_preview false})
       (is (= false
-             (db/select-one-field :collection_preview Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_preview Card :id (u/the-id card)))))))
 
 (deftest ---and-unset--unpin--it-as-well-
   (mt/with-temp Card [card {:collection_position 1}]
@@ -986,7 +986,7 @@
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= nil
-             (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
 
 (deftest ---we-shouldn-t-be-able-to-if-we-don-t-have-permissions-for-the-collection
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -995,7 +995,7 @@
       (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= nil
-             (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
 
 (deftest gets-a-card
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -1004,7 +1004,7 @@
       (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= 1
-             (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
@@ -1274,7 +1274,7 @@
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
-                       (db/select-one-field :dataset_query Card :id card-id)))))
+                       (t2/select-one-fn :dataset_query Card :id card-id)))))
 
             (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
               (is (schema= {:id            (s/eq card-id)
@@ -1687,7 +1687,7 @@
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
-          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+          (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
                  (u/the-id collection))))))))
 
 (deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
@@ -1706,7 +1706,7 @@
     (mt/with-temp* [Card       [card]
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
-      (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+      (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
              (u/the-id collection))))))
 
 (deftest update-card-require-parent-perms-test
@@ -1740,7 +1740,7 @@
             (testing "Should be able to change it once you have perms for both collections"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
               (change-collection! 200)
-              (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+              (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
                      (u/the-id new-collection))))))))))
 
 
@@ -2159,13 +2159,13 @@
                                                  [:native
                                                   (u/the-id native-ds) (u/the-id native-nested)]]]
           (query! card-id) ;; populate metadata
-          (let [metadata (db/select-one-field :result_metadata Card :id card-id)
+          (let [metadata (t2/select-one-fn :result_metadata Card :id card-id)
                 ;; simulate updating metadat with user changed stuff
                 user-edited (add-preserved metadata)]
             (db/update! Card card-id :result_metadata user-edited)
             (testing "Saved metadata preserves user edits"
               (is (= (map only-user-edits user-edited)
-                     (map only-user-edits (db/select-one-field :result_metadata Card :id card-id)))))
+                     (map only-user-edits (t2/select-one-fn :result_metadata Card :id card-id)))))
             (testing "API response includes user edits"
               (is (= (map only-user-edits user-edited)
                      (->> (query! card-id)
@@ -2216,7 +2216,7 @@
                           (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
                      (map (comp u/upper-case-en :display_name)
-                          (db/select-one-field :result_metadata Card :id card-id))))
+                          (t2/select-one-fn :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
                      (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))

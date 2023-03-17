@@ -200,7 +200,7 @@
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
                                  :location  (or (letfn [(collection-location [id]
-                                                          (db/select-one-field :location Collection :id id))]
+                                                          (t2/select-one-fn :location Collection :id id))]
                                                   (some-> context
                                                           :collection
                                                           collection-location

@@ -302,7 +302,7 @@
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
                   :archived?        (fn []
-                                      (db/select-one-field :archived Pulse :id pulse-id))})))]
+                                      (t2/select-one-fn :archived Pulse :id pulse-id))})))]
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects

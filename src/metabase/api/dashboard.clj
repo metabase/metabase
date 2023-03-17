@@ -476,7 +476,7 @@
             ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
             (when-not (query-perms/can-query-table? database-id table-id)
               (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                                   (pr-str (db/select-one-field :name Table :id table-id)))
+                                   (pr-str (t2/select-one-fn :name Table :id table-id)))
                               {:status-code        403
                                :database-id        database-id
                                :table-id           table-id
@@ -573,7 +573,9 @@
   {cards (su/non-empty [UpdatedDashboardCard])}
   (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
     (check-updated-parameter-mapping-permissions id cards)
-    (dashboard/update-dashcards! dashboard cards)
+    ;; transform the card data to the format of the DashboardCard model
+    ;; so update-dashcards! can compare them with existing cards
+    (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 
@@ -617,7 +619,7 @@
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
-  {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
+  {:uuid (or (t2/select-one-fn :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
                (db/update! Dashboard dashboard-id
                  :public_uuid       <>
@@ -675,7 +677,7 @@
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (populate/get-or-create-root-container-collection))
-                               (db/select-one-field :id 'Collection
+                               (t2/select-one-fn :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))

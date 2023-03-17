@@ -138,7 +138,7 @@
           [:= field-clause value]))))
 
 (defn- name-for-logging [model id]
-  (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (db/select-one-field :name model :id id)))))
+  (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))
 
 (defn- format-join-for-logging [join]
   (format "%s %s -> %s %s"
@@ -598,12 +598,12 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (db/select-one-field :base_type Field :id field-id)]
+  (let [base-type (t2/select-one-fn :base_type Field :id field-id)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (db/select-one-field :name Field :id field-id)]
+      (let [field-name (t2/select-one-fn :name Field :id field-id)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -646,7 +646,7 @@
 
 (defn- search-cached-field-values? [field-id constraints]
   (and (use-cached-field-values? field-id)
-       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)
+       (isa? (t2/select-one-fn :base_type Field :id field-id) :type/Text)
        (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
                                   ;; if we are doing a search, make sure we only use field values
                                   ;; when we're certain the fieldvalues we stored are all the possible values.

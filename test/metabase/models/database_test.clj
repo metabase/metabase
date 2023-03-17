@@ -290,7 +290,7 @@
            (db/update! Database id :engine :sqlite))))
     (testing " updating other attributes of a sample database is allowed"
       (db/update! Database id :name "My New Name")
-      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
+      (is (= "My New Name" (t2/select-one-fn :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 
@@ -298,7 +298,7 @@
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
-             (db/select-one-field :engine Database :id db-id))))))
+             (t2/select-one-fn :engine Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"

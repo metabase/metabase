@@ -398,7 +398,7 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
+   (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
                                     :type     :query
                                     :query    {:source-table table-id
                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))))

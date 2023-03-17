@@ -33,8 +33,8 @@
         (is (= 1
                (db/count User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists"
-        (let [hashed-password          (fn [] (db/select-one-field :password User :email "cam+config-file-test@metabase.com"))
-              salt                     (fn [] (db/select-one-field :password_salt User :email "cam+config-file-test@metabase.com"))
+        (let [hashed-password          (fn [] (t2/select-one-fn :password User :email "cam+config-file-test@metabase.com"))
+              salt                     (fn [] (t2/select-one-fn :password_salt User :email "cam+config-file-test@metabase.com"))
               original-hashed-password (hashed-password)]
           (binding [advanced-config.file/*config* {:version 1
                                                    :config  {:users [{:first_name "Cam"

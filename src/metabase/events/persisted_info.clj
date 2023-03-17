@@ -34,7 +34,7 @@
     (when (and (:dataset card)
                (public-settings/persisted-models-enabled)
                (get-in (t2/select-one Database :id (:database_id card)) [:options :persist-models-enabled])
-               (nil? (db/select-one-field :id PersistedInfo :card_id (:id card))))
+               (nil? (t2/select-one-fn :id PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! (:actor_id card) card))
     (catch Throwable e
       (log/warn (format "Failed to process persisted-info event. %s" (:topic event)) e))))

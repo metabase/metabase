@@ -343,7 +343,7 @@
               (testing "for Tables"
                 (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
                   (is (= (clean-entity coll)
-                         (->> (db/select-one-field :id 'Database :name db_id)
+                         (->> (t2/select-one-fn :id 'Database :name db_id)
                               (t2/select-one 'Table :name name :db_id)
                               (serdes/extract-one "Table" {})
                               clean-entity)))))
@@ -352,8 +352,8 @@
                 (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
                   (is (nil? schema))
                   (is (= (clean-entity coll)
-                         (->> (db/select-one-field :id 'Database :name db)
-                              (db/select-one-field :id 'Table :schema schema :name table :db_id)
+                         (->> (t2/select-one-fn :id 'Database :name db)
+                              (t2/select-one-fn :id 'Table :schema schema :name table :db_id)
                               (t2/select-one 'Field :name name :table_id)
                               (serdes/extract-one "Field" {})
                               clean-entity)))))

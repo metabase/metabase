@@ -310,7 +310,7 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (db/select-one-field :dataset_query Card :id card-id))"
+      (t2/select-one-fn :dataset_query Card :id card-id))"
   {:style/indent 1}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed

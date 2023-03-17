@@ -68,7 +68,7 @@
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
-  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
+  (when (contains? refreshable-states (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
     (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
     (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
@@ -133,7 +133,7 @@
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
-                                   (let [current-state (db/select-one-field :state PersistedInfo :id (:id persisted-info))
+                                   (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
                                          card-info     (t2/select-one [Card :archived :dataset]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? prunable-states current-state)

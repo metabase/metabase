@@ -265,7 +265,7 @@
                                            :percent-email  (s/eq 0.0)
                                            :average-length (s/pred #(< 15 % 16) "between 15 and 16")
                                            :percent-state  (s/eq 0.0)}}}
-                     (db/select-one-field :fingerprint Field :id (mt/id :venues :name))))))))
+                     (t2/select-one-fn :fingerprint Field :id (mt/id :venues :name))))))))
 
 (deftest fingerprinting-test
   (testing "fingerprinting truncates text fields (see #13288)"

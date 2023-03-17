@@ -124,7 +124,7 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id gender-field-id))))))
+        (is (false? (t2/select-one-fn :active Field :id gender-field-id))))))
 
   (testing "When a nested field is marked inactive so are its children"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
@@ -152,4 +152,4 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id blueberries-field-id)))))))
+        (is (false? (t2/select-one-fn :active Field :id blueberries-field-id)))))))

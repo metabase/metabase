@@ -45,7 +45,7 @@
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
                           (when-not icon
-                            {:icon (db/select-one-field :icon Timeline :id timeline_id)}))]
+                            {:icon (t2/select-one-fn :icon Timeline :id timeline_id)}))]
       (snowplow/track-event! ::snowplow/new-event-created
                              api/*current-user-id*
                              (cond-> {:time_matters time_matters

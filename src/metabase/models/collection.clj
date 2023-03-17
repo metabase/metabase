@@ -182,7 +182,7 @@
   {:pre [(contains? collection :namespace)]}
   (when location
     (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-namespace (db/select-one-field :namespace Collection :id parent-id)]
+      (let [parent-namespace (t2/select-one-fn :namespace Collection :id parent-id)]
         (when-not (= (keyword collection-namespace) (keyword parent-namespace))
           (let [msg (tru "Collection must be in the same namespace as its parent")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
@@ -956,7 +956,7 @@
         parent-id        (when parent
                            (or (:entity_id parent) (serdes/identity-hash parent)))
         owner-email      (when (:personal_owner_id coll)
-                           (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
+                           (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
     (-> (serdes/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
@@ -983,7 +983,7 @@
   (serdes/maybe-labeled "Collection" coll :slug))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
-  (let [location    (db/select-one-field :location Collection :id id)
+  (let [location    (t2/select-one-fn :location Collection :id id)
         child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
         dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]

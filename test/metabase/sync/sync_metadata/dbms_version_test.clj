@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (defn- db-dbms-version [db-or-id]
-  (db/select-one-field :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
   (s/check (s/maybe sync-dbms-ver/DBMSVersion) dbms-version))

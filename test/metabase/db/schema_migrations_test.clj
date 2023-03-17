@@ -88,7 +88,7 @@
         (doseq [id [1 2]]
           (testing (format "Field %d" id)
             (is (= id
-                   (db/select-one-field :database_position Field :id id)))))))))
+                   (t2/select-one-fn :database_position Field :id id)))))))))
 
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
@@ -776,12 +776,12 @@
         (migrate!)
         (testing "A personal Collection should get created_at set by to the date_joined from its owner"
           (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id personal-collection-id)))))
         (testing "A non-personal Collection should get created_at set to its oldest object"
           (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id impersonal-collection-id)))))
         (testing "Empty Collection should not have been updated"
-          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+          (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
             (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
                       empty-collection-created-at))
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")

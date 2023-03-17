@@ -43,7 +43,7 @@
   "Gets the personal collection ID for :crowberto (needed for tests). Must be public because the `with-world` macro
   is public."
   []
-  (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto)))
+  (t2/select-one-fn :id Collection :personal_owner_id (mt/user->id :crowberto)))
 
 (defmacro with-temp-dpc
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections

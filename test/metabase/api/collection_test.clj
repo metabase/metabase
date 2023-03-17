@@ -1474,12 +1474,12 @@
                                          {:name "foo" :authority_level "official"})
                    :authority_level)))
         (is (= :official
-               (db/select-one-field :authority_level Collection :id (u/the-id collection)))))
+               (t2/select-one-fn :authority_level Collection :id (u/the-id collection)))))
       (testing "But not for personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
                                 {:authority_level "official"})
-          (is (nil? (db/select-one-field :authority_level Collection :id (u/the-id personal-coll))))))
+          (is (nil? (t2/select-one-fn :authority_level Collection :id (u/the-id personal-coll))))))
       (testing "And not for children of personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/with-temp Collection [child-coll]

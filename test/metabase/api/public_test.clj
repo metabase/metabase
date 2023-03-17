@@ -609,7 +609,7 @@
 
 (deftest double-check-that-the-field-has-fieldvalues
   (is (= [1 2 3 4]
-         (db/select-one-field :values FieldValues :field_id (mt/id :venues :price)))))
+         (t2/select-one-fn :values FieldValues :field_id (mt/id :venues :price)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |

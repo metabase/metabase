@@ -257,7 +257,7 @@
               (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph      (-> (perms/data-perms-graph)
@@ -274,7 +274,7 @@
                                            :group_id group-id)))))
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph       (-> (perms/data-perms-graph)

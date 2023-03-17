@@ -49,7 +49,7 @@
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
   ^java.time.temporal.Temporal []
-  (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
+  (t2/select-one-fn :date_joined User, {:order-by [[:date_joined :asc]]}))
 
 (jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done

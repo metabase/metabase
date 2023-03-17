@@ -182,7 +182,7 @@
                      (db/exists? Database :name db-name))))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
-                     (db/select-one-field k Database :name db-name))))))))
+                     (t2/select-one-fn k Database :name db-name))))))))
 
     (testing "Setup should trigger sync right away for the newly created Database (#12826)"
       (let [db-name (mt/random-name)]

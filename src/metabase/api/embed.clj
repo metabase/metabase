@@ -196,7 +196,7 @@
   [[metabase.api.dashboard/run-query-for-dashcard-async]]."
   [dashboard-id :- su/IntGreaterThanZero
    slug->value  :- {s/Any s/Any}]
-  (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
+  (let [parameters (t2/select-one-fn :parameters Dashboard :id dashboard-id)
         slug->id   (into {} (map (juxt :slug :id)) parameters)]
     (vec (for [[slug value] slug->value
                :let         [slug (u/qualified-name slug)]]
@@ -230,7 +230,7 @@
         add-implicit-card-parameters
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
-                                               (db/select-one-field :embedding_params Card :id card-id))))))
+                                               (t2/select-one-fn :embedding_params Card :id card-id))))))
 
 (defn run-query-for-card-with-params-async
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
@@ -263,7 +263,7 @@
         (substitute-token-parameters-in-text token-params)
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
-                                               (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
+                                               (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))))))
 
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
@@ -336,7 +336,7 @@
       :export-format     export-format
       :card-id           card-id
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :embedding-params  (db/select-one-field :embedding_params Card :id card-id)
+      :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
       :query-params      query-params
       :qp-runner         qp-runner
       :constraints       constraints
@@ -406,7 +406,7 @@
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
       :card-id          card-id
-      :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
+      :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
       :constraints      constraints

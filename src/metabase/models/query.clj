@@ -27,7 +27,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (db/select-one-field :average_execution_time Query :query_hash query-hash))
+  (t2/select-one-fn :average_execution_time Query :query_hash query-hash))
 
 (defn- int-casting-type
   "Return appropriate type for use in SQL `CAST(x AS type)` statement.
@@ -123,7 +123,7 @@
     (seq ids)))
 
 (defn adhoc-query
-  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query]
   (->> query
        mbql.normalize/normalize

@@ -182,7 +182,7 @@
       (fetch-user user)
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
-          user-email          (db/select-one-field :email User :id user-id)
+          user-email          (t2/select-one-fn :email User :id user-id)
           [old-password-info] (db/simple-select User {:select [:password :password_salt]
                                                       :where  [:= :id user-id]})]
       (when-not user-email

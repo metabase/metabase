@@ -197,7 +197,7 @@
   (let [table-name        (name table-name)
         table-id-for-name (partial t2/select-one-pk Table, :db_id db-id, :name)]
     (or (table-id-for-name table-name)
-        (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
+        (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
         (let [{driver :engine, db-name :name} (t2/select-one [Database :engine :name] :id db-id)]
           (throw
@@ -219,7 +219,7 @@
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (t2/select-one [Table :name :db_id] :id table-id)
-            db-name                          (db/select-one-field :name Database :id db-id)
+            db-name                          (t2/select-one-fn :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
         (throw

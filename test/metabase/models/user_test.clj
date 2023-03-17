@@ -226,7 +226,7 @@
                                         :last_name        "SomeLdapStuff"
                                         :login_attributes {:local_birds ["Steller's Jay" "Mountain Chickadee"]}})
       (is (= {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
-             (db/select-one-field :login_attributes User :email "ldaptest@metabase.com")))
+             (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
       (finally
         (db/delete! User :email "ldaptest@metabase.com")))))
 
@@ -363,7 +363,7 @@
 
         (testing "their is_superuser flag should be set to true"
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp User [user {:is_superuser true}]
@@ -373,7 +373,7 @@
 
         (testing "their is_superuser flag should be set to false"
           (is (= false
-                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
 
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
@@ -383,7 +383,7 @@
           (u/ignore-exceptions
             (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/the-id user))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
@@ -399,7 +399,7 @@
   (testing "set-password!"
     (testing "should change the password"
       (mt/with-temp User [{user-id :id} {:password "ABC_DEF"}]
-        (letfn [(password [] (db/select-one-field :password User :id user-id))]
+        (letfn [(password [] (t2/select-one-fn :password User :id user-id))]
           (let [original-password (password)]
             (user/set-password! user-id "p@ssw0rd")
             (is (not= original-password
@@ -409,7 +409,7 @@
       (mt/with-temp User [{user-id :id} {:reset_token "ABC123"}]
         (user/set-password! user-id "p@ssw0rd")
         (is (= nil
-               (db/select-one-field :reset_token User :id user-id)))))
+               (t2/select-one-fn :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
       (mt/with-temp* [User [{user-id :id}]]
@@ -428,7 +428,7 @@
       (testing "valid locale"
         (mt/with-temp User [{user-id :id} {:locale "en_US"}]
           (is (= "en_US"
-                 (db/select-one-field :locale User :id user-id)))))
+                 (t2/select-one-fn :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
              Throwable
@@ -440,7 +440,7 @@
         (testing "valid locale"
           (db/update! User user-id :locale "en_GB")
           (is (= "en_GB"
-                 (db/select-one-field :locale User :id user-id))))
+                 (t2/select-one-fn :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
@@ -452,12 +452,12 @@
     (mt/with-temp User [{user-id :id} {:locale "EN-us"}]
       (testing "creating a new User"
         (is (= "en_US"
-               (db/select-one-field :locale User :id user-id))))
+               (t2/select-one-fn :locale User :id user-id))))
 
       (testing "updating a User"
         (db/update! User user-id :locale "en-GB")
         (is (= "en_GB"
-               (db/select-one-field :locale User :id user-id)))))))
+               (t2/select-one-fn :locale User :id user-id)))))))
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
@@ -488,8 +488,8 @@
   (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
     (let [plaintext-password "password-1234"]
       (mt/with-temp User [{user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (db/select-one-field :password_salt User :id user-id))
-              hashed-password          (fn [] (db/select-one-field :password User :id user-id))
+        (let [salt                     (fn [] (t2/select-one-fn :password_salt User :id user-id))
+              hashed-password          (fn [] (t2/select-one-fn :password User :id user-id))
               original-hashed-password (hashed-password)]
           (testing "sanity check: check that password can be verified"
             (is (u.password/verify-password plaintext-password

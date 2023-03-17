@@ -352,7 +352,7 @@
   (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (db/select-one-field :table_id Field, :id field-id))))
+     (t2/select-one-fn :table_id Field, :id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
@@ -375,7 +375,7 @@
   (let [table (when (number? table_id)
                    (t2/select-one 'Table :id table_id))
         db    (when table
-                (db/select-one-field :name 'Database :id (:db_id table)))
+                (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)
                             [db (:schema table) (:name table)]
                             ;; If table_id is not a number, it's already been exported as a [db schema table] triple.

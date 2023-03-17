@@ -145,7 +145,7 @@
     (log/info "Dashboard cards outside the collection")
     (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
-            :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
+            :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
       (log/infof "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
               :let [card (t2/select-one [Card :collection_id :name] :id card_id)]]

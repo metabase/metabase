@@ -493,7 +493,7 @@
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 200 (str "pulse/" (u/the-id pulse))
                             {:collection_id (u/the-id collection)})
-      (is (= (db/select-one-field :collection_id Pulse :id (u/the-id pulse))
+      (is (= (t2/select-one-fn :collection_id Pulse :id (u/the-id pulse))
              (u/the-id collection))))))
 
 (deftest change-collection-test
@@ -506,7 +506,7 @@
         ;; now make an API call to move collections
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)})
         ;; Check to make sure the ID has changed in the DB
-        (is (= (db/select-one-field :collection_id Pulse :id (u/the-id pulse))
+        (is (= (t2/select-one-fn :collection_id Pulse :id (u/the-id pulse))
                (u/the-id new-collection)))))
 
     (testing "...but if we don't have the Permissions for the old collection, we should get an Exception"
@@ -535,7 +535,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:collection_position 1})
       (is (= 1
-             (db/select-one-field :collection_position Pulse :id (u/the-id pulse)))))
+             (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse)))))
 
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection [_ collection pulse]
@@ -544,21 +544,21 @@
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
         (is (= nil
-               (db/select-one-field :collection_position Pulse :id (u/the-id pulse))))))
+               (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse))))))
 
     (testing "...we shouldn't be able to if we don't have permissions for the Collection"
       (pulse-test/with-pulse-in-collection [_db _collection pulse]
         (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                               {:collection_position 1})
         (is (= nil
-               (db/select-one-field :collection_position Pulse :id (u/the-id pulse))))
+               (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse))))
 
         (testing "shouldn't be able to unset (unpin) a Pulse"
           (db/update! Pulse (u/the-id pulse) :collection_position 1)
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
-                 (db/select-one-field :collection_position Pulse :id (u/the-id pulse)))))))))
+                 (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse)))))))))
 
 (deftest archive-test
   (testing "Can we archive a Pulse?"
@@ -567,7 +567,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived true})
       (is (= true
-             (db/select-one-field :archived Pulse :id (u/the-id pulse)))))))
+             (t2/select-one-fn :archived Pulse :id (u/the-id pulse)))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Pulse?"
@@ -577,7 +577,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false
-             (db/select-one-field :archived Pulse :id (u/the-id pulse))))))
+             (t2/select-one-fn :archived Pulse :id (u/the-id pulse))))))
 
   (testing "Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!"
     (mt/with-non-admin-groups-no-root-collection-perms

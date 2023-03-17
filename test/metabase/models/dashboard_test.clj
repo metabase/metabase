@@ -201,9 +201,9 @@
     (testing "Pulse name and collection-id updates"
       (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves" :collection_id collection-id-2)
       (is (= "Lucky's Close Shaves"
-             (db/select-one-field :name Pulse :id pulse-id)))
+             (t2/select-one-fn :name Pulse :id pulse-id)))
       (is (= collection-id-2
-             (db/select-one-field :collection_id Pulse :id pulse-id))))
+             (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
         (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
@@ -364,7 +364,7 @@
                    :values_query_type "list",
                    :values_source_type "card",
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-                 (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+                 (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))))
 
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
@@ -376,7 +376,7 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category}]
-              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+              (t2/select-one-fn :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
     (mt/with-temp* [Card      [{card-id :id}]
@@ -395,7 +395,7 @@
                 :values_query_type    "list",
                 :values_source_type   "card",
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
+              (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"

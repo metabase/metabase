@@ -216,11 +216,11 @@
 
         (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
           (db/delete! FieldValues :field_id (mt/id :venues :price))
-          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" (mt/id :venues :price))))
-          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))
 
       (testing "POST /api/field/:id/discard_values"
         (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -231,11 +231,11 @@
             (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" field-id))))
 
         (testing "A non-admin with no data access can discard field values if they have data model perms"
-          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" (mt/id :venues :price))))
-          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))))))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
 (deftest update-table-test
   (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
@@ -282,12 +282,12 @@
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (db/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
-        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))
 
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -397,7 +397,7 @@
         (with-all-users-data-perms {db-id {:data    {:schemas :block :native :none}
                                            :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id field-id)))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
         (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
 
       ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
@@ -407,11 +407,11 @@
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
         (db/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-all-users-data-perms {(mt/id) {:data   {:schemas :block :native :none}
                                              :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
-        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))))
 
 (deftest fetch-db-test
   (mt/with-temp Database [{db-id :id}]

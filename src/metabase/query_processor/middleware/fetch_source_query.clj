@@ -302,7 +302,7 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (let [dataset? (db/select-one-field :dataset Card :id card-id)]
+        (let [dataset? (t2/select-one-fn :dataset Card :id card-id)]
           (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
             (qp query
                 (fn [metadata]

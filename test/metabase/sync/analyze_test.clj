@@ -32,7 +32,7 @@
         :semantic_type       nil
         :fingerprint_version Short/MAX_VALUE)
       ;; the type of the value that comes back may differ a bit between different application DBs
-      (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
+      (let [analysis-date (t2/select-one-fn :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
         (analyze/analyze-table! (t2/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
@@ -156,7 +156,7 @@
   (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
-  (db/select-one-field :last_analyzed Field
+  (t2/select-one-fn :last_analyzed Field
     :last_analyzed [:not= nil]
     :table_id      (u/the-id table)
     {:order-by [[:last_analyzed :desc]]}))
@@ -268,7 +268,7 @@
                        "started_at" true
                        "ended_at"   true
                        "duration"   true
-                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
+                       "db_engine"  (name (t2/select-one-fn :engine Database :id (mt/id)))
                        "db_id"      true
                        "task_name"  "classify-tables"}
                 :user-id nil}

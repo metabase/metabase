@@ -796,7 +796,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -813,7 +813,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -834,7 +834,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"letting you know that Crowberto Corv"))))))))
 
@@ -855,7 +855,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"now getting alerts about .*Foo")
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"

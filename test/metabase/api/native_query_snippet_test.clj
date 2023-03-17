@@ -170,7 +170,7 @@
         (mt/with-temp NativeQuerySnippet [snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
           (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
           (is (= (mt/user->id :lucky)
-                 (db/select-one-field :creator_id NativeQuerySnippet :id (:id snippet)))))))))
+                 (t2/select-one-fn :creator_id NativeQuerySnippet :id (:id snippet)))))))))
 
 (deftest update-snippet-collection-test
   (testing "PUT /api/native-query-snippet/:id"
@@ -189,7 +189,7 @@
                              (select-keys [:collection_id :errors])))))
                 (testing "\nvalue in app DB"
                   (is (= (:id dest)
-                         (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id)))))))))
+                         (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))))))
 
       (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
         (tt/with-temp* [Collection         [{collection-id :id}]
