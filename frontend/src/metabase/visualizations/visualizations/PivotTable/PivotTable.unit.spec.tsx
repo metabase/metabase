@@ -45,6 +45,7 @@ const cols = [
 
 const rows = [
   ["foo1", "bar1", "baz1", 0, 111, 222],
+  ["foo1", "bar1", "baz2", 0, 777, 888],
   ["foo2", "bar2", "baz2", 0, 333, 444],
   ["foo3", "bar3", "baz3", 0, 555, 666],
 ];
@@ -156,9 +157,9 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 
     rows.forEach(rowData => {
       columnIndexes.forEach(colIndex => {
-        expect(
-          screen.getByText(rowData[colIndex].toString()),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("pivot-table")).toHaveTextContent(
+          rowData[colIndex].toString(),
+        );
       });
     });
   });
@@ -174,14 +175,28 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 
     setup({ initialSettings: hiddenSettings });
 
-    rows.forEach(rowData => {
-      expect(screen.getByText(rowData[0].toString())).toBeInTheDocument();
+    expect(screen.getByText("Totals for bar1")).toBeInTheDocument();
 
-      [1, 2, 4, 5].forEach(colIndex => {
-        expect(
-          screen.queryByText(rowData[colIndex].toString()),
-        ).not.toBeInTheDocument();
-      });
+    expect(screen.getByRole("img", { name: /add/i })).toBeInTheDocument();
+
+    //Collapsed aggregates
+    [4, 5].forEach(colIndex => {
+      expect(
+        screen.queryByText(rows[0][colIndex].toString()),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(rows[1][colIndex].toString()),
+      ).not.toBeInTheDocument();
+    });
+
+    //non grouped values are still visible
+    [0, 1, 2, 4, 5].forEach(colIndex => {
+      expect(
+        screen.getByText(rows[2][colIndex].toString()),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(rows[3][colIndex].toString()),
+      ).toBeInTheDocument();
     });
   });
 });
