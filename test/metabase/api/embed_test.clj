@@ -220,25 +220,17 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
-                                                                           :b {:type "date", :name "b", :display_name "b" :id "b"}
-                                                                           :c {:type "date", :name "c", :display_name "c" :id "c"}
-                                                                           :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
-                             :parameters       [{:type "date", :name "a", :display_name "a" :id "a"}
-                                                {:type "date", :name "b", :display_name "b" :id "b"}
-                                                {:type "date", :name "c", :display_name "c" :id "c"
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
+                             :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
+                                                {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
+                                                {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
                                                  :values_source_type "static-list"  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
         (let [parameters (:parameters (client/client :get 200 (card-url card)))]
-          (is (= [;; the parameter id = "d" is in template-tags, but not card.parameters,
-                  ;; when fetching card we should get it returned
-                  {:id "d",
-                   :type "date/single",
-                   :target ["variable" ["template-tag" "d"]],
-                   :name "d",
-                   :slug "d",
-                   :default nil}
-                  ;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
+          (is (= [;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
                   ;; merge of both places
                   {:id "c",
                    :type "date/single",
@@ -246,9 +238,18 @@
                    :target ["variable" ["template-tag" "c"]],
                    :name "c",
                    :slug "c",
-                   :default nil
+                   ;; order importance: the default from template-tag is in the final result
+                   :default "C TAG"
                    :values_source_type    "static-list"
-                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                  ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                  ;; when fetching card we should get it returned
+                  {:id "d",
+                   :type "date/single",
+                   :target ["variable" ["template-tag" "d"]],
+                   :name "d",
+                   :slug "d",
+                   :default "D TAG"}]
                  parameters)))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------

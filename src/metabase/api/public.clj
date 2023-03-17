@@ -65,13 +65,12 @@
   [{:keys [parameters] :as card}]
   (let [template-tag-parameters     (card/template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
-        id->parameter               (m/index-by :id parameters)
-        all-parameter-ids           (set (concat (map :id template-tag-parameters)
-                                                 (map :id parameters)))
-        parameters                  (for [id all-parameter-ids]
-                                      (merge (get id->parameter id {})
-                                             (get id->template-tags-parameter id {})))]
-    (assoc card :parameters parameters)))
+        id->parameter               (m/index-by :id parameters)]
+    (assoc card :parameters (vals (reduce-kv (fn [acc id parameter]
+                                               ;; order importance: we want the info from `template-tag` to be merged last
+                                               (update acc id #(merge % parameter)))
+                                             id->parameter
+                                             id->template-tags-parameter)))))
 
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
