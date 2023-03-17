@@ -211,7 +211,7 @@
             (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
 
 (defn field! [table column]
-  (or (db/select-one Field :id (mt/id table column))
+  (or (t2/select-one Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
 
