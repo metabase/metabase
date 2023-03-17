@@ -82,6 +82,9 @@
                       :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
       (f))))
 
+(defmacro ^:private with-pulses-in-nonreadable-collection [pulses-or-ids & body]
+  `(do-with-pulses-in-a-collection (constantly nil) ~pulses-or-ids (fn [] ~@body)))
+
 (defmacro ^:private with-pulses-in-readable-collection [pulses-or-ids & body]
   `(do-with-pulses-in-a-collection perms/grant-collection-read-permissions! ~pulses-or-ids (fn [] ~@body)))
 
@@ -802,9 +805,11 @@
               (is (partial=
                    [(expected-pulse-shape pulse-1)
                     (assoc (expected-pulse-shape pulse-3) :can_write false)]
-                   (map #(update % :collection_id boolean) results))))))
+                   (map #(update % :collection_id boolean) results)))))))
 
-        (testing "when `creator_or_recipient=true`, cards and recipients are not included in results"
+      (with-pulses-in-nonreadable-collection [pulse-3]
+        (testing "when `creator_or_recipient=true`, cards and recipients are not included in results if the user
+                 does not have collection perms"
           (let [result (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
                            (filter-pulse-results :id #{pulse-3-id})
                            first)]

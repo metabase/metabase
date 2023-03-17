@@ -60,41 +60,66 @@
   [pulse]
   (first (filter-pulses-recipients [pulse])))
 
-(defn- strip-cards-and-recipients
+(defn- current-user-is-creator-or-recipient?
+  "Takes a pulse, and returns whether the user bound in the current API request is a recipient of the pulse."
   [pulse]
-  (-> (dissoc pulse :cards)
-      (update :channels
-              (fn [channels]
-                (map #(dissoc % :recipients) channels)))))
+  (boolean
+   (or
+    (= (:creator_id pulse) api/*current-user-id*)
+    (some
+     (fn [channel]
+       (some
+        (fn [recipient]
+          (= (:id recipient) api/*current-user-id*))
+        (:recipients channel)))
+     (:channels pulse)))))
+
+(defn- can-read?
+  "Custom read permissions function for subscriptions. Can be read if a user has collection permissions for the
+  subscription, or if the user is the subscription creator or recipient."
+  [pulse]
+  (or
+   (mi/can-read? pulse)
+   (current-user-is-creator-or-recipient? pulse)))
+
+(defn- maybe-strip-sensitive-metadata
+  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
+  being the creator or a recipient, we return it with certain metadata removed."
+  [pulse]
+  (if (mi/can-read? pulse)
+    pulse
+    (-> (dissoc pulse :cards)
+        (update :channels
+                (fn [channels]
+                  (map #(dissoc % :recipients) channels))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
-    permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
 
-    If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
 
-    If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
-    created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
-    and a subset of the default items returned for admins. This is used to power the /account/notifications page.
-    Some pulse metadata, namely subscription cards and the recipients list, are also stripped when this flag is used."
-    [archived dashboard_id creator_or_recipient]
-    {archived           (s/maybe su/BooleanString)
-     dashboard_id       (s/maybe su/IntGreaterThanZero)
-     creator_or_recipient (s/maybe su/BooleanString)}
-    (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
-          archived?            (Boolean/parseBoolean archived)
-          pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
-                                                            :dashboard-id dashboard_id
-                                                            :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                    ;; When listing notifications for the /account/notifications page we show them all,
-                                    ;; regardless of permissions, since the only allowed action is to unsubscribe.
-                                    (filter (if creator-or-recipient identity mi/can-write?))
-                                    filter-pulses-recipients)
-          pulses              (if creator-or-recipient
-                                (map strip-cards-and-recipients pulses)
-                                pulses)]
-      (hydrate pulses :can_write)))
+  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
+  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page.
+  This may include subscriptions which the current user does not have collection permissions for, in which case
+  some sensitive metadata (the list of cards and recipients) is stripped out."
+  [archived dashboard_id creator_or_recipient]
+  {archived           (s/maybe su/BooleanString)
+   dashboard_id       (s/maybe su/IntGreaterThanZero)
+   creator_or_recipient (s/maybe su/BooleanString)}
+  (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
+        archived?            (Boolean/parseBoolean archived)
+        pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
+                                                          :dashboard-id dashboard_id
+                                                          :user-id      (when creator-or-recipient api/*current-user-id*)})
+                                  (filter (if creator-or-recipient can-read? mi/can-write?))
+                                  filter-pulses-recipients)
+        pulses               (if creator-or-recipient
+                               (map maybe-strip-sensitive-metadata pulses)
+                               pulses)]
+    (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -143,10 +168,12 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
-  "Fetch `Pulse` with ID."
+  "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
+  we still return it but with some sensitive metadata removed."
   [id]
-  (-> (api/read-check (pulse/retrieve-pulse id))
+  (-> (pulse/retrieve-pulse id)
       filter-pulse-recipients
+      maybe-strip-sensitive-metadata
       (hydrate :can_write)))
 
 (defn- maybe-add-recipients-for-sandboxed-users
