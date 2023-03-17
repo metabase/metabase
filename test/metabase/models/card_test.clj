@@ -236,18 +236,18 @@
       (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
                                          :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
-               (mt/derecordize (db/select-one-field :result_metadata Card :id card-id))))))))
+               (mt/derecordize (t2/select-one-fn :result_metadata Card :id card-id))))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
                         (mt/with-temp Card [{card-id :id} properties]
-                          (f (db/select-one-field :result_metadata Card :id card-id))))
+                          (f (t2/select-one-fn :result_metadata Card :id card-id))))
            "updating" (fn [changes f]
                         (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
                                                            :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (db/update! Card card-id changes)
-                          (f (db/select-one-field :result_metadata Card :id card-id))))}]
+                          (f (t2/select-one-fn :result_metadata Card :id card-id))))}]
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
         (f {:dataset_query (mt/mbql-query venues)}
@@ -324,7 +324,7 @@
    (fn [original expected]
      (mt/with-temp Card [card {:visualization_settings original}]
        (is (= expected
-              (db/select-one-field :visualization_settings Card :id (u/the-id card))))))))
+              (t2/select-one-fn :visualization_settings Card :id (u/the-id card))))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
@@ -389,7 +389,7 @@
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
-                 (db/select-one-field :parameter_mappings Card :id card-id))))))))
+                 (t2/select-one-fn :parameter_mappings Card :id card-id))))))))
 
 (deftest validate-parameter-mappings-test
   (testing "Should validate Card :parameter_mappings when"
@@ -421,7 +421,7 @@
       (is (= [{:parameter_id "22486e00",
                :card_id      1,
                :target       [:dimension [:field 1 nil]]}]
-             (db/select-one-field :parameter_mappings Card :id card-id))))))
+             (t2/select-one-fn :parameter_mappings Card :id card-id))))))
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
@@ -538,7 +538,7 @@
           (is (=? [{:id   "param_2"
                     :name "Param 2"
                     :type :category}]
-                  (db/select-one-field :parameters Dashboard :id (:id dashboard))))
+                  (t2/select-one-fn :parameters Dashboard :id (:id dashboard))))
 
           (testing "but no changes with parameter on card"
             (is (=? [{:name                 "Param 1"
@@ -547,7 +547,7 @@
                       :values_source_type   "card"
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
-                    (db/select-one-field :parameters Card :id (:id card)))))))
+                    (t2/select-one-fn :parameters Card :id (:id card)))))))
 
       (testing "on archive card"
         (db/update! Card source-card-id {:archived true})
@@ -559,7 +559,7 @@
           (is (=? [{:id   "param_1"
                     :name "Param 1"
                     :type :category}]
-                  (db/select-one-field :parameters Card :id (:id card)))))))))
+                  (t2/select-one-fn :parameters Card :id (:id card)))))))))
 
 (deftest descendants-test
   (testing "regular cards don't depend on anything"
@@ -605,7 +605,7 @@
         (is (= {:version 2
                 :pie.show_legend true
                 :pie.percent_visibility "inside"}
-               (db/select-one-field :visualization_settings Card :id card-id)))))
+               (t2/select-one-fn :visualization_settings Card :id card-id)))))
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (db/update! Card card-id :name "Favorite Toucan Foods")

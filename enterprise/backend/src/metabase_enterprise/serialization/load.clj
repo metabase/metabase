@@ -36,7 +36,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -181,7 +182,7 @@
 (def ^:private ^{:arglists '([])} default-user-id
   (mdb.connection/memoize-for-application-db
    (fn []
-     (let [user (db/select-one-id User :is_superuser true)]
+     (let [user (t2/select-one-pk User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
        user))))
 
@@ -714,7 +715,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
+    (str (t2/select-one-fn :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]

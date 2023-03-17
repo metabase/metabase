@@ -13,7 +13,8 @@
    [metabase.test :as mt :refer [with-user-in-groups]]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -34,7 +35,7 @@
   (testing "the actual `PermissionsGroupMembership` object should not have been replaced"
     (with-user-in-groups [group {:name (str ::group)}
                           user  [group]]
-      (let [membership-id          #(db/select-one-id PermissionsGroupMembership
+      (let [membership-id          #(t2/select-one-pk PermissionsGroupMembership
                                                       :group_id (u/the-id group)
                                                       :user_id  (u/the-id user))
             original-membership-id (membership-id)]

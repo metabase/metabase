@@ -11,7 +11,7 @@ import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
 import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
-} from "../utils";
+} from "./utils";
 
 const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
   getUnsavedNativeQuestion({
@@ -39,7 +39,7 @@ const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
     },
   });
 
-describe("entities > actions > utils", () => {
+describe("actions > containers > ActionCreator > QueryActionContextProvider > utils", () => {
   describe("setParameterTypesFromFieldSettings", () => {
     it("should set string parameter types", () => {
       const formSettings = getDefaultFormSettings({

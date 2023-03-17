@@ -23,7 +23,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -198,7 +199,7 @@
       ;; Session
       (test.users/clear-cached-session-tokens!)
       (let [session-id       (test.users/username->token :rasta)
-            login-history-id (db/select-one-id LoginHistory :session_id session-id)]
+            login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -472,7 +473,7 @@
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"
-            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+            (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
               (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test

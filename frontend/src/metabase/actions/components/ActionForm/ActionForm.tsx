@@ -24,7 +24,6 @@ import type {
   ParametersForActionExecution,
 } from "metabase-types/api";
 
-import { reorderFields } from "metabase/actions/containers/ActionCreator/FormCreator";
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import FormFieldEditor from "./FormFieldEditor";
 import {
@@ -32,7 +31,7 @@ import {
   FormFieldEditorDragContainer,
 } from "./ActionForm.styled";
 
-import { getForm, getFormValidationSchema } from "./utils";
+import { getForm, getFormValidationSchema, reorderFields } from "./utils";
 
 export interface ActionFormComponentProps {
   parameters: WritebackParameter[] | Parameter[];

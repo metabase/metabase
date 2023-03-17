@@ -31,7 +31,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -135,10 +136,10 @@
                        :status-code 400})))
     ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
     (when (and values
-           (= (or type (db/select-one-field :type FieldValues :id id))
+           (= (or type (t2/select-one-fn :type FieldValues :id id))
               :full))
      (clear-advanced-field-values-for-field! (or field_id
-                                                 (db/select-one-field :field_id FieldValues :id id))))))
+                                                 (t2/select-one-fn :field_id FieldValues :id id))))))
 
 (defn- post-select [field-values]
   (cond-> field-values

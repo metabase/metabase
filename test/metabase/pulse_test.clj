@@ -21,7 +21,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -371,7 +372,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (db/select-one-id PulseChannel :pulse_id pulse-id)}]
+                                                :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert

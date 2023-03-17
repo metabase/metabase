@@ -13,8 +13,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;; ## Helper Fns
 
@@ -169,7 +169,7 @@
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
       (is (= true
-             (db/select-one-field :archived Metric :id id))))))
+             (t2/select-one-fn :archived Metric :id id))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
@@ -177,7 +177,7 @@
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
-      (is (= false (db/select-one-field :archived Metric :id id))))))
+      (is (= false (t2/select-one-fn :archived Metric :id id))))))
 
 (deftest delete-test
   (testing "DELETE /api/metric/:id"

@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Metric :metric)
 
@@ -24,7 +25,7 @@
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
-      (when (not= creator_id (db/select-one-field :creator_id Metric :id id))
+      (when (not= creator_id (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
 (defmethod mi/perms-objects-set Metric

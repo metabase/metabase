@@ -7,7 +7,8 @@
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan2.core :as t2]))
 
 (deftest sync-test
   (mt/test-driver :druid
@@ -35,7 +36,7 @@
                    (update :fields (partial sort-by :database-position)))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (db/select-one-field :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
   (s/check sync-dbms-ver/DBMSVersion dbms-version))

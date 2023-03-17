@@ -1,29 +1,29 @@
+import _ from "underscore";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { moveElement } from "metabase/core/utils/arrays";
 import * as Errors from "metabase/core/utils/errors";
+import { sortActionParams } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
   ActionFormOption,
+  FieldType,
   FieldSettingsMap,
   InputSettingType,
   InputComponentType,
   Parameter,
   WritebackParameter,
-  FieldType,
 } from "metabase-types/api";
 import type {
   ActionFormProps,
   ActionFormFieldProps,
   FieldSettings,
 } from "metabase/actions/types";
+import type Field from "metabase-lib/metadata/Field";
 
-import { sortActionParams, isEditableField } from "metabase/actions/utils";
-
-const getOptionsFromArray = (
-  options: (number | string)[],
-): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
+import { TYPE } from "metabase-lib/types/constants";
 
 export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
@@ -42,16 +42,59 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   radio: "radio",
 };
 
+const getOptionsFromArray = (
+  options: (number | string)[],
+): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
+
 function getSampleOptions(fieldType: FieldType) {
   return fieldType === "number"
     ? getOptionsFromArray([1, 2, 3])
     : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
 }
 
-export const getFormField = (
-  parameter: Parameter,
-  fieldSettings: FieldSettings,
-) => {
+const AUTOMATIC_DATE_TIME_FIELDS = [
+  TYPE.CreationDate,
+  TYPE.CreationTemporal,
+  TYPE.CreationTime,
+  TYPE.CreationTimestamp,
+
+  TYPE.DeletionDate,
+  TYPE.DeletionTemporal,
+  TYPE.DeletionTime,
+  TYPE.DeletionTimestamp,
+
+  TYPE.UpdatedDate,
+  TYPE.UpdatedTemporal,
+  TYPE.UpdatedTime,
+  TYPE.UpdatedTimestamp,
+];
+
+const isAutomaticDateTimeField = (field: Field) => {
+  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
+};
+
+const isEditableField = (field: Field, parameter: Parameter) => {
+  const isRealField = typeof field.id === "number";
+  if (!isRealField) {
+    // Filters out custom, aggregated columns, etc.
+    return false;
+  }
+
+  if (field.isPK()) {
+    // Most of the time PKs are auto-generated,
+    // but there are rare cases when they're not
+    // In this case they're marked as `required`
+    return parameter.required;
+  }
+
+  if (isAutomaticDateTimeField(field)) {
+    return parameter.required;
+  }
+
+  return true;
+};
+
+const getFormField = (parameter: Parameter, fieldSettings: FieldSettings) => {
   if (
     fieldSettings.field &&
     !isEditableField(fieldSettings.field, parameter as Parameter)
@@ -142,4 +185,28 @@ export const getFormValidationSchema = (
       return [fieldSetting.id, yupType];
     });
   return Yup.object(Object.fromEntries(schema));
+};
+
+export const reorderFields = (
+  fields: FieldSettingsMap,
+  oldIndex: number,
+  newIndex: number,
+) => {
+  // we have to jump through some hoops here because fields settings are an unordered map
+  // with order properties
+  const fieldsWithIds = _.mapObject(fields, (field, key) => ({
+    ...field,
+    id: key,
+  }));
+  const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
+  const reorderedFields = moveElement(orderedFields, oldIndex, newIndex);
+
+  const fieldsWithUpdatedOrderProperty = reorderedFields.map(
+    (field, index) => ({
+      ...field,
+      order: index,
+    }),
+  );
+
+  return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
 };

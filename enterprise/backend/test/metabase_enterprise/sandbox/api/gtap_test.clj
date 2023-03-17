@@ -10,7 +10,8 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -256,7 +257,7 @@
               (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph      (-> (perms/data-perms-graph)
@@ -273,7 +274,7 @@
                                            :group_id group-id)))))
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph       (-> (perms/data-perms-graph)
