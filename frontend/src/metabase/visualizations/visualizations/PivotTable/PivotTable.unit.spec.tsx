@@ -78,6 +78,9 @@ const settings = {
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
 
+const BREAKOUT_COLUMNS = [0, 1, 2];
+const METRIC_COLUMNS = [4, 5];
+
 function setup(options?: any) {
   render(<PivotTableWrapper {...options} />);
 }
@@ -177,10 +180,11 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 
     expect(screen.getByText("Totals for bar1")).toBeInTheDocument();
 
+    //Ensure that
     expect(screen.getByRole("img", { name: /add/i })).toBeInTheDocument();
 
     //Collapsed aggregates
-    [4, 5].forEach(colIndex => {
+    METRIC_COLUMNS.forEach(colIndex => {
       expect(
         screen.queryByText(rows[0][colIndex].toString()),
       ).not.toBeInTheDocument();
@@ -190,7 +194,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
 
     //non grouped values are still visible
-    [0, 1, 2, 4, 5].forEach(colIndex => {
+    [...BREAKOUT_COLUMNS, ...METRIC_COLUMNS].forEach(colIndex => {
       expect(
         screen.getByText(rows[2][colIndex].toString()),
       ).toBeInTheDocument();

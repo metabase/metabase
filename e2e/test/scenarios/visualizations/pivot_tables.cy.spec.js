@@ -215,7 +215,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
-  it("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+  it.only("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
     const questionDetails = {
       name: "25250",
       dataset_query: {
@@ -259,6 +259,13 @@ describe("scenarios > visualizations > pivot tables", () => {
     // Collapse "User ID" column
     cy.findByText("User ID").parent().find(".Icon-dash").click();
     cy.findByText("1162").should("be.visible");
+
+    //Expanding teh grouped column should still work
+    cy.findByText("Totals for 678").parent().find(".Icon-add").click();
+    cy.findByText("678").should("be.visible");
+    cy.findByText("51").should("be.visible");
+    cy.findByText("129").should("be.visible");
+    cy.findByText("180").should("be.visible");
   });
 
   it("should allow hiding subtotals", () => {
