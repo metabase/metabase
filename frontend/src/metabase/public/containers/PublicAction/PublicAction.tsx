@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
-import { ActionForm } from "metabase/actions/components/ActionForm";
+import ActionForm from "metabase/actions/components/ActionForm";
 import {
   generateFieldSettingsFromParameters,
   getSuccessMessage,
