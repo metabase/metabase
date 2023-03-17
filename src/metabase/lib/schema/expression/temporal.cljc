@@ -59,7 +59,3 @@
   #_:timestr [:schema [:ref ::expression/string]]
   ;; TODO is this right?
   #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
-
-(mbql-clause/define-tuple-mbql-clause :relative-datetime :- :type/Integer
-  #_:datetime [:schema [:ref ::expression/temporal]]
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
