@@ -60,7 +60,7 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (t2/update! ParameterCard conditions {:card_id card-id})
+      (or (pos? (t2/update! ParameterCard conditions {:card_id card-id}))
           (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!

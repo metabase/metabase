@@ -626,13 +626,14 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
     (db/transaction
-      (t2/update! Collection {:id       [:in affected-collection-ids]
-                              :archived false}
-                  {:archived true})
-     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-       (t2/update! model {:collection_id [:in affected-collection-ids]
-                          :archived      false}
-                   {:archived true})))))
+      (t2/query {:update :collection
+                 :set    {:archived false}
+                 :where  [:and [:in :id affected-collection-ids]
+                               [:= :archived false]]})
+      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      false}
+                    {:archived true})))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -640,13 +641,14 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
     (db/transaction
-      (t2/update! Collection {:id       [:in affected-collection-ids]
-                              :archived true}
-                  {:archived false})
-      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (t2/update! model {:collection_id [:in affected-collection-ids]
-                           :archived      true}
-                    {:archived false})))))
+      (t2/query {:update :collection
+                 :set    {:archived false}
+                 :where  [:and [:in :id affected-collection-ids]
+                               [:= :archived false]]})
+     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+       (t2/update! model {:collection_id [:in affected-collection-ids]
+                          :archived      true}
+                   {:archived false})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -856,10 +858,10 @@
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
+     (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
-      (assert-valid-hex-color color))
+     (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
