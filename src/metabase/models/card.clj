@@ -127,7 +127,7 @@
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
-         (= query (db/select-one-field :dataset_query Card :id existing-card-id)))
+         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
     (do
       (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
       card)
@@ -169,7 +169,7 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
+        (recur (or (t2/select-one-fn :dataset_query Card :id source-card-id)
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -221,7 +221,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)

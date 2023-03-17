@@ -30,7 +30,8 @@
    [metabase.util :as u]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
    (java.util UUID)))
@@ -608,7 +609,7 @@
 
 (deftest double-check-that-the-field-has-fieldvalues
   (is (= [1 2 3 4]
-         (db/select-one-field :values FieldValues :field_id (mt/id :venues :price)))))
+         (t2/select-one-fn :values FieldValues :field_id (mt/id :venues :price)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |

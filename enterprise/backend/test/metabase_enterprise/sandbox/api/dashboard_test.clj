@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
@@ -66,7 +67,7 @@
              (is (= {:status "ok"}
                     (update-mappings! 200)))
              (is (= new-mappings
-                    (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
+                    (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"

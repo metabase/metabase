@@ -49,6 +49,7 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -524,12 +525,12 @@
         (with-dashboards-in-writeable-collection [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
-                 (db/select-one-field :description Dashboard :id (u/the-id dashboard))))
+                 (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
 
           (testing "Set to a blank description"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description ""})
             (is (= ""
-                   (db/select-one-field :description Dashboard :id (u/the-id dashboard))))))))))
+                   (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))))))))
 
 (deftest update-dashboard-change-collection-id-test
   (testing "PUT /api/dashboard/:id"
@@ -542,7 +543,7 @@
           ;; now make an API call to move collections
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dash)) {:collection_id (u/the-id new-collection)})
           ;; Check to make sure the ID has changed in the DB
-          (is (= (db/select-one-field :collection_id Dashboard :id (u/the-id dash))
+          (is (= (t2/select-one-fn :collection_id Dashboard :id (u/the-id dash))
                  (u/the-id new-collection))))))
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
@@ -583,13 +584,13 @@
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                 {:collection_position 1})
           (is (= 1
-                 (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))
+                 (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))
 
           (testing "...and unset (unpin) it as well?"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
             (is (= nil
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))
 
         (testing "we shouldn't be able to if we don't have permissions for the Collection"
           (mt/with-temp* [Collection [collection]
@@ -597,14 +598,14 @@
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position 1})
             (is (= nil
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard)))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard)))))
 
           (mt/with-temp* [Collection [collection]
                           Dashboard  [dashboard {:collection_id (u/the-id collection), :collection_position 1}]]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
             (is (= 1
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))))))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))))))
 
 (deftest update-dashboard-position-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -1153,11 +1154,11 @@
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
             (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
-                   (db/select-one-field :parameters Dashboard :id copy-id)))
+                   (t2/select-one-fn :parameters Dashboard :id copy-id)))
             (is (=? [{:parameter_id "random-id"
                       :card_id      card-id
                       :target       [:dimension [:field (mt/id :venues :name) nil]]}]
-                   (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
+                   (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
              (db/delete! Dashboard :id copy-id))))))))
 
@@ -1172,7 +1173,7 @@
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (u/the-id dash)) {:collection_id (u/the-id new-collection)})]
             (try
               ;; Check to make sure the ID of the collection is correct
-              (is (= (db/select-one-field :collection_id Dashboard :id
+              (is (= (t2/select-one-fn :collection_id Dashboard :id
                                           (u/the-id response))
                      (u/the-id new-collection)))
               (finally
@@ -1352,18 +1353,18 @@
                          s/Keyword s/Any}
                         (update-mappings! 403)))
            (is (= original-mappings
-                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Changing another column should be ok even without data permissions."
            (is (= {:status "ok"}
                   (update-size!)))
            (is (= (:size_x new-dashcard-info)
-                  (db/select-one-field :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+                  (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
            (is (= {:status "ok"}
                   (update-mappings! 200)))
            (is (= new-mappings
-                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -357,9 +357,9 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived Action :id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (db/select-one-field :archived Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},

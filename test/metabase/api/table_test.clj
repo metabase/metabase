@@ -16,7 +16,8 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -313,7 +314,7 @@
         (mt/with-temp Table [table {:visibility_type "hidden"}]
          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                                    {property (mt/random-name)})
-         (is (= :hidden (db/select-one-field :visibility_type Table :id (:id table)))))))
+         (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
       (mt/with-temp Table [table]
@@ -566,7 +567,7 @@
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/the-id card))]
+          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata Card :id (u/the-id card))]
             (is (= {:display_name      "Users"
                     :schema            "Everything else"
                     :db_id             (:database_id card)
@@ -727,7 +728,7 @@
                    (extract-dimension-options response "price"))))))
 
       (testing "Numeric fields without min/max values should not have binning options"
-        (let [fingerprint      (db/select-one-field :fingerprint Field :id (mt/id :venues :latitude))
+        (let [fingerprint      (t2/select-one-fn :fingerprint Field :id (mt/id :venues :latitude))
               temp-fingerprint (-> fingerprint
                                    (assoc-in [:type :type/Number :max] nil)
                                    (assoc-in [:type :type/Number :min] nil))]
@@ -821,7 +822,7 @@
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
-  (let [original-field-order (db/select-one-field :field_order Table :id (mt/id :venues))]
+  (let [original-field-order (t2/select-one-fn :field_order Table :id (mt/id :venues))]
     (try
       (testing "Cane we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]

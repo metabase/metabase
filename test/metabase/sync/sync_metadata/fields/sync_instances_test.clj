@@ -9,7 +9,8 @@
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil
@@ -123,7 +124,7 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id gender-field-id))))))
+        (is (false? (t2/select-one-fn :active Field :id gender-field-id))))))
 
   (testing "When a nested field is marked inactive so are its children"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
@@ -151,4 +152,4 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id blueberries-field-id)))))))
+        (is (false? (t2/select-one-fn :active Field :id blueberries-field-id)))))))
