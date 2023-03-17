@@ -31,7 +31,7 @@ jobs:
   build:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest-4-cores
     timeout-minutes: 25
     strategy:
       matrix:
@@ -60,7 +60,7 @@ jobs:
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-4-cores
     timeout-minutes: 60
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
@@ -236,7 +236,7 @@ jobs:
           echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-4-cores
     timeout-minutes: 45
     needs: build
     name: percy-visual-regression-tests
