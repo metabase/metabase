@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.models :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
@@ -16,6 +17,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -110,9 +112,11 @@
                                     :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
                                     {:active true})]
       (when (zero? update-result)
-        ;; sync the table if no nested fields were found. This assumes the field is already updated to have
+        ;; Sync the table if no nested fields exist. This means the table hasn't previously
+        ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
         ;; JSON unfolding enabled.
-        (sync/sync-table! (t2/select-one Table :id (:table_id old-field)))))
+        (let [table (field/table old-field)]
+          (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
     (and (not json_unfolding) (:json_unfolding old-field))
     (t2/update! Field
                 :table_id (:table_id old-field)
@@ -166,8 +170,8 @@
                                                            :coercion_strategy coercion-strategy)
                                                     :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                                                                :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                                    :non-nil #{:display_name :settings})))
-     (update-nested-fields-on-json-unfolding-change! old-field json_unfolding))
+                                                    :non-nil #{:display_name :settings}))))
+    (update-nested-fields-on-json-unfolding-change! old-field json_unfolding)
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
