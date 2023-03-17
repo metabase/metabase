@@ -31,6 +31,7 @@ import {
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
+import { getUser } from "metabase/selectors/user";
 
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
@@ -61,6 +62,12 @@ import {
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
+  const isLoggedIn = !!getUser(state);
+
+  if (!isLoggedIn) {
+    return {};
+  }
+
   const table = getTableMetadata(state);
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
