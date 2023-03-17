@@ -3,10 +3,11 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { ActionForm } from "metabase/actions/components/ActionForm";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import MetabaseSettings from "metabase/lib/settings";
+
+import { ActionForm } from "metabase/actions/components/ActionForm";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 

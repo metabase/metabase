@@ -157,11 +157,6 @@
                 card))
             ordered-cards))))
 
-(defn- add-implicit-card-parameters
-  "Add template tag parameter information to `card`'s `:parameters`."
-  [card]
-  (update card :parameters concat (card/template-tag-parameters card)))
-
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
                                                   :target s/Any
@@ -185,8 +180,8 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (t2/select-one [Card :dataset_query], :id (u/the-id card-or-id))
-      add-implicit-card-parameters
+  (-> (t2/select-one [Card :dataset_query :parameters], :id (u/the-id card-or-id))
+      api.public/combine-parameters-and-template-tags
       :parameters))
 
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
@@ -226,7 +221,7 @@
   (let [card-id      (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
-        add-implicit-card-parameters
+        api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (t2/select-one-fn :embedding_params Card :id card-id))))))
