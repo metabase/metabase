@@ -526,9 +526,7 @@ describe("scenarios > collection defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsNormalUser();
-      cy.intercept("GET", "/api/automagic-dashboards/question/*").as(
-        "dashboard",
-      );
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
     });
 
     it("should allow to x-ray models from collection views", () => {
