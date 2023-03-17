@@ -215,7 +215,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
-  it.only("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+  it("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
     const questionDetails = {
       name: "25250",
       dataset_query: {
