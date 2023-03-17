@@ -12,7 +12,7 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 import Question from "metabase-lib/Question";
 
-const setup = () => {
+const setup = ({ vizType }) => {
   const Container = () => {
     const [question, setQuestion] = useState(
       new Question(
@@ -22,6 +22,7 @@ const setup = () => {
             query: {
               "source-table": ORDERS.id,
             },
+            display: vizType,
           },
           database: SAMPLE_DATABASE.id,
           visualization_settings: {},
@@ -59,34 +60,37 @@ const setup = () => {
   renderWithProviders(<Container />);
 };
 
-describe("table settings", () => {
-  it("should show you related columns in structured queries", async () => {
-    setup();
-    expect(await screen.findByText("More columns")).toBeInTheDocument();
-    expect(await screen.findByText("People")).toBeInTheDocument();
-    expect(await screen.findByText("Products")).toBeInTheDocument();
-  });
+// these visualizations share column settings, so all the tests should work for both
+["table", "object"].forEach(vizType => {
+  describe(`${vizType} column settings`, () => {
+    it("should show you related columns in structured queries", async () => {
+      setup({ vizType });
+      expect(await screen.findByText("More columns")).toBeInTheDocument();
+      expect(await screen.findByText("People")).toBeInTheDocument();
+      expect(await screen.findByText("Products")).toBeInTheDocument();
+    });
 
-  it("should allow you to show and hide columns", async () => {
-    setup();
-    userEvent.click(await screen.findByTestId("Tax-hide-button"));
+    it("should allow you to show and hide columns", async () => {
+      setup({ vizType });
+      userEvent.click(await screen.findByTestId("Tax-hide-button"));
 
-    expect(
-      await within(await screen.findByTestId("disabled-columns")).findByText(
-        "Tax",
-      ),
-    ).toBeInTheDocument();
+      expect(
+        await within(await screen.findByTestId("disabled-columns")).findByText(
+          "Tax",
+        ),
+      ).toBeInTheDocument();
 
-    userEvent.click(await screen.findByTestId("Tax-add-button"));
-    //If we can see the hide button, then we know it's been added back in.
-    expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
-  });
+      userEvent.click(await screen.findByTestId("Tax-add-button"));
+      //If we can see the hide button, then we know it's been added back in.
+      expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
+    });
 
-  it("should allow you to update a column name", async () => {
-    setup();
-    userEvent.click(await screen.findByTestId("Subtotal-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Subtotal"), " Updated");
-    userEvent.click(await screen.findByText("Tax"));
-    expect(await screen.findByText("Subtotal Updated")).toBeInTheDocument();
+    it("should allow you to update a column name", async () => {
+      setup({ vizType });
+      userEvent.click(await screen.findByTestId("Subtotal-settings-button"));
+      userEvent.type(await screen.findByDisplayValue("Subtotal"), " Updated");
+      userEvent.click(await screen.findByText("Tax"));
+      expect(await screen.findByText("Subtotal Updated")).toBeInTheDocument();
+    });
   });
 });
