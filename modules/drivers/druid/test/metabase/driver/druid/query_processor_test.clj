@@ -15,7 +15,7 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core]))
+   [toucan2.core :as t2]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])

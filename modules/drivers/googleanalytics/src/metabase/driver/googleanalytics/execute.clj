@@ -11,7 +11,7 @@
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.date-2.parse.builder :as u.date.builder]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders)
    (java.time DayOfWeek)

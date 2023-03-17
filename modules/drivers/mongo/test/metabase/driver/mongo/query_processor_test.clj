@@ -11,7 +11,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan2.core :as t2]))
 
 (deftest query->collection-name-test
   (testing "query->collection-name"
@@ -128,9 +129,9 @@
                                                                                            :unit "day"}}}
                                                            {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
                                                                                                                      :timezone tz}}}
-                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                               :month "$$parts.month"
-                                                                                                               :timezone tz}}}}
+                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                             :month "$$parts.month"
+                                                                                                             :timezone tz}}}}
                                                             "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
                                                                                                                      :timezone tz}}}
                                                                                        :in   {:$dateFromParts {:year  "$$parts.year"
