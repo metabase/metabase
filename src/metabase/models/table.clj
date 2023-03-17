@@ -14,7 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -44,7 +45,7 @@
 
 (defn- pre-insert [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
+                  :field_order         (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
@@ -156,11 +157,10 @@
   :pk_field
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
-  (db/select-one-id Field
+  (t2/select-one-pk Field
     :table_id        id
     :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
-
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -204,21 +204,21 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (db/select-one Database :id (:db_id table)))
+  (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
   (mdb.connection/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
-     (db/select-one-field :db_id Table, :id table-id))))
+     (t2/select-one-fn :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
+  (let [db-name (t2/select-one-fn :name 'Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -233,18 +233,18 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-id Database :name db-name)]
-    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (t2/select-one-pk Database :name db-name)]
+    (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes/extract-one-basics "Table" table)
-      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
+      (assoc :db_id (t2/select-one-fn :name 'Database :id db_id))))
 
 (defmethod serdes/load-xform "Table"
   [{:keys [db_id] :as table}]
   (-> (serdes/load-xform-basics table)
-      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
+      (assoc :db_id (t2/select-one-fn :id 'Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))

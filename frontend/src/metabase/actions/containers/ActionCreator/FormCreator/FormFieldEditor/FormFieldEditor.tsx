@@ -4,21 +4,19 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import { isNotNull } from "metabase/core/utils/types";
 
-import type { ActionFormFieldProps } from "metabase/actions/types";
+import ActionFormFieldWidget from "metabase/actions/components/ActionFormFieldWidget";
+import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
+import { inputTypeHasOptions } from "metabase/actions/utils";
+
 import type {
   FieldSettings,
   FieldType,
   FieldValueOptions,
 } from "metabase-types/api";
+import type { ActionFormFieldProps } from "metabase/actions/types";
 
-import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
-import {
-  getFieldTypes,
-  getInputTypes,
-} from "../../containers/ActionCreator/FormCreator/constants";
+import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
-import { inputTypeHasOptions } from "./utils";
-import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
   Column,
   DragHandle,
@@ -132,7 +130,7 @@ function FormFieldEditor({
         <Column />
         <Column full>
           <InputContainer>
-            <FormFieldWidget formField={field} />
+            <ActionFormFieldWidget formField={field} />
           </InputContainer>
         </Column>
       </PreviewContainer>

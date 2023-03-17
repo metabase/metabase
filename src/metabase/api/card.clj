@@ -171,7 +171,7 @@
                                                          (name f)))
       (case f
         :database    (api/read-check Database model_id)
-        :table       (api/read-check Database (db/select-one-field :db_id Table, :id model_id))
+        :table       (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
         :using_model (api/read-check Card model_id)))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
@@ -186,7 +186,7 @@
 (api/defendpoint-schema GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
-  (let [raw-card (db/select-one Card :id id)
+  (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  (hydrate :creator
                           :dashboard_count
@@ -323,7 +323,7 @@ saved later when it is ready."
                            id))
             :else
             (future
-              (let [current-query (db/select-one-field :dataset_query Card :id id)]
+              (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
                   (do (db/update! Card id {:result_metadata metadata})
                       (log/info (trs "Metadata updated asynchronously for card {0}" id)))
@@ -591,7 +591,7 @@ saved later when it is ready."
                   :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
     ;; Fetch the updated Card from the DB
 
-  (let [card (db/select-one Card :id id)]
+  (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
     (publish-card-update! card archived)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
@@ -683,7 +683,7 @@ saved later when it is ready."
   [new-collection-id-or-nil cards]
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
-        max-position-result (db/select-one [Card [:%max.collection_position :max_position]]
+        max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
                               :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
@@ -805,7 +805,7 @@ saved later when it is ready."
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
-  (let [{existing-public-uuid :public_uuid} (db/select-one [Card :public_uuid] :id card-id)]
+  (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (UUID/randomUUID))
                  (db/update! Card card-id
@@ -845,7 +845,7 @@ saved later when it is ready."
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Card :id id) api/read-check related/related))
+  (-> (t2/select-one Card :id id) api/read-check related/related))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/related"
@@ -870,8 +870,8 @@ saved later when it is ready."
   query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [{:keys [dataset database_id] :as card} (db/select-one Card :id card-id)]
-    (let [database (db/select-one Database :id database_id)]
+  (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
+    (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
       (when-not (driver/database-supports? (:engine database)
                                            :persist-models database)
@@ -894,13 +894,13 @@ saved later when it is ready."
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [card           (db/select-one Card :id card-id)
-                persisted-info (db/select-one PersistedInfo :card_id card-id)]
+  (api/let-404 [card           (t2/select-one Card :id card-id)
+                persisted-info (t2/select-one PersistedInfo :card_id card-id)]
     (when (not (:dataset card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
-    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
+    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -910,9 +910,9 @@ saved later when it is ready."
   query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [_card (db/select-one Card :id card-id)]
-    (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
-      (api/write-check (db/select-one Database :id (:database_id persisted-info)))
+  (api/let-404 [_card (t2/select-one Card :id card-id)]
+    (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
+      (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 

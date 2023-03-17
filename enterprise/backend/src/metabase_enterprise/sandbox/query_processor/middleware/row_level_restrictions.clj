@@ -31,7 +31,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,7 +100,7 @@
   (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
     ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
     ;; initialized" errors. We should figure out why that's the case and then fix this
-    (db/select-one-field :base_type Field :id field-id)))
+    (t2/select-one-fn :base_type Field :id field-id)))
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
@@ -258,8 +259,8 @@
   [{card-id :card_id, table-id :table_id}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (db/select-one-field :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (db/select-one Table :id table-id))}))
+      (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
+    #{(perms/table-query-path (t2/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))

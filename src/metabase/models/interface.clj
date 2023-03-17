@@ -22,7 +22,6 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.before-insert :as t2.before-insert]
@@ -145,9 +144,10 @@
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
-(defn- normalize-visualization-settings [viz-settings]
-  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
-  ;; to modern MBQL clauses so things work correctly
+(defn normalize-visualization-settings
+  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
+   to modern MBQL clauses so things work correctly."
+  [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
@@ -478,7 +478,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (models/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object

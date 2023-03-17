@@ -43,7 +43,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -212,7 +213,7 @@
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
-  (-> (db/select-one Dashboard :id id)
+  (-> (t2/select-one Dashboard :id id)
       api/check-404
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
@@ -418,7 +419,7 @@
                                                  :embedding_params :archived}))]
         (db/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (db/select-one Dashboard :id id)]
+  (let [dashboard (t2/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -475,7 +476,7 @@
             ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
             (when-not (query-perms/can-query-table? database-id table-id)
               (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                                   (pr-str (db/select-one-field :name Table :id table-id)))
+                                   (pr-str (t2/select-one-fn :name Table :id table-id)))
                               {:status-code        403
                                :database-id        database-id
                                :table-id           table-id
@@ -572,7 +573,9 @@
   {cards (su/non-empty [UpdatedDashboardCard])}
   (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
     (check-updated-parameter-mapping-permissions id cards)
-    (dashboard/update-dashcards! dashboard cards)
+    ;; transform the card data to the format of the DashboardCard model
+    ;; so update-dashcards! can compare them with existing cards
+    (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 
@@ -582,7 +585,7 @@
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (db/select-one DashboardCard :id (Integer/parseInt dashcardId))]
+  (when-let [dashboard-card (t2/select-one DashboardCard :id (Integer/parseInt dashcardId))]
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
@@ -616,7 +619,7 @@
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
-  {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
+  {:uuid (or (t2/select-one-fn :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
                (db/update! Dashboard dashboard-id
                  :public_uuid       <>
@@ -656,7 +659,7 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Dashboard :id id) api/read-check related/related))
+  (-> (t2/select-one Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -674,7 +677,7 @@
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (populate/get-or-create-root-container-collection))
-                               (db/select-one-field :id 'Collection
+                               (t2/select-one-fn :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))
@@ -706,7 +709,7 @@
 (defn- param-key->field-ids
   "Get Field ID(s) associated with a parameter in a Dashboard.
 
-    (param-key->field-ids (db/select-one Dashboard :id 62) \"ee876336\")
+    (param-key->field-ids (t2/select-one Dashboard :id 62) \"ee876336\")
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}

@@ -15,7 +15,8 @@
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -78,11 +79,11 @@
     (assert (db/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (db/update! Pulse (u/the-id alert) :alert_condition "rows")
-    (let [alert (db/select-one Pulse :id (u/the-id alert))]
+    (let [alert (t2/select-one Pulse :id (u/the-id alert))]
       (assert (pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
       (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
-      (let [card (db/select-one Card :id (u/the-id card))]
+      (let [card (t2/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
 (defmacro ^:private with-alert-in-collection
@@ -795,7 +796,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -812,7 +813,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -833,7 +834,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"letting you know that Crowberto Corv"))))))))
 
@@ -854,7 +855,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"now getting alerts about .*Foo")
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"

@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -190,7 +191,7 @@
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (db/select-one-field :value Setting :key (name k)))
+  (t2/select-one-fn :value Setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]

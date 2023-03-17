@@ -81,14 +81,14 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (db/select-one Field :id 1) :database_position))))
+        (is (not (contains? (t2/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
         (doseq [id [1 2]]
           (testing (format "Field %d" id)
             (is (= id
-                   (db/select-one-field :database_position Field :id id)))))))))
+                   (t2/select-one-fn :database_position Field :id id)))))))))
 
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
@@ -728,10 +728,10 @@
       (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
                                                         (assoc :engine "h2")))]
         (is (partial= {:details nil}
-                      (db/select-one Database :id database-id)))
+                      (t2/select-one Database :id database-id)))
         (migrate!)
         (is (partial= {:details {}}
-                      (db/select-one Database :id database-id)))))))
+                      (t2/select-one Database :id database-id)))))))
 
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
@@ -776,12 +776,12 @@
         (migrate!)
         (testing "A personal Collection should get created_at set by to the date_joined from its owner"
           (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id personal-collection-id)))))
         (testing "A non-personal Collection should get created_at set to its oldest object"
           (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id impersonal-collection-id)))))
         (testing "Empty Collection should not have been updated"
-          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+          (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
             (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
                       empty-collection-created-at))
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")

@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -668,12 +669,12 @@
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-read-path (db/select-one Table :id (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-read-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:read :all}}
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:query :segmented}}
              (test-data-graph group))))
 
@@ -689,7 +690,7 @@
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
-      (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
+      (let [{:keys [group_id]} (t2/select-one Permissions :object "/")]
         (is (= {db-id {:data       {:native  :write
                                     :schemas :all}
                        :download   {:native  :full
@@ -776,7 +777,7 @@
     (is (thrown? Exception
                  (perms/revoke-collection-permissions!
                   (perms-group/all-users)
-                  (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+                  (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
       (mt/with-temp Collection [collection {:location (collection/children-location
@@ -790,7 +791,7 @@
     (mt/with-temp Collection [{collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
-        (is (some? (db/select-one Collection :id collection-id)))))))
+        (is (some? (t2/select-one Collection :id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
   (mt/with-temp Collection [collection {:location (collection/children-location
@@ -803,7 +804,7 @@
         (is (thrown?
              Exception
              (f (perms-group/all-users)
-                (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+                (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
         (testing "(should apply to descendants as well)"
           (is (thrown?

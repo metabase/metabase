@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,8 +63,8 @@
                       (assoc :constraints constraints
                              :parameters  parameters
                              :middleware  middleware))
-        dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
+        dashboard (t2/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
+        database  (t2/select-one [Database :cache_ttl] :id (:database_id card))
         ttl-secs  (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl-secs)))
 
@@ -93,7 +93,7 @@
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
   [card-id]
-  (let [query (api/check-404 (db/select-one-field :dataset_query Card :id card-id))]
+  (let [query (api/check-404 (t2/select-one-fn :dataset_query Card :id card-id))]
     (into
      {}
      (comp
@@ -190,7 +190,7 @@
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                                                     (qp-runner query info context))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id
+        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)

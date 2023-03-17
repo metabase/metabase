@@ -17,7 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
@@ -124,7 +125,7 @@
         ;; ignore default values in request params as well. (#20516)
         request-params            (for [param request-params]
                                     (dissoc param :default))
-        dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
+        dashboard                 (api/check-404 (t2/select-one Dashboard :id dashboard-id))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass

@@ -36,7 +36,7 @@
 
 (defmethod mi/perms-objects-set Action
   [instance read-or-write]
-  (mi/perms-objects-set (db/select-one Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -48,7 +48,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (db/select-one-field :dataset Card :id model-id)
+  (when-not (t2/select-one-fn :dataset Card :id model-id)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -136,7 +136,7 @@
 (defn- hydrate-subtype [action]
   (let [subtype (type->model (:type action))]
     (-> action
-        (merge (db/select-one subtype :action_id (:id action)))
+        (merge (t2/select-one subtype :action_id (:id action)))
         (dissoc :action_id))))
 
 (defn- normalize-query-actions [actions]

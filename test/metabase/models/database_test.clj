@@ -20,7 +20,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -266,7 +267,7 @@
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
-                  (check-db-fn (db/select-one Database :id id) {:kind    :password
+                  (check-db-fn (t2/select-one Database :id id) {:kind    :password
                                                                 :source  :file-path
                                                                 :version 2
                                                                 :value   "/path/to/my/password-file"}))))
@@ -274,7 +275,7 @@
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (db/select-one Secret :id secret-id))
+                  (is (nil? (t2/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
@@ -289,7 +290,7 @@
            (db/update! Database id :engine :sqlite))))
     (testing " updating other attributes of a sample database is allowed"
       (db/update! Database id :name "My New Name")
-      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
+      (is (= "My New Name" (t2/select-one-fn :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 
@@ -297,7 +298,7 @@
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
-             (db/select-one-field :engine Database :id db-id))))))
+             (t2/select-one-fn :engine Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"

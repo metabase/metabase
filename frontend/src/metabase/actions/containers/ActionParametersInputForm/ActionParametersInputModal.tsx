@@ -4,7 +4,7 @@ import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
 import ActionParametersInputForm, {
-  ActionParamatersInputFormProps,
+  ActionParametersInputFormProps,
 } from "./ActionParametersInputForm";
 
 interface ModalProps {
@@ -20,7 +20,7 @@ export default function ActionParametersInputModal({
   showConfirmMessage,
   confirmMessage,
   ...formProps
-}: ModalProps & ActionParamatersInputFormProps) {
+}: ModalProps & ActionParametersInputFormProps) {
   return (
     <Modal onClose={onClose}>
       <ModalContent title={title} onClose={onClose}>
