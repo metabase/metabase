@@ -451,7 +451,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.contains('NOT contains([Title], "Wallet", "case-insensitive")');
+    cy.contains('doesNotContain([Title], "Wallet", "case-insensitive")');
   });
 
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
