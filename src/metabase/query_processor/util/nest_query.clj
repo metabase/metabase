@@ -41,7 +41,7 @@
       {:table_id (:table_id field)
        :name nfc-root})))
 
-(defn- field-props [[_ field-id]]
+(defn- field-id-props [[_ field-id]]
   (when-let [field (and (int? field-id) (qp.store/field field-id))]
     (select-keys field [:table_id :name])))
 
@@ -52,7 +52,7 @@
         nfc-roots (into #{} (keep nfc-root) used-fields)]
     (update source :fields (fn [fields]
                              (filterv #(or (-> % keep-source+alias-props used-fields)
-                                           (-> % field-props nfc-roots))
+                                           (-> % field-id-props nfc-roots))
                                       fields)))))
 
 (defn- nest-source [inner-query]
