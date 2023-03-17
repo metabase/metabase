@@ -42,6 +42,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [weavejester.dependency :as dep]))
 
 (set! *warn-on-reflection* true)
@@ -284,7 +285,7 @@
       extract-resolved-card-id))
 
 (s/defn resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
-                                                     :query   FullyResolvedQuery}
+                                                    :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
@@ -301,7 +302,7 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (let [dataset? (db/select-one-field :dataset Card :id card-id)]
+        (let [dataset? (t2/select-one-fn :dataset Card :id card-id)]
           (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
             (qp query
                 (fn [metadata]

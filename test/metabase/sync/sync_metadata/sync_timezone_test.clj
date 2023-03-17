@@ -7,10 +7,11 @@
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- db-timezone [db-or-id]
-  (db/select-one-field :timezone Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :timezone Database :id (u/the-id db-or-id)))
 
 (deftest sync-timezone-test
   (mt/test-drivers #{:h2 :postgres}

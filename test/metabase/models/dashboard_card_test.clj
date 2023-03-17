@@ -14,7 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -96,7 +97,7 @@
     (let [upd-series (fn [series]
                        (dashboard-card/update-dashboard-card-series! {:id dashcard-id} series)
                        (set (for [card-id (db/select-field :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
-                              (db/select-one-field :name Card, :id card-id))))]
+                              (t2/select-one-fn :name Card, :id card-id))))]
       (is (= #{}
              (upd-series [])))
       (is (= #{"card1"}
@@ -258,7 +259,7 @@
       (is (= [{:parameter_id "22486e00"
                :card_id      (u/the-id card)
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
-             (db/select-one-field :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
+             (t2/select-one-fn :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
 
 (deftest normalize-visualization-settings-test
   (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
@@ -270,7 +271,7 @@
                                                 :card_id                (u/the-id card)
                                                 :visualization_settings original}]
            (is (= expected
-                  (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
+                  (t2/select-one-fn :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 
 (deftest normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"

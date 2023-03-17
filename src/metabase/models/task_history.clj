@@ -16,7 +16,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +36,7 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (db/select-one-field :ended_at TaskHistory {:limit    1
+  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
                                                                            :offset   num-rows-to-keep
                                                                            :order-by [[:ended_at :desc]]})]
     (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
@@ -89,7 +90,7 @@
             :ended_at     (u.date/format-rfc3339 (:ended_at task))}
            (when-let [db-id (:db_id task)]
              {:db_id     db-id
-              :db_engine (db/select-one-field :engine Database :id db-id)}))))
+              :db_engine (t2/select-one-fn :engine Database :id db-id)}))))
 
 (defn- post-insert
   [task]

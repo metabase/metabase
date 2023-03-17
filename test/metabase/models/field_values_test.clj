@@ -16,7 +16,8 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -112,10 +113,10 @@
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     (is (= [1 2 3]
-           (db/select-one-field :values FieldValues, :field_id field-id)))
+           (t2/select-one-fn :values FieldValues, :field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
     (is (= nil
-           (db/select-one-field :values FieldValues, :field_id field-id)))))
+           (t2/select-one-fn :values FieldValues, :field_id field-id)))))
 
 (defn- find-values [field-values-id]
   (-> (db/select-one FieldValues :id field-values-id)
@@ -178,9 +179,9 @@
                                   :details      "{\"db\": \"mem:temp\"}"}]
         ;; Sync the database so we have the new table and it's fields
         (sync/sync-database! db)
-        (let [table-id        (db/select-one-field :id Table :db_id (u/the-id db) :name "FOO")
-              field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
-              field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
+        (let [table-id        (t2/select-one-fn :id Table :db_id (u/the-id db) :name "FOO")
+              field-id        (t2/select-one-fn :id Field :table_id table-id :name "CATEGORY_ID")
+              field-values-id (t2/select-one-fn :id FieldValues :field_id field-id)]
           ;; Add in human readable values for remapping
           (is (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
           (let [expected-original-values {:values                [1 2 3]

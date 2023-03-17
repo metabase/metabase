@@ -13,7 +13,8 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
@@ -129,7 +130,7 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-semantic-type [] (db/select-one-field :semantic_type Field, :id (mt/id :venues :id)))]
+      (letfn [(get-semantic-type [] (t2/select-one-fn :semantic_type Field, :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
           (is (= :type/PK
                  (get-semantic-type))))
@@ -155,13 +156,13 @@
   (testing "Check that Foreign Key relationships were created on sync as we expect"
     (testing "checkins.venue_id"
       (is (= (mt/id :venues :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :checkins :venue_id)))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :venue_id)))))
     (testing "checkins.user_id"
       (is (= (mt/id :users :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :checkins :user_id)))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :user_id)))))
     (testing "venues.category_id"
       (is (= (mt/id :categories :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
 
 (deftest sync-table-fks-test
   (testing "Check that sync-table! causes FKs to be set like we'd expect"

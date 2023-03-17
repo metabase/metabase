@@ -21,7 +21,8 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -199,7 +200,7 @@
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
                                  :location  (or (letfn [(collection-location [id]
-                                                          (db/select-one-field :location Collection :id id))]
+                                                          (t2/select-one-fn :location Collection :id id))]
                                                   (some-> context
                                                           :collection
                                                           collection-location

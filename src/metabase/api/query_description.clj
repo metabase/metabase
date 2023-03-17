@@ -9,7 +9,8 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- get-table-description
   [metadata _query]
@@ -18,7 +19,7 @@
 (defn- field-clause->display-name [clause]
   (mbql.u/match-one clause
     [:field (id :guard integer?) _]
-    (db/select-one-field :display_name Field :id id)
+    (t2/select-one-fn :display_name Field :id id)
 
     [:field (field-name :guard string?) _]
     field-name))
@@ -41,7 +42,7 @@
 
                              [:metric (arg :guard integer?)]
                              {:type :metric
-                              :arg  (let [metric-name (db/select-one-field :name Metric :id arg)]
+                              :arg  (let [metric-name (t2/select-one-fn :name Metric :id arg)]
                                       (if-not (str/blank? metric-name)
                                         metric-name
                                         (deferred-tru "[Unknown Metric]")))}
@@ -66,7 +67,7 @@
 (defn- get-breakout-description
   [_metadata query]
   (when-let [breakouts (seq (:breakout query))]
-    {:breakout (map #(db/select-one-field :display_name Field :id %) breakouts)}))
+    {:breakout (map #(t2/select-one-fn :display_name Field :id %) breakouts)}))
 
 (defn- get-filter-clause-description
   [_metadata filt]
