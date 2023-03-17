@@ -271,7 +271,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should render as a button if no parameters are missing", async () => {
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-1": "foo", "dash-param-2": "bar" },
+        parameterValues: { "dash-param-1": "foo", "dash-param-2": 2 },
       });
 
       expect(
