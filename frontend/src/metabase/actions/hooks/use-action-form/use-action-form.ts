@@ -13,7 +13,11 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { formatInitialValue, cleanSubmitValues } from "./utils";
+import {
+  formatInitialValue,
+  formatSubmitValues,
+  getChangedValues,
+} from "./utils";
 
 type Opts = {
   action: WritebackAction;
@@ -47,13 +51,21 @@ function useActionForm({ action, initialValues = {} }: Opts) {
   }, [initialValues, fieldSettings, validationSchema]);
 
   const getCleanValues = useCallback(
-    (values: ParametersForActionExecution = {}) =>
-      cleanSubmitValues({
-        values: { ...cleanInitialValues, ...values },
-        initialValues,
-        fieldSettings,
-      }),
-    [initialValues, cleanInitialValues, fieldSettings],
+    (values: ParametersForActionExecution = {}) => {
+      const allValues = { ...cleanInitialValues, ...values };
+      const formatted = formatSubmitValues(allValues, fieldSettings);
+
+      const isImplicitUpdate =
+        action.type === "implicit" && action.kind === "row/update";
+
+      // For implicit update actions, we sometimes prefetch selected row values,
+      // and pass them as initial values to prefill the form.
+      // In that case, we want to return only changed values
+      return isImplicitUpdate
+        ? getChangedValues(formatted, initialValues)
+        : formatted;
+    },
+    [action, initialValues, cleanInitialValues, fieldSettings],
   );
 
   return {

@@ -30,7 +30,7 @@ export const formatInitialValue = (
   return value;
 };
 
-const formatSubmitValues = (
+export const formatSubmitValues = (
   values: ParametersForActionExecution,
   fieldSettings: FieldSettingsMap,
 ) => {
@@ -49,7 +49,7 @@ const formatSubmitValues = (
   return clean;
 };
 
-const getChangedValues = (
+export const getChangedValues = (
   values: ParametersForActionExecution,
   initialValues: Partial<ParametersForActionExecution>,
 ) => {
@@ -58,17 +58,4 @@ const getChangedValues = (
     return value !== initialValue;
   });
   return Object.fromEntries(changedValues);
-};
-
-export const cleanSubmitValues = ({
-  values,
-  initialValues,
-  fieldSettings,
-}: {
-  values: ParametersForActionExecution;
-  initialValues: Partial<ParametersForActionExecution>;
-  fieldSettings: FieldSettingsMap;
-}) => {
-  const formatted = formatSubmitValues(values, fieldSettings);
-  return getChangedValues(formatted, initialValues);
 };
