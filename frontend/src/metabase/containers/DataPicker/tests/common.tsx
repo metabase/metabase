@@ -117,6 +117,12 @@ export const SAMPLE_QUESTION_3 = createMockCard({
   name: "Sample Saved Question 3",
 });
 
+export const SAMPLE_QUESTION_SEARCH_ITEM = createMockCollectionItem({
+  id: SAMPLE_QUESTION.id,
+  name: SAMPLE_QUESTION.name,
+  model: "card",
+});
+
 export const SAMPLE_MODEL_SEARCH_ITEM = createMockCollectionItem({
   id: SAMPLE_MODEL.id,
   name: SAMPLE_MODEL.name,
@@ -189,12 +195,6 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  if (hasModels) {
-    setupSearchEndpoints([createMockCollectionItem(SAMPLE_MODEL_SEARCH_ITEM)]);
-  } else {
-    setupSearchEndpoints([]);
-  }
-
   setupCollectionsEndpoints([SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
@@ -212,6 +212,15 @@ export async function setup({
   ]);
 
   setupCollectionVirtualSchemaEndpoints(EMPTY_COLLECTION, []);
+
+  if (hasModels) {
+    setupSearchEndpoints([
+      SAMPLE_QUESTION_SEARCH_ITEM,
+      SAMPLE_MODEL_SEARCH_ITEM,
+    ]);
+  } else {
+    setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
+  }
 
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
