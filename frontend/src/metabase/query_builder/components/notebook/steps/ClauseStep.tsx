@@ -1,26 +1,39 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 
+import type Tether from "tether";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import {
   NotebookCell,
-  NotebookCellItem,
   NotebookCellAdd,
+  NotebookCellItem,
 } from "../NotebookCell";
 
-export default function ClauseStep({
+interface ClauseStepProps<T> {
+  color: string;
+  items: T[];
+  renderName: (item: T, index: number) => JSX.Element | string;
+  renderPopover: (item?: T, index?: number) => JSX.Element | null;
+  canRemove?: (item: T) => boolean;
+  isLastOpened?: boolean;
+  onRemove?: ((item: T, index: number) => void) | null;
+  initialAddText?: string | null;
+  tetherOptions?: Tether.ITetherOptions | null;
+  "data-testid"?: string;
+}
+
+const ClauseStep = <T,>({
   color,
   items,
-  renderName = item => item.displayName(),
+  renderName,
   renderPopover,
-  onRemove = null,
   canRemove,
+  onRemove = null,
   isLastOpened = false,
   initialAddText = null,
   tetherOptions = null,
   ...props
-}) {
+}: ClauseStepProps<T>): JSX.Element => {
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
@@ -62,4 +75,6 @@ export default function ClauseStep({
       </PopoverWithTrigger>
     </NotebookCell>
   );
-}
+};
+
+export default ClauseStep;

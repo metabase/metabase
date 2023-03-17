@@ -109,7 +109,7 @@ export function ActionSidebarFn({
             />
           </Form>
         </FormProvider>
-        <FieldLabelContainer>
+        <FieldLabelContainer orientation="vertical" hasDescription={false}>
           <FieldLabel hasError={false}>{t`Action`}</FieldLabel>
         </FieldLabelContainer>
 

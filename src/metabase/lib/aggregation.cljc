@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.common :as lib.common]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -183,22 +182,7 @@
   [_query _stage-number _count-where]
   "count-where")
 
-(mu/defn count :- [:or
-                   fn?
-                   :mbql.clause/count]
-  "Create a `count` filter clause."
-  ([]
-   #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
-   (fn [query stage-number]
-     (count query stage-number)))
-  ([x]
-   (fn [query stage-number]
-     (count query stage-number x)))
-  ([_query _stage-number]
-   (lib.options/ensure-uuid [:count]))
-  ([query stage-number x]
-   (lib.options/ensure-uuid [:count (lib.common/->op-arg query stage-number x)])))
-
+(lib.common/defop count [] [x])
 (lib.common/defop avg [x])
 (lib.common/defop count-where [x y])
 (lib.common/defop distinct [x])
@@ -210,3 +194,15 @@
 (lib.common/defop stddev [x])
 (lib.common/defop sum [x])
 (lib.common/defop sum-where [x y])
+
+(mu/defn aggregate :- ::lib.schema/query
+  "Adds an aggregation to query."
+  ([query an-aggregate-clause]
+   (aggregate query -1 an-aggregate-clause))
+  ([query stage-number an-aggregate-clause]
+   (let [stage-number (or stage-number -1)]
+     (lib.util/update-query-stage
+      query stage-number
+      update :aggregation
+      (fn [aggregations]
+        (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))

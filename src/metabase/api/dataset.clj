@@ -73,7 +73,7 @@
         (qp-runner query info context)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/"
+(api/defendpoint-schema POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
@@ -112,7 +112,7 @@
      (keyword json-key)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint-schema POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString
@@ -163,7 +163,7 @@
     (qp/compile-and-splice-parameters query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/pivot"
+(api/defendpoint-schema POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
