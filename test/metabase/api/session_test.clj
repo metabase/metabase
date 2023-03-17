@@ -66,7 +66,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
-                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                       (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-full-response :post 200 "session" body)]
@@ -207,7 +207,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (db/select-one Session :id session-id)))
+               (t2/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -217,7 +217,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (db/select-one LoginHistory :id login-history-id))))))))
+                       (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -228,7 +228,7 @@
       (testing "Test that we can initiate password reset"
         (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
-                    (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                    (let [{:keys [reset_token reset_triggered]} (t2/select-one [User :reset_token :reset_triggered]
                                                                                :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
@@ -305,7 +305,7 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (db/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
 
 (deftest reset-password-validation-test
   (testing "POST /api/session/reset_password"

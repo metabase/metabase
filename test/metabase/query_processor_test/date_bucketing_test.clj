@@ -35,7 +35,8 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import [java.time LocalDate LocalDateTime]))
 
 (set! *warn-on-reflection* true)
@@ -1267,7 +1268,7 @@
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-everything-store
-                                   (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

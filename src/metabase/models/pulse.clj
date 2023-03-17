@@ -66,7 +66,7 @@
   false)
 
 (defn- pre-update [notification]
-  (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
+  (let [{:keys [collection_id dashboard_id]} (t2/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
@@ -270,7 +270,7 @@
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
-  (some-> (db/select-one Pulse :id (u/the-id pulse-or-id), :alert_condition nil)
+  (some-> (t2/select-one Pulse :id (u/the-id pulse-or-id), :alert_condition nil)
           hydrate-notification
           notification->pulse))
 
@@ -279,7 +279,7 @@
   `:cards`."
   [notification-or-id & additional-conditions]
   {:pre [(even? (count additional-conditions))]}
-  (some-> (apply db/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
+  (some-> (apply t2/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
 (s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
@@ -293,7 +293,7 @@
 (s/defn retrieve-alert :- (s/maybe (mi/InstanceOf Pulse))
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
-  (some-> (db/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
+  (some-> (t2/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
           hydrate-notification
           notification->alert))
 

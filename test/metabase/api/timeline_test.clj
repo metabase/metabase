@@ -160,7 +160,7 @@
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
               (is (= "Rasta's TL"
-                     (-> (db/select-one Timeline :collection_id id) :name))))
+                     (-> (t2/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
                      (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))

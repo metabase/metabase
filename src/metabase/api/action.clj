@@ -133,7 +133,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (db/select-one Database :id db-id))))
+       (t2/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
                                                                             :action_id      action-id

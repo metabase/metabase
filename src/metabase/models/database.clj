@@ -17,7 +17,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -161,7 +162,7 @@
          old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
          existing-engine          :engine
-         existing-name            :name} (db/select-one [Database
+         existing-name            :name} (t2/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
@@ -198,12 +199,12 @@
                       :cache_field_values_schedule new-fieldvalues-schedule)))))
          ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
          ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-         (when (and (:database-enable-actions (or new-settings existing-settings))
-                    (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
-           (throw (ex-info (trs "The database does not support actions.")
-                           {:status-code     400
-                            :existing-engine existing-engine
-                            :new-engine      new-engine})))))))
+        (when (and (:database-enable-actions (or new-settings existing-settings))
+                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+          (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details], :as database}]
   (-> (cond-> database
@@ -319,7 +320,7 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (db/select-one Database :name id))
+  (t2/select-one Database :name id))
 
 (defmethod serdes/load-xform "Database"
   [database]

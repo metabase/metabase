@@ -15,7 +15,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -104,7 +105,7 @@
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
-  (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
+  (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 

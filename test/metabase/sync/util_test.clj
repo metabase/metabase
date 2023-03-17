@@ -90,7 +90,7 @@
     {:step-info    (-> (into {} (mapcat :steps operation-results))
                        (get step))
      :task-history (when (seq task-history-ids)
-                     (db/select-one TaskHistory :id [:in task-history-ids]
+                     (t2/select-one TaskHistory :id [:in task-history-ids]
                                     :task [:= step]))}))
 
 (defn only-step-keys
@@ -106,7 +106,7 @@
   {:id true, :db_id true, :started_at true, :ended_at true})
 
 (defn- fetch-task-history-row [task-name]
-  (let [task-history (db/select-one TaskHistory :task task-name)]
+  (let [task-history (t2/select-one TaskHistory :task task-name)]
     (assert (integer? (:duration task-history)))
     (tu/boolean-ids-and-timestamps (dissoc task-history :duration))))
 
@@ -256,13 +256,13 @@
   (mt/dataset sample-dataset
    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (db/select-one Database :id (:id (mt/db)))]
+            db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
 
    (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (db/select-one Database :id (:id (mt/db)))]
+            db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
 
@@ -270,23 +270,23 @@
             has finished"
       (let [table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            _table   (db/select-one Table :id table-id)]
+            _table   (t2/select-one Table :id table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
 
    (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
       (let [_        (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db       (db/select-one Database :id (:id (mt/db)))
+            db       (t2/select-one Database :id (:id (mt/db)))
             table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
-            _        (db/update! Table table-id :initial_sync_status "incomplete")
-            _table   (db/select-one Table :id table-id)]
+                     _        (db/update! Table table-id :initial_sync_status "incomplete")
+            _table   (t2/select-one Table :id table-id)]
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))
         (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
 
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (db/select-one Database :id (:id (mt/db)))]
+            db (t2/select-one Database :id (:id (mt/db)))]
         (with-redefs [sync-metadata/make-sync-steps (fn [_]
                                                       [(sync-util/create-sync-step
                                                         "fake-step"
@@ -297,6 +297,6 @@
    (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
            without error"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (db/select-one Database :id (:id (mt/db)))]
+            db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))))
