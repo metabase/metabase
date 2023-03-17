@@ -687,10 +687,10 @@
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
-                                     :object (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (db/select-field :group_id Permissions
-                                     :object (perms/collection-readwrite-path source-collection-or-id))]
+  (let [group-ids-with-read-perms  (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
     (db/insert-many! Permissions
       (concat

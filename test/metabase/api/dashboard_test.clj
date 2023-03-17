@@ -1256,7 +1256,7 @@
                  (map (partial into {})
                       (db/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
-                 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
+                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db

@@ -47,7 +47,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -634,7 +635,7 @@
   [id]
   (api/read-check Database id)
   (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
-                                          :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                          :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
@@ -1054,11 +1055,11 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table
-         :db_id id :active true
-         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-         :visibility_type nil
-         {:order-by [[:%lower.schema :asc]]})
+  (->> (t2/select-fn-set :schema Table
+                         :db_id id :active true
+                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                         :visibility_type nil
+                         {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        ;; for `nil` schemas return the empty string
        (map #(if (nil? %) "" %))

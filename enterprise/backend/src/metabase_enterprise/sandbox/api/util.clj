@@ -9,7 +9,8 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- enforce-sandbox?
   "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
@@ -41,10 +42,10 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [group-ids          (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*)
+       (let [group-ids          (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*)
              sandboxes          (when (seq group-ids)
                                   (db/select GroupTableAccessPolicy :group_id [:in group-ids]))]
-           (seq (enforced-sandboxes sandboxes group-ids)))
+         (seq (enforced-sandboxes sandboxes group-ids)))
        ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be sandboxes.
        (throw (ex-info (str (tru "No current user found"))

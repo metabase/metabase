@@ -34,7 +34,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.sql DatabaseMetaData)))
 
@@ -1009,7 +1010,7 @@
         (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
-                 (db/select-field :name Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"

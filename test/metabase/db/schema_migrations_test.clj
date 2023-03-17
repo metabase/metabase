@@ -829,12 +829,12 @@
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (db/select-field :name Dimension {:order-by [[:id :asc]]})))
+               (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]})))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
+                 (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
 
 (deftest clean-up-gtap-table-test
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,

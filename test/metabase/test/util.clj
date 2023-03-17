@@ -729,8 +729,8 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
-        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
-        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+        groups-with-read-perms      (t2/select-fn-set :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (t2/select-fn-set :group_id Permissions :object readwrite-path)]
     (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)

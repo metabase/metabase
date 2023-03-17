@@ -96,7 +96,7 @@
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
                        (dashboard-card/update-dashboard-card-series! {:id dashcard-id} series)
-                       (set (for [card-id (db/select-field :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
+                       (set (for [card-id (t2/select-fn-set :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name Card, :id card-id))))]
       (is (= #{}
              (upd-series [])))

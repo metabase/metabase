@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
@@ -33,7 +34,7 @@
   []
   (->>
    ;; look at the `login_attributes` for the first 1000 users that have them set. Then make a set of the keys
-   (for [login-attributes (db/select-field :login_attributes User :login_attributes [:not= nil] {:limit 1000})
+   (for [login-attributes (t2/select-fn-set :login_attributes User :login_attributes [:not= nil] {:limit 1000})
          :when (seq login-attributes)]
      (set (keys login-attributes)))
    ;; combine all the sets of attribute keys into a single set

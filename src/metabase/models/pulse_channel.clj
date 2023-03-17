@@ -273,7 +273,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -379,7 +379,7 @@
                                   :let [id (db/select-one-id 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))
+        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :pulse_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
       (update-recipients! channel-id combined))))

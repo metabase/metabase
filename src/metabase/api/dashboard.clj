@@ -468,7 +468,7 @@
                                                :when                    field-id]
                                            field-id))
               table-ids             (when (seq field-ids)
-                                      (db/select-field :table_id Field :id [:in field-ids]))
+                                      (t2/select-fn-set :table_id Field :id [:in field-ids]))
               table-id->database-id (when (seq table-ids)
                                       (db/select-id->field :db_id Table :id [:in table-ids]))]
           (doseq [table-id table-ids

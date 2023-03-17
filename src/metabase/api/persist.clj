@@ -64,7 +64,7 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [db-ids (db/select-field :database_id PersistedInfo)
+  (let [db-ids (t2/select-fn-set :database_id PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (->> (db/select Database :id [:in db-ids])
                                (filter mi/can-write?)

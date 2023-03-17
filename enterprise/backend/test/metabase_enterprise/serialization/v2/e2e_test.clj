@@ -220,7 +220,7 @@
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
-          (is (= 100 (count (db/select-field :email 'User))))
+          (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
             (reset! extraction (into [] (extract/extract-metabase {})))

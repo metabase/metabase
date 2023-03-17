@@ -195,7 +195,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -963,7 +964,7 @@
                               [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
-    (when-let [revoked (db/select-field :object Permissions where)]
+    (when-let [revoked (t2/select-fn-set :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
@@ -1149,7 +1150,7 @@
 
 (defn- download-permissions-set
   [group-id]
-  (db/select-field :object
+  (t2/select-fn-set :object
                    [Permissions :object]
                    {:where [:and
                             [:= :group_id group-id]

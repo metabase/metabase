@@ -18,7 +18,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -125,7 +126,7 @@
   (api/write-check Metric id)
   (api/check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
-  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
+  (let [[fields-to-remove fields-to-add] (data/diff (set (t2/select-fn-set :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
 
     ;; delete old fields as needed

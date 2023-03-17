@@ -14,7 +14,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]
 

@@ -58,7 +58,7 @@
   (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
                         Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
                         NativeQuerySnippet]]
-             [model (db/select-field :id model)])))
+             [model (t2/select-fn-set :id model)])))
 
 (defmacro with-world-cleanup
   [& body]
