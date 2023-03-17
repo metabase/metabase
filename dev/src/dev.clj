@@ -28,6 +28,7 @@
    [potemkin :as p]
    [toucan.db :as db]
    [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)

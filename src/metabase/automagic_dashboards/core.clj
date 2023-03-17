@@ -12,6 +12,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
+   [metabase.automagic-dashboards.all-data :as all-data]
    [metabase.automagic-dashboards.filters :as filters]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.rules :as rules]
@@ -480,8 +481,8 @@
 
 (defn- score-bindings
   "Assign a value to each potential binding.
-  Takes a seq of potential bindings and returns a seq of vectors in the shape
-  of [score binding], where score is a 3 element vector. This is computed as:
+  Takes a seq of potential bindings and adds a `:relevance` to each value in the bindings.
+  This value is a 3 element vector computed as:
      1) Number of ancestors `field_type` has (if field_type has a table prefix,
         ancestors for both table and field are counted);
      2) Number of fields in the definition, which would include additional filters
@@ -494,7 +495,11 @@
               [(reduce + (map (comp count ancestors) (:field_type definition)))
                (count definition)
                (:score definition)]))]
-    (map (juxt (comp score first) identity) candidate-binding-values)))
+    (map
+     (fn [m]
+       (let [[k v :as pr] (first m)]
+         {k (assoc v :relevance (score pr))}))
+     candidate-binding-values)))
 
 (defn- most-specific-definition
   "Return the most specific definition among `definitions`.
@@ -506,7 +511,7 @@
    3) if there is still a tie, `score`."
   [candidate-binding-values]
   (let [scored-bindings (score-bindings candidate-binding-values)]
-    (second (last (sort-by first scored-bindings)))))
+    (last (sort-by (comp :relevance second first) scored-bindings))))
 
 (defn- candidate-bindings
   "For every field in a given context determine all potential dimensions each field may map to.
@@ -554,7 +559,7 @@
           (->reference :mbql (-> identifier bindings (merge opts))))
         subform))
     {:type     :query
-     :database (-> context :root :database)
+     :database (-> context :database)
      :query    (cond-> {:source-table (if (->> context :source (mi/instance-of? Table))
                                         (-> context :source u/the-id)
                                         (->> context :source u/the-id (str "card__")))}
@@ -580,7 +585,7 @@
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
-    :database (-> context :root :database)}))
+    :database (-> context :database)}))
 
 (defn- has-matches?
   [dimensions definition]
@@ -652,60 +657,79 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [{m :metrics d :dimensions f :filters qf :query-filter :as context}
-   {:keys [metrics filters dimensions score limit query] :as card}]
-  (let [metrics         (map (partial get m) metrics)
-        filters         (cond-> (map (partial get f) filters)
+  [{context-metrics :metrics
+    context-dimensions :dimensions
+    context-filters :filters
+    qf :query-filter :as context}
+   {card-metrics :metrics
+    card-dimensions :dimensions
+    card-filters :filters
+    :keys [score limit query] :as card}]
+  (let [metrics         (map (partial get context-metrics) card-metrics)
+        filters         (cond-> (map (partial get context-filters) card-filters)
                           qf         (conj {:filter qf}))
         score           (if query
                           score
-                          (* (or (->> dimensions
-                                      (map (partial get d))
+                          (* (or (->> card-dimensions
+                                      (map (partial get context-dimensions))
                                       (concat filters metrics)
                                       (transduce (keep :score) stats/mean))
                                  rules/max-score)
                              (/ score rules/max-score)))
-        dimensions      (map (comp (partial into [:dimension]) first) dimensions)
+        dimensions      (map (comp (partial into [:dimension]) first) card-dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
-        cell-dimension? (->> context :root singular-cell-dimensions)
-        matched-dimensions (map (some-fn #(get-in d [% :matches])
+        cell-dimension? (->> context singular-cell-dimensions)
+        matched-dimensions (map (some-fn #(get-in context-dimensions [% :matches])
                                          (comp #(filter-tables % (:tables context)) rules/->entity))
                                 used-dimensions)]
-    (->> matched-dimensions
-         (apply math.combo/cartesian-product)
-         (map (partial zipmap used-dimensions))
-         (filter (fn [bindings]
-                   (->> dimensions
-                        (map (fn [[_ identifier opts]]
-                               (merge (bindings identifier) opts)))
-                        (every? (every-pred valid-breakout-dimension?
-                                            (complement (comp cell-dimension? id-or-name)))))))
-         (map (fn [bindings]
-                (let [metrics (for [metric metrics]
-                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
-                                 :metric (:metric metric)
-                                 :op     (-> metric :metric metric-op)})
-                      card    (visualization/expand-visualization
-                               card
-                               (map (comp bindings second) dimensions)
-                               metrics)
-                      query   (if query
-                                (build-query context bindings query)
-                                (build-query context bindings
-                                             filters
-                                             metrics
-                                             dimensions
-                                             limit
-                                             (build-order-by card)))]
-                  (-> card
-                      (instantiate-metadata context (->> metrics
-                                                         (map :name)
-                                                         (zipmap (:metrics card))
-                                                         (merge bindings)))
-                      (assoc :dataset_query query
-                             :metrics       metrics
-                             :dimensions    (map (comp :name bindings second) dimensions)
-                             :score         score))))))))
+    (let [res (->> matched-dimensions
+                   (apply math.combo/cartesian-product)
+                   (map (partial zipmap used-dimensions))
+                   (filter (fn [bindings]
+                             (->> dimensions
+                                  (map (fn [[_ identifier opts]]
+                                         (merge (bindings identifier) opts)))
+                                  (every? (every-pred valid-breakout-dimension?
+                                                      (complement (comp cell-dimension? id-or-name)))))))
+                   (map (fn [bindings]
+                          (let [metrics (for [metric metrics :when metric]
+                                          {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                                           :metric (:metric metric)
+                                           :op     (-> metric :metric metric-op)})
+                                card    (visualization/expand-visualization
+                                         card
+                                         (map (comp bindings second) dimensions)
+                                         metrics)
+                                query   (if query
+                                          (build-query context bindings query)
+                                          (build-query context bindings
+                                                       filters
+                                                       metrics
+                                                       dimensions
+                                                       limit
+                                                       (build-order-by card)))]
+                            (-> card
+                                (instantiate-metadata context (->> metrics
+                                                                   (map :name)
+                                                                   (zipmap (:metrics card))
+                                                                   (merge bindings)))
+                                (assoc :dataset_query query
+                                       :metrics metrics
+                                       :dimensions (map (comp :name bindings second) dimensions)
+                                       :score score))))))]
+      (when (and
+             (= "Sales per state" (str (:title card)))
+             ((set used-dimensions) "State"))
+        (tap> {:card               card
+               :metrics            metrics
+               :filters            filters
+               :score              score
+               :dimensions         dimensions
+               :used-dimensions    used-dimensions
+               :cell-dimension?    cell-dimension?
+               :matched-dimensions (map (comp :id first) matched-dimensions)
+               :res                res}))
+      res)))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.
@@ -822,14 +846,7 @@
         (update :source assoc :fields (table->fields source))
         (assoc
           :tables       (map #(assoc % :fields (table->fields %)) tables)
-          :query-filter (filters/inject-refinement query-filter cell-query)))
-    (merge
-     root
-     {:source       (assoc source :fields (table->fields source))
-      :root         root
-      :tables       (map #(assoc % :fields (table->fields %)) tables)
-      :query-filter (filters/inject-refinement (:query-filter root)
-                                               (:cell-query root))})))
+          :query-filter (filters/inject-refinement query-filter cell-query)))))
 
 (s/defn ^:private make-context
   "Create a rule-oriented context for this item, consisting of its source data
@@ -866,7 +883,6 @@
 (defn- make-dashboard
   ([{:keys [source] :as base-context} rule]
    (make-dashboard base-context rule {:tables [source]}))
-  ;; The value of comparison? seems to have no effect whatsoever.
   ([{:keys [comparison?]} rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
@@ -933,8 +949,8 @@
 
 (defn- drilldown-fields
   [context]
-  (when (and (->> context :root :source (mi/instance-of? Table))
-             (-> context :root :entity ga-table? not))
+  (when (and (->> context :source (mi/instance-of? Table))
+             (-> context :entity ga-table? not))
     (->> context
          :dimensions
          vals
@@ -1072,18 +1088,31 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [base-context]
-  (let [{:keys [rule rules-prefix full-name]} base-context]
-    (or (when rule
-          (apply-rule base-context (rules/get-rule rule)))
-        (some
-         (fn [rule]
-           (apply-rule base-context rule))
-         (matching-rules (rules/get-rules rules-prefix) base-context))
-        (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                        {:root            base-context
-                         :available-rules (map :rule (or (some-> rule rules/get-rule vector)
-                                                         (rules/get-rules rules-prefix)))})))))
+  [{:keys [rule rules-prefix full-name entity] :as base-context}]
+  (cond
+    ;; A rule has been specified
+    rule (apply-rule base-context (rules/get-rule rule))
+    ;; Models get special treatment
+    (:dataset entity) (apply-rule
+                       base-context
+                       (rules/get-rule ["table" "GenericTable"])
+
+                       #_(assoc (rules/get-rule ["table" "GenericTable"])
+                         :groups all-data/all-groups
+                         :dimensions all-data/all-dims
+                         :metrics all-data/all-metrics
+                         :filters all-data/all-filters
+                         :cards all-data/all-cards))
+    ;; Otherwise, do the best match
+    :else (or
+           (some
+            (fn [rule]
+              (apply-rule base-context rule))
+            (matching-rules (rules/get-rules rules-prefix) base-context))
+           (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
+                           {:root            base-context
+                            :available-rules (map :rule (or (some-> rule rules/get-rule vector)
+                                                            (rules/get-rules rules-prefix)))})))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -1108,6 +1137,14 @@
                :transient_filters (:query-filter context)
                :param_fields      (->> context :query-filter (filter-referenced-fields base-context))))))
 
+(defn- default-automagic-analysis
+  "The default pipeline for creating an x-ray."
+  [entity opts]
+  (-> entity
+      ->root
+      (merge opts)
+      make-base-context
+      automagic-dashboard))
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
@@ -1117,15 +1154,19 @@
 
 (defmethod automagic-analysis Table
   [table opts]
-  (automagic-dashboard (make-base-context (merge (->root table) opts))))
+  (default-automagic-analysis table opts))
 
 (defmethod automagic-analysis Segment
   [segment opts]
-  (automagic-dashboard (make-base-context (merge (->root segment) opts))))
+  (default-automagic-analysis segment opts))
 
 (defmethod automagic-analysis Metric
   [metric opts]
-  (automagic-dashboard (make-base-context (merge (->root metric) opts))))
+  (default-automagic-analysis metric opts))
+
+(defmethod automagic-analysis Field
+  [field opts]
+  (default-automagic-analysis field opts))
 
 (s/defn ^:private collect-metrics :- (s/maybe [(mi/InstanceOf Metric)])
   [root question]
@@ -1350,10 +1391,6 @@
            cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
                                {:transient_name title
                                 :name           title}))))))))
-
-(defmethod automagic-analysis Field
-  [field opts]
-  (automagic-dashboard (make-base-context (merge (->root field) opts))))
 
 (defn- enhance-table-stats
   "Add a stats field to each provided table with the following data:
