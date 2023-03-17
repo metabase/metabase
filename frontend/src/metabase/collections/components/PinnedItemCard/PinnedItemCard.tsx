@@ -75,9 +75,7 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon} />
             <ActionsContainer>
-              {item.model === "dataset" && (
-                <ModelDetailLink model={item as CollectionItem<"dataset">} />
-              )}
+              {item.model === "dataset" && <ModelDetailLink model={item} />}
               <ActionMenu
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}

@@ -14,7 +14,8 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -182,7 +183,7 @@
     (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
       (mt/with-temp* [Field [{fk-field-id :id}]
                       Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id fk-field-id}]]
-        (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
+        (let [original-val (boolean (t2/select-one-fn :fk_target_field_id Field, :id field-id))]
           (testing "before API call"
             (is (= true
                    original-val)))
@@ -190,7 +191,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"
             (is (= nil
-                   (db/select-one-field :fk_target_field_id Field, :id field-id)))))))))
+                   (t2/select-one-fn :fk_target_field_id Field, :id field-id)))))))))
 
 (deftest update-fk-target-field-id-test
   (testing "PUT /api/field/:id"
@@ -199,7 +200,7 @@
         (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
                               {:semantic_type :type/Quantity})
         (is (= :type/Quantity
-               (db/select-one-field :semantic_type Field, :id field-id)))))))
+               (t2/select-one-fn :semantic_type Field, :id field-id)))))))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."

@@ -28,7 +28,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate]))
+   [toucan.hydrate :as hydrate]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -328,7 +329,7 @@
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
-                 (db/select-one-field :auto_run_queries Database, :id db-id))))))
+                 (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
     (testing "should be able to unset cache_ttl"
       (mt/with-temp Database [{db-id :id}]
         (let [updates1 {:cache_ttl    1337}
@@ -1442,7 +1443,7 @@
   (testing "Admins should be allowed to update Database-local Settings (#19409)"
     (mt/with-temp-vals-in-db Database (mt/id) {:settings nil}
       (letfn [(settings []
-                (db/select-one-field :settings Database :id (mt/id)))
+                (t2/select-one-fn :settings Database :id (mt/id)))
               (set-settings! [m]
                 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                       {:settings m}))]

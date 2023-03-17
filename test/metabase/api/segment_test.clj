@@ -12,8 +12,8 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;; ## Helper Fns
 
@@ -173,7 +173,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (= true
-               (db/select-one-field :archived Segment :id id)))))))
+               (t2/select-one-fn :archived Segment :id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
@@ -182,7 +182,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
         (is (= false
-               (db/select-one-field :archived Segment :id id)))))))
+               (t2/select-one-fn :archived Segment :id id)))))))
 
 
 ;; ## DELETE /api/segment/:id

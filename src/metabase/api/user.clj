@@ -23,7 +23,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -191,7 +192,7 @@
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
   (if (premium-features/enable-sso?)
-    (assoc user :sso_source (db/select-one-field :sso_source User :id id))
+    (assoc user :sso_source (t2/select-one-fn :sso_source User :id id))
     user))
 
 (defn- add-has-question-and-dashboard

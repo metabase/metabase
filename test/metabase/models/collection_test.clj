@@ -24,7 +24,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -111,14 +112,14 @@
                     Card       [card       {:collection_id (u/the-id collection)}]]
       (db/update! Collection (u/the-id collection)
         :archived true)
-      (is (true? (db/select-one-field :archived Card :id (u/the-id card))))))
+      (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
                     Card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (db/update! Collection (u/the-id collection)
         :archived false)
-      (is (false? (db/select-one-field :archived Card :id (u/the-id card)))))))
+      (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -1035,7 +1036,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id e) :archived true)
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
@@ -1044,7 +1045,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id c) :archived true)
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
@@ -1056,7 +1057,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id e) :archived false)
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
@@ -1066,7 +1067,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id c) :archived false)
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest archive-while-moving-test
   (testing "Test that we cannot archive a Collection at the same time we are moving it"
@@ -1086,7 +1087,7 @@
     (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived false, :location "/")
       (is (= "/"
-             (db/select-one-field :location Collection :id (u/the-id c)))))))
+             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
 
 (deftest archive-noop-shouldnt-affect-descendants-test
   (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
@@ -1094,7 +1095,7 @@
       (db/update! Collection (u/the-id e), :archived true)
       (db/update! Collection (u/the-id c), :archived false)
       (is (= true
-             (db/select-one-field :archived Collection :id (u/the-id e)))))))
+             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
 

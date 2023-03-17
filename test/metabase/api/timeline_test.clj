@@ -12,7 +12,8 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest auth-tests
   (testing "Authentication"
@@ -162,7 +163,7 @@
                      (-> (db/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (-> (db/select-one-field :icon Timeline :collection_id id)))))))))))
+                     (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"

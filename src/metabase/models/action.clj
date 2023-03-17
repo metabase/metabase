@@ -48,7 +48,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (db/select-one-field :dataset Card :id model-id)
+  (when-not (t2/select-one-fn :dataset Card :id model-id)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 

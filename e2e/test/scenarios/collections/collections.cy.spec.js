@@ -521,6 +521,23 @@ describe("scenarios > collection defaults", () => {
       });
     });
   });
+
+  describe("x-rays", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
+    });
+
+    it("should allow to x-ray models from collection views", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor("Orders");
+      popover().findByText("X-ray this").click();
+      cy.wait("@dashboard");
+    });
+  });
 });
 
 function openEllipsisMenuFor(item) {

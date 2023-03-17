@@ -4,13 +4,13 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.table :refer [Table]]
    [metabase.test.util :as tu]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (defn- get-humanized-display-name [actual-name strategy]
   (with-redefs [humanization/humanization-strategy (constantly strategy)]
     (tt/with-temp Table [{table-id :id} {:name actual-name}]
-      (db/select-one-field :display_name Table, :id table-id))))
+      (t2/select-one-fn :display_name Table, :id table-id))))
 
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
@@ -35,7 +35,7 @@
                                                            :none     "fussybird_sightings"}}]
       (tu/with-temporary-setting-values [humanization-strategy "simple"]
         (tt/with-temp Table [{table-id :id} {:name actual-name}]
-          (letfn [(display-name [] (db/select-one-field :display_name Table, :id table-id))]
+          (letfn [(display-name [] (t2/select-one-fn :display_name Table, :id table-id))]
             (testing "initial display name"
               (is (= (:initial expected)
                      (display-name))))
@@ -57,4 +57,4 @@
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
               (humanization/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
-                     (db/select-one-field :display_name Table, :id table-id))))))))))
+                     (t2/select-one-fn :display_name Table, :id table-id))))))))))

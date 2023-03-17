@@ -20,7 +20,8 @@
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.nio.charset StandardCharsets)
@@ -275,7 +276,7 @@
 
 (defn- saml-login-attributes [email]
   (let [attribute-keys (keys (some-saml-attributes nil))]
-    (-> (db/select-one-field :login_attributes User :email email)
+    (-> (t2/select-one-fn :login_attributes User :email email)
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test
