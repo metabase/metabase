@@ -276,7 +276,7 @@
 
 (defn- saml-login-attributes [email]
   (let [attribute-keys (keys (some-saml-attributes nil))]
-    (-> (db/select-one-field :login_attributes User :email email)
+    (-> (t2/select-one-fn :login_attributes User :email email)
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test

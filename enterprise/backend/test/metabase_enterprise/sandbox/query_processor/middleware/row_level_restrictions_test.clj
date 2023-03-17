@@ -30,7 +30,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -43,7 +44,7 @@
 
   ([table-key field-key]
    (let [field-id   (mt/id table-key field-key)
-         field-name (db/select-one-field :name Field :id field-id)]
+         field-name (t2/select-one-fn :name Field :id field-id)]
      (mt/with-everything-store
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
@@ -590,13 +591,13 @@
                                                  :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                       :checkins {}}
                          :attributes {"venue_id" 1}})
-        (let [venues-gtap-card-id (db/select-one-field :card_id GroupTableAccessPolicy
+        (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
                                                        :group_id (:id &group)
                                                        :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
-                   (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
+                   (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
           (testing "Should be able to run the query"
             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                    (mt/rows
@@ -619,7 +620,7 @@
                                   :display_name (s/eq "Name")
                                   s/Keyword     s/Any}
                                  "NAME col")]
-                         (db/select-one-field :result_metadata Card :id venues-gtap-card-id)))))))))
+                         (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
@@ -634,13 +635,13 @@
                                                          :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                               :checkins {}}
                                  :attributes {"venue_id" 1}})
-                (let [venues-gtap-card-id (db/select-one-field :card_id GroupTableAccessPolicy
+                (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
                                                                :group_id (:id &group)
                                                                :table_id (mt/id :venues))]
                   (is (integer? venues-gtap-card-id))
                   (testing "GTAP Card should not yet current have result_metadata"
                     (is (= nil
-                           (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
+                           (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
                   (f {:run-query (fn []
                                    (mt/run-mbql-query venues
                                      {:fields   [$id $name]
@@ -730,7 +731,7 @@
         ;; grant full data perms for products
         (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
                                                            (mt/id)
-                                                           (db/select-one-field :schema Table :id (mt/id :products))
+                                                           (t2/select-one-fn :schema Table :id (mt/id :products))
                                                            (mt/id :products)))
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
@@ -822,7 +823,7 @@
                                         [:value "Widget" {:base_type     :type/Text
                                                           :effective_type :type/Text
                                                           :coercion_strategy nil
-                                                          :semantic_type  (db/select-one-field :semantic_type Field
+                                                          :semantic_type  (t2/select-one-fn :semantic_type Field
                                                                                                :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
@@ -903,8 +904,8 @@
   a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
   when running the query."
   [group table-name param-name param-value]
-  (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
-        query   (db/select-one-field :dataset_query Card :id (u/the-id card-id))
+  (let [card-id (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
+        query   (t2/select-one-fn :dataset_query Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
                   (qp/process-query (assoc query :parameters [{:type   :category
                                                                :target [:variable [:template-tag param-name]]
@@ -1005,9 +1006,9 @@
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-      (let [card-id   (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+      (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
             _         (is (integer? card-id))
-            query     (db/select-one-field :dataset_query Card :id card-id)
+            query     (t2/select-one-fn :dataset_query Card :id card-id)
             run-query (fn []
                         (let [results (qp/process-query (assoc query :cache-ttl 100))]
                           {:cached?  (boolean (:cached results))

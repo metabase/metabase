@@ -7,4 +7,4 @@
   com.google.oauth-client/google-oauth-client        {:mvn/version "1.34.1"}
   ;; for some reason, Google stopped depending on google-http-client-jackson2 from google-api-client somewhere between
   ;; 1.30.7 and 1.32.1, so we must explicitly bring it in because the google driver uses it directly
-  com.google.http-client/google-http-client-jackson2 {:mvn/version "1.43.0"}}}
+  com.google.http-client/google-http-client-jackson2 {:mvn/version "1.43.1"}}}

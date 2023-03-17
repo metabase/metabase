@@ -715,7 +715,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
+    (str (t2/select-one-fn :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]

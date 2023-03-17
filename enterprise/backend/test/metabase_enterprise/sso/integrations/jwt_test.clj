@@ -121,7 +121,7 @@
                  (get-in response [:headers "Location"]))))
         (testing "login attributes"
           (is (= {"extra" "keypairs", "are" "also present"}
-                 (db/select-one-field :login_attributes User :email "rasta@metabase.com"))))))))
+                 (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
   (testing "Check a JWT with bad (open redirect)"
@@ -185,7 +185,7 @@
             (testing "attributes"
               (is (= {"more" "stuff"
                       "for"  "the new user"}
-                     (db/select-one-field :login_attributes User :email "newuser@metabase.com"))))))))))
+                     (t2/select-one-fn :login_attributes User :email "newuser@metabase.com"))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."

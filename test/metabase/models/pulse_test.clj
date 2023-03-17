@@ -25,7 +25,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -301,7 +302,7 @@
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
                   :archived?        (fn []
-                                      (db/select-one-field :archived Pulse :id pulse-id))})))]
+                                      (t2/select-one-fn :archived Pulse :id pulse-id))})))]
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects

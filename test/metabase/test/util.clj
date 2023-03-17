@@ -390,7 +390,7 @@
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
-                             (db/select-one-field :value Setting :key setting-k)
+                             (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
          (if raw-setting?
@@ -855,7 +855,7 @@
      ([thunk [original-column-id remap]]
       (let [original       (db/select-one Field :id (u/the-id original-column-id))
             describe-field (fn [{table-id :table_id, field-name :name}]
-                             (format "%s.%s" (db/select-one-field :name Table :id table-id) field-name))]
+                             (format "%s.%s" (t2/select-one-fn :name Table :id table-id) field-name))]
         (if (integer? remap)
           ;; remap is integer => fk remap
           (let [remapped (db/select-one Field :id (u/the-id remap))]

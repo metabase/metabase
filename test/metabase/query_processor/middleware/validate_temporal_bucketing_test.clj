@@ -5,7 +5,7 @@
    [metabase.query-processor.middleware.validate-temporal-bucketing
     :as validate-temporal-bucketing]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- validate [query]
   (validate-temporal-bucketing/validate-temporal-bucketing query))
@@ -21,11 +21,11 @@
                                 [:field
                                  (case field-clause-type
                                    :id   (mt/id :attempts field)
-                                   :name (db/select-one-field :name Field :id (mt/id :attempts field)))
+                                   :name (t2/select-one-fn :name Field :id (mt/id :attempts field)))
                                  (merge
                                   {:temporal-unit unit}
                                   (when (= field-clause-type :name)
-                                    {:base-type (db/select-one-field :base_type Field :id (mt/id :attempts field))}))]
+                                    {:base-type (t2/select-one-fn :base_type Field :id (mt/id :attempts field))}))]
                                 [:relative-datetime -1 unit]]}))]
             ;; I don't think we need to test every possible combination in the world here -- that will get tested by
             ;; other stuff
