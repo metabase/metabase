@@ -768,11 +768,8 @@
                 (is (false? (:json_unfolding field))))
               (testing "nested fields are not present since json unfolding is disabled by default"
                 (is (empty? (nested-fields))))
-              (testing "nested fields aren't added when json unfolding is enabled, because they never existed"
-                (enable-json-unfolding! true)
-                (is (empty? (nested-fields))))
-              (testing "new nested fields are only added when sync is run again"
-                (sync/sync-database! database)
+              (testing "nested fields are added when json unfolding is enabled"
+                (enable-json-unfolding! false)
                 (is (seq (nested-fields))))
               (testing "nested fields are removed when json unfolding is disabled again"
                 (enable-json-unfolding! false)

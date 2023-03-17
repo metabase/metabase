@@ -105,10 +105,14 @@
   [old-field json_unfolding]
   (cond
     (and json_unfolding (not (:json_unfolding old-field)))
-    (t2/update! Field
-                :table_id (:table_id old-field)
-                :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
-                {:active true})
+    (let [update-result (t2/update! Field
+                                    :table_id (:table_id old-field)
+                                    :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                                    {:active true})]
+      (when (zero? update-result)
+        ;; sync the table if no nested fields were found. This assumes the field is already updated to have
+        ;; JSON unfolding enabled.
+        (sync/sync-table! (t2/select-one Table :id (:table_id old-field)))))
     (and (not json_unfolding) (:json_unfolding old-field))
     (t2/update! Field
                 :table_id (:table_id old-field)
@@ -152,19 +156,18 @@
       (api/checkp (db/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
     ;; everything checks out, now update the field
-    (api/check-500
-     (db/transaction
-      (when removed-fk? (clear-dimension-on-fk-change! old-field))
-      (clear-dimension-on-type-change! old-field (:base_type old-field) new-semantic-type)
-      (update-nested-fields-on-json-unfolding-change! old-field json_unfolding)
-      (db/update! Field id
-                  (u/select-keys-when (assoc body
-                                             :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                             :effective_type effective-type
-                                             :coercion_strategy coercion-strategy)
-                                      :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                                 :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                      :non-nil #{:display_name :settings}))))
+    (db/transaction
+     (when removed-fk? (clear-dimension-on-fk-change! old-field))
+     (clear-dimension-on-type-change! old-field (:base_type old-field) new-semantic-type)
+     (api/check-500 (db/update! Field id
+                                (u/select-keys-when (assoc body
+                                                           :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                                           :effective_type effective-type
+                                                           :coercion_strategy coercion-strategy)
+                                                    :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                                               :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                                    :non-nil #{:display_name :settings})))
+     (update-nested-fields-on-json-unfolding-change! old-field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
