@@ -603,7 +603,7 @@
     ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
     ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
     (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
-      ;; Used metadata are simplified (invalid) for testing purposes. To the best of my knowledge only `:field_ref` 
+      ;; Used metadata are simplified (invalid) for testing purposes. To the best of my knowledge only `:field_ref`
       ;;   could contain field with `:source-field` option that should be updated.
       ;;
       (testing "With `:source-field` field in the `:source-metadata` and not in the`:source-query`, query should be left intact"

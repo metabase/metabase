@@ -20,7 +20,7 @@
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
   Fields from metadata are not considered. It is expected, that field which would cause implicit join is in the query
-  and not just in it's metadata. Example of query having `:source-field` fields in `:source-metadata` and no use of 
+  and not just in it's metadata. Example of query having `:source-field` fields in `:source-metadata` and no use of
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
   [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
   [x]
