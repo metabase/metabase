@@ -14,7 +14,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -44,7 +45,7 @@
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
                           (when-not icon
-                            {:icon (db/select-one-field :icon Timeline :id timeline_id)}))]
+                            {:icon (t2/select-one-fn :icon Timeline :id timeline_id)}))]
       (snowplow/track-event! ::snowplow/new-event-created
                              api/*current-user-id*
                              (cond-> {:time_matters time_matters

@@ -10,7 +10,8 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
@@ -90,7 +91,7 @@
                                                           :database-required false
                                                           :database-is-auto-increment false}}}}}}
 
-           (let [transactions-table-id   (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
+           (let [transactions-table-id   (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %
                                                                    ;; database-position isn't stable since they are

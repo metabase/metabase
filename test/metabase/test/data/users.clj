@@ -16,7 +16,8 @@
    [metabase.util.password :as u.password]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -181,7 +182,7 @@
       (fetch-user user)
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
-          user-email          (db/select-one-field :email User :id user-id)
+          user-email          (t2/select-one-fn :email User :id user-id)
           [old-password-info] (db/simple-select User {:select [:password :password_salt]
                                                       :where  [:= :id user-id]})]
       (when-not user-email

@@ -23,7 +23,8 @@
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate :refer [hydrate]]))
+   [toucan.hydrate :as hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -434,9 +435,9 @@
                  (db/exists? User :%lower.email (u/lower-case-en email)))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
-  {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
+  {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
-                    :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
+                    :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
                     :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
@@ -498,7 +499,7 @@
   ::personal-collection-name
   "Hydrate `::personal-collection-name`. This is just for tests."
   [user]
-  (db/select-one-field :name Collection :id (:personal_collection_id user)))
+  (t2/select-one-fn :name Collection :id (:personal_collection_id user)))
 
 (deftest admin-update-other-user-test
   (testing "PUT /api/user/:id"
@@ -766,7 +767,7 @@
                  (user-test/user-group-names (mt/user->id :rasta)))))
         (testing "first name"
           (is (= "Rasta"
-                 (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
+                 (t2/select-one-fn :first_name User :id (mt/user->id :rasta)))))))
 
     (testing "if we pass user_group_memberships as a non-superuser the call should succeed, so long as the value doesn't change"
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
@@ -779,7 +780,7 @@
                  (user-test/user-group-names (mt/user->id :rasta)))))
         (testing "first name"
           (is (= "Reggae"
-                 (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
+                 (t2/select-one-fn :first_name User :id (mt/user->id :rasta)))))))
 
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
                   "and user_group_memberships including admin group ID)")
@@ -799,7 +800,7 @@
                                :first_name             "Cool New First Name"})
         (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
                (assoc (superuser-and-admin-pgm-info email)
-                      :first-name (db/select-one-field :first_name User :id id))))))
+                      :first-name (t2/select-one-fn :first_name User :id id))))))
 
     (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
@@ -826,7 +827,7 @@
 
   (testing "Double-check that the test cleaned up after itself"
     (is (= "Rasta"
-           (db/select-one-field :first_name User :id (mt/user->id :rasta))))
+           (t2/select-one-fn :first_name User :id (mt/user->id :rasta))))
     (is (= {:name "Rasta Toucan's Personal Collection"
             :slug "rasta_toucan_s_personal_collection"}
            (mt/derecordize (db/select-one [Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
@@ -839,7 +840,7 @@
                            :put expected-status-code (str "user/" user-id)
                            {:locale new-locale}))
               (locale-from-db []
-                (db/select-one-field :locale User :id user-id))]
+                (t2/select-one-fn :locale User :id user-id))]
         (let [url (str "user/" user-id)]
           (testing "normal Users should be able to update their own locale"
             (doseq [[message locale] {"to a language-country locale (with dash)"       "es-MX"
@@ -899,7 +900,7 @@
                                :last_name  "whatever"
                                :email      (:email user)})
         (is (= true
-               (db/select-one-field :is_active User :id (:id user)))
+               (t2/select-one-fn :is_active User :id (:id user)))
             "the user should now be active")))
 
     (testing "error conditions"
@@ -932,12 +933,12 @@
 (defn- user-can-reset-password? [superuser?]
   (mt/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
     (let [creds           {:username (:email user), :password "def"}
-          hashed-password (db/select-one-field :password User, :%lower.email (u/lower-case-en (:email user)))]
+          hashed-password (t2/select-one-fn :password User, :%lower.email (u/lower-case-en (:email user)))]
       ;; use API to reset the users password
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
                                                                         :old_password "def"})
       ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-      (not= hashed-password (db/select-one-field :password User, :%lower.email (u/lower-case-en (:email user)))))))
+      (not= hashed-password (t2/select-one-fn :password User, :%lower.email (u/lower-case-en (:email user)))))))
 
 (deftest can-reset-password-test
   (testing "PUT /api/user/:id/password"
@@ -1017,12 +1018,12 @@
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"
-              (is (true? (db/select-one-field property User, :id id))))
+              (is (true? (t2/select-one-fn property User, :id id))))
             (testing "response"
               (is (= {:success true}
                      (mt/client creds :put 200 (format "user/%d/modal/%s" id endpoint)))))
             (testing (str endpoint "?")
-              (is (false? (db/select-one-field property User, :id id)))))))
+              (is (false? (t2/select-one-fn property User, :id id)))))))
 
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."

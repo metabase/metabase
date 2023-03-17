@@ -171,7 +171,7 @@
                                                          (name f)))
       (case f
         :database    (api/read-check Database model_id)
-        :table       (api/read-check Database (db/select-one-field :db_id Table, :id model_id))
+        :table       (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
         :using_model (api/read-check Card model_id)))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
@@ -323,7 +323,7 @@ saved later when it is ready."
                            id))
             :else
             (future
-              (let [current-query (db/select-one-field :dataset_query Card :id id)]
+              (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
                   (do (db/update! Card id {:result_metadata metadata})
                       (log/info (trs "Metadata updated asynchronously for card {0}" id)))

@@ -25,7 +25,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:refer-clojure :exclude [descendants]))
 
 (set! *warn-on-reflection* true)
@@ -482,7 +483,7 @@
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
-  (db/select-one-field field model :id id))
+  (t2/select-one-fn field model :id id))
 
 (defn import-fk-keyed
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
@@ -492,7 +493,7 @@
   Unusual parameter order lets this be called as, for example,
   `(update x :creator_id import-fk-keyed 'Database :name)`."
   [portable model field]
-  (db/select-one-id model field portable))
+  (t2/select-one-pk model field portable))
 
 ;; -------------------------------------------------- Users ----------------------------------------------------------
 (defn export-user
@@ -522,7 +523,7 @@
   [table-id]
   (when table-id
     (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
-          db-name                     (db/select-one-field :name 'Database :id db_id)]
+          db-name                     (t2/select-one-fn :name 'Database :id db_id)]
       [db-name schema name])))
 
 (defn import-table-fk
@@ -530,7 +531,7 @@
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (db/select-one-field :id 'Table :name table-name :schema schema :db_id (db/select-one-field :id 'Database :name db-name))))
+    (t2/select-one-fn :id 'Table :name table-name :schema schema :db_id (t2/select-one-fn :id 'Database :name db-name))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -573,7 +574,7 @@
   [[db-name schema table-name field-name :as field-id]]
   (when field-id
     (let [table_id (import-table-fk [db-name schema table-name])]
-      (db/select-one-id 'Field :table_id table_id :name field-name))))
+      (t2/select-one-pk 'Field :table_id table_id :name field-name))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -650,7 +651,7 @@
                     (m/update-existing entity :database (fn [db-id]
                                                           (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                                             "database/__virtual"
-                                                            (db/select-one-field :name 'Database :id db-id))))
+                                                            (t2/select-one-fn :name 'Database :id db-id))))
                     (m/update-existing entity :card_id #(export-fk % 'Card)) ; attibutes that refer to db fields use _
                     (m/update-existing entity :card-id #(export-fk % 'Card)) ; template-tags use dash
                     (m/update-existing entity :source-table export-source-table)
@@ -706,7 +707,7 @@
                   (-> &match
                       (assoc :database (if (= fully-qualified-name "database/__virtual")
                                          mbql.s/saved-questions-virtual-database-id
-                                         (db/select-one-id 'Database :name fully-qualified-name)))
+                                         (t2/select-one-pk 'Database :name fully-qualified-name)))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   {:card-id (entity-id :guard portable-id?)}

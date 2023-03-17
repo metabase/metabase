@@ -9,7 +9,7 @@
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -148,7 +148,7 @@
                                            :percent-email  (s/eq 0.0)
                                            :percent-state  (s/eq 0.0)
                                            :average-length (s/pred #(< 15 % 16) "between 15 and 16")}}}
-                     (db/select-one-field :fingerprint Field :id (mt/id :venues :name)))))
+                     (t2/select-one-fn :fingerprint Field :id (mt/id :venues :name)))))
       (testing "date fingerprints"
         (is (schema= {:global {:distinct-count (s/eq (if (= driver/*driver* :mongo)
                                                        383 ; mongo samples the last 500 rows only
@@ -156,7 +156,7 @@
                                :nil%           (s/eq 0.0)}
                       :type   {:type/DateTime {:earliest (s/pred #(str/starts-with? % "2013-01-03"))
                                                :latest   (s/pred #(str/starts-with? % "2015-12-29"))}}}
-                     (db/select-one-field :fingerprint Field :id (mt/id :checkins :date)))))
+                     (t2/select-one-fn :fingerprint Field :id (mt/id :checkins :date)))))
       (testing "number fingerprints"
         (is (schema= {:global {:distinct-count (s/eq 4)
                                :nil%           (s/eq 0.0)}
@@ -166,7 +166,7 @@
                                              :max (s/eq 4.0)
                                              :sd  (s/pred #(< 0.76 % 0.78) "between 0.76 and 0.78")
                                              :avg (s/eq 2.03)}}}
-                     (db/select-one-field :fingerprint Field :id (mt/id :venues :price))))))))
+                     (t2/select-one-fn :fingerprint Field :id (mt/id :venues :price))))))))
 
 (deftest ^:parallel valid-serialized-json?-test
   (testing "recognizes substrings of json"

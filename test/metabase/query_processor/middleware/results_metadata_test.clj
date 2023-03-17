@@ -13,10 +13,11 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (db/select-one-field :result_metadata Card :id (u/the-id card)))
+  (t2/select-one-fn :result_metadata Card :id (u/the-id card)))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"

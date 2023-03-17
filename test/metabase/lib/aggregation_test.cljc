@@ -172,7 +172,7 @@
               {:lib/uuid (str (random-uuid))}
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
-(deftest ^:parallel join-test
+(deftest ^:parallel aggregate-test
   (is (=? {:lib/type :mbql/query,
            :database (meta/id) ,
            :type :pipeline,

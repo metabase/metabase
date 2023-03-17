@@ -24,7 +24,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
 
@@ -217,7 +218,7 @@
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
-                                     (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
+                                     (t2/select-one-fn :human_readable_field_id Dimension :field_id (u/the-id field)))]
     {:values          (search-values (api/check-404 field)
                                      (api/check-404 (db/select-one Field :id human-readable-field-id)))
      :field_id        field-id
@@ -303,7 +304,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
+    (if-let [field-value-id (t2/select-one-pk FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
@@ -335,7 +336,7 @@
   (u/the-id (:table_id field)))
 
 (defn- db-id [field]
-  (u/the-id (db/select-one-field :db_id Table :id (table-id field))))
+  (u/the-id (t2/select-one-fn :db_id Table :id (table-id field))))
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For

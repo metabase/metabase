@@ -115,4 +115,4 @@
                   (testing "We should be able to insert UTF-8 values"
                     (insert-row!)
                     (is (= test-unicode-str
-                           (db/select-one-field :name Database :name test-unicode-str)))))))))))))
+                           (t2/select-one-fn :name Database :name test-unicode-str)))))))))))))

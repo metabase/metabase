@@ -39,7 +39,8 @@
    [schema.core :as s]
    [throttle.core :as throttle]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -51,21 +52,43 @@
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
+(defn combine-parameters-and-template-tags
+  "Update `card.parameters` to include parameters from template-tags.
+
+  On native queries parameters exists in 2 forms:
+  - parameters
+  - dataset_query.native.template-tags
+
+  In most cases, these 2 are sync, meaning, if you have a template-tag, there will be a parameter.
+  However, since card.parameters is a recently added feature, there may be instances where a template-tag
+  is not present in the parameters.
+  This function ensures that all template-tags are converted to parameters and added to card.parameters."
+  [{:keys [parameters] :as card}]
+  (let [template-tag-parameters     (card/template-tag-parameters card)
+        id->template-tags-parameter (m/index-by :id template-tag-parameters)
+        id->parameter               (m/index-by :id parameters)]
+    (assoc card :parameters (vals (reduce-kv (fn [acc id parameter]
+                                               ;; order importance: we want the info from `template-tag` to be merged last
+                                               (update acc id #(merge % parameter)))
+                                             id->parameter
+                                             id->template-tags-parameter)))))
+
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
   (mi/instance
    Card
-   (u/select-nested-keys card [:id :name :description :display :visualization_settings
+   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
                                [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
+      combine-parameters-and-template-tags
       (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
@@ -147,7 +170,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -241,7 +264,7 @@
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
      :card-id       card-id
@@ -256,7 +279,7 @@
   {dashcard-id su/IntGreaterThanZero
    parameters su/JSONString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
@@ -282,7 +305,7 @@
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
         (validation/check-public-sharing-enabled)
-        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+        (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
@@ -371,7 +394,7 @@
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
+       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
          (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
 
 (defn- check-field-is-referenced-by-dashboard
@@ -395,7 +418,7 @@
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
 (defn dashboard-and-field-id->values
@@ -410,7 +433,7 @@
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
 
@@ -439,7 +462,7 @@
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -449,7 +472,7 @@
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 
@@ -482,7 +505,7 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -492,7 +515,7 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
+  (let [dashboard-id (t2/select-one-pk Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
@@ -549,7 +572,7 @@
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
      :card-id       card-id

@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private KeypathComponents
   {:table-name (s/maybe su/NonBlankString)
@@ -47,7 +48,7 @@
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (db/select-one-id Table
+       (when-let [table-id (t2/select-one-pk Table
                              ;; TODO: this needs to support schemas
                              :db_id  (u/the-id database)
                              :name   table-name
