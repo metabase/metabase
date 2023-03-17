@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 
+import useActionForm from "metabase/actions/hooks/use-action-form";
 import { getFormTitle } from "metabase/actions/utils";
 
 import type {
@@ -49,6 +50,10 @@ function ActionVizForm({
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
+  const { getCleanValues } = useActionForm({
+    action,
+    initialValues: dashcardParamValues,
+  });
 
   // only show confirmation if there are no missing parameters
   const showConfirmMessage =
@@ -58,7 +63,7 @@ function ActionVizForm({
     if (missingParameters.length > 0 || showConfirmMessage) {
       setShowModal(true);
     } else {
-      onSubmit({});
+      onSubmit(getCleanValues());
     }
   };
 
