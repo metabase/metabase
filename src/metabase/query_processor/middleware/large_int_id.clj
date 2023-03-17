@@ -3,6 +3,7 @@
   (:require
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
+   [toucan2.core :as t2]))
 
 (defn- result-int->string
   [field-indexes rf]

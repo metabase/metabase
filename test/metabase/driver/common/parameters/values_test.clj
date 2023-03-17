@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)
