@@ -1067,7 +1067,7 @@
     (testing "with dashboard"
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
         (let [uuid (str (UUID/randomUUID))]
-          (is (= true
+          (is (= 1
                  (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
@@ -1107,10 +1107,10 @@
       (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
         (let [card-uuid (str (random-uuid))
               field-filter-uuid (str (random-uuid))]
-          (is (= true
+          (is (= 1
                  (t2/update! Card (u/the-id card) {:public_uuid card-uuid}))
               "Enabled public setting on card")
-          (is (= true
+          (is (= 1
                  (t2/update! Card (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
               "Enabled public setting on field-filter-card")
           (testing "GET /api/public/card/:uuid/params/:param-key/values"
@@ -1168,7 +1168,7 @@
         (testing "with dashboard"
           (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
             (let [uuid (str (UUID/randomUUID))]
-              (is (= true
+              (is (= 1
                      (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
               (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
                 (is (= {:values          [2 3 4 5 6]
@@ -1184,7 +1184,7 @@
         (testing "with card"
           (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
             (let [uuid (str (UUID/randomUUID))]
-             (is (= true
+             (is (= 1
                     (t2/update! Card (u/the-id card) {:public_uuid uuid})))
              (testing "GET /api/public/card/:uuid/params/:param-key/values"
                (is (= {:values          ["African" "American" "Asian"]

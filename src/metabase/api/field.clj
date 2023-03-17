@@ -279,10 +279,10 @@
 
 (defn- update-field-values! [field-value-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (api/check-500 (t2/update! FieldValues field-value-id
-                               {:values (map first value-pairs)
-                                :human_readable_values (when human-readable-values?
-                                                         (map second value-pairs))}))))
+    (api/check-500 (pos? (t2/update! FieldValues field-value-id
+                                     {:values (map first value-pairs)
+                                      :human_readable_values (when human-readable-values?
+                                                               (map second value-pairs))})))))
 
 (defn- create-field-values!
   [field-or-id value-pairs]

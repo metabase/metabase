@@ -115,7 +115,7 @@
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (t2/update! Field (u/the-id metabase-field) updates))
+             (not= 0 (t2/update! Field (u/the-id metabase-field) updates)))
       1
       0)))
 

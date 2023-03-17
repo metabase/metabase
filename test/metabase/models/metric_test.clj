@@ -39,7 +39,7 @@
              (t2/update! Metric id {:creator_id nil}))))
 
       (testing "However calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= true
+        (is (= 1
                (t2/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
 
 

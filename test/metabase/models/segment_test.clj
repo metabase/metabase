@@ -29,7 +29,7 @@
              (t2/update! Segment id {:creator_id nil}))))
 
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= true
+        (is (= 1
                (t2/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest serialize-segment-test

@@ -408,7 +408,7 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
-  (api/check-500 (t2/update! User id {:is_active false}))
+  (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -427,7 +427,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (t2/update! User id {k false})))
+    (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
 #_{:clj-kondo/ignore [:deprecated-var]}

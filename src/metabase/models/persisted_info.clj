@@ -144,9 +144,9 @@
   "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
-  (t2/query-one nil :toucan.result-type/update-count
-    PersistedInfo
-    {:where [:and
+  (t2/query-one
+    {:update [:persisted_info]
+     :where [:and
              [:= :database_id database-id]
              [:= :state "deletable"]]
      :set {:active false,
