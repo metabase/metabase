@@ -7,7 +7,8 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
@@ -28,7 +29,7 @@
           (testing "Create a Database if it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
-            (let [db (db/select-one Database :name test-db-name)]
+            (let [db (t2/select-one Database :name test-db-name)]
               (is (partial= {:engine db-type}
                             db))
               (is (= 1
@@ -39,7 +40,7 @@
                 (is (= 1
                        (db/count Database :name test-db-name)))
                 (is (partial= {:engine db-type}
-                              (db/select-one Database :name test-db-name))))
+                              (t2/select-one Database :name test-db-name))))
               (testing "Database should have been synced"
                 (is (= (db/count Table :db_id (u/the-id original-db))
                        (db/count Table :db_id (u/the-id db))))))))
@@ -70,7 +71,7 @@
           (testing "Create a Database since it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
-            (let [db (db/select-one Database :name test-db-name)]
+            (let [db (t2/select-one Database :name test-db-name)]
               (is (partial= {:engine :h2}
                             db))
               (is (= 1

@@ -204,7 +204,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (db/select-one Database :id (:db_id table)))
+  (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private activity-feed-topics
   "The set of event topics which are subscribed to for use in the Metabase activity feed."
@@ -79,9 +80,9 @@
         (fn [{:keys [dashcards] :as obj}]
           ;; we expect that the object has just a dashboard :id at the top level
           ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
+          (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
               (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (db/select-one [Card :name :description], :id card_id)
+                                  (-> (t2/select-one [Card :name :description], :id card_id)
                                       (assoc :id id)
                                       (assoc :card_id card_id))))))]
     (activity/record-activity!

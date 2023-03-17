@@ -92,7 +92,7 @@
     (= :native query-type)  {:database-id database-id, :table-id nil}
     (integer? source-table) {:database-id database-id, :table-id source-table}
     (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                              (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
+                              (t2/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
                                 :id (Integer/parseInt card-id)))
     (map? source-query)     (query->database-and-table-ids {:database database-id
                                                             :type     query-type

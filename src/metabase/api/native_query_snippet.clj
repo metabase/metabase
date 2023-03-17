@@ -13,13 +13,14 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
+  (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -64,7 +65,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (db/select-one NativeQuerySnippet :id id)
+  (let [snippet     (t2/select-one NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
                       :present #{:description :collection_id}
                       :non-nil #{:archived :content :name})

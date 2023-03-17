@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
@@ -24,7 +25,7 @@
   [id :as {{:keys [login_attributes]} :body}]
   {id ms/PositiveInt
    login_attributes [:maybe UserAttributes]}
-  (api/check-404 (db/select-one User :id id))
+  (api/check-404 (t2/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
 (api/defendpoint GET "/attributes"

@@ -5,7 +5,7 @@ import EmptyState from "metabase/components/EmptyState";
 
 import { ActionsApi, PublicApi } from "metabase/services";
 
-import { ActionForm } from "metabase/actions/components/ActionForm";
+import ActionForm from "metabase/actions/components/ActionForm";
 import {
   generateFieldSettingsFromParameters,
   getSubmitButtonColor,

@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -142,7 +143,7 @@
   (mdb/setup-db!)
   (db/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
-                      (let [user (db/select-one User
+                      (let [user (t2/select-one User
                                                 :email        user
                                                 :is_superuser true)]
                         (assert user (trs "{0} is not a valid user" user))

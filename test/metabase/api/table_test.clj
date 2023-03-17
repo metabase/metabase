@@ -111,11 +111,11 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
+            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (db/select-one Table :id (mt/id :venues)))
+             :pk_field     (table/pk-field-id (t2/select-one Table :id (mt/id :venues)))
              :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
@@ -143,12 +143,12 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
+               :fields       [(assoc (field-details (t2/select-one Field :id (mt/id :users :id)))
                                      :semantic_type     "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
@@ -160,7 +160,7 @@
                                      :has_field_values "none"
                                      :database_required false
                                      :database_is_auto_increment true)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
@@ -176,7 +176,7 @@
                                      :database_position        1
                                      :database_required        false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -191,7 +191,7 @@
                                      :database_position        2
                                      :database_required        false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
+                              (assoc (field-details (t2/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
@@ -214,12 +214,12 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
+               :fields       [(assoc (field-details (t2/select-one Field :id (mt/id :users :id)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/PK"
                                      :name             "ID"
@@ -230,7 +230,7 @@
                                      :has_field_values "none"
                                      :database_required false
                                      :database_is_auto_increment true)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
@@ -243,7 +243,7 @@
                                      :database_position 1
                                      :database_required false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -293,7 +293,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :settings])))
-              (db/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
               {:description     "What a nice table!"
                :entity_type     nil
                :visibility_type "hidden"
@@ -391,8 +391,8 @@
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (db/select-one Field :id (mt/id :checkins :user_id))
-            users-id-field      (db/select-one Field :id (mt/id :users :id))]
+      (let [checkins-user-field (t2/select-one Field :id (mt/id :checkins :user_id))
+            users-id-field      (t2/select-one Field :id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -409,7 +409,7 @@
                                             :position          2
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -426,7 +426,7 @@
                                             :semantic_type  "type/PK"
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :users))
                                                             {:schema       "PUBLIC"
                                                              :name         "USERS"
@@ -442,12 +442,12 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
              :fields       [(merge
-                             (field-details (db/select-one Field :id (mt/id :categories :id)))
+                             (field-details (t2/select-one Field :id (mt/id :categories :id)))
                              {:table_id          (mt/id :categories)
                               :semantic_type     "type/PK"
                               :name              "ID"
@@ -459,7 +459,7 @@
                               :database_required false
                               :database_is_auto_increment true})
                             (merge
-                             (field-details (db/select-one Field :id (mt/id :categories :name)))
+                             (field-details (t2/select-one Field :id (mt/id :categories :name)))
                              {:table_id                  (mt/id :categories)
                               :semantic_type             "type/Name"
                               :name                      "NAME"
@@ -848,7 +848,7 @@
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                 {:request-options {:body (json/encode custom-field-order)}})
           (is (= custom-field-order
-                 (->> (table/fields (db/select-one Table :id (mt/id :venues)))
+                 (->> (table/fields (t2/select-one Table :id (mt/id :venues)))
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))

@@ -11,7 +11,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -36,7 +37,7 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash is-creation? user]
   (revision/push-revision!
-   :object       (db/select-one Dashboard :id (:id dash))
+   :object       (t2/select-one Dashboard :id (:id dash))
    :entity       Dashboard
    :id           (:id dash)
    :user-id      (test.users/user->id user)

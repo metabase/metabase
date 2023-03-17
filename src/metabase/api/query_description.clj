@@ -9,7 +9,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- get-table-description
@@ -74,7 +73,7 @@
   (let [typ (first filt)]
     (condp = typ
       :field   {:field (field-clause->display-name filt)}
-      :segment {:segment (let [segment (db/select-one Segment :id (second filt))]
+      :segment {:segment (let [segment (t2/select-one Segment :id (second filt))]
                            (if segment
                              (:name segment)
                              (deferred-tru "[Unknown Segment]")))}

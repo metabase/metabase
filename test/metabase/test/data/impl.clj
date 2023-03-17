@@ -125,7 +125,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (db/select-one Database :id (u/the-id db))
+        (t2/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
@@ -199,7 +199,7 @@
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
-        (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
+        (let [{driver :engine, db-name :name} (t2/select-one [Database :engine :name] :id db-id)]
           (throw
            (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                                (pr-str table-name) driver db-id (pr-str db-name)
@@ -207,7 +207,7 @@
 
 (defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
   (if parent-id
-    (str (qualified-field-name (db/select-one Field :id parent-id))
+    (str (qualified-field-name (t2/select-one Field :id parent-id))
          \.
          field-name)
     field-name))
@@ -218,7 +218,7 @@
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
+      (let [{db-id :db_id, table-name :name} (t2/select-one [Table :name :db_id] :id table-id)
             db-name                          (t2/select-one-fn :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
