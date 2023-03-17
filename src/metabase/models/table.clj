@@ -113,7 +113,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (t2/select-pk-set Field
+  (= (t2/select-pks-set Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -146,12 +146,12 @@
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
-  (let [field-ids (t2/select-pk-set Field
+  (let [field-ids (t2/select-pks-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
     (when (seq field-ids)
-      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
+      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field

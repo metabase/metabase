@@ -187,7 +187,7 @@
   (when (seq path)
     (let [ids      (collection/location-path->ids path)
           id->name (when (seq ids)
-                     (db/select-field->field :id :name Collection :id [:in ids]))]
+                     (t2/select-fn->fn :id :name Collection :id [:in ids]))]
       ;; now loop through each ID and replace the ID part like (ex. /10/) with a name (ex. /A/)
       (loop [path path, [id & more] ids]
         (if-not id

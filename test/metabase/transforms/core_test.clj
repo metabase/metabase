@@ -61,7 +61,7 @@
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
-    (is (= (t2/select-pk-set Table :db_id (mt/id))
+    (is (= (t2/select-pks-set Table :db_id (mt/id))
            (set (map u/the-id (#'tf/tableset (mt/id) "PUBLIC")))))))
 
 (deftest find-tables-with-domain-entity-test

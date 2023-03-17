@@ -874,7 +874,7 @@
                            v2 permissions
   "
   []
-  (let [db-ids             (delay (t2/select-pk-set 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
@@ -901,7 +901,7 @@
                  |-----------------------------------|
                            v2 permissions"
   []
-  (let [db-ids             (delay (t2/select-pk-set 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v2-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])

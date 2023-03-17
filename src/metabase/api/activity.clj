@@ -55,10 +55,10 @@
    (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
-                       "dashboard" (t2/select-pk-set 'Dashboard, :id [:in ids])
-                       "metric"    (t2/select-pk-set 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (t2/select-pk-set 'Pulse,     :id [:in ids])
-                       "segment"   (t2/select-pk-set 'Segment,   :id [:in ids], :archived false)
+                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
+                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
+                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
                        nil)])))) ; don't care about other models
 
 (defn- add-model-exists-info

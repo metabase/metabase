@@ -939,7 +939,7 @@
                                                      :percent-email  0.0
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
-                 (db/select-field->field :name :fingerprint Field
+                 (t2/select-fn->fn :name :fingerprint Field
                    :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
 

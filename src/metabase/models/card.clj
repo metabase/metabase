@@ -329,7 +329,7 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
+  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
                                                     :from   [:action]
                                                     :join   [:implicit_action
                                                              [:= :action.id :implicit_action.action_id]]

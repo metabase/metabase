@@ -414,7 +414,7 @@
   [id]
   {id ms/PositiveInt}
   (api/read-check Table id)
-  (when-let [field-ids (seq (t2/select-pk-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+  (when-let [field-ids (seq (t2/select-pks-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
@@ -445,7 +445,7 @@
   [id]
   {id ms/PositiveInt}
   (api/write-check (db/select-one Table :id id))
-  (when-let [field-ids (t2/select-pk-set Field :table_id id)]
+  (when-let [field-ids (t2/select-pks-set Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 

@@ -14,7 +14,7 @@
    [toucan2.core :as t2]))
 
 (defn- db->fields [db]
-  (let [table-ids (t2/select-pk-set Table :db_id (u/the-id db))]
+  (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select ['Field :name :description] :table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments

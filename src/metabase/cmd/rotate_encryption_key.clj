@@ -41,7 +41,7 @@
                       :metabase_database
                       {:details (encrypt-str-fn (json/encode details))}
                       ["metabase_database.id = ?" id]))
-      (doseq [[key value] (db/select-field->field :key :value Setting)]
+      (doseq [[key value] (t2/select-fn->fn :key :value Setting)]
         (if (= key "settings-last-updated")
           (setting.cache/update-settings-last-updated!)
           (jdbc/update! {:connection t-conn}

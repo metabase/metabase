@@ -63,7 +63,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (t2/select-pk-set DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))

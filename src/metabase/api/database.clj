@@ -134,7 +134,7 @@
                    (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
                    (catch Throwable e
                      (log/error e (tru "Error determining whether Database supports nested queries")))))
-               (t2/select-pk-set Database))))
+               (t2/select-pks-set Database))))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
@@ -410,7 +410,7 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
-  (let [table-ids (t2/select-pk-set Table :db_id id)]
+  (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
               :from   (for [model database-usage-models
@@ -1124,7 +1124,7 @@
           :card
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pk-set Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
@@ -1136,7 +1136,7 @@
           :dataset
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pk-set Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
@@ -1149,6 +1149,6 @@
       (let [info (driver.u/available-drivers-info)
             d    (driver.u/database->driver database)]
         (some? (:superseded-by (d info)))))
-    (t2/select-pk-set Database))))
+    (t2/select-pks-set Database))))
 
 (api/define-routes)

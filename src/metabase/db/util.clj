@@ -10,7 +10,7 @@
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
 
-     (t2/select-pk-set FieldValues
+     (t2/select-pks-set FieldValues
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]

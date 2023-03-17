@@ -61,7 +61,7 @@
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- (s/maybe su/KeywordOrString)]
-  (let [personal-collection-ids (t2/select-pk-set Collection :personal_owner_id [:not= nil])
+  (let [personal-collection-ids (t2/select-pks-set Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
@@ -77,7 +77,7 @@
   ([collection-ids collection-namespace]
    (let [group-id->perms (group-id->permissions-set)]
      {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (t2/select-pk-set PermissionsGroup)]
+      :groups   (into {} (for [group-id (t2/select-pks-set PermissionsGroup)]
                            {group-id (group-permissions-graph collection-namespace
                                                               (group-id->perms group-id)
                                                               collection-ids)}))})))
