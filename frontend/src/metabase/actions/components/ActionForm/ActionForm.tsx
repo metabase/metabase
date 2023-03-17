@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { FormikHelpers } from "formik";
 
@@ -10,12 +9,10 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
+import useActionForm from "metabase/actions/hooks/use-action-form";
 import {
-  getForm,
-  getFormValidationSchema,
   getSubmitButtonColor,
   getSubmitButtonLabel,
-  generateFieldSettingsFromParameters,
 } from "metabase/actions/utils";
 
 import type {
@@ -27,7 +24,6 @@ import type {
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { formatInitialValue, cleanSubmitValues } from "./utils";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
@@ -50,35 +46,16 @@ interface ActionFormProps {
 
 function ActionForm({
   action,
-  initialValues = {},
+  initialValues: rawInitialValues = {},
   hiddenFields = [],
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
-  const fieldSettings = useMemo(
-    () =>
-      action.visualization_settings?.fields ||
-      generateFieldSettingsFromParameters(action.parameters),
-    [action],
-  );
-
-  const form = useMemo(
-    () => getForm(action.parameters, fieldSettings),
-    [action.parameters, fieldSettings],
-  );
-
-  const formValidationSchema = useMemo(
-    () => getFormValidationSchema(action.parameters, fieldSettings),
-    [action.parameters, fieldSettings],
-  );
-
-  const formInitialValues = useMemo(() => {
-    const values = formValidationSchema.cast(initialValues);
-    return _.mapObject(values, (value, fieldId) => {
-      const formField = fieldSettings[fieldId];
-      return formatInitialValue(value, formField?.inputType);
+  const { initialValues, form, validationSchema, getCleanValues } =
+    useActionForm({
+      action,
+      initialValues: rawInitialValues,
     });
-  }, [initialValues, fieldSettings, formValidationSchema]);
 
   const editableFields = useMemo(
     () => form.fields.filter(field => !hiddenFields.includes(field.name)),
@@ -98,18 +75,15 @@ function ActionForm({
       values: ParametersForActionExecution,
       actions: FormikHelpers<ParametersForActionExecution>,
     ) => {
-      onSubmit(
-        cleanSubmitValues({ values, initialValues, fieldSettings }),
-        actions,
-      );
+      onSubmit(getCleanValues(values), actions);
     },
-    [initialValues, fieldSettings, onSubmit],
+    [getCleanValues, onSubmit],
   );
 
   return (
     <FormProvider
-      initialValues={formInitialValues}
-      validationSchema={formValidationSchema}
+      initialValues={initialValues}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
     >
