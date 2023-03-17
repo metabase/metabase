@@ -202,8 +202,34 @@ describe("DataPicker — picking models", () => {
     expect(await screen.findByText(SAMPLE_MODEL.name)).toBeInTheDocument();
     expect(screen.queryByText(SAMPLE_QUESTION.name)).not.toBeInTheDocument();
 
-    userEvent.click(await screen.findByText(SAMPLE_MODEL.name));
+    userEvent.click(screen.getByText(SAMPLE_MODEL.name));
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: "models",
+      databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+      schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
+        isDatasets: true,
+      }),
+      collectionId: SAMPLE_MODEL.collection_id,
+      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
+    });
+  });
 
+  it("should be able to search for a model when a question was selected", async () => {
+    const { onChange } = await setup({
+      initialValue: {
+        type: "questions",
+        databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION),
+        collectionId: "root",
+        tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION.id)],
+      },
+    });
+
+    userEvent.type(screen.getByRole("textbox"), "Sample");
+    expect(await screen.findByText(SAMPLE_MODEL.name)).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
+
+    userEvent.click(screen.getByText(SAMPLE_MODEL.name));
     expect(onChange).toHaveBeenLastCalledWith({
       type: "models",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,

@@ -180,8 +180,7 @@ describe("DataPicker — picking questions", () => {
     expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.queryByText(SAMPLE_MODEL.name)).not.toBeInTheDocument();
 
-    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
-
+    userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
     expect(onChange).toHaveBeenLastCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
