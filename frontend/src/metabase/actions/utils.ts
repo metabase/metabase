@@ -3,7 +3,6 @@ import * as Yup from "yup";
 
 import * as Errors from "metabase/core/utils/errors";
 import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
 
 import type {
   ActionDashboardCard,
@@ -18,7 +17,6 @@ import type {
   InputSettingType,
   Parameter,
   ParameterId,
-  ParametersForActionExecution,
   WritebackAction,
   WritebackActionBase,
   WritebackImplicitQueryAction,
@@ -253,19 +251,6 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
-
-export function setNumericValues(
-  params: ParametersForActionExecution,
-  fieldSettings: FieldSettingsMap,
-) {
-  Object.entries(params).forEach(([key, value]) => {
-    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
-      params[key] = Number(value) ?? null;
-    }
-  });
-
-  return params;
-}
 
 function hasDataFromExplicitAction(result: any) {
   const isInsert = result["created-row"];

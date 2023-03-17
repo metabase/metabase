@@ -84,6 +84,16 @@ export function getNotProvidedActionParameters(
   });
 }
 
+export function getMappedActionParameters(
+  action: WritebackAction,
+  dashboardParamValues: ParametersForActionExecution,
+) {
+  const parameters = action.parameters ?? [];
+  return parameters.filter(parameter => {
+    return isMappedParameter(parameter, dashboardParamValues);
+  });
+}
+
 export const shouldShowConfirmation = (action?: WritebackAction) => {
   if (!action) {
     return false;

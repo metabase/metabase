@@ -7,17 +7,6 @@ import type {
   ParametersForActionExecution,
 } from "metabase-types/api";
 
-export const getChangedValues = (
-  values: ParametersForActionExecution,
-  initialValues: Partial<ParametersForActionExecution>,
-) => {
-  const changedValues = Object.entries(values).filter(([key, value]) => {
-    const initialValue = initialValues[key];
-    return value !== initialValue;
-  });
-  return Object.fromEntries(changedValues);
-};
-
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)
   return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
@@ -41,13 +30,15 @@ export const formatInitialValue = (
   return value;
 };
 
-export const cleanValues = (
+const formatSubmitValues = (
   values: ParametersForActionExecution,
   fieldSettings: FieldSettingsMap,
 ) => {
   const clean: ParametersForActionExecution = {};
 
   Object.entries(values).forEach(([fieldId, fieldValue]) => {
+    clean[fieldId] = fieldValue;
+
     const formField = fieldSettings[fieldId];
     const isNumericField = formField?.fieldType === "number";
     if (isNumericField && !isEmpty(fieldValue)) {
@@ -56,4 +47,28 @@ export const cleanValues = (
   });
 
   return clean;
+};
+
+const getChangedValues = (
+  values: ParametersForActionExecution,
+  initialValues: Partial<ParametersForActionExecution>,
+) => {
+  const changedValues = Object.entries(values).filter(([key, value]) => {
+    const initialValue = initialValues[key];
+    return value !== initialValue;
+  });
+  return Object.fromEntries(changedValues);
+};
+
+export const cleanSubmitValues = ({
+  values,
+  initialValues,
+  fieldSettings,
+}: {
+  values: ParametersForActionExecution;
+  initialValues: Partial<ParametersForActionExecution>;
+  fieldSettings: FieldSettingsMap;
+}) => {
+  const formatted = formatSubmitValues(values, fieldSettings);
+  return getChangedValues(formatted, initialValues);
 };

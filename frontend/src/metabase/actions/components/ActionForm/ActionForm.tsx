@@ -20,23 +20,29 @@ import {
 
 import type {
   ActionFormInitialValues,
-  WritebackParameter,
-  Parameter,
+  ParameterId,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { cleanValues, formatInitialValue, getChangedValues } from "./utils";
+import { formatInitialValue, cleanSubmitValues } from "./utils";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
-  parameters?: WritebackParameter[] | Parameter[];
+
+  // Parameters that shouldn't be displayed in the form
+  // Can be used to "lock" certain parameter values.
+  // E.g. when a value is coming from a dashboard filter.
+  // Hidden field values should still be included in initialValues,
+  // and they will be submitted together in batch.
+  hiddenFields?: ParameterId[];
+
   onSubmit: (
-    params: ParametersForActionExecution,
+    parameters: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
   onClose?: () => void;
@@ -45,7 +51,7 @@ interface ActionFormProps {
 function ActionForm({
   action,
   initialValues = {},
-  parameters = action.parameters,
+  hiddenFields = [],
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
@@ -57,13 +63,13 @@ function ActionForm({
   );
 
   const form = useMemo(
-    () => getForm(parameters, fieldSettings),
-    [parameters, fieldSettings],
+    () => getForm(action.parameters, fieldSettings),
+    [action.parameters, fieldSettings],
   );
 
   const formValidationSchema = useMemo(
-    () => getFormValidationSchema(parameters, fieldSettings),
-    [parameters, fieldSettings],
+    () => getFormValidationSchema(action.parameters, fieldSettings),
+    [action.parameters, fieldSettings],
   );
 
   const formInitialValues = useMemo(() => {
@@ -73,6 +79,11 @@ function ActionForm({
       return formatInitialValue(value, formField?.inputType);
     });
   }, [initialValues, fieldSettings, formValidationSchema]);
+
+  const editableFields = useMemo(
+    () => form.fields.filter(field => !hiddenFields.includes(field.name)),
+    [form, hiddenFields],
+  );
 
   const submitButtonProps = useMemo(() => {
     const variant = getSubmitButtonColor(action);
@@ -87,11 +98,12 @@ function ActionForm({
       values: ParametersForActionExecution,
       actions: FormikHelpers<ParametersForActionExecution>,
     ) => {
-      const clean = cleanValues(values, fieldSettings);
-      const changed = getChangedValues(clean, formInitialValues);
-      onSubmit(changed, actions);
+      onSubmit(
+        cleanSubmitValues({ values, initialValues, fieldSettings }),
+        actions,
+      );
     },
-    [formInitialValues, fieldSettings, onSubmit],
+    [initialValues, fieldSettings, onSubmit],
   );
 
   return (
@@ -102,7 +114,7 @@ function ActionForm({
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
-        {form.fields.map(field => (
+        {editableFields.map(field => (
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
 

@@ -16,27 +16,30 @@ import {
 import ActionParametersInputForm from "./ActionParametersInputForm";
 import ActionParametersInputModal from "./ActionParametersInputModal";
 
+const parameter1 = createMockActionParameter({
+  id: "parameter_1",
+  type: "type/Text",
+});
+
+const parameter2 = createMockActionParameter({
+  id: "parameter_2",
+  type: "type/Text",
+});
+
 const defaultProps = {
-  missingParameters: [
-    createMockActionParameter({
-      id: "parameter_1",
-      type: "type/Text",
-    }),
-    createMockActionParameter({
-      id: "parameter_2",
-      type: "type/Text",
-    }),
-  ],
-  dashcardParamValues: {},
-  action: createMockQueryAction(),
+  action: createMockQueryAction({
+    parameters: [parameter1, parameter2],
+  }),
+  mappedParameters: [],
   dashboard: createMockDashboard({ id: 123 }),
   dashcard: createMockDashboard({ id: 456 }),
-  onSubmit: jest.fn(() => ({ success: true })),
+  dashcardParamValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
+  onSubmit: jest.fn(() => ({ success: true })),
 };
 
-async function setup(options?: any) {
+function setup(options?: any) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
 }
 
@@ -100,17 +103,19 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it("should generate field types from parameter types", async () => {
-    const missingParameters = [
-      createMockActionParameter({
-        id: "parameter_1",
-        type: "type/Text",
-      }),
-      createMockActionParameter({
-        id: "parameter_2",
-        type: "type/Integer",
-      }),
-    ];
-    await setup({ missingParameters });
+    const action = createMockQueryAction({
+      parameters: [
+        createMockActionParameter({
+          id: "parameter_1",
+          type: "type/Text",
+        }),
+        createMockActionParameter({
+          id: "parameter_2",
+          type: "type/Integer",
+        }),
+      ],
+    });
+    await setup({ action });
 
     expect(screen.getByPlaceholderText("Parameter 1")).toHaveAttribute(
       "type",
@@ -125,11 +130,15 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should fetch and load existing values from API for implicit update actions", async () => {
     setupPrefetch();
 
+    const idParameter = createMockActionParameter({ id: "id" });
+
     await setup({
       action: createMockImplicitQueryAction({
         type: "implicit",
         kind: "row/update",
+        parameters: [idParameter, parameter1, parameter2],
       }),
+      mappedParameters: [idParameter],
       dashcardParamValues: {
         id: 888,
       },
