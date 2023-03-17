@@ -16,6 +16,72 @@ describe("metabase/util/dataset", () => {
     });
   });
 
+  describe("syncColumnsAndSettings", () => {
+    it("should automatically add new metrics when a new aggregrate column is added", () => {
+      const prevQuestion = PRODUCTS.query({
+        aggregation: [["count"]],
+        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
+      })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count"],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .aggregate(["sum", PRODUCTS.PRICE.dimension().mbql()])
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject([
+        "count",
+        "sum",
+      ]);
+    });
+
+    it("should automatically remove metrics from settings when an aggregrate column is removed", () => {
+      const prevQuestion = PRODUCTS.query({
+        aggregation: [["sum", PRODUCTS.PRICE.dimension().mbql()], ["count"]],
+        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
+      })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count", "sum"],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .removeAggregation(1)
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject(["sum"]);
+    });
+
+    it("Adding a breakout should not affect graph.metrics", () => {
+      const prevQuestion = PRODUCTS.query({
+        aggregation: [["sum", PRODUCTS.PRICE.dimension().mbql()], ["count"]],
+        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
+      })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count", "sum"],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .breakout(PRODUCTS.VENDOR.dimension().mbql())
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject([
+        "count",
+        "sum",
+      ]);
+      expect(newQuestion.query().columns()).toHaveLength(4);
+    });
+  });
+
   describe("syncTableColumnsToQuery", () => {
     it("should not modify `fields` if no `table.columns` setting preset", () => {
       const question = syncTableColumnsToQuery(
