@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,7 +91,7 @@
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/the-id (db/select-one-id User :email email))]
+            (let [user-id (u/the-id (t2/select-one-pk User :email email))]
               (is (schema= {:topic         (schema/eq :user-joined)
                             :model_id      (schema/eq user-id)
                             :user_id       (schema/eq user-id)

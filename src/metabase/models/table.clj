@@ -14,7 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -156,11 +157,10 @@
   :pk_field
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
-  (db/select-one-id Field
+  (t2/select-one-pk Field
     :table_id        id
     :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
-
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))

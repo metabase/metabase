@@ -228,7 +228,7 @@
           (is (contains?
                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
                view-nm))
-          (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
             ;; and its columns' :base_type should have been identified correctly
             (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
@@ -262,7 +262,7 @@
            (is (contains?
                 (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                 view-nm))
-           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+           (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
              ;; and its columns' :base_type should have been identified correctly
              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
                      {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}

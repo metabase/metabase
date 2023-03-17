@@ -23,7 +23,8 @@
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate :refer [hydrate]]))
+   [toucan.hydrate :as hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -436,7 +437,7 @@
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
-                    :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
+                    :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
                     :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test

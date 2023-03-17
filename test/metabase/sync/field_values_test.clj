@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
   (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
@@ -49,7 +50,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
+      (db/update! FieldValues (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -62,7 +63,7 @@
 (deftest sync-should-properly-handle-last-used-at
   (testing "Test that syncing will skip updating inactive FieldValues"
     (db/update! FieldValues
-                (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
+                (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
                 :last_used_at (t/minus (t/offset-date-time) (t/days 20))
                 :values [1 2 3])
     (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
@@ -75,7 +76,7 @@
                     (t/minus (t/offset-date-time) (t/hours 2))))
       (testing "Field is syncing after usage"
         (db/update! FieldValues
-                    (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
+                    (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
                     :values [1 2 3])
         (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                (sync-database!' "update-field-values" (data/db))))

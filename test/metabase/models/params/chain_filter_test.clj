@@ -8,7 +8,8 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
@@ -484,7 +485,7 @@
             (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
-          (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
+          (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (chain-filter-search categories.name nil "ood")))))

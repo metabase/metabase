@@ -25,7 +25,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:refer-clojure :exclude [descendants]))
 
 (set! *warn-on-reflection* true)
@@ -492,7 +493,7 @@
   Unusual parameter order lets this be called as, for example,
   `(update x :creator_id import-fk-keyed 'Database :name)`."
   [portable model field]
-  (db/select-one-id model field portable))
+  (t2/select-one-pk model field portable))
 
 ;; -------------------------------------------------- Users ----------------------------------------------------------
 (defn export-user
@@ -573,7 +574,7 @@
   [[db-name schema table-name field-name :as field-id]]
   (when field-id
     (let [table_id (import-table-fk [db-name schema table-name])]
-      (db/select-one-id 'Field :table_id table_id :name field-name))))
+      (t2/select-one-pk 'Field :table_id table_id :name field-name))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -706,7 +707,7 @@
                   (-> &match
                       (assoc :database (if (= fully-qualified-name "database/__virtual")
                                          mbql.s/saved-questions-virtual-database-id
-                                         (db/select-one-id 'Database :name fully-qualified-name)))
+                                         (t2/select-one-pk 'Database :name fully-qualified-name)))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   {:card-id (entity-id :guard portable-id?)}

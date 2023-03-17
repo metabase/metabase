@@ -348,7 +348,7 @@
   :sunday)
 
 (defn- get-id-field-id [table]
-  (db/select-one-id Field :name "_id" :table_id (u/the-id table)))
+  (t2/select-one-pk Field :name "_id" :table_id (u/the-id table)))
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]

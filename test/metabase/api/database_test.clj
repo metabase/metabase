@@ -28,7 +28,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate]))
+   [toucan.hydrate :as hydrate]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -190,7 +191,7 @@
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
 
     (testing "404 if db does not exist"
-      (let [non-existing-db-id (inc (db/select-one-id Database {:order-by [[:id :desc]]}))]
+      (let [non-existing-db-id (inc (t2/select-one-pk Database {:order-by [[:id :desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id)))))))

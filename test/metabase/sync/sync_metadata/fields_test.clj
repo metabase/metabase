@@ -13,7 +13,8 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
@@ -115,7 +116,7 @@
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
-                                      :query    {:source-table (db/select-one-id Table
+                                      :query    {:source-table (t2/select-one-pk Table
                                                                  :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
