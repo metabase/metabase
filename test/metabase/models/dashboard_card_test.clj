@@ -173,18 +173,18 @@
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
-                    {:id                     dashcard-id
-                     :actor_id               (mt/user->id :rasta)
-                     :dashboard_id           nil
-                     :card_id                nil
-                     :size_x                 5
-                     :size_y                 3
-                     :row                    1
-                     :col                    1
-                     :parameter_mappings     [{:foo "barbar"}]
-                     :visualization_settings {}
-                     :series                 [card-id-2 card-id-1]}
-                    dashboard-card))))
+                   {:id                     dashcard-id
+                    :actor_id               (mt/user->id :rasta)
+                    :dashboard_id           nil
+                    :card_id                nil
+                    :size_x                 5
+                    :size_y                 3
+                    :row                    1
+                    :col                    1
+                    :parameter_mappings     [{:foo "barbar"}]
+                    :visualization_settings {}
+                    :series                 [card-id-2 card-id-1]}
+                   dashboard-card))))
       (testing "validate db captured everything"
         (is (= {:size_x                 5
                 :size_y                 3
@@ -214,34 +214,34 @@
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id} {:name "Series Card 1"}]
                     Card          [{series-id-2 :id} {:name "Series Card 2"}]]
-      (testing "Should have fewer DB calls if there's no changes to the dashcards"
-       (db/with-call-counting [call-count]
-         (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
-         (is (= 6 (call-count)))))
-      (testing "Should have more calls if there's changes to the dashcards"
-       (db/with-call-counting [call-count]
-         (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                  :cardId card-id
-                                                  :row    1
-                                                  :col    2
-                                                  :size_x 3
-                                                  :size_y 4
-                                                  :series [{:id series-id-1}]}
-                                                 {:id     (:id dashcard-2)
-                                                  :cardId card-id
-                                                  :row    1
-                                                  :col    2
-                                                  :size_x 3
-                                                  :size_y 4
-                                                  :series [{:id series-id-2}]}
-                                                 {:id     (:id dashcard-3)
-                                                  :cardId card-id
-                                                  :row    1
-                                                  :col    2
-                                                  :size_x 3
-                                                  :size_y 4
-                                                  :series []}])
-         (is (= 15 (call-count))))))))
+      (testing "Should have fewer DB calls if there are no changes to the dashcards"
+        (db/with-call-counting [call-count]
+          (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+          (is (= 6 (call-count)))))
+      (testing "Should have more calls if there are changes to the dashcards"
+        (db/with-call-counting [call-count]
+          (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series [{:id series-id-1}]}
+                                                  {:id     (:id dashcard-2)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series [{:id series-id-2}]}
+                                                  {:id     (:id dashcard-3)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series []}])
+          (is (= 15 (call-count))))))))
 
 (deftest normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -307,3 +307,28 @@
         (is (= "1311d6dc"
                (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
                (serdes/identity-hash dashcard)))))))
+
+(deftest from-decoded-json-test
+  (testing "Dashboard Cards should remain the same if they are serialized to JSON,
+            deserialized, and finally transformed with `from-parsed-json`."
+    (mt/with-temp* [Dashboard     [dash     {:name "my dashboard"}]
+                    Card          [card     {:name "some question"}]
+                    DashboardCard [dashcard {:card_id (:id card)
+                                             :dashboard_id (:id dash)
+                                             :visualization_settings {:click_behavior {:type         "link",
+                                                                                       :linkType     "url",
+                                                                                       :linkTemplate "/dashboard/1?year={{column:Year}}"}}
+                                             :parameter_mappings     [{:card_id (:id card)
+                                                                       :parameter_id "-1419866742"
+                                                                       :target [:dimension [:field 1 nil]]}]
+                                             :row                    4
+                                             :col                    3}]]
+      ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
+      ;; transformed by `from-parsed-json`
+      (let [dashcard     (dissoc (db/select-one DashboardCard :id (u/the-id dashcard))
+                                 :created_at :updated_at)
+            serialized   (json/generate-string dashcard)
+            deserialized (json/parse-string serialized true)
+            transformed  (dashboard-card/from-parsed-json deserialized)]
+        (is (= dashcard
+               transformed))))))
