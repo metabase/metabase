@@ -12,11 +12,11 @@ import chroma from "chroma-js";
 import {
   columnsAreValid,
   preserveExistingColumnsOrder,
+  getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getDefaultColumns } from "../lib/settings/graph";
 
 const PADDING_BOTTOM = 10;
 
@@ -60,7 +60,7 @@ export default class Sankey extends Component {
         ),
       getDefault: (series, vizSettings) =>
         preserveExistingColumnsOrder(vizSettings["sankey.start"] ?? [], [
-          getDefaultColumns(series).dimensions[0],
+          getDefaultDimensionsAndMetrics(series, 5, 5).dimensions[0],
         ]),
       persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
@@ -90,8 +90,8 @@ export default class Sankey extends Component {
         return preserveExistingColumnsOrder(
           vizSettings["sankey.destinations"] ?? [],
           [
-            getDefaultColumns(series).metrics.slice(1),
-            getDefaultColumns(series).dimensions.slice(1),
+            getDefaultDimensionsAndMetrics(series, 5, 5).metrics.slice(1),
+            getDefaultDimensionsAndMetrics(series, 5, 5).dimensions.slice(1),
           ].flat(),
         );
       },
@@ -118,7 +118,7 @@ export default class Sankey extends Component {
           columnsAreValid(card.visualization_settings["sankey.metrics"], data),
         ),
       getDefault: (series, vizSettings) => [
-        getDefaultColumns(series).metrics[0],
+        getDefaultDimensionsAndMetrics(series, 5, 5).metrics[0],
       ],
       persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
@@ -134,15 +134,6 @@ export default class Sankey extends Component {
       useRawSeries: true,
     },
   };
-
-  state = {
-    mounted: false,
-  };
-
-  componentDidMount() {
-    this.setState({ mounted: true });
-  }
-  componentDidUpdate() {}
 
   getFilteredData(cols, rows, start, destinations, metrics) {
     const dimensions = start.concat(destinations);
