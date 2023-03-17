@@ -47,7 +47,7 @@
      ([model id]
       (if (string? id)
         id
-        (fully-qualified-name* (db/select-one model :id id)))))))
+        (fully-qualified-name* (t2/select-one model :id id)))))))
 
 (defmethod fully-qualified-name* Database
   [db]
@@ -88,7 +88,7 @@
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(local-collection-name (db/select-one Collection :id (Integer/parseInt %))))
+                         (map #(local-collection-name (t2/select-one Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 

@@ -10,7 +10,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util LinkedHashMap)))
 
@@ -182,7 +183,7 @@
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (mt/with-test-user :crowberto
           (db/delete! Setting :key "instance-creation")
-          (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
+          (let [first-user-creation (:min (t2/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (snowplow/instance-creation)]
             (is (= (u.date/format-rfc3339 first-user-creation)
                    instance-creation)))))

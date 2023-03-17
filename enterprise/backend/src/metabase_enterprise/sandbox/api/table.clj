@@ -13,8 +13,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
@@ -64,7 +64,7 @@
   {include_sensitive_fields    (s/maybe su/BooleanString)
    include_hidden_fields       (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (let [table            (api/check-404 (db/select-one Table :id id))
+  (let [table            (api/check-404 (t2/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []
                            (maybe-filter-fields

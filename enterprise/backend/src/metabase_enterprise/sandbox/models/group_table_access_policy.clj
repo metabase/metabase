@@ -142,7 +142,7 @@
           (db/update! GroupTableAccessPolicy
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (db/select-one GroupTableAccessPolicy :id id))
+        (t2/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
         (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
           (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))

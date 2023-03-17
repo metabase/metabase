@@ -26,7 +26,8 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -56,7 +57,7 @@
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
      :skip_if_empty :dashboard_id :parameters])
-   {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
+   {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
 
@@ -358,7 +359,7 @@
               (api.card-test/with-cards-in-readable-collection [card]
                 (create-pulse! 200 pulse-name card collection)
                 (is (= {:collection_id (u/the-id collection), :collection_position 1}
-                       (mt/derecordize (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)))))))
+                       (mt/derecordize (t2/select-one [Pulse :collection_id :collection_position] :name pulse-name)))))))
 
           (testing "...but not if we don't have permissions for the Collection"
             (mt/with-non-admin-groups-no-root-collection-perms
@@ -367,7 +368,7 @@
                                 Collection [collection]]
                   (create-pulse! 403 pulse-name card collection)
                   (is (= nil
-                         (db/select-one [Pulse :collection_id :collection_position] :name pulse-name))))))))))))
+                         (t2/select-one [Pulse :collection_id :collection_position] :name pulse-name))))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

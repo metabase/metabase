@@ -29,7 +29,8 @@
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -204,7 +205,7 @@
                                         :first_name "Test"
                                         :last_name  "SomeLdapStuff"
                                         :password   "should be removed"})
-      (let [{:keys [password password_salt]} (db/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
+      (let [{:keys [password password_salt]} (t2/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
@@ -297,7 +298,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"

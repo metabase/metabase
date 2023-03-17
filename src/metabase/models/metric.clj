@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Metric :metric)
 
@@ -30,7 +31,7 @@
 (defmethod mi/perms-objects-set Metric
   [metric read-or-write]
   (let [table (or (:table metric)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
+                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
 
 (mi/define-methods

@@ -25,7 +25,7 @@
    [monger.db :as mdb]
    [monger.json]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.mongodb DB DBObject)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

@@ -10,7 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
 (set! *warn-on-reflection* true)
@@ -138,7 +138,7 @@
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 2 :error 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]})))))
@@ -156,7 +156,7 @@
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
@@ -188,6 +188,6 @@
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"
                          :task_details {:success 3 :error 0, :skipped 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))

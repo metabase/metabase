@@ -14,7 +14,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -31,7 +32,7 @@
    question_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
-  (let [timeline (db/select-one Timeline :id timeline_id)]
+  (let [timeline (t2/select-one Timeline :id timeline_id)]
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
@@ -81,7 +82,7 @@
       (u/select-keys-when timeline-event-updates
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
-    (db/select-one TimelineEvent :id id)))
+    (t2/select-one TimelineEvent :id id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"

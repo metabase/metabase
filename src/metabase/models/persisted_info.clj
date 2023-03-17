@@ -9,7 +9,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -127,7 +128,7 @@
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
-        existing-persisted-info (db/select-one PersistedInfo :card_id card-id)
+        existing-persisted-info (t2/select-one PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
                          (db/insert! PersistedInfo (create-row user-id card))
@@ -136,7 +137,7 @@
                          (do
                            (db/update! PersistedInfo (u/the-id existing-persisted-info)
                                        :active false, :state "creating", :state_change_at :%now)
-                           (db/select-one PersistedInfo :card_id card-id)))]
+                           (t2/select-one PersistedInfo :card_id card-id)))]
     persisted-info))
 
 (defn ready-database!

@@ -27,7 +27,8 @@
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -242,7 +243,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (db/select-one Field
+  (t2/select-one Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -252,7 +253,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (db/select-one Table
+            (t2/select-one Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -264,7 +265,7 @@
   (assert (string? database-name))
   (assert (keyword? driver))
   (mdb/setup-db!)
-  (db/select-one Database
+  (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))

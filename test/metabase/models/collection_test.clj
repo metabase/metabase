@@ -24,7 +24,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -365,7 +366,7 @@
          (db/delete! Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
-  (inc (or (:max (db/select-one [Collection [:%max.id :max]]))
+  (inc (or (:max (t2/select-one [Collection [:%max.id :max]]))
            0)))
 
 (deftest crud-validate-path-test
@@ -954,7 +955,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (t2/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}

@@ -24,7 +24,7 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (ga.metadata/columns (db/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
+        (ga.metadata/columns (t2/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]

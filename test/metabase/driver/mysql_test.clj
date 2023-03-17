@@ -35,7 +35,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -161,7 +162,7 @@
         (is (= #{{:name "year_column", :base_type :type/Date, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
-      (let [table  (db/select-one Table :db_id (u/id (mt/db)))
+      (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
             fields (db/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
@@ -521,9 +522,9 @@
     (when (not (is-mariadb? (u/id (mt/db))))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
-          (let [table  (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
+          (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
             (sync/sync-table! table)
-            (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+            (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp/compile
                                {:database (u/the-id (mt/db))
                                 :type     :query
@@ -548,9 +549,9 @@
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
-                table    (db/select-one Table :db_id (u/id database) :name "json")]
+                table    (t2/select-one Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
-            (let [field    (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
+            (let [field    (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-everything-store
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,
@@ -597,12 +598,12 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   :mysql
                   (mt/db)
-                  (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (deftest can-shut-off-json-unwrapping
   (mt/test-driver :mysql
     ;; in here we fiddle with the mysql db details
-    (let [db (db/select-one Database :id (mt/id))]
+    (let [db (t2/select-one Database :id (mt/id))]
       (try
         (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
         (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))

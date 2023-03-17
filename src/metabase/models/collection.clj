@@ -27,6 +27,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
@@ -220,7 +221,7 @@
   top-level Collection."
   [collection :- CollectionWithLocationOrRoot]
   (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (db/select-one Collection :id new-parent-id)
+    (t2/select-one Collection :id new-parent-id)
     root-collection))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -839,7 +840,7 @@
     (apply = (map std-fn namespaces))))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (db/select-one Collection :id id)]
+  (let [collection-before-updates (t2/select-one Collection :id id)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -897,7 +898,7 @@
 (defmethod mi/perms-objects-set Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (db/select-one [Collection :id :namespace] :id (collection-or-id))
+                     (t2/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
     ;;
@@ -916,7 +917,7 @@
                       (hydrate :parent_id)
                       :parent_id)]
     (if parent-id
-      (serdes/identity-hash (db/select-one Collection :id parent-id))
+      (serdes/identity-hash (t2/select-one Collection :id parent-id))
       "ROOT")))
 
 (defmethod serdes/hash-fields Collection
@@ -945,7 +946,7 @@
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
   (let [fetch-collection (fn [id]
-                           (db/select-one Collection :id id))
+                           (t2/select-one Collection :id id))
         parent           (some-> coll
                                  :id
                                  fetch-collection
@@ -1027,7 +1028,7 @@
 
     ;; `object-before-update` is the object as it currently exists in the application DB
     ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (db/select-one Card :id 100) http-request-body)"
+    (check-allowed-to-change-collection (t2/select-one Card :id 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)
@@ -1063,7 +1064,7 @@
   [user-or-id user-or-site]
   (let [{first-name :first_name
          last-name  :last_name
-         email      :email} (db/select-one ['User :first_name :last_name :email]
+         email      :email} (t2/select-one ['User :first_name :last_name :email]
                               :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
@@ -1083,7 +1084,7 @@
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
-  (db/select-one Collection :personal_owner_id (u/the-id user-or-id)))
+  (t2/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
 (s/defn user->personal-collection :- (mi/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
@@ -1098,7 +1099,7 @@
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _
-          (db/select-one Collection :personal_owner_id (u/the-id user-or-id))))))
+          (t2/select-one Collection :personal_owner_id (u/the-id user-or-id))))))
 
 (def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
@@ -1162,7 +1163,7 @@
     (check-collection-namespace Card new-collection-id)"
   [model collection-id]
   (when collection-id
-    (let [collection           (or (db/select-one [Collection :namespace] :id collection-id)
+    (let [collection           (or (t2/select-one [Collection :namespace] :id collection-id)
                                    (let [msg (tru "Collection does not exist.")]
                                      (throw (ex-info msg {:status-code 404
                                                           :errors      {:collection_id msg}}))))

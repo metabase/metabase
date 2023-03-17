@@ -16,7 +16,8 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -118,7 +119,7 @@
            (db/select-one-field :values FieldValues, :field_id field-id)))))
 
 (defn- find-values [field-values-id]
-  (-> (db/select-one FieldValues :id field-values-id)
+  (-> (t2/select-one FieldValues :id field-values-id)
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values [db field-values-id]
@@ -129,7 +130,7 @@
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"
       (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-      (is (= :full (-> (db/select-one Field :id (mt/id :categories :name))
+      (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type))
           (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
@@ -138,7 +139,7 @@
         (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
                                       :type     :sandbox
                                       :hash_key "random-hash"}]
-          (is (= :full (:type (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))))
+          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
         (db/execute! {:update :metabase_fieldvalues
@@ -147,10 +148,10 @@
                               [:= :type "full"]]
                       :set {:last_used_at (t/offset-date-time 2001 12)}})
         (is (= (t/offset-date-time 2001 12)
-               (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
-        (is (seq (:values (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))
+               (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
+        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
         (is (not= (t/offset-date-time 2001 12)
-                  (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+                  (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -160,7 +161,7 @@
                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
                         :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
-             (:human_readable_values (db/select-one FieldValues :id (:id fv))))))))
+             (:human_readable_values (t2/select-one FieldValues :id (:id fv))))))))
 
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
@@ -230,7 +231,7 @@
     (mt/dataset sample-dataset
       (mt/with-temp-copy-of-db
         (letfn [(field-values []
-                  (db/select-one FieldValues :field_id (mt/id :orders :product_id)))]
+                  (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
@@ -239,7 +240,7 @@
                                       :type                    "external"}]
             (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
-                     (field-values/create-or-update-full-field-values! (db/select-one Field :id (mt/id :orders :product_id)))))
+                     (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
               (is (partial= {:field_id              (mt/id :orders :product_id)
                              :values                [1 2 3 4]
                              :human_readable_values []}

@@ -42,6 +42,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [weavejester.dependency :as dep]))
 
 (set! *warn-on-reflection* true)
@@ -130,10 +131,10 @@
    (card-id->source-query-and-metadata card-id false))
   ([card-id :- su/IntGreaterThanZero log? :- s/Bool]
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-         card           (or (db/select-one Card :id card-id)
+         card           (or (t2/select-one Card :id card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
                                             {:card-id card-id})))
-         persisted-info (db/select-one PersistedInfo :card_id card-id)
+         persisted-info (t2/select-one PersistedInfo :card_id card-id)
 
          {{database-id :database} :dataset_query
           result-metadata         :result_metadata
@@ -284,7 +285,7 @@
       extract-resolved-card-id))
 
 (s/defn resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
-                                                     :query   FullyResolvedQuery}
+                                                    :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query

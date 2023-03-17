@@ -10,7 +10,8 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -268,7 +269,7 @@
                             (:sandboxes result)))
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 2}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))))
 
@@ -292,13 +293,13 @@
               ;; Updated sandbox
               (is (partial= {:card_id              card-id-1
                              :attribute_remappings {"foo" 3}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))
               ;; Created sandbox
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 10}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-2
                                            :group_id group-id))))))))))
 

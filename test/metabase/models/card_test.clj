@@ -32,7 +32,7 @@
                    :size_x       4
                    :size_y       4}))
               (get-dashboard-count []
-                (card/dashboard-count (db/select-one Card :id card-id)))]
+                (card/dashboard-count (t2/select-one Card :id card-id)))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -101,12 +101,12 @@
                                     :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
-             (into {} (db/select-one [Card :name :database_id] :id id)))))
+             (into {} (t2/select-one [Card :name :database_id] :id id)))))
     (db/update! Card id {:name          "another name"
                          :dataset_query (dummy-dataset-query (mt/id))})
     (testing "after update"
       (is (= {:name "another name" :database_id (mt/id)}
-             (into {} (db/select-one [Card :name :database_id] :id id)))))))
+             (into {} (t2/select-one [Card :name :database_id] :id id)))))))
 
 (deftest disable-implicit-actions-if-needed-test
   (mt/with-actions-enabled

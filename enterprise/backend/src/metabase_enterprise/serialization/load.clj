@@ -688,7 +688,7 @@
     "A function called on the ID of each `User` instance after it is inserted (via upsert)."
     [user-id]
     (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :email :google_auth :is_active] :id user-id)]
+               (t2/select-one [User :email :google_auth :is_active] :id user-id)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             site-url           (public-settings/site-url)
             password-reset-url (str site-url "/auth/reset_password/" reset-token)

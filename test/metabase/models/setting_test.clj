@@ -15,7 +15,8 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -91,7 +92,7 @@
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (db/select-one Setting :key (name setting-name))))
+  (boolean (t2/select-one Setting :key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]
@@ -860,7 +861,7 @@
                                        test-setting-2 "123"]
       (is (= "5f7f150c"
              (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+             (serdes/identity-hash (t2/select-one Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"

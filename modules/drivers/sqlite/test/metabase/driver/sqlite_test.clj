@@ -149,7 +149,7 @@
                                    :database-position 0
                                    :database-required false
                                    :database-is-auto-increment false}}}
-                       (driver/describe-table driver db (db/select-one Table :id (mt/id :timestamp_table)))))))))))))
+                       (driver/describe-table driver db (t2/select-one Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite

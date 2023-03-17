@@ -9,7 +9,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (def ^:private test-snippet-fields [:content :creator_id :description :name])
 
@@ -114,7 +115,7 @@
                   (let [response (mt/user-http-request :rasta :post expected-status-code (snippet-url)
                                   {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
-                     :db       (some->> (:id response) (db/select-one NativeQuerySnippet :id))})
+                     :db       (some->> (:id response) (t2/select-one NativeQuerySnippet :id))})
                   (finally
                     (db/delete! NativeQuerySnippet :name "test-snippet"))))]
         (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]

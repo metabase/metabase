@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Segment :segment)
 
@@ -29,7 +30,7 @@
 (defmethod mi/perms-objects-set Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (mi/define-methods

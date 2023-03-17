@@ -419,7 +419,7 @@
                                  :user_group_memberships (group-or-ids->user-group-memberships
                                                           [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (db/select-one User :email email)))))))
+                 (user-test/user-group-names (t2/select-one User :email email)))))))
 
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
@@ -509,7 +509,7 @@
                                            :email        "cam.era@metabase.com"
                                            :is_superuser true}]
                       Collection [_]]
-        (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
+        (letfn [(user [] (into {} (-> (t2/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]
           (testing "before API call"
@@ -693,7 +693,7 @@
   (testing "PUT /api/user/:id"
     (testing "Test that a normal user cannot change the :is_superuser flag for themselves"
       (letfn [(fetch-rasta []
-                (db/select-one [User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
+                (t2/select-one [User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                                 (assoc (fetch-rasta) :is_superuser true))
@@ -830,7 +830,7 @@
            (db/select-one-field :first_name User :id (mt/user->id :rasta))))
     (is (= {:name "Rasta Toucan's Personal Collection"
             :slug "rasta_toucan_s_personal_collection"}
-           (mt/derecordize (db/select-one [Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
+           (mt/derecordize (t2/select-one [Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
@@ -923,7 +923,7 @@
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
-                   (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
+                   (mt/derecordize (t2/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -983,7 +983,7 @@
 
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
-               (mt/derecordize (db/select-one [User :is_active] :id (:id user)))))))
+               (mt/derecordize (t2/select-one [User :is_active] :id (:id user)))))))
 
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
