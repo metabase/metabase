@@ -16,7 +16,6 @@ import { useDataPicker } from "../DataPickerContext";
 import type { DataPickerValue, DataPickerDataType } from "../types";
 
 interface DataSearchProps {
-  value: DataPickerValue;
   searchQuery: string;
   availableDataTypes: DataPickerDataType[];
   onChange: (value: DataPickerValue) => void;
@@ -85,7 +84,6 @@ function getNextValue(table: TableSearchResult): DataPickerValue {
 }
 
 function DataSearch({
-  value,
   searchQuery,
   availableDataTypes,
   onChange,
@@ -94,11 +92,8 @@ function DataSearch({
   const { setQuery } = search;
 
   const searchModels: SearchModel[] = useMemo(() => {
-    if (!value.type) {
-      return availableDataTypes.map(type => DATA_TYPE_SEARCH_MODEL_MAP[type]);
-    }
-    return [DATA_TYPE_SEARCH_MODEL_MAP[value.type]];
-  }, [value.type, availableDataTypes]);
+    return availableDataTypes.map(type => DATA_TYPE_SEARCH_MODEL_MAP[type]);
+  }, [availableDataTypes]);
 
   const onSelect = useCallback(
     (table: TableSearchResult) => {
