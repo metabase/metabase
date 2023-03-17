@@ -9,7 +9,8 @@
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil
@@ -83,7 +84,7 @@
             toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (db/update! Field age-field-id :active false)
+        (t2/update! Field age-field-id {:active false})
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
@@ -98,7 +99,7 @@
             toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (db/update! Field details-field-id :active false)
+        (t2/update! Field details-field-id {:active false})
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated

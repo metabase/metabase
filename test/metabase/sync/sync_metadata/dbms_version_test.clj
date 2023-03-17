@@ -6,7 +6,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- db-dbms-version [db-or-id]
   (db/select-one-field :dbms_version Database :id (u/the-id db-or-id)))
@@ -22,7 +23,7 @@
       (mt/dataset test-data
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (db/update! Database (u/the-id db) :dbms_version nil)
+              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
               db                   (db/select-one Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]

@@ -450,7 +450,7 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+          (let [updated? (t2/update! Database db-id {:details {:dataset-id "my-dataset"}})]
             (is updated?)
             (let [updated (db/select-one Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))

@@ -8,7 +8,8 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
@@ -566,12 +567,12 @@
           fvs              (db/select FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
-      (db/update! Field field-id :has_field_values "list")
+      (t2/update! Field field-id {:has_field_values "list"})
       (db/delete! FieldValues :field_id field-id)
       (try
         (thunk)
         (finally
-         (db/update! Field field-id :has_field_values has_field_values)
+         (t2/update! Field field-id {:has_field_values has_field_values})
          (db/insert-many! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field

@@ -35,7 +35,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -604,14 +605,14 @@
     ;; in here we fiddle with the mysql db details
     (let [db (db/select-one Database :id (mt/id))]
       (try
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
         (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
         (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
         (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
         ;; un fiddle with the mysql db details.
-        (finally (db/update! Database (mt/id) :details (:details db)))))))
+        (finally (t2/update! Database (mt/id) {:details (:details db)}))))))
 
 (deftest ddl-execute-with-timeout-test1
   (mt/test-driver :mysql

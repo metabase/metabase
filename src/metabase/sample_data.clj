@@ -9,7 +9,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)))
 
@@ -89,4 +90,4 @@
    (when sample-db
      (let [intended (try-to-extract-sample-database!)]
        (when (not= (:details sample-db) intended)
-         (db/update! Database (:id sample-db) :details intended))))))
+         (t2/update! Database (:id sample-db) {:details intended}))))))

@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -166,7 +167,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+                (t2/update! DashboardCard id {:visualization_settings visualization_settings})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -200,12 +201,12 @@
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (db/update! Setting (name mapping-setting-key)
-                  :value
-                  (->> mapping
-                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                       (into {})
-                       json/generate-string)))))
+      (t2/update! Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
 
 (defmigration
   ^{:author "qnkhuat"

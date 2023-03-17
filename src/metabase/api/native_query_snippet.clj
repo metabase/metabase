@@ -13,7 +13,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,7 +74,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (db/update! NativeQuerySnippet id changes))
+      (t2/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

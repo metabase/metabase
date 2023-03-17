@@ -13,7 +13,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,7 +94,7 @@
   (let [existing (api/write-check Timeline id)
         current-archived (:archived (db/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (db/update! Timeline id
+    (t2/update! Timeline id
       (u/select-keys-when timeline-updates
         :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))

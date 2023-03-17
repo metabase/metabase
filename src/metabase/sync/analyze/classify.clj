@@ -32,7 +32,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -59,7 +60,7 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (db/update! (if (mi/instance-of? Field original-model)
+      (t2/update! (if (mi/instance-of? Field original-model)
                     Field
                     Table)
           (u/the-id original-model)

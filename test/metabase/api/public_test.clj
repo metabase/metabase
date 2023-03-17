@@ -30,7 +30,8 @@
    [metabase.util :as u]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
    (java.util UUID)))
@@ -361,7 +362,7 @@
                (fetch-public-dashboard dash)))
 
         (testing "We shouldn't see Cards that have been archived"
-          (db/update! Card (u/the-id card), :archived true)
+          (t2/update! Card (u/the-id card) {:archived true})
           (is (= {:name true, :ordered_cards 0}
                  (fetch-public-dashboard dash))))))))
 
@@ -398,7 +399,7 @@
                      (client/client :get 404 (dashcard-url dash card dashcard))))))
 
           (testing "if the Card has been archived."
-            (db/update! Card (u/the-id card), :archived true)
+            (t2/update! Card (u/the-id card) {:archived true})
             (is (= "Not found."
                    (client/client :get 404 (dashcard-url dash card dashcard))))))))))
 
@@ -434,7 +435,7 @@
         (mt/with-temp Collection [{collection-id :id}]
           (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
           (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
-            (db/update! Card card-id :collection_id collection-id)
+            (t2/update! Card card-id {:collection_id collection-id})
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id)))
                 "Sanity check: shouldn't be allowed to run the query normally")
@@ -1067,7 +1068,7 @@
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
         (let [uuid (str (UUID/randomUUID))]
           (is (= true
-                 (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
+                 (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
               (is (= {:values          ["African" "American" "Asian"]
@@ -1107,10 +1108,10 @@
         (let [card-uuid (str (random-uuid))
               field-filter-uuid (str (random-uuid))]
           (is (= true
-                 (db/update! Card (u/the-id card) :public_uuid card-uuid))
+                 (t2/update! Card (u/the-id card) {:public_uuid card-uuid}))
               "Enabled public setting on card")
           (is (= true
-                 (db/update! Card (u/the-id field-filter-card) :public_uuid field-filter-uuid))
+                 (t2/update! Card (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
               "Enabled public setting on field-filter-card")
           (testing "GET /api/public/card/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
@@ -1168,7 +1169,7 @@
           (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
             (let [uuid (str (UUID/randomUUID))]
               (is (= true
-                     (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
+                     (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
               (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
                 (is (= {:values          [2 3 4 5 6]
                         :has_more_values false}
@@ -1184,7 +1185,7 @@
           (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
             (let [uuid (str (UUID/randomUUID))]
              (is (= true
-                    (db/update! Card (u/the-id card) :public_uuid uuid)))
+                    (t2/update! Card (u/the-id card) {:public_uuid uuid})))
              (testing "GET /api/public/card/:uuid/params/:param-key/values"
                (is (= {:values          ["African" "American" "Asian"]
                        :has_more_values false}

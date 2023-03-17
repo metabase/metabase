@@ -9,7 +9,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private FKRelationshipObjects
   "Relevant objects for a foreign key relationship."
@@ -51,9 +52,9 @@
                 (sync-util/name-for-logging source-field)
                 (sync-util/name-for-logging dest-table)
                 (sync-util/name-for-logging dest-field)))
-    (db/update! Field (u/the-id source-field)
-      :semantic_type      :type/FK
-      :fk_target_field_id (u/the-id dest-field))
+    (t2/update! Field (u/the-id source-field)
+                {:semantic_type      :type/FK
+                 :fk_target_field_id (u/the-id dest-field)})
     true))
 
 

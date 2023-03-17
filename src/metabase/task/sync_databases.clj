@@ -24,7 +24,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
@@ -279,7 +280,7 @@
                 counter)
                ([counter db]
                 (try
-                  (db/update! Database (u/the-id db)
+                  (t2/update! Database (u/the-id db)
                     (sync.schedules/schedule-map->cron-strings
                      (sync.schedules/default-randomized-schedule)))
                   (inc counter)

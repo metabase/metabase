@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
   (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
@@ -49,7 +50,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
+      (t2/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) {:values [1 2 3]})
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -61,10 +62,10 @@
 
 (deftest sync-should-properly-handle-last-used-at
   (testing "Test that syncing will skip updating inactive FieldValues"
-    (db/update! FieldValues
+    (t2/update! FieldValues
                 (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                :last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                :values [1 2 3])
+                {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                 :values [1 2 3]})
     (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
            (sync-database!' "update-field-values" (data/db))))
     (is (= [1 2 3] (venues-price-field-values)))
@@ -74,9 +75,9 @@
       (is (t/after? (db/select-one-field :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
                     (t/minus (t/offset-date-time) (t/hours 2))))
       (testing "Field is syncing after usage"
-        (db/update! FieldValues
+        (t2/update! FieldValues
                     (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                    :values [1 2 3])
+                    {:values [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                (sync-database!' "update-field-values" (data/db))))
         (is (partial= {:values [[1] [2] [3] [4]]}
@@ -202,7 +203,7 @@
       ;; insert 50 bloobs & sync
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
       ;; change has_field_values to list
-      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (t2/update! Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
                (db/select-one-field :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
@@ -233,7 +234,7 @@
       ;; insert a row with values contain 50 chars
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
       ;; change has_field_values to list
-      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (t2/update! Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
                (db/select-one-field :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))

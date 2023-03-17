@@ -14,7 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -93,7 +94,7 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (db/update! Field (u/the-id field) :position new-position))
+                  (t2/update! Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
                 (db/select [Field :id]
                            :table_id  (u/the-id table)
@@ -121,12 +122,12 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (db/update! Table (u/the-id table) :field_order :custom)
+  (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-   (map-indexed (fn [position field-id]
-                  (db/update! Field field-id {:position        position
-                                              :custom_position position}))
-                field-order)))
+    (map-indexed (fn [position field-id]
+                   (t2/update! Field field-id {:position        position
+                                               :custom_position position}))
+                 field-order)))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

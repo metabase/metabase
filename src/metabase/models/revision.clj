@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -29,7 +30,7 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (db/update! model id, serialized-instance))
+  (t2/update! model id, serialized-instance))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."

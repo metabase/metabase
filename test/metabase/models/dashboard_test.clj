@@ -18,7 +18,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -150,9 +151,9 @@
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
-        (db/update! Dashboard dashboard-id
-          :name        "Revert Test"
-          :description "something")
+        (t2/update! Dashboard dashboard-id
+                    {:name        "Revert Test"
+                     :description "something"})
         (testing "capture updated Dashboard state"
           (let [dashboard (db/select-one Dashboard :id dashboard-id)]
             (is (= empty-dashboard
@@ -198,7 +199,7 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
     (testing "Pulse name and collection-id updates"
-      (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves" :collection_id collection-id-2)
+      (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
              (db/select-one-field :name Pulse :id pulse-id)))
       (is (= collection-id-2
@@ -209,7 +210,7 @@
                                                            :col    0
                                                            :size_x 4
                                                            :size_y 4})
-        (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
+        (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves"})
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
 (deftest parameter-card-test
@@ -234,9 +235,9 @@
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
         (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
-        (db/update! Dashboard dashboard-id :parameters [(merge default-params
-                                                               {:values_source_type    "card"
-                                                                :values_source_config {:card_id card-id}})])
+        (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
+                                                                {:values_source_type    "card"
+                                                                 :values_source_config {:card_id card-id}})]})
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -324,7 +325,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" namespace"
-             (db/update! Dashboard card-id {:collection_id collection-id})))))))
+             (t2/update! Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -338,7 +339,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (db/update! Dashboard id :parameters [{:id 100}])))))))
+             (t2/update! Dashboard id {:parameters [{:id 100}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"

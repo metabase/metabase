@@ -357,14 +357,14 @@
 (defn- upsert-raw-setting!
   [original-value setting-k value]
   (if original-value
-    (db/update! Setting setting-k :value value)
+    (t2/update! Setting setting-k {:value value})
     (db/insert! Setting :key setting-k :value value))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   [original-value setting-k]
   (if original-value
-    (db/update! Setting setting-k :value original-value)
+    (t2/update! Setting setting-k {:value original-value})
     (db/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
@@ -481,8 +481,7 @@
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
-      (db/update! model (u/the-id object-or-id)
-        column->temp-value)
+      (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
         (db/execute!

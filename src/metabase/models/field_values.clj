@@ -31,7 +31,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -347,7 +348,7 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
 
@@ -403,10 +404,10 @@
 
           (do
             (when existing
-              (db/update! FieldValues (:id existing) :last_used_at :%now))
+              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
             (db/select-one FieldValues :field_id field-id :type :full)))
         (do
-          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

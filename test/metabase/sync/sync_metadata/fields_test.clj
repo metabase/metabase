@@ -13,7 +13,8 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
@@ -134,7 +135,7 @@
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "Clear out the semantic type"
-          (db/update! Field (mt/id :venues :id), :semantic_type nil)
+          (t2/update! Field (mt/id :venues :id) {:semantic_type nil})
           (is (= nil
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
@@ -142,11 +143,11 @@
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (db/update! Field (mt/id :venues :id), :semantic_type :type/Latitude)
+          (t2/update! Field (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= :type/Latitude
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (db/update! Field (mt/id :venues :id), :semantic_type nil)
+          (t2/update! Field (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
@@ -181,7 +182,7 @@
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (db/update! Field (mt/id :checkins :user_id), :semantic_type nil, :fk_target_field_id nil)
+        (t2/update! Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 3, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}

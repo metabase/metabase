@@ -25,7 +25,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,7 +64,7 @@
   (when-let [changes (not-empty (u/select-keys-when body
                                   :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                   :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (db/update! Table id changes)))
+    (api/check-500 (t2/update! Table id changes)))
   (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?

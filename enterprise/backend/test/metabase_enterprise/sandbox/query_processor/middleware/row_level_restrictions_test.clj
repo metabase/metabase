@@ -30,7 +30,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -911,7 +912,7 @@
                                                                :value  param-value}])))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (db/update! Card card-id :result_metadata metadata)))
+    (t2/update! Card card-id {:result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1013,7 +1014,7 @@
                           {:cached?  (boolean (:cached results))
                            :num-rows (count (mt/rows results))}))]
         (mt/with-temporary-setting-values [enable-query-caching  true
-                                           query-caching-min-ttl 0]          #_(db/update! Card card-id :cache_ttl 100)
+                                           query-caching-min-ttl 0]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
             (mt/with-current-user nil
               (testing "First run -- should not be cached"

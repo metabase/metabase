@@ -18,7 +18,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -93,7 +94,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Metric id changes))
+      (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))

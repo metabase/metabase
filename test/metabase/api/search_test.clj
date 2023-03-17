@@ -27,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -634,7 +635,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp* [Dashboard [dashboard]]
-              (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
+              (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest card-dataset-query-test

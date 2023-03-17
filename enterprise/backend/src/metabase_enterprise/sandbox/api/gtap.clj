@@ -10,7 +10,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
@@ -59,7 +60,7 @@
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
-    (db/update! GroupTableAccessPolicy id
+    (t2/update! GroupTableAccessPolicy id
       (u/select-keys-when body
         :present #{:card_id :attribute_remappings})))
   (db/select-one GroupTableAccessPolicy :id id))

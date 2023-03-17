@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
 (set! *warn-on-reflection* true)
@@ -98,9 +99,9 @@
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-               :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
-               :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
+             (t2/update! Database (u/the-id database)
+                         {:metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
+                          :cache_field_values_schedule "0 11 11 11 11 ?"})    ; Every November 11th at 11:11 AM
              (current-tasks-for-db database))))))
 
 ;; Check that changing one schedule doesn't affect the other
@@ -109,16 +110,16 @@
           (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-                         :cache_field_values_schedule "0 15 10 ? * MON-FRI")
+             (t2/update! Database (u/the-id database)
+                         {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
              (current-tasks-for-db database)))))
 
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           fv-job]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-                         :metadata_sync_schedule "0 15 10 ? * MON-FRI")
+             (t2/update! Database (u/the-id database)
+                         {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
              (current-tasks-for-db database))))))
 
 (deftest validate-schedules-test
@@ -135,8 +136,8 @@
         (testing (format "Update %s" k)
           (is (thrown?
                Exception
-               (db/update! Database (u/the-id database)
-                 k "2 CANS PER DAY"))))))))
+               (t2/update! Database (u/the-id database)
+                           {k "2 CANS PER DAY"}))))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
 ;; defrecord emits a put method and things get
@@ -292,7 +293,7 @@
     (testing "Does not randomize databases that have default schedules but let users control schedule"
       (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
                                     :cache_field_values_schedule fv-default}]]
-        (db/update! Database (u/the-id db) {:details (assoc (:details db)
+        (t2/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
         (let [before (db/select-one Database :id (u/the-id db))]
           (#'task.sync-databases/randomize-db-schedules-if-needed)

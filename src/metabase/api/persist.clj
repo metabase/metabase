@@ -142,8 +142,8 @@
         enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]
-      (db/update! Database (u/the-id db)
-        :options (not-empty (dissoc (:options db) :persist-models-enabled))))
+      (t2/update! Database (u/the-id db)
+                  {:options (not-empty (dissoc (:options db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

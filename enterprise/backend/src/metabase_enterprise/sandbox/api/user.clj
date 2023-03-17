@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
@@ -25,7 +26,7 @@
   {id ms/PositiveInt
    login_attributes [:maybe UserAttributes]}
   (api/check-404 (db/select-one User :id id))
-  (db/update! User id :login_attributes login_attributes))
+  (t2/update! User id {:login_attributes login_attributes}))
 
 (api/defendpoint GET "/attributes"
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for

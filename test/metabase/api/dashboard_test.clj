@@ -49,6 +49,7 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -111,7 +112,7 @@
     (mt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (db/update! Dashboard (u/the-id dashboard-or-id) :collection_id (u/the-id collection)))
+        (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
@@ -423,7 +424,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (db/update! Collection collection-id :authority_level "official"))
+              (t2/update! Collection collection-id {:authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -2164,12 +2165,12 @@
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
-        (db/update! DashboardCard (:id dashcard)
-          :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                :card_id      (:id card)
-                                :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                               {:parameter_id "_PRICE_"
-                                :card_id      (:id card)}])
+        (t2/update! DashboardCard (:id dashcard)
+                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                           :card_id      (:id card)
+                                           :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                          {:parameter_id "_PRICE_"
+                                           :card_id      (:id card)}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          ["African" "American" "Artisan"]

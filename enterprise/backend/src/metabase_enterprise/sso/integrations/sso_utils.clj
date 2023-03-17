@@ -11,7 +11,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.net MalformedURLException URL URLDecoder)
    (java.util UUID)))
@@ -49,7 +50,7 @@
       (if (= (select-keys user user-keys) user-data)
         user
         (do
-          (db/update! User id user-data)
+          (t2/update! User id user-data)
           (db/select-one User :id id))))))
 
 (defn check-sso-redirect

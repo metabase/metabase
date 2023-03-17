@@ -14,7 +14,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -77,7 +78,7 @@
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (db/update! TimelineEvent id
+    (t2/update! TimelineEvent id
       (u/select-keys-when timeline-event-updates
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))

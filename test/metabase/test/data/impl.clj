@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,7 +81,7 @@
           (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
+              (t2/update! Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -287,8 +288,8 @@
                                         [:= :source-table.db_id old-db-id]
                                         [:= :target-table.db_id old-db-id]
                                         [:not= :source-field.fk_target_field_id nil]]})]
-    (db/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
-      :fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field))))
+    (t2/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
+                {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
   (copy-db-tables! old-db-id new-db-id)

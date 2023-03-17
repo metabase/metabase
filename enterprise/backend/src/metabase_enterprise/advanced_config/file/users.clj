@@ -6,7 +6,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
   string?)
@@ -43,7 +44,7 @@
   (if-let [existing-user-id (db/select-one-id User :email (:email user))]
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
-      (db/update! User existing-user-id user))
+      (t2/update! User existing-user-id user))
     ;; create a new user. If they are the first User, force them to be an admin.
     (let [user (cond-> user
                  (init-from-config-file-is-first-user?) (assoc :is_superuser true))]

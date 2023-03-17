@@ -9,7 +9,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -134,8 +135,8 @@
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
-                           (db/update! PersistedInfo (u/the-id existing-persisted-info)
-                                       :active false, :state "creating", :state_change_at :%now)
+                           (t2/update! PersistedInfo (u/the-id existing-persisted-info)
+                                       {:active false, :state "creating", :state_change_at :%now})
                            (db/select-one PersistedInfo :card_id card-id)))]
     persisted-info))
 
@@ -143,11 +144,12 @@
   "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
-  (db/update! PersistedInfo
-              {:where [:and
-                       [:= :database_id database-id]
-                       [:= :state "deletable"]]
-               :set {:active false,
-                     :state "creating",
-                     :state_change_at :%now}})
+  (t2/query-one nil :toucan.result-type/update-count
+    PersistedInfo
+    {:where [:and
+             [:= :database_id database-id]
+             [:= :state "deletable"]]
+     :set {:active false,
+           :state "creating",
+           :state_change_at :%now}})
   (ready-unpersisted-models! database-id))

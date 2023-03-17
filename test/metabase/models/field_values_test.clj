@@ -16,7 +16,8 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -182,7 +183,7 @@
               field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
               field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
           ;; Add in human readable values for remapping
-          (is (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+          (is (t2/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
           (let [expected-original-values {:values                [1 2 3]
                                           :human_readable_values ["a" "b" "c"]}
                 expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -223,7 +224,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (db/update! FieldValues id :human_readable_values {"1" "A", "2", "B"})))))))
+             (t2/update! FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
@@ -279,7 +280,7 @@
                   FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
-    (db/update! FieldValues (:id fv) :values [1 2 3])
+    (t2/update! FieldValues (:id fv) {:values [1 2 3]})
     (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest cant-update-type-or-has-of-a-field-values-test
@@ -289,12 +290,12 @@
     (is (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #"Cant update type or hash_key for a FieldValues."
-          (db/update! FieldValues (:id fv) :type :full)))
+          (t2/update! FieldValues (:id fv) {:type :full})))
 
     (is (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #"Cant update type or hash_key for a FieldValues."
-          (db/update! FieldValues (:id fv) :hash_key "new-hash")))))
+          (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
 
 
 (deftest identity-hash-test

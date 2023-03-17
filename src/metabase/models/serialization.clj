@@ -25,7 +25,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:refer-clojure :exclude [descendants]))
 
 (set! *warn-on-reflection* true)
@@ -290,7 +291,7 @@
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
   `(load-update! \"ModelName\" ingested-and-xformed local-Toucan-entity)`
 
-  Defaults to a straightforward [[db/update!]], and you may not need to update it.
+  Defaults to a straightforward [[t2/update!]], and you may not need to update it.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
@@ -303,7 +304,7 @@
         pk       (models/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    (db/update! model id ingested)
+    (t2/update! model id ingested)
     (db/select-one model pk id)))
 
 (defmulti load-insert!

@@ -448,7 +448,7 @@
   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
    the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-    (toucan.db/update! model id changes)
+    (toucan2.core/update! model id changes)
 
   This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
