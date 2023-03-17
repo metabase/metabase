@@ -195,7 +195,7 @@
   [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
   (let [table-name        (name table-name)
-        table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
+        table-id-for-name (partial t2/select-one-pk Table, :db_id db-id, :name)]
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
@@ -217,7 +217,7 @@
              [(u/the-id field) (qualified-field-name field)])))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
-  (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
+  (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
             db-name                          (t2/select-one-fn :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})

@@ -376,7 +376,7 @@
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
-                                  :let [id (db/select-one-id 'User :email email)]]
+                                  :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
         current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))

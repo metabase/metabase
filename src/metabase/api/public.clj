@@ -148,7 +148,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -242,7 +242,7 @@
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
      :card-id       card-id
@@ -257,7 +257,7 @@
   {dashcard-id su/IntGreaterThanZero
    parameters su/JSONString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
@@ -283,7 +283,7 @@
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
         (validation/check-public-sharing-enabled)
-        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+        (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
@@ -396,7 +396,7 @@
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
 (defn dashboard-and-field-id->values
@@ -411,7 +411,7 @@
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
 
@@ -440,7 +440,7 @@
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -450,7 +450,7 @@
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 
@@ -483,7 +483,7 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -493,7 +493,7 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
+  (let [dashboard-id (t2/select-one-pk Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
@@ -550,7 +550,7 @@
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
      :card-id       card-id

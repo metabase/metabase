@@ -499,14 +499,14 @@
                                                saml-attribute-group "GroupMembership"]
               (try
                 ;; user doesn't exist until SAML request
-                (is (not (db/select-one-id User :%lower.email "newuser@metabase.com")))
+                (is (not (t2/select-one-pk User :%lower.email "newuser@metabase.com")))
                 (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
                                                              (saml/str->base64 default-redirect-uri))
                       response    (client-full-response :post 302 "/auth/sso" req-options)]
                   (is (successful-login? response))
                   (is (= #{"All Users"
                            ":metabase-enterprise.sso.integrations.saml-test/group-1"}
-                         (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                         (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                 (finally
                   (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
 
@@ -524,7 +524,7 @@
                                                  saml-attribute-group "GroupMembership"]
                 (try
                   (testing "user doesn't exist until SAML request"
-                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                    (is (not (t2/select-one-pk User :%lower.email "newuser@metabase.com"))))
                   (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
                                                                (saml/str->base64 default-redirect-uri))
                         response    (client-full-response :post 302 "/auth/sso" req-options)]
@@ -532,7 +532,7 @@
                     (is (= #{"All Users"
                              ":metabase-enterprise.sso.integrations.saml-test/group-1"
                              ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                           (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                   (finally
                     (db/delete! User :%lower.email "newuser@metabase.com")))))))))
     (testing "when several Attribute nodes exist (issue #20744)"
@@ -547,7 +547,7 @@
                                                  saml-attribute-group "GroupMembership"]
                 (try
                   (testing "user doesn't exist until SAML request"
-                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                    (is (not (t2/select-one-pk User :%lower.email "newuser@metabase.com"))))
                   (let [req-options (saml-post-request-options (new-user-with-groups-in-separate-attribute-nodes-saml-test-response)
                                                                (saml/str->base64 default-redirect-uri))
                         response    (client-full-response :post 302 "/auth/sso" req-options)]
@@ -555,7 +555,7 @@
                     (is (= #{"All Users"
                              ":metabase-enterprise.sso.integrations.saml-test/group-1"
                              ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                           (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                   (finally
                     (db/delete! User :%lower.email "newuser@metabase.com")))))))))))
 

@@ -182,7 +182,7 @@
 (def ^:private ^{:arglists '([])} default-user-id
   (mdb.connection/memoize-for-application-db
    (fn []
-     (let [user (db/select-one-id User :is_superuser true)]
+     (let [user (t2/select-one-pk User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
        user))))
 

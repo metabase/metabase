@@ -304,7 +304,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
+    (if-let [field-value-id (t2/select-one-pk FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})

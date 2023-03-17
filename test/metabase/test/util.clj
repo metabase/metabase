@@ -872,7 +872,7 @@
                                      remap)
                              remap)]
             (fn []
-              (let [preexisting-id (db/select-one-id FieldValues
+              (let [preexisting-id (t2/select-one-pk FieldValues
                                                      :field_id (:id original)
                                                      :type :full)
                     testing-thunk (fn []

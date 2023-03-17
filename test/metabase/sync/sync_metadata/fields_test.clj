@@ -116,7 +116,7 @@
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
-                                      :query    {:source-table (db/select-one-id Table
+                                      :query    {:source-table (t2/select-one-pk Table
                                                                  :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
