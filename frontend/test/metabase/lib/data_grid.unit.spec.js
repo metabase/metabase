@@ -669,7 +669,7 @@ describe("data_grid", () => {
         };
 
         it("should still show single rows even when collapsed", () => {
-          //Collapsing the "source" column
+          // Collapsing the "source" column
           const { getRowSection, leftHeaderItems, rowCount } =
             multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4], {
               collapsedRows: ["2"],
