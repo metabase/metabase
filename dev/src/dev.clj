@@ -211,7 +211,7 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (db/select-one Database :name "Application Database")
+    (or (t2/select-one Database :name "Application Database")
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
                        @#'metabase.db.env/env)

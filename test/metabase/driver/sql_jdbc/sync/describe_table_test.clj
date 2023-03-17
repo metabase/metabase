@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -88,7 +88,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
+               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
@@ -104,7 +104,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
+             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))

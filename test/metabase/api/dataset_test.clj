@@ -27,7 +27,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +57,7 @@
   ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
   ;; and retry if it's not there yet.
   (letfn [(thunk []
-            (db/select-one QueryExecution
+            (t2/select-one QueryExecution
                            :hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]

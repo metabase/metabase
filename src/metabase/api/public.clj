@@ -85,7 +85,7 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
+  (-> (api/check-404 (apply t2/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
       combine-parameters-and-template-tags
@@ -205,7 +205,7 @@
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   {:pre [(even? (count conditions))]}
-  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
+  (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
@@ -373,7 +373,7 @@
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [card                 (api/check-404 (db/select-one [Card :dataset_query] :id card-id))
+  (let [card                 (api/check-404 (t2/select-one [Card :dataset_query] :id card-id))
         referenced-field-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-field-ids field-id))))
 
@@ -401,7 +401,7 @@
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [dashboard       (-> (db/select-one Dashboard :id dashboard-id)
+  (let [dashboard       (-> (t2/select-one Dashboard :id dashboard-id)
                             api/check-404
                             (hydrate [:ordered_cards :card]))
         param-field-ids (params/dashcards->param-field-ids (:ordered_cards dashboard))]
@@ -411,7 +411,7 @@
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (api.field/field->values (db/select-one Field :id field-id)))
+  (api.field/field->values (t2/select-one Field :id field-id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/values"
@@ -426,7 +426,7 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (api.field/field->values (db/select-one Field :id field-id)))
+  (api.field/field->values (t2/select-one Field :id field-id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/values"
@@ -445,7 +445,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
+  (api.field/search-values (t2/select-one Field :id field-id) (t2/select-one Field :id search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -453,7 +453,7 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
+  (api.field/search-values (t2/select-one Field :id field-id) (t2/select-one Field :id search-id) value limit))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
@@ -479,8 +479,8 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (db/select-one Field :id field-id))
-        remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
+  (let [field          (api/check-404 (t2/select-one Field :id field-id))
+        remapped-field (api/check-404 (t2/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
     (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
@@ -525,7 +525,7 @@
   "Fetch values for a parameter on a public card."
   [uuid param-key]
   (validation/check-public-sharing-enabled)
-  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.card/param-values card param-key))))
 
@@ -534,7 +534,7 @@
   "Fetch values for a parameter on a public card containing `query`."
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
-  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.card/param-values card param-key query))))
 

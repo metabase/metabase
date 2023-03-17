@@ -18,7 +18,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -41,14 +42,14 @@
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (db/select-one Metric :id id))
+  (-> (api/read-check (t2/select-one Metric :id id))
       (hydrate :creator)))
 
 (defn- add-query-descriptions
   [metrics] {:pre [(coll? metrics)]}
   (when (some? metrics)
     (for [metric metrics]
-      (let [table (db/select-one Table :id (:table_id metric))]
+      (let [table (t2/select-one Table :id (:table_id metric))]
         (assoc metric
                :query_description
                (api.qd/generate-query-description table (:definition metric)))))))
@@ -172,7 +173,7 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Metric :id id) api/read-check related/related))
+  (-> (t2/select-one Metric :id id) api/read-check related/related))
 
 
 (api/define-routes)

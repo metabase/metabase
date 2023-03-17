@@ -69,9 +69,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (db/select-one User :email email)
+  (or (t2/select-one User :email email)
       (locking create-user-lock
-        (or (db/select-one User :email email)
+        (or (t2/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first

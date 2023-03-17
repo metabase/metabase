@@ -305,7 +305,7 @@
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     (db/update! model id ingested)
-    (db/select-one model pk id)))
+    (t2/select-one model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -377,7 +377,7 @@
   Returns a Toucan entity or nil."
   [model id-str]
   (if (entity-id? id-str)
-    (db/select-one model :entity_id id-str)
+    (t2/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
@@ -445,7 +445,7 @@
   (when id
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
-          entity     (db/select-one model (models/primary-key model) id)
+          entity     (t2/select-one model (models/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
@@ -522,7 +522,7 @@
   [[import-table-fk]] is the inverse."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
+    (let [{:keys [db_id name schema]} (t2/select-one 'Table :id table-id)
           db-name                     (t2/select-one-fn :name 'Database :id db_id)]
       [db-name schema name])))
 
@@ -565,7 +565,7 @@
   [[import-field-fk]] is the inverse."
   [field-id]
   (when field-id
-    (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
+    (let [{:keys [name table_id]}     (t2/select-one 'Field :id field-id)
           [db-name schema field-name] (export-table-fk table_id)]
       [db-name schema field-name name])))
 
