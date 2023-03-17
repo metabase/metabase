@@ -71,15 +71,18 @@ export const EMPTY_DATABASE = createMockDatabase({
   tables: [],
 });
 
+export const SAMPLE_COLLECTION_ID = 1;
+export const EMPTY_COLLECTION_ID = 2;
+
 export const SAMPLE_COLLECTION = createMockCollection({
-  id: 1,
+  id: SAMPLE_COLLECTION_ID,
   name: "Sample Collection",
   location: "/",
   here: ["card", "dataset"],
 });
 
 export const EMPTY_COLLECTION = createMockCollection({
-  id: 2,
+  id: EMPTY_COLLECTION_ID,
   name: "Empty Collection",
   location: "/",
   here: [],
@@ -90,45 +93,51 @@ export const SAMPLE_MODEL = createMockCard({
   id: 1,
   name: "Sample Model",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_2 = createMockCard({
   id: 2,
   name: "Sample Model 2",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_3 = createMockCard({
   id: 3,
   name: "Sample Model 3",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION = createMockCard({
   id: 4,
   name: "Sample Saved Question",
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION_2 = createMockCard({
   id: 5,
   name: "Sample Saved Question 2",
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION_3 = createMockCard({
   id: 6,
   name: "Sample Saved Question 3",
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION_SEARCH_ITEM = createMockCollectionItem({
-  id: SAMPLE_QUESTION.id,
-  name: SAMPLE_QUESTION.name,
+  ...SAMPLE_QUESTION,
   model: "card",
+  collection: SAMPLE_COLLECTION,
 });
 
 export const SAMPLE_MODEL_SEARCH_ITEM = createMockCollectionItem({
-  id: SAMPLE_MODEL.id,
-  name: SAMPLE_MODEL.name,
+  ...SAMPLE_MODEL,
   model: "dataset",
+  collection: SAMPLE_COLLECTION,
 });
 
 function DataPickerWrapper({

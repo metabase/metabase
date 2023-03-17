@@ -11,12 +11,13 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 import {
-  setup,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
+  SAMPLE_MODEL,
   SAMPLE_QUESTION,
   SAMPLE_QUESTION_2,
   SAMPLE_QUESTION_3,
+  setup,
 } from "./common";
 
 const ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID =
@@ -165,6 +166,28 @@ describe("DataPicker — picking questions", () => {
       schemaId: undefined,
       collectionId: undefined,
       tableIds: [],
+    });
+  });
+
+  it("should be able to search for a question", async () => {
+    const { onChange } = await setup({
+      filters: {
+        types: type => type === "questions",
+      },
+    });
+
+    userEvent.type(screen.getByRole("textbox"), SAMPLE_QUESTION.name);
+    expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
+    expect(screen.queryByText(SAMPLE_MODEL.name)).not.toBeInTheDocument();
+
+    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: "questions",
+      databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+      schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION),
+      collectionId: SAMPLE_QUESTION.collection_id,
+      tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION.id)],
     });
   });
 });

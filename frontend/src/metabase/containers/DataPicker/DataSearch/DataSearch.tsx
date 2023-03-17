@@ -67,7 +67,7 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
     isDatasets: type === "models",
   });
   return {
-    type: "models",
+    type,
     databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
     schemaId,
     collectionId: table.collection?.id || "root",
