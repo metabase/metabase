@@ -13,7 +13,6 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 

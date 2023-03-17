@@ -14,7 +14,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))

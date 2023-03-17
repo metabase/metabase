@@ -27,7 +27,6 @@
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

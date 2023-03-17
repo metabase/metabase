@@ -9,7 +9,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 

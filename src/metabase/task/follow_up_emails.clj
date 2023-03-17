@@ -13,7 +13,6 @@
    [metabase.task :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

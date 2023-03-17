@@ -21,7 +21,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest basic-test

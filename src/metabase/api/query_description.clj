@@ -9,7 +9,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- get-table-description

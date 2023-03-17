@@ -6,7 +6,6 @@
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private persisted-info-topics
