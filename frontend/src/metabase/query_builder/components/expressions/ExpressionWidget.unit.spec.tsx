@@ -17,9 +17,14 @@ describe("ExpressionWidget", () => {
     setup();
 
     expect(screen.getByText("Expression")).toBeInTheDocument();
-    expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
+  });
+
+  it("should not render Name field", () => {
+    setup();
+
+    expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
 
   it("should render help icon with tooltip which opens documentation page", () => {
@@ -47,30 +52,24 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should validate name value", () => {
-    const expression: Expression = ["+", 1, 1];
-    const { onChangeExpression } = setup({ expression });
+  it("should trigger onChangeExpression if expression is valid", () => {
+    const { onChangeExpression } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
-
     expect(doneButton).toBeDisabled();
 
-    userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+    const expressionInput = screen.getByRole("textbox");
+    expect(expressionInput).toHaveClass("ace_text-input");
 
-    // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
-    expect(onChangeExpression).toHaveBeenCalledTimes(0);
-
-    userEvent.type(
-      screen.getByPlaceholderText("Something nice and descriptive"),
-      "some name",
-    );
+    userEvent.type(expressionInput, "1 + 1");
+    userEvent.tab();
 
     expect(doneButton).toBeEnabled();
 
     userEvent.click(doneButton);
 
     expect(onChangeExpression).toHaveBeenCalledTimes(1);
-    expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
+    expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
   });
 
   it(`should render interactive header if it is passed`, () => {
@@ -89,33 +88,37 @@ describe("ExpressionWidget", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  describe("withName=false", () => {
-    it("should not render Name field", () => {
-      setup({ withName: false });
+  describe("withName=true", () => {
+    it("should render Name field", () => {
+      setup({ withName: true });
 
-      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+      expect(screen.getByText("Name")).toBeInTheDocument();
     });
 
-    it("should trigger onChangeExpression if expression is valid", () => {
-      const { onChangeExpression } = setup({
-        withName: false,
-      });
+    it("should validate name value", () => {
+      const expression: Expression = ["+", 1, 1];
+      const { onChangeExpression } = setup({ expression, withName: true });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
+
       expect(doneButton).toBeDisabled();
 
-      const expressionInput = screen.getByRole("textbox");
-      expect(expressionInput).toHaveClass("ace_text-input");
+      userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
 
-      userEvent.type(expressionInput, "1 + 1");
-      userEvent.tab();
+      // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
+      expect(onChangeExpression).toHaveBeenCalledTimes(0);
+
+      userEvent.type(
+        screen.getByPlaceholderText("Something nice and descriptive"),
+        "some name",
+      );
 
       expect(doneButton).toBeEnabled();
 
       userEvent.click(doneButton);
 
       expect(onChangeExpression).toHaveBeenCalledTimes(1);
-      expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
+      expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
     });
   });
 });

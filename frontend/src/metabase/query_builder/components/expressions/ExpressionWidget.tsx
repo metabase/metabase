@@ -46,7 +46,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     query,
     name: initialName,
     expression: initialExpression,
-    withName = true,
+    withName = false,
     startRule,
     reportTimezone,
     header,

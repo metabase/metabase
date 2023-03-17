@@ -339,6 +339,7 @@ export default class AggregationPopover extends Component {
           name={AGGREGATION.getName(this.state.aggregation)}
           query={query}
           expression={aggregation}
+          withName
           startRule="aggregation"
           header={<ExpressionWidgetHeader onBack={this.onClearAggregation} />}
           onChangeExpression={this.onChangeExpression}

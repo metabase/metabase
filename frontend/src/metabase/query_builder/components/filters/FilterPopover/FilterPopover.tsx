@@ -14,6 +14,7 @@ import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
+import { isExpression } from "metabase-lib/expressions";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
@@ -149,7 +150,7 @@ export default function FilterPopover({
   };
 
   const handleExpressionChange = (name: string, expression: Expression) => {
-    if (Array.isArray(expression)) {
+    if (isExpression(expression) && Array.isArray(expression)) {
       handleUpdateAndCommit(expression);
     }
   };
@@ -164,7 +165,6 @@ export default function FilterPopover({
         query={query}
         expression={filter?.raw() as Expression | undefined}
         startRule="boolean"
-        withName={false}
         header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
         onChangeExpression={handleExpressionChange}
         onClose={handleExpressionWidgetClose}
