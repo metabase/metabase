@@ -14,6 +14,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
@@ -22,7 +23,7 @@
    [schema.core :as s]
    [toucan.db :as db])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -111,7 +112,9 @@
 ;;; 2. [[jdbc/with-db-transaction]] does a lot of magic that we don't necessarily want. Writing raw JDBC code is barely
 ;;;    any more code and lets us have complete control over what happens and lets us see at a glance exactly what's
 ;;;    happening without having to keep [[clojure.java.jdbc]] magic in mind or work around it.
-(defn- do-with-jdbc-transaction [database-id f]
+(defn do-with-jdbc-transaction
+  "Impl function for [[with-jdbc-transaction]]."
+  [database-id f]
   (if *connection*
     (f *connection*)
     (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
@@ -134,7 +137,7 @@
             (.rollback conn)
             (throw e)))))))
 
-(defmacro ^:private with-jdbc-transaction
+(defmacro with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
   otherwise fetches a new Connection from the Database's Connection pool and executes `f` inside of a transaction."
   {:style/indent 1}
@@ -338,6 +341,21 @@
             [(conj errors {:index row-index, :error (ex-message e)})
              successes]))))
      rows)))
+
+(defmethod driver/execute-write-query! :sql-jdbc
+  [driver {{sql :query, :keys [params]} :native}]
+  {:pre [(string? sql)]}
+  (try
+    (let [{db-id :id} (qp.store/database)]
+      (with-jdbc-transaction [conn db-id]
+        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
+          {:rows-affected (if (instance? PreparedStatement stmt)
+                            (.executeUpdate ^PreparedStatement stmt)
+                            (.executeUpdate stmt sql))})))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
+                      {:sql sql, :params params, :type qp.error-type/invalid-query}
+                      e)))))
 
 ;;;; `:bulk/create`
 
