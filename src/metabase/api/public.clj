@@ -52,21 +52,43 @@
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
+(defn combine-parameters-and-template-tags
+  "Update `card.parameters` to include parameters from template-tags.
+
+  On native queries parameters exists in 2 forms:
+  - parameters
+  - dataset_query.native.template-tags
+
+  In most cases, these 2 are sync, meaning, if you have a template-tag, there will be a parameter.
+  However, since card.parameters is a recently added feature, there may be instances where a template-tag
+  is not present in the parameters.
+  This function ensures that all template-tags are converted to parameters and added to card.parameters."
+  [{:keys [parameters] :as card}]
+  (let [template-tag-parameters     (card/template-tag-parameters card)
+        id->template-tags-parameter (m/index-by :id template-tag-parameters)
+        id->parameter               (m/index-by :id parameters)]
+    (assoc card :parameters (vals (reduce-kv (fn [acc id parameter]
+                                               ;; order importance: we want the info from `template-tag` to be merged last
+                                               (update acc id #(merge % parameter)))
+                                             id->parameter
+                                             id->template-tags-parameter)))))
+
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
   (mi/instance
    Card
-   (u/select-nested-keys card [:id :name :description :display :visualization_settings
+   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
                                [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
+      combine-parameters-and-template-tags
       (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
