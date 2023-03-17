@@ -239,7 +239,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+    it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
       const questionDetails = {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
@@ -519,6 +519,23 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Third collection").should("be.visible");
         });
       });
+    });
+  });
+
+  describe("x-rays", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
+    });
+
+    it("should allow to x-ray models from collection views", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor("Orders");
+      popover().findByText("X-ray this").click();
+      cy.wait("@dashboard");
     });
   });
 });

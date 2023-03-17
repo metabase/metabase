@@ -36,7 +36,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (org.apache.commons.io FileUtils)))
 
@@ -99,7 +100,7 @@
   (let [collection-id (:collection_id card)]
     (if (nil? collection-id)
       "root"
-      (db/select-one-field :name Collection :id (:collection_id card)))))
+      (t2/select-one-fn :name Collection :id (:collection_id card)))))
 
 (defn- collection-names-match
   "Checks that the collection name for a card matches between original (pre-dump) and new (after load)."
@@ -148,20 +149,20 @@
           (is (some? (:table.columns vs)))
           (is (some? (:column_settings vs)))
           (is (integer? field-id))
-          (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
+          (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
                               u/lower-case-en)))
           (is (= {:show_mini_bar true
                   :column_title "Parallel"} col-val))
           (is (= "Venue Category" col-name))
           (is (true? col-enabled))
           (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
-          (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
+          (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
                                    u/lower-case-en))))))
     card))
 
 (defn- collection-parent-name [collection]
   (let [[_ ^String parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
-    (db/select-one-field :name Collection :id (Integer. parent-id))))
+    (t2/select-one-fn :name Collection :id (Integer. parent-id))))
 
 (defmethod assert-loaded-entity Collection
   [collection _]
@@ -191,7 +192,7 @@
     snippet))
 
 (defn- id->name [model id]
-  (db/select-one-field :name model :id id))
+  (t2/select-one-fn :name model :id id))
 
 (defn- assert-price-click [click target-id]
   ;; first, it should be pointing to "My Card"
@@ -226,7 +227,7 @@
                                 0 "My Card"
                                 1 "My Nested Card"
                                 2 ts/root-card-name)]
-            (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))
+            (is (= expected-name (t2/select-one-fn :name Card :id (:card_id series))))
             (case (int series-pos)
               1
               (testing "Top level click action was preserved for dashboard card"
@@ -234,7 +235,7 @@
                       cb           (:click_behavior viz-settings)]
                   (is (not-empty cb))
                   (is (int? (:targetId cb)))
-                  (is (= "My Nested Query Card" (db/select-one-field :name Card :id (:targetId cb))))))
+                  (is (= "My Nested Query Card" (t2/select-one-fn :name Card :id (:targetId cb))))))
               2
               (testing "Column level click actions were preserved for dashboard card"
                 (let [viz-settings   (:visualization_settings dashcard)
@@ -276,7 +277,7 @@
   (let [pulse-cards (db/select PulseCard :pulse_id (u/the-id pulse))]
     (is (= 2 (count pulse-cards)))
     (is (= #{ts/root-card-name "My Card"}
-           (into #{} (map (partial db/select-one-field :name Card :id) (map :card_id pulse-cards)))))))
+           (into #{} (map (partial t2/select-one-fn :name Card :id) (map :card_id pulse-cards)))))))
 
 (defmethod assert-loaded-entity :default
   [entity _]

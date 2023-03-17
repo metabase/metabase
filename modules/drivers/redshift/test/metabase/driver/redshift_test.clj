@@ -27,7 +27,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
@@ -228,7 +229,7 @@
           (is (contains?
                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
                view-nm))
-          (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
             ;; and its columns' :base_type should have been identified correctly
             (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
@@ -244,7 +245,7 @@
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
-    (testing "Late-binding view with with data types that cause a JDBC error can still be synced succesfully (#21215)"
+    (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             view-nm      "weird_late_binding_view"
             qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
@@ -262,11 +263,11 @@
            (is (contains?
                 (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                 view-nm))
-           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+           (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
              ;; and its columns' :base_type should have been identified correctly
-             (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
-                     {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}
-                     {:name "raw_var",                     :database_type "varchar", :base_type :type/Text}]
+             (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
+                     {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
+                     {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
            (finally
              (redshift.test/execute! (str "DROP VIEW IF EXISTS %s;")

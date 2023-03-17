@@ -11,7 +11,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -336,7 +337,7 @@
 
 (defn- get-json-setting
   [setting-k]
-  (json/parse-string (db/select-one-field :value Setting :key (name setting-k))))
+  (json/parse-string (t2/select-one-fn :value Setting :key (name setting-k))))
 
 (defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values

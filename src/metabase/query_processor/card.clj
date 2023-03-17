@@ -23,7 +23,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,7 +94,7 @@
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
   [card-id]
-  (let [query (api/check-404 (db/select-one-field :dataset_query Card :id card-id))]
+  (let [query (api/check-404 (t2/select-one-fn :dataset_query Card :id card-id))]
     (into
      {}
      (comp

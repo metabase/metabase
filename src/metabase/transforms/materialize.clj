@@ -5,7 +5,8 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
 
@@ -21,7 +22,7 @@
   ([collection-name]
    (get-collection collection-name (root-container-location)))
   ([collection-name location]
-   (db/select-one-id Collection
+   (t2/select-one-pk Collection
      :name     collection-name
      :location location)))
 

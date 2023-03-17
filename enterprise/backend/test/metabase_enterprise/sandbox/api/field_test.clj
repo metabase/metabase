@@ -7,13 +7,14 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest fetch-field-test
   (testing "GET /api/field/:id"
     (met/with-gtaps {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                          :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
-                    :attributes {:cat 50}}
+                                           :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                     :attributes {:cat 50}}
       (testing "Can I fetch a Field that I don't have read access for if I have segmented table access for it?"
         (let [result (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name)))]
           (is (map? result))
@@ -87,10 +88,10 @@
                     (let [password (mt/random-name)]
                       (mt/with-temp User [another-user {:password password}]
                         (met/with-gtaps-for-user another-user {:gtaps      {:venues
-                                                                           {:remappings
-                                                                            {:cat
-                                                                             [:dimension (mt/id :venues :category_id)]}}}
-                                                              :attributes {:cat 5 #_BBQ}}
+                                                                            {:remappings
+                                                                             {:cat
+                                                                              [:dimension (mt/id :venues :category_id)]}}}
+                                                               :attributes {:cat 5 #_BBQ}}
                           (is (= {:field_id        (mt/id :venues :name)
                                   :values          [["Baby Blues BBQ"]
                                                     ["Bludso's BBQ"]
@@ -105,24 +106,24 @@
   (testing "GET /api/field/:id/values should returns correct human readable mapping if exists"
     (mt/with-temp-copy-of-db
       (let [field-id   (mt/id :venues :price)
-            full-fv-id (db/select-one-id FieldValues :field_id field-id :type :full)]
+            full-fv-id (t2/select-one-pk FieldValues :field_id field-id :type :full)]
         (db/update! FieldValues full-fv-id
                     :human_readable_values ["$" "$$" "$$$" "$$$$"])
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
         (met/with-gtaps {:gtaps      {:venues
-                                     {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
-                        :attributes {:cat 4}}
+                                      {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                         :attributes {:cat 4}}
           (is (= [[1 "$"] [3 "$$$"]]
                  (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
 
 (deftest search-test
   (testing "GET /api/field/:id/search/:search-id"
     (met/with-gtaps {:gtaps      {:venues
-                                 {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                  :query      (mt.tu/restricted-column-query (mt/id))}}
-                    :attributes {:cat 50}}
+                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                   :query      (mt.tu/restricted-column-query (mt/id))}}
+                     :attributes {:cat 50}}
       (testing (str "Searching via the query builder needs to use a GTAP when the user has segmented permissions. "
                     "This tests out a field search on a table with segmented permissions")
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
@@ -138,10 +139,10 @@
 
 (deftest caching-test
   (met/with-gtaps {:gtaps
-                  {:venues
-                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                    :query      (mt.tu/restricted-column-query (mt/id))}}
-                  :attributes {:cat 50}}
+                   {:venues
+                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                     :query      (mt.tu/restricted-column-query (mt/id))}}
+                   :attributes {:cat 50}}
     (let [field (db/select-one Field :id (mt/id :venues :name))]
       ;; Make sure FieldValues are populated
       (field-values/get-or-create-full-field-values! field)
@@ -158,9 +159,9 @@
         (let [password (mt/random-name)]
           (mt/with-temp User [another-user {:password password}]
             (met/with-gtaps-for-user another-user {:gtaps      {:venues
-                                                               {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                                                :query      (mt.tu/restricted-column-query (mt/id))}}
-                                                  :attributes {:cat 5}}
+                                                                {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                                                 :query      (mt.tu/restricted-column-query (mt/id))}}
+                                                   :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
               ;; create another one for the new user
               (is (= 2 (db/count FieldValues
@@ -170,7 +171,7 @@
       (testing "Do we invalidate the cache when full FieldValues change"
         (try
           (let [;; Updating FieldValues which should invalidate the cache
-                fv-id      (db/select-one-id FieldValues :field_id (:id field) :type :full)
+                fv-id      (t2/select-one-pk FieldValues :field_id (:id field) :type :full)
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
@@ -188,7 +189,7 @@
         (#'field-values/clear-advanced-field-values-for-field! field)
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
-        (let [old-sandbox-fv-id (db/select-one-id FieldValues :field_id (:id field) :type :sandbox)]
+        (let [old-sandbox-fv-id (t2/select-one-pk FieldValues :field_id (:id field) :type :sandbox)]
           (with-redefs [field-values/advanced-field-values-expired? (fn [fv]
                                                                       (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))

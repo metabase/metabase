@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
@@ -30,7 +30,7 @@
 
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
-  (qp-query (db/select-one-field :db_id Table, :id table-id)
+  (qp-query (t2/select-one-fn :db_id Table, :id table-id)
             ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
             ;; macro for building queries. Do not remove
             (assoc mbql-query :source-table table-id)))

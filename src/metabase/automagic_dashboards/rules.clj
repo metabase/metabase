@@ -1,5 +1,5 @@
 (ns metabase.automagic-dashboards.rules
-  "Validation, transformation to cannonical form, and loading of heuristics."
+  "Validation, transformation to canonical form, and loading of heuristics."
   (:require
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
@@ -132,7 +132,7 @@
    su/Map])
 
 (def ^{:arglists '([form])} dimension-form?
-  "Does form denote a dimension referece?"
+  "Does form denote a dimension reference?"
   (complement (s/checker DimensionForm)))
 
 (defn collect-dimensions
