@@ -837,7 +837,7 @@
             (is (not= (:id @field2s) (:id @field2d))))
 
           (testing "there are 2 FieldValues defined under fields of table1d"
-            (let [fields (db/select-ids Field :table_id (:id @table1d))]
+            (let [fields (t2/select-pk-set Field :table_id (:id @table1d))]
               (is (= 2 (db/count FieldValues :field_id [:in fields])))))
 
           (testing "existing FieldValues are properly found and updated"

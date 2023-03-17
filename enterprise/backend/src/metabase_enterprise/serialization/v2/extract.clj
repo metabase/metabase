@@ -90,7 +90,7 @@
         dashboards     (db/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
-                                           (db/select-ids Card :collection_id coll-id)))
+                                           (t2/select-pk-set Card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
         ;; transitive collection set.

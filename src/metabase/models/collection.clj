@@ -473,7 +473,7 @@
 (s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
+  (t2/select-pk-set Collection :location [:like (str (children-location collection) \%)]))
 
 (s/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
@@ -564,7 +564,7 @@
                            (parent collection)
                            (cons
                             collection
-                            (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
+                            (t2/select-pk-set Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
 (s/defn perms-for-moving :- #{perms/PathSchema}
@@ -616,7 +616,7 @@
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
-  (apply db/select-ids Collection
+  (apply t2/select-pk-set Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
@@ -984,11 +984,11 @@
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (t2/select-one-fn :location Collection :id id)
-        child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
+        child-colls (set (for [child-id (t2/select-pk-set Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
-        dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]
+        dashboards  (set (for [dash-id (t2/select-pk-set 'Dashboard :collection_id id)]
                            ["Dashboard" dash-id]))
-        cards       (set (for [card-id (db/select-ids 'Card      :collection_id id)]
+        cards       (set (for [card-id (t2/select-pk-set 'Card      :collection_id id)]
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 

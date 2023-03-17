@@ -49,7 +49,8 @@
    [potemkin :as p]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -309,7 +310,7 @@
   [attributes thunk]
   (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (db/select-ids User :is_superuser true)
+        existing-admin-ids         (t2/select-pk-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
         temp-admin                 (db/insert! User (merge (with-temp-defaults User)

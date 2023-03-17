@@ -113,7 +113,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field
+  (= (t2/select-pk-set Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -146,7 +146,7 @@
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
-  (let [field-ids (db/select-ids Field
+  (let [field-ids (t2/select-pk-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]

@@ -60,7 +60,7 @@
                       (set
                        (map (partial into {})
                             (db/select [Field :id :name :active]
-                              :table_id [:in (db/select-ids Table :db_id (u/the-id database))])))))]
+                              :table_id [:in (t2/select-pk-set Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -85,7 +85,7 @@
               (set
                (map (partial into {})
                     (db/select [Field :name :active]
-                      :table_id [:in (db/select-ids Table :db_id (u/the-id database))])))))))))
+                      :table_id [:in (t2/select-pk-set Table :db_id (u/the-id database))])))))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
