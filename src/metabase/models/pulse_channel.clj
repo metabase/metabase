@@ -174,7 +174,7 @@
       ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
       ;; addresses
       (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
-        (let [user-id->email (db/select-id->field :email User, :id [:in user-ids])]
+        (let [user-id->email (t2/select-pk->fn :email User, :id [:in user-ids])]
           (doseq [{:keys [id email]} user-recipients
                   :let               [correct-email (get user-id->email id)]]
             (when-not correct-email

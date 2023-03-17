@@ -1186,7 +1186,7 @@
   they are upgraded to EE."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
   (let [permissions-set (download-permissions-set group-id)
-        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
+        table-ids-and-schemas (t2/select-pk->fn :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id

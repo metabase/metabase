@@ -421,9 +421,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (db/select-id->field :db_id 'Table :id [:in table-ids]))
+                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (db/select-id->field :is_on_demand 'Database
+                               (t2/select-pk->fn :is_on_demand 'Database
                                  :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))

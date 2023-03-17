@@ -203,7 +203,7 @@
           (throw
            (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                                (pr-str table-name) driver db-id (pr-str db-name)
-                               (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
+                               (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))))
 
 (defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
   (if parent-id
@@ -256,7 +256,7 @@
     (for [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
-  (let [old-field-id->name (db/select-id->field :name Field :table_id old-table-id)
+  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
         old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (db/insert-many! FieldValues

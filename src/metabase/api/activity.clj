@@ -44,7 +44,7 @@
   [referenced-objects]
   (merge
    (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (db/select-id->field :dataset Card
+     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
                                                                    :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back

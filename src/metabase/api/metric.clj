@@ -64,7 +64,7 @@
   "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
   [metrics]
   (when (seq metrics)
-    (let [table-id->db-id (db/select-id->field :db_id Table, :id [:in (set (map :table_id metrics))])]
+    (let [table-id->db-id (t2/select-pk->fn :db_id Table, :id [:in (set (map :table_id metrics))])]
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 

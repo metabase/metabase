@@ -13,7 +13,6 @@
    [metabase.test.sync :as test.sync]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- column->name-keyword [field-or-column-metadata]

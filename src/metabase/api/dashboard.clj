@@ -456,7 +456,7 @@
                                             (remove nil?))
                                       parameter-mappings)]
       (when (seq card-ids)
-        (let [card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+        (let [card-id->query        (t2/select-pk->fn :dataset_query Card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
                                                :when                    card-id
                                                :let                     [query    (or (card-id->query card-id)
@@ -470,7 +470,7 @@
               table-ids             (when (seq field-ids)
                                       (t2/select-fn-set :table_id Field :id [:in field-ids]))
               table-id->database-id (when (seq table-ids)
-                                      (db/select-id->field :db_id Table :id [:in table-ids]))]
+                                      (t2/select-pk->fn :db_id Table :id [:in table-ids]))]
           (doseq [table-id table-ids
                   :let     [database-id (table-id->database-id table-id)]]
             ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
@@ -515,7 +515,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (db/select-id->field :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
+              (t2/select-pk->fn :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -533,7 +533,7 @@
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
-                                         (db/select-id->field :card_id DashboardCard
+                                         (t2/select-pk->fn :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
