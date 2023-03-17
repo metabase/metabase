@@ -8,13 +8,6 @@
 
 (comment lib/keep-me)
 
-(defn- FIXME-sum
-  "Placeholder until we have a function for adding a `:sum` aggregation to a query."
-  [query expr]
-  (let [sum-clause (lib/sum query -1 expr)]
-    (lib.util/update-query-stage query -1 update :aggregation (fn [aggregations]
-                                                                (conj (vec aggregations) sum-clause)))))
-
 (defn- FIXME-equals
   "Placeholder until we have a function for adding an `:=` aggregation to a query."
   [query x y]
@@ -23,7 +16,7 @@
 
 (deftest ^:parallel describe-query-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (FIXME-sum (lib/field (meta/id :venues :price)))
+                  (lib/aggregate (lib/sum (lib/field (meta/id :venues :price))))
                   (FIXME-equals (lib/field (meta/id :venues :name)) "Toucannery")
                   (lib/breakout (lib/field (meta/id :venues :category-id)))
                   (lib/order-by (lib/field (meta/id :venues :id)))
