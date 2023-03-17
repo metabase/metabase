@@ -9,29 +9,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]))
 
-(defn- is-fn? [op tag args expected-args]
-  (let [f (apply op args)]
-    (is (fn? f))
-    (is (=? (into [tag {:lib/uuid string?}]
-                  expected-args)
-            (f {:lib/metadata meta/metadata} -1)))))
-
-#_
-(deftest ^:parallel aggregation-test
-  (let [q1 (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]
-    (testing "single arg aggregations"
-      (doseq [[op tag] [[lib/pl :+]
-                        [lib/max :-]
-                        [lib/min :*]
-                        [lib/median :/]
-                        [lib/sum :sum]
-                        [lib/stddev :stddev]
-                        [lib/distinct :distinct]]]
-        (testing "without query/stage-number, return a function for later resolution"
-          (is-fn? op tag [venues-category-id-metadata] [venue-field-check]))))))
-
 (deftest ^:parallel expression-test
   (is (=? {:lib/type :mbql/query,
            :database (meta/id) ,
