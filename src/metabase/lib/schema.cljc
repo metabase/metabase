@@ -43,17 +43,18 @@
 (mr/def ::stage.mbql
   [:and
    [:map
-    [:lib/type    [:= :mbql.stage/mbql]]
-    [:lib/options ::common/options]
-    [:joins       {:optional true} [:ref ::join/joins]]
-    [:expressions {:optional true} [:ref ::expression/expressions]]
-    [:breakout    {:optional true} ::breakouts]
-    [:aggregation {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields      {:optional true} ::fields]
-    [:filter      {:optional true} [:ref ::expression/boolean]]
-    [:order-by    {:optional true} [:ref ::order-by/order-bys]]]
+    [:lib/type     [:= :mbql.stage/mbql]]
+    [:lib/options  ::common/options]
+    [:joins        {:optional true} [:ref ::join/joins]]
+    [:expressions  {:optional true} [:ref ::expression/expressions]]
+    [:breakout     {:optional true} ::breakouts]
+    [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
+    [:fields       {:optional true} ::fields]
+    [:filter       {:optional true} [:ref ::expression/boolean]]
+    [:order-by     {:optional true} [:ref ::order-by/order-bys]]
+    [:source-table {:optional true} ::id/table]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
-   [:fn (complement #(contains? % :source-query))]])
+   [:fn #(not (contains? % :source-query))]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.with-source
@@ -66,7 +67,7 @@
 (mr/def ::stage.mbql.without-source
   [:and
    ::stage.mbql
-   [:fn (complement #(contains? % :source-table))]])
+   [:fn #(not (contains? % :source-table))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

@@ -84,7 +84,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow drill through on cells", () => {
     createAndVisitTestQuestion();
-    // open actions menu
+    // open drill-through menu
     cy.findByText("783").click();
     // drill through to orders list
     cy.findByText("View these Orders").click();
@@ -97,7 +97,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow drill through on left/top header values", () => {
     createAndVisitTestQuestion();
-    // open actions menu and filter to that value
+    // open drill-through menu and filter to that value
     cy.findByText("Doohickey").click();
     popover().within(() => cy.findByText("=").click());
     // filter is applied
@@ -489,7 +489,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
-      cy.findByText("Google").click(); // open actions menu
+      cy.findByText("Google").click(); // open drill-through menu
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
       cy.findByText("Source is Google"); // filter was added
       cy.findByText("Row totals"); // it's still a pivot table

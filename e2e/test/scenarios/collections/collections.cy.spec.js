@@ -239,7 +239,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+    it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
       const questionDetails = {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
@@ -526,9 +526,7 @@ describe("scenarios > collection defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsNormalUser();
-      cy.intercept("GET", "/api/automagic-dashboards/question/*").as(
-        "dashboard",
-      );
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
     });
 
     it("should allow to x-ray models from collection views", () => {
