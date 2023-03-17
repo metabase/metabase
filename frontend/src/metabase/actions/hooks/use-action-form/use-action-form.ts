@@ -2,10 +2,6 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import {
-  formatInitialValue,
-  cleanSubmitValues,
-} from "metabase/actions/components/ActionForm/utils";
-import {
   getForm,
   getFormValidationSchema,
   generateFieldSettingsFromParameters,
@@ -16,6 +12,8 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
+
+import { formatInitialValue, cleanSubmitValues } from "./utils";
 
 type Opts = {
   action: WritebackAction;
