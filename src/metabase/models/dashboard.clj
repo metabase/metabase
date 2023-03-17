@@ -122,7 +122,7 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (db/select-field->id :card_id DashboardCard :dashboard_id dashboard-id
+                                   (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
                                                         :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))

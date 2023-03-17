@@ -257,7 +257,7 @@
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (db/select-id->field :name Field :table_id old-table-id)
-        new-field-name->id (db/select-field->id :name Field :table_id new-table-id)
+        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
         old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (db/insert-many! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values

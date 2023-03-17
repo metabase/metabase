@@ -1135,7 +1135,7 @@
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
-    (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
+    (let [user-id->collection-id (t2/select-fn->pk :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/the-id users))])]
       (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
