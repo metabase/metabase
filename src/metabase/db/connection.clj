@@ -5,6 +5,8 @@
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
    [methodical.core :as methodical]
+   [next.jdbc.protocols]
+   [next.jdbc.transaction]
    [potemkin :as p]
    [toucan2.connection :as t2.conn])
   (:import
@@ -137,3 +139,39 @@
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
+
+;;; Super icky HACK
+;;;
+;;; next.jdbc is very unhappy if you use a Connection across multiple threads, even if you're being pinky-promise super
+;;; careful, and will deadlock when used in combination with c3p0. See upstream issue
+;;; https://github.com/seancorfield/next-jdbc/issues/244
+;;;
+;;; It's not clear whether a fix for this is likely or not, so we'll have to just do something icky in the meantime.
+;;;
+;;; Explanation of HACK:
+;;;
+;;; This is a copypasta of the same protocol implementation from [[next.jdbc.transaction]], the only difference being
+;;; that the `locking` is removed. This will fix our annoying hang-on-launch issues. Is this the Right Way™ to fix
+;;; things? Probably not, but it does fix the terrible problems we have now until we can either fix our code, switch
+;;; back to `clojure.java.jdbc`, fork `next.jdbc`, or whatever else we ultimately end up doing.
+(extend-protocol next.jdbc.protocols/Transactable
+  java.sql.Connection
+  (-transact [this body-fn opts]
+    (cond
+      (or (not next.jdbc.transaction/*active-tx*)
+          (= :allow next.jdbc.transaction/*nested-tx*))
+      (binding [next.jdbc.transaction/*active-tx* true]
+        (#'next.jdbc.transaction/transact* this body-fn opts))
+
+      (= :ignore next.jdbc.transaction/*nested-tx*)
+      (body-fn this)
+
+      (= :prohibit next.jdbc.transaction/*nested-tx*)
+      (throw (IllegalStateException. "Nested transactions are prohibited"))
+
+      :else
+      (throw (IllegalArgumentException.
+              (str "*nested-tx* ("
+                   next.jdbc.transaction/*nested-tx*
+                   ") was not :allow, :ignore, or :prohibit"))))
+    (#'next.jdbc.transaction/transact* this body-fn opts)))
