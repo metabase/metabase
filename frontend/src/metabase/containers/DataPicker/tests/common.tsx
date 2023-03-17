@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import React from "react";
-import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -11,6 +10,7 @@ import {
   setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -18,6 +18,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCard,
   createMockCollection,
+  createMockCollectionItem,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -116,6 +117,12 @@ export const SAMPLE_QUESTION_3 = createMockCard({
   name: "Sample Saved Question 3",
 });
 
+export const SAMPLE_MODEL_SEARCH_ITEM = createMockCollectionItem({
+  id: SAMPLE_MODEL.id,
+  name: SAMPLE_MODEL.name,
+  model: "dataset",
+});
+
 function DataPickerWrapper({
   value: initialValue,
   filters,
@@ -182,15 +189,11 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  fetchMock.get(
-    {
-      url: "path:/api/search",
-      query: { models: "dataset", limit: 1 },
-    },
-    {
-      data: hasModels ? [SAMPLE_MODEL] : [],
-    },
-  );
+  if (hasModels) {
+    setupSearchEndpoints([createMockCollectionItem(SAMPLE_MODEL_SEARCH_ITEM)]);
+  } else {
+    setupSearchEndpoints([]);
+  }
 
   setupCollectionsEndpoints([SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
