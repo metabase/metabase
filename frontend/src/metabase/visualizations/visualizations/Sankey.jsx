@@ -115,20 +115,14 @@ export default class Sankey extends Component {
       widget: "fields",
       isValid: (series, vizSettings) =>
         series.some(({ card, data }) =>
-          columnsAreValid(
-            card.visualization_settings["sankey.metrics"],
-            data,
-            vizSettings["sankey._metric_filter"],
-          ),
+          columnsAreValid(card.visualization_settings["sankey.metrics"], data),
         ),
       getDefault: (series, vizSettings) => [
         getDefaultColumns(series).metrics[0],
       ],
       persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
-        const options = data.cols
-          .filter(vizSettings["sankey._metric_filter"])
-          .map(getOptionFromColumn);
+        const options = data.cols.map(getOptionFromColumn);
         return {
           options,
           columns: data.cols,
