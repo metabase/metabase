@@ -116,7 +116,6 @@ class TableInner extends Base {
   }
 
   aggregationOperator(short) {
-    // this is the refactor as well, remove a deprecated function.
     return this.aggregationOperatorsLookup()[short];
   }
 

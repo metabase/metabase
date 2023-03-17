@@ -143,7 +143,6 @@ export default class AggregationPopover extends Component {
   };
 
   _getAvailableAggregations() {
-    // XXX: This looks like the place we generate the options for the aggregation popover
     const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
       aggregationOperators ||

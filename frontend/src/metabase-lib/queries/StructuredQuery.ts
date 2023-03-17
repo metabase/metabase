@@ -679,8 +679,6 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns the field options for the provided aggregation
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
-    // XXX: We need to fix this function so that it takes expression (custom field) into account
-    // aggregationOperator seem to check if the aggregation would be valid for the the given table
     const aggregation: AggregationOperator =
       typeof agg === "string" ? this.aggregationOperator(agg) : agg;
 
@@ -1285,8 +1283,6 @@ class StructuredQueryInner extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      // XXX: I might need to refer to this part where `dimensionOptions` takes
-      // expressions (custom field) into account, but not the `aggregationOperators`
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
       for (const dimension of filteredNonFKDimensions) {
@@ -1297,7 +1293,6 @@ class StructuredQueryInner extends AtomicQuery {
       // de-duplicate explicit and implicit joined tables
       const explicitJoins = this._getExplicitJoinsSet(joins);
 
-      // This is only a refactor, I moved this line down to limit the scope where this variable could be used.
       const dimensionIsFKReference = dimension => dimension.field?.().isFK();
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
 
