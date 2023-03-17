@@ -1368,27 +1368,9 @@ class QuestionInner {
     return this.__mlv2Query;
   }
 
-  generateQueryDescription(tableMetadata) {
-    let metadata =
-      tableMetadata?.id != null
-        ? assocIn(
-            this._metadata,
-            ["tables", String(tableMetadata.id)],
-            tableMetadata,
-          )
-        : this._metadata;
-
-    if (tableMetadata) {
-      for (const fieldMetadata of tableMetadata?.fields) {
-        metadata = assocIn(
-          metadata,
-          ["fields", String(fieldMetadata.id)],
-          fieldMetadata,
-        );
-      }
-    }
-
-    return MLv2.suggestedName(this._getMLv2Query(metadata));
+  generateQueryDescription() {
+    const query = this._getMLv2Query(this._metadata);
+    return MLv2.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
