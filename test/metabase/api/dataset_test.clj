@@ -303,7 +303,21 @@
                         s/Any               s/Any}
                        (mt/user-http-request :rasta :post "dataset/native"
                                              (mt/mbql-query venues
-                                               {:fields [$id $name]})))))))))
+                                               {:fields [$id $name]})))))))
+    (testing "We should be able to format the resulting SQL query if desired"
+      ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
+      (is (= {:query  (str "SELECT\n"
+                           "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
+                           "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
+                           "FROM\n"
+                           "  \"PUBLIC\".\"VENUES\"\n"
+                           "LIMIT\n"
+                           "  1048575")
+              :params nil}
+             (mt/user-http-request :rasta :post 200 "dataset/native"
+                                   (assoc
+                                    (mt/mbql-query venues {:fields [$id $name]})
+                                     :pretty? true)))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
