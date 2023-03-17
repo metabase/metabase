@@ -1336,7 +1336,36 @@ class QuestionInner {
   }
 
   _getMLv2Query(metadata = this._metadata) {
-    return MLv2.query(this.databaseId(), metadata, this.datasetQuery());
+    // cache the metadata provider we create for our metadata.
+    if (metadata === this._metadata) {
+      if (!this.__mlv2MetadataProvider) {
+        console.log("Caching MLv2 metadata");
+        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+          this.databaseId(),
+          metadata,
+        );
+      }
+      console.log("Using cached MLv2 metadata");
+      metadata = this.__mlv2MetadataProvider;
+    }
+
+    if (this.__mlv2QueryMetadata !== metadata) {
+      this.__mlv2QueryMetadata = null;
+      this.__mlv2Query = null;
+    }
+
+    if (!this.__mlv2Query) {
+      console.log("Caching MLv2 query");
+      this.__mlv2QueryMetadata = metadata;
+      this.__mlv2Query = MLv2.query(
+        this.databaseId(),
+        metadata,
+        this.datasetQuery(),
+      );
+    }
+
+    console.log("Using cached MLv2 query");
+    return this.__mlv2Query;
   }
 
   generateQueryDescription(tableMetadata) {

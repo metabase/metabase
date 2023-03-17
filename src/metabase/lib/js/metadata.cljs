@@ -1,7 +1,7 @@
 (ns metabase.lib.js.metadata
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -21,259 +21,290 @@
 ;;;
 ;;; where keys are a map of String ID => metadata
 
-(def ^:private remove-function-values-xform
-  (remove (fn [[_k v]]
-            (= (goog/typeOf v) "function"))))
+(defn- object-get [obj k]
+  (when obj
+    (gobject/get obj k)))
 
-(defn- obj->clj [init xform obj]
-  (if-let [plain-object (gobject/get obj "_plainObject")]
-    (into init
-          (comp xform
-                (map (fn [[k v]]
-                       [(keyword k) v])))
-          (js->clj plain-object))
-    (into init
-          (comp (map (fn [k]
-                       [(keyword k) (gobject/get obj k)]))
-                remove-function-values-xform
-                xform)
+(defn- obj->clj [xform obj]
+  (if-let [plain-object (some-> (object-get obj "_plainObject")
+                                js->clj
+                                not-empty)]
+    (into {} xform plain-object)
+    (into {}
+          (comp
+           (map (fn [k]
+                  [k (object-get obj k)]))
+           ;; ignore values that are functions
+           (remove (fn [[_k v]]
+                     (= (goog/typeOf v) "function")))
+           xform)
           (gobject/getKeys obj))))
 
-(defmulti ^:private parse-object
-  {:arglists '([metadata-type obj])}
-  (fn [metadata-type _obj]
-    metadata-type))
+(defmulti ^:private excluded-fields
+  {:arglists '([object-type])}
+  keyword)
 
-(def ^:private map-pair-value->clj-xform
-  (map (fn [[k v]]
-         [k (js->clj v)])))
+(defmethod excluded-fields :default
+  [_]
+  nil)
 
-(defmethod parse-object :database
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/database}
-            (comp (remove (fn [[k _v]]
-                            (= k "tables")))
-                  map-pair-value->clj-xform
-                  (map (fn [[k v]]
-                         [k (if (= k "features")
-                              (into #{} (map keyword v))
-                              v)])))
-            obj))
+;;; yes, the multimethod could dispatch on object-type AND k and get called for every object, but that would be slow,
+;;; by doing it this way we only need to do it once.
+(defmulti ^:private parse-field-fn
+  "Return a function with the signature
 
-(defmethod parse-object :table
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/table}
-            (comp (remove (fn [[k _v]]
-                            (= k "fields")))
-                  map-pair-value->clj-xform)
-            obj))
+    (f k v) => v'
 
-(defmethod parse-object :field
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/field}
-            (comp (remove (fn [[k _v]]
-                            (= k "table")))
-                  map-pair-value->clj-xform)
-            obj))
+  For parsing an individual field."
+  {:arglists '([object-type])}
+  keyword)
 
-(defmethod parse-object :card
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/card}
-            (comp (remove (fn [[k _v]]
-                            (or (= k "database")
-                                (= k "table")
-                                (= k "fields")
-                                (= k "dimension_options"))))
-                  map-pair-value->clj-xform)
-            obj))
+(defmethod parse-field-fn :default
+  [_object-type]
+  nil)
 
-(defmethod parse-object :table->card
-  [_metadata-type obj]
-  (parse-object
-   :card
-   (if-let [card (gobject/get obj "_card")]
-     card
-     obj)))
+(defmulti ^:private lib-type
+  {:arglists '([object-type])}
+  keyword)
 
-(defmethod parse-object :metric
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/metric}
-            (comp (remove (fn [[k _v]]
-                            (or (= k "database")
-                                (= k "table"))))
-                  map-pair-value->clj-xform)
-            obj))
+(defn- parse-object-xform [object-type]
+  (let [excluded-fields-set (excluded-fields object-type)
+        parse-field         (parse-field-fn object-type)]
+    (comp (map (fn [[k v]]
+                 [(keyword k) v]))
+          (if (empty? excluded-fields-set)
+            identity
+            (remove (fn [[k _v]]
+                      (contains? excluded-fields-set k))))
+          (if-not parse-field
+            identity
+            (map (fn [[k v]]
+                   [k (parse-field k v)]))))))
 
-(defmethod parse-object :segment
-  [_metadata-type obj]
-  (obj->clj {:lib/type :metadata/segment}
-            (comp (remove (fn [[k _v]]
-                            (or (= k "database")
-                                (= k "table"))))
-                  map-pair-value->clj-xform)
-            obj))
+(defn- parse-object-fn [object-type]
+  (let [xform         (parse-object-xform object-type)
+        lib-type-name (lib-type object-type)]
+    (fn [object]
+      (try
+        (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
+          (log/infof "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          parsed)
+        (catch js/Error e
+          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          nil)))))
 
 (defmulti ^:private parse-objects
-  {:arglists '([metadata-type id->object])}
-  (fn [metadata-type _id->object]
-    metadata-type))
+  {:arglists '([object-type metadata])}
+  (fn [object-type _metadata]
+    (keyword object-type)))
 
-(def ^:private remove-nil-values-xform
-  (remove (fn [[_id obj]]
-            (nil? obj))))
-
-(defn- parse-object-xform
-  "One arity: a map key-value pair transducer that assumes ID is already parsed:
-
-      [id js-object] => [id (delay => clj-object)]
-
-  Two arity, takes unparsed ID string, gets object, parses ID, then hands off to the one-arity:
-
-     id-str => [parsed-id (delay => clj-object)]"
-  ([metadata-type]
-   (comp remove-function-values-xform
-         remove-nil-values-xform
-         (map (fn [[id obj]]
-                ;; if there is an error parsing something, catch it and log it and ignore that object, rather than
-                ;; having the entire thing fail.
-                [id (delay
-                      (try
-                        (log/debugf "Parse metadata for %s %s from:\n%s" metadata-type id (pr-str obj))
-                        (let [parsed (parse-object metadata-type obj)]
-                          (log/debugf "Parsed metadata for %s %s:\n%s" metadata-type id (binding [pprint/*print-right-margin* 160]
-                                                                                          (u/pprint-to-str parsed)))
-                          parsed)
-                        (catch js/Error e
-                          (log/errorf e "Error parsing %s: %s" metadata-type (ex-message e))
-                          nil)))]))))
-
-  ([metadata-type id->object]
-   (comp (filter (fn [id-str]
-                   (re-matches #"^\d+$" id-str)))
-         (map (fn [id-str]
-                [(parse-long id-str) (gobject/get id->object id-str)]))
-         (parse-object-xform metadata-type))))
+(defmulti ^:private parse-objects-default-key
+  "Key to use to get unparsed objects of this type from the metadata, if you're using the default implementation
+  of [[parse-objects]]."
+  {:arglists '([object-type])}
+  keyword)
 
 (defmethod parse-objects :default
-  [metadata-type id->object]
-  (into {}
-        (parse-object-xform metadata-type id->object)
-        (gobject/getKeys id->object)))
+  [object-type metadata]
+  (let [parse-object (parse-object-fn object-type)]
+    (obj->clj (map (fn [[k v]]
+                     [(parse-long k) (delay (parse-object v))]))
+              (object-get metadata (parse-objects-default-key object-type)))))
+
+(defmethod lib-type :database
+  [_object-type]
+  :metadata/database)
+
+(defmethod excluded-fields :database
+  [_object-type]
+  #{:tables :fields})
+
+(defmethod parse-field-fn :database
+  [_object-type]
+  (fn [k v]
+    (case k
+      :dbms_version       (js->clj v :keywordize-keys true)
+      :features           (into #{} (map keyword) v)
+      :native_permissions (keyword v)
+      v)))
+
+(defmethod parse-objects-default-key :database
+  [_object-type]
+  "databases")
+
+(defmethod lib-type :table
+  [_object-type]
+  :metadata/table)
+
+(defmethod excluded-fields :table
+  [_object-type]
+  #{:database :fields :segments :metrics :dimension_options})
+
+(defmethod parse-field-fn :table
+  [_object-type]
+  (fn [k v]
+    (case k
+      :entity_type         (keyword v)
+      :field_order         (keyword v)
+      :initial_sync_status (keyword v)
+      :visibility_type     (keyword v)
+      v)))
 
 (defmethod parse-objects :table
-  [metadata-type id->object]
-  (into {}
-        (comp
-         ;; ignore 'tables' whose ID is `card__` something; we'll put those in the `:card` section instead (see below)
-         (remove (fn [id-str]
-                   (str/starts-with? id-str "card__")))
-         (parse-object-xform metadata-type id->object))
-        (gobject/getKeys id->object)))
+  [object-type metadata]
+  (let [parse-table (parse-object-fn object-type)]
+    (obj->clj (comp (remove (fn [[k _v]]
+                              (str/starts-with? k "card__")))
+                    (map (fn [[k v]]
+                           [(parse-long k) (delay (parse-table v))])))
+              (object-get metadata "tables"))))
 
-;;; handle Cards whose metadata is actually `:tables`
-(defmethod parse-objects :table->card
-  [metadata-type id->object]
-  (into {}
-        (comp
-         ;; keep only the 'tables' whose ID is `card__` something
-         (filter (fn [id-str]
-                   (str/starts-with? id-str "card__")))
-         ;; strip off the `card__` prefix so we can parse this as an ID inside [[parse-object-xform]]
-         (map (fn [card-id-str]
-                (let [id-str (str/replace card-id-str #"^card__" "")]
-                  [(parse-long id-str) (gobject/get id->object card-id-str)])))
-         (parse-object-xform metadata-type)
-         (map (fn [[id card-delay]]
-                [id (delay
-                      (assoc @card-delay :id id))])))
-        (gobject/getKeys id->object)))
+(defmethod lib-type :field
+  [_object-type]
+  :metadata/field)
 
-(defn- parse-objects* [metadata-type id->object]
-  (try
-    (parse-objects metadata-type id->object)
-    (catch js/Error e
-      (throw (ex-info (str "Error parsing " metadata-type " metadata objects: " (ex-message e))
-                      {:metadata-type metadata-type}
-                      e)))))
+(defmethod excluded-fields :field
+  [_object-type]
+  #{:_comesFromEndpoint
+    :database
+    :default_dimension_option
+    :dimension_options
+    :dimensions
+    :metrics
+    :table})
 
-(defn- metadata->clj [metadata]
-  {:databases (delay (when-let [databases (gobject/get metadata "databases")]
-                       (parse-objects* :database databases)))
-   :tables    (delay (when-let [tables (gobject/get metadata "tables")]
-                       (parse-objects* :table tables)))
-   :fields    (delay (when-let [fields (gobject/get metadata "fields")]
-                       (parse-objects :field fields)))
-   :cards     (delay (merge
-                      (when-let [cards (gobject/get metadata "questions")]
-                        (parse-objects* :card cards))
-                      (when-let [tables (gobject/get metadata "tables")]
-                        (parse-objects* :table->card tables))))
-   :metrics  (delay (when-let [metrics (gobject/get metadata "metrics")]
-                      (parse-objects* :metric metrics)))
-   :segments (delay (when-let [segments (gobject/get metadata "segments")]
-                      (parse-objects* :segment segments)))})
+(defmethod parse-field-fn :field
+  [_object-type]
+  (fn [k v]
+    (case k
+      :base_type         (keyword v)
+      :coercion_strategy (keyword v)
+      :effective_type    (keyword v)
+      :fingerprint       (walk/keywordize-keys v)
+      :has_field_values  (keyword v)
+      :semantic_type     (keyword v)
+      :visibility_type   (keyword v)
+      v)))
+
+(defmethod parse-objects-default-key :field
+  [_object-type]
+  "fields")
+
+(defmethod lib-type :card
+  [_object-type]
+  :metadata/card)
+
+(defmethod excluded-fields :card
+  [_object-type]
+  #{:database
+    :dimension_options
+    :table})
+
+(defmethod parse-field-fn :card
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects :card
+  [object-type metadata]
+  (let [parse-card (parse-object-fn object-type)]
+    (merge
+     (obj->clj (comp (filter (fn [[k _v]]
+                               (str/starts-with? k "card__")))
+                     (map (fn [[s v]]
+                            (when-let [[_ id-str] (re-find #"^card__(\d+)$" s)]
+                              (let [id (parse-long id-str)]
+                                [id (delay (assoc (parse-card v) :id id))])))))
+               (object-get metadata "tables"))
+     (obj->clj (comp (map (fn [[k v]]
+                            [(parse-long k) (delay (parse-card v))])))
+               (object-get metadata "questions")))))
+
+(defmethod lib-type :metric
+  [_object-type]
+  :metadata/metric)
+
+(defmethod excluded-fields :metric
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :metric
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :metric
+  [_object-type]
+  "metrics")
+
+(defmethod lib-type :segment
+  [_object-type]
+  :metadata/segment)
+
+(defmethod excluded-fields :segment
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :segment
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :segment
+  [_object-type]
+  "segments")
+
+(defn- parse-objects-delay [object-type metadata]
+  (delay
+    (try
+      (parse-objects object-type metadata)
+      (catch js/Error e
+        (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
+        nil))))
+
+(defn- parse-metadata [metadata]
+  {:databases (parse-objects-delay :database metadata)
+   :tables    (parse-objects-delay :table    metadata)
+   :fields    (parse-objects-delay :field    metadata)
+   :cards     (parse-objects-delay :card     metadata)
+   :metrics   (parse-objects-delay :metric   metadata)
+   :segments  (parse-objects-delay :segment  metadata)})
 
 (defn- database [metadata database-id]
-  (try
-    (some-> (get @(:databases metadata) database-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Database %s: %s" database-id (ex-message e))
-      nil)))
+  (some-> metadata :databases deref (get database-id) deref))
 
 (defn- table [metadata table-id]
-  (try
-    (some-> (get @(:tables metadata) table-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Table %s: %s" table-id (ex-message e))
-      nil)))
+  (some-> metadata :tables deref (get table-id) deref))
 
 (defn- field [metadata field-id]
-  (try
-    (some-> (get @(:fields metadata) field-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Field %s: %s" field-id (ex-message e))
-      nil)))
+  (some-> metadata :fields deref (get field-id) deref))
 
 (defn- card [metadata card-id]
-  (try
-    (some-> (get @(:cards metadata) card-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Card %s: %s" card-id (ex-message e))
-      nil)))
+  (some-> metadata :cards deref (get card-id) deref))
 
 (defn- metric [metadata metric-id]
-  (try
-    (some-> (get @(:metrics metadata) metric-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Metric %s: %s" metric-id (ex-message e))
-      nil)))
+  (some-> metadata :metrics deref (get metric-id) deref))
 
 (defn- segment [metadata segment-id]
-  (try
-    (some-> (get @(:segments metadata) segment-id) deref)
-    (catch js/Error e
-      (log/errorf e "Error getting metadata for Segment %s: %s" segment-id (ex-message e))
-      nil)))
+  (some-> metadata :segments deref (get segment-id) deref))
 
 (defn- tables [database-id metadata]
-  (into []
-        (comp (map deref)
-              (filter (fn [table-metadata]
-                        (= (:db_id table-metadata) database-id))))
-        (vals @(:tables metadata))))
+  (for [dlay  @(:tables metadata)
+        :let  [a-table @dlay]
+        :when (= (:db_id a-table) database-id)]
+    a-table))
 
 (defn- fields [metadata table-id]
-  (into []
-        (comp (map deref)
-              (filter (fn [field-metadata]
-                        (= (:table_id field-metadata) table-id))))
-        (vals @(:fields metadata))))
+  (for [dlay  @(:fields metadata)
+        :let  [a-field @dlay]
+        :when (= (:table_id a-field) table-id)]
+    a-field))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id metadata]
-  (let [metadata (metadata->clj metadata)]
-    (log/debugf "metadata: %s" (pr-str metadata))
+  (let [metadata (parse-metadata metadata)]
+    (log/info "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
       (table    [_this table-id]   (table    metadata table-id))

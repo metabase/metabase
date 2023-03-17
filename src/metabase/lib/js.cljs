@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util.log :as log]))
@@ -26,10 +27,16 @@
     (mbql.normalize/normalize <>)
     (convert/->pMBQL <>)))
 
+(defn ^:export metadataProvider
+  "Convert metadata to a metadata provider if it is not one already."
+  [database-id metadata]
+  (if (lib.metadata.protocols/metadata-provider? metadata)
+    metadata
+    (js.metadata/metadata-provider database-id metadata)))
+
 (defn ^:export query
   "Coerce a plain map `query` to an actual query object that you can use with Metabase lib."
   [database-id metadata query-map]
   (let [query-map (pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
-    (lib.query/query (js.metadata/metadata-provider database-id metadata)
-                     query-map)))
+    (lib.query/query (metadataProvider database-id metadata) query-map)))
