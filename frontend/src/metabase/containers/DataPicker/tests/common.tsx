@@ -13,6 +13,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 
+import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 import {
@@ -26,6 +27,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
+import { useDataPicker } from "../../DataPicker";
 import DataPicker from "../DataPickerContainer";
 
 export const SAMPLE_TABLE = createMockTable({
@@ -142,16 +144,26 @@ function DataPickerWrapper({
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
   return (
-    <DataPicker
-      value={value}
-      filters={filters}
-      isMultiSelect={isMultiSelect}
-      onChange={(value: DataPickerValue) => {
-        setValue(value);
-        onChange(value);
-      }}
-    />
+    <DataPicker.Provider>
+      <DataPickerSearchInput />
+      <DataPicker
+        value={value}
+        filters={filters}
+        isMultiSelect={isMultiSelect}
+        onChange={(value: DataPickerValue) => {
+          setValue(value);
+          onChange(value);
+        }}
+      />
+    </DataPicker.Provider>
   );
+}
+
+function DataPickerSearchInput() {
+  const { search } = useDataPicker();
+  const { query, setQuery } = search;
+
+  return <Input value={query} onChange={e => setQuery(e.target.value)} />;
 }
 
 interface SetupOpts {
