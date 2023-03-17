@@ -1,11 +1,7 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import {
-  getForm,
-  getFormValidationSchema,
-  generateFieldSettingsFromParameters,
-} from "metabase/actions/utils";
+import { getForm, getFormValidationSchema } from "metabase/actions/utils";
 
 import type {
   ActionFormInitialValues,
@@ -17,6 +13,7 @@ import {
   formatInitialValue,
   formatSubmitValues,
   getChangedValues,
+  generateFieldSettingsFromParameters,
 } from "./utils";
 
 type Opts = {
