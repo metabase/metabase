@@ -9,7 +9,7 @@
   (let [query       (lib/query meta/metadata-provider (meta/table-metadata :venues))
         join-clause (-> ((lib/join-clause
                           (meta/table-metadata :categories)
-                          (lib/=
+                          (lib/->=
                            (lib/field (meta/id :venues :category-id))
                            (lib/with-join-alias (lib/field (meta/id :categories :id)) "CATEGORIES__via__CATEGORY_ID")))
                          query -1)

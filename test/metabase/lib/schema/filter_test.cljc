@@ -71,8 +71,7 @@
            [:time-interval field 4 :hour]
            [:time-interval {:include-current true} field :next :default]
            [:segment 1]
-           [:segment "segment-id"]
-           [:case [[[:= 1 1] true] [[:not-null field] [:< 0 1]]]]]]
+           [:segment "segment-id"]]]
       (doseq [op (filter-ops filter-expr)]
         (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
           (is (not (identical? (get-method expression/type-of* op)

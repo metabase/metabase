@@ -24,8 +24,8 @@
                                                      [:field {:lib/uuid string?} (meta/id :categories :id)]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-                        (lib/= (lib/field "VENUES" "CATEGORY_ID")
-                               (lib/field "CATEGORIES" "ID")))
+                        (lib/->= (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/field "CATEGORIES" "ID")))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel join-saved-question-test
@@ -46,8 +46,8 @@
                                                      [:field {:lib/uuid string?} (meta/id :categories :id)]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
               (lib/join (lib/saved-question-query meta/metadata-provider meta/saved-question)
-                        (lib/= (lib/field "VENUES" "CATEGORY_ID")
-                               (lib/field "CATEGORIES" "ID")))
+                        (lib/->= (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/field "CATEGORIES" "ID")))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel join-condition-field-metadata-test
@@ -57,7 +57,7 @@
           venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
           categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
       (testing "lib/join-clause: return a function that can be resolved later"
-        (let [f (lib/join-clause q2 (lib/= venues-category-id-metadata categories-id-metadata))]
+        (let [f (lib/join-clause q2 (lib/->= venues-category-id-metadata categories-id-metadata))]
           (is (fn? f))
           (is (=? {:lib/type    :mbql/join
                    :lib/options {:lib/uuid string?}
@@ -79,5 +79,5 @@
                                                          [:field {:lib/uuid string?} (meta/id :venues :category-id)]
                                                          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]}]}]}
               (-> q1
-                  (lib/join q2 (lib/= venues-category-id-metadata categories-id-metadata))
+                  (lib/join q2 (lib/->= venues-category-id-metadata categories-id-metadata))
                   (dissoc :lib/metadata)))))))

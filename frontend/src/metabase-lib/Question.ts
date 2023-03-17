@@ -740,19 +740,31 @@ class QuestionInner {
     );
 
     const graphMetrics = this.setting("graph.metrics");
+
     if (
       graphMetrics &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
         name =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
 
-      if (addedMetricColumnNames.length > 0) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+
+      if (
+        addedMetricColumnNames.length > 0 ||
+        removedMetricColumnNames.length > 0
+      ) {
         return this.updateSettings({
-          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
+          "graph.metrics": [
+            ..._.difference(graphMetrics, removedMetricColumnNames),
+            ...addedMetricColumnNames,
+          ],
         });
       }
     }

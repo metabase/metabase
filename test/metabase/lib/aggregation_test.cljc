@@ -13,12 +13,6 @@
                   expected-args)
             (f {:lib/metadata meta/metadata} -1)))))
 
-(defn- is-clause? [op tag args expected-args]
-  (is (=? (into [tag
-                 {:lib/uuid string?}]
-                 expected-args)
-          (apply op {:lib/metadata meta/metadata} -1 args))))
-
 (deftest ^:parallel aggregation-test
   (let [q1 (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
@@ -26,10 +20,7 @@
     (testing "count"
       (testing "without query/stage-number, return a function for later resolution"
         (is-fn? lib/count :count [] [])
-        (is-fn? lib/count :count [venues-category-id-metadata] [venue-field-check]))
-      (testing "with query/stage-number, return clause right away"
-        (is-clause? lib/count :count [] [])
-        (is-clause? lib/count :count [venues-category-id-metadata] [venue-field-check])))
+        (is-fn? lib/count :count [venues-category-id-metadata] [venue-field-check])))
     (testing "single arg aggregations"
       (doseq [[op tag] [[lib/avg :avg]
                         [lib/max :max]
@@ -39,6 +30,17 @@
                         [lib/stddev :stddev]
                         [lib/distinct :distinct]]]
         (testing "without query/stage-number, return a function for later resolution"
-          (is-fn? op tag [venues-category-id-metadata] [venue-field-check]))
-        (testing "with query/stage-number, return clause right away"
-          (is-clause? op tag [venues-category-id-metadata] [venue-field-check]))))))
+          (is-fn? op tag [venues-category-id-metadata] [venue-field-check]))))))
+
+(deftest ^:parallel join-test
+  (is (=? {:lib/type :mbql/query,
+           :database (meta/id) ,
+           :type :pipeline,
+           :stages [{:lib/type :mbql.stage/mbql,
+                     :source-table (meta/id :venues) ,
+                     :lib/options {:lib/uuid string?},
+                     :aggregations [[:sum {:lib/uuid string?}
+                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/aggregate (lib/sum (lib/field "VENUES" "CATEGORY_ID")))
+              (dissoc :lib/metadata)))))
