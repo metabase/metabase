@@ -77,7 +77,7 @@
      "Registers [[tag]] with [[type-of*]] in terms of its first incoming [[expr]].
       Useful for clauses that are polymorphic on their argument."
      [tag]
-     `(defmethod type-of* ~tag [[_tag# _opts# expr# & _#]] (type-of expr#))))
+     `(defmethod type-of* ~tag [[_tag# _opts# expr#]] (type-of expr#))))
 
 (defn- expression-schema
   "Schema that matches the following rules:

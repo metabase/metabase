@@ -34,6 +34,7 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregate
    count
    avg
    count-where

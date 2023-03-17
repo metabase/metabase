@@ -68,7 +68,6 @@ const inputTypeMap: Record<InputSettingType, string> = {
   time: "time",
   number: "number",
   boolean: "boolean",
-  category: "text",
   select: "text",
   radio: "text",
 };

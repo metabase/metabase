@@ -19,10 +19,6 @@ export const getFieldTypes = (): FieldOptionType[] => [
     value: "date",
     name: t`Date`,
   },
-  {
-    value: "category",
-    name: t`Category`,
-  },
 ];
 
 interface InputOptionType {
@@ -81,5 +77,4 @@ export const getInputTypes = (): InputOptionsMap => ({
     //   name: t`quarter + year`,
     // },
   ],
-  category: [...getSelectInputs()],
 });

@@ -3,15 +3,16 @@ import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
+import { inputPadding } from "metabase/core/style/input";
 
 export const EditorContainer = styled.div`
   border: 1px solid;
   border-color: ${color("border")};
-  border-radius: ${space(0)};
+  border-radius: ${space(1)};
   display: flex;
   position: relative;
   margin: ${space(1)} 0;
-  padding: 12px ${space(1)};
+  ${inputPadding()};
   transition: border 0.3s linear;
 
   ${({ isFocused }) =>

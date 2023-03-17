@@ -1,5 +1,5 @@
 import {
-  enableActionsForDB,
+  setActionsEnabledForDB,
   modal,
   popover,
   restore,
@@ -8,6 +8,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
 } from "e2e/support/helpers";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -74,7 +75,7 @@ describe(
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
-      enableActionsForDB(PG_DB_ID);
+      setActionsEnabledForDB(PG_DB_ID);
 
       cy.createQuestion(SAMPLE_ORDERS_MODEL, {
         wrapId: true,
@@ -173,12 +174,6 @@ describe(
 
       cy.findByText("New").click();
       popover().findByText("Action").click();
-
-      cy.findByText("Select a database").click();
-      popover().within(() => {
-        cy.findByText("Sample Database").should("not.exist");
-        cy.findByText("QA Postgres12").click();
-      });
 
       fillActionQuery(QUERY);
       cy.findByText(/New Action/)
@@ -286,18 +281,31 @@ describe(
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        cy.findByText("An error occurred.").should("be.visible");
+        cy.findByText("Not found").should("be.visible");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.findByRole("button", { name: "Submit" }).should("not.exist");
-        cy.findByText("An error occurred.").should("be.visible");
+        cy.findByText("Not found").should("be.visible");
       });
     });
 
     it("should respect permissions", () => {
+      // Enabling actions for sample database as well
+      // to test database picker behavior in the action editor
+      setActionsEnabledForDB(SAMPLE_DB_ID);
+
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.ALL_USERS_GROUP]: {
+          [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
+        },
+        [USER_GROUPS.DATA_GROUP]: {
+          [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+        },
+      });
+
       cy.get("@modelId").then(modelId => {
         cy.request("POST", "/api/action", {
           ...SAMPLE_QUERY_ACTION,
@@ -317,6 +325,9 @@ describe(
       cy.findByRole("dialog").within(() => {
         cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("QA Postgres12").should("not.exist");
+
         cy.button("Save").should("not.exist");
         cy.button("Update").should("not.exist");
 
@@ -329,14 +340,31 @@ describe(
         cy.findByLabelText("Action settings").click();
         cy.findByLabelText("Success message").should("be.disabled");
       });
+
+      cy.signIn("normal");
+      cy.reload();
+
+      // Check can pick between all databases
+      cy.findByRole("dialog").findByText("QA Postgres12").click();
+      popover().within(() => {
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("QA Postgres12").should("be.visible");
+      });
+
+      cy.signInAsAdmin();
+      setActionsEnabledForDB(SAMPLE_DB_ID, false);
+      cy.signIn("normal");
+      cy.reload();
+
+      // Check can only see the action database
+      cy.findByRole("dialog").findByText("QA Postgres12").click();
+      cy.findByText("Sample Database").should("not.exist");
     });
 
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
       cy.findByText("New").click();
       popover().findByText("Action").click();
-      cy.findByText("Select a database").click();
-      popover().within(() => cy.findByText("QA Postgres12").click());
 
       fillActionQuery("{{#1-orders-model}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
