@@ -158,20 +158,20 @@
   java.sql.Connection
   (-transact [this body-fn opts]
     (cond
-      (or (not next.jdbc.transaction/*active-tx*)
-          (= :allow next.jdbc.transaction/*nested-tx*))
+      (or (not @#'next.jdbc.transaction/*active-tx*)
+          (= :allow @#'next.jdbc.transaction/*nested-tx*))
       (binding [next.jdbc.transaction/*active-tx* true]
         (#'next.jdbc.transaction/transact* this body-fn opts))
 
-      (= :ignore next.jdbc.transaction/*nested-tx*)
+      (= :ignore @#'next.jdbc.transaction/*nested-tx*)
       (body-fn this)
 
-      (= :prohibit next.jdbc.transaction/*nested-tx*)
+      (= :prohibit @#'next.jdbc.transaction/*nested-tx*)
       (throw (IllegalStateException. "Nested transactions are prohibited"))
 
       :else
       (throw (IllegalArgumentException.
               (str "*nested-tx* ("
-                   next.jdbc.transaction/*nested-tx*
+                   @#'next.jdbc.transaction/*nested-tx*
                    ") was not :allow, :ignore, or :prohibit"))))
     (#'next.jdbc.transaction/transact* this body-fn opts)))
