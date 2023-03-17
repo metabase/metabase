@@ -8,9 +8,14 @@
             [toucan.db :as db]))
 
 (deftest safe-name-test
-  (are [s expected] (= (names/safe-name {:name s}) expected)
-    "foo"         "foo"
-    "foo/bar baz" "foo%2Fbar baz"))
+  (testing "basic escaping"
+    (are [s expected] (= expected (names/safe-name {:name s}))
+      "foo"         "foo"
+      "foo/bar baz" "foo%2Fbar baz"))
+  (testing "extremely long entity names (#29246)"
+    (is (= "json_field %E2%86%92 level1 %E2%86%92 level2 %E2%86%92 level3 %E2%86%92 level4 %E2%86%92 level5 %E2%86%92 level6 %E2%86%92 level7 %E2%86%92 level8 %E2%86%92 level9 %E2%86%92 level1_72"
+           (names/safe-name {:name "json_field → level1 → level2 → level3 → level4 → level5 → level6 → level7 → level8 → level9 → level10 → level11 → level12 → level13 → level14 → level15 → level16 → level17 → level18 → level19 → level20"
+                             :id 72})))))
 
 (deftest unescape-name-test
   (are [s expected] (= expected

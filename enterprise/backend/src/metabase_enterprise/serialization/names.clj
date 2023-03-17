@@ -24,10 +24,16 @@
 
 (def ^:private root-collection-path "/collections/root")
 
+(def ^:private label-limit 100)
+
 (defn safe-name
   "Return entity name URL encoded except that spaces are retained."
-  [entity]
-  (some-> entity ((some-fn :email :name)) codec/url-encode (str/replace "%20" " ")))
+  ([{:keys [id email name]}]
+   (when-let [label (or email name)]
+     (let [label (if (< (count label) label-limit)
+                   label
+                   (str (subs label 0 label-limit) "_" id))]
+       (-> label codec/url-encode (str/replace "%20" " "))))))
 
 (def unescape-name
   "Inverse of `safe-name`."
