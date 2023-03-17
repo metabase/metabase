@@ -91,11 +91,11 @@
 
 (doseq [op [:log :exp :sqrt]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Float
-    [:schema [:ref ::number]]))
+    [:schema [:ref ::expression/number]]))
 
 (doseq [op [:ceil :floor :round]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
-    [:schema [:ref ::number]]))
+    [:schema [:ref ::expression/number]]))
 
 (mbql-clause/define-tuple-mbql-clause :power
   #_num [:schema [:ref ::expression/number]]

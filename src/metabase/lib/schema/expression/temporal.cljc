@@ -33,8 +33,8 @@
 
 (mbql-clause/define-tuple-mbql-clause :get-week :- :type/Integer
   #_:datetime [:schema [:ref ::expression/temporal]]
-  ;; TODO should this be an option?
-  #_:mode [:maybe [:enum "ISO" "US" "Instance"]])
+  ;; TODO should this be in the options map?
+  #_:mode [:maybe [:enum :iso :us :instance]])
 
 (mbql-clause/define-tuple-mbql-clause :convert-timezone
   #_:datetime [:schema [:ref ::expression/temporal]]

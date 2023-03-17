@@ -21,9 +21,9 @@
   #_replace [:schema [:ref ::expression/string]])
 
 (mbql-clause/define-tuple-mbql-clause :substring :- :type/Text
-  #_str [:schema [:ref ::string]]
-  #_start [:schema [:ref ::integer]]
-  #_end [:schema [:ref ::integer]])
+  #_str [:schema [:ref ::expression/string]]
+  #_start [:schema [:ref ::expression/integer]]
+  #_end [:schema [:ref ::expression/integer]])
 
-(mbql-clause/define-tuple-mbql-clause :concat :- :type/Text
-  [:sequential {:min 2} [:ref ::expression/string]])
+(mbql-clause/define-catn-mbql-clause :concat :- :type/Text
+  [:sequential {:min 2} [:schema [:ref ::expression/string]]])

@@ -42,6 +42,7 @@
    field
    query-for-table-name]
   [lib.expression
+   expression
    +
    -
    *
