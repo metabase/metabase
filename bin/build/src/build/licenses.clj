@@ -285,7 +285,7 @@ Read license information from a pom. This reads only the local pom and does not 
 
   (let [overrides (edn/read-string (slurp (io/resource "overrides.edn")))
         by-group  (:override/group overrides)
-        by-group? false]
+        by-group? false #_true]
     (keep (fn [[lib _junk]]
             (let [without-license (->> (process* {:libs (:libs basis)
                                                   :backfill

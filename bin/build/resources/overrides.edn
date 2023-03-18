@@ -1,15 +1,27 @@
 {:override/group
  {"com.fasterxml.jackson.dataformat" {:resource "apache2_0.txt"}
+  "com.google.auth"                  {:resource "apache2_0.txt"}
+  "metabase"                         {:resource "EPL_2.txt"}
   "com.google.guava"                 {:resource "apache2_0.txt"}
+  "com.google.http-client"           {:resource "apache2_0.txt"}
+  "com.google.protobuf"              {:resource "apache2_0.txt"}
   "com.onelogin"                     {:resource "MIT.txt"}
   "com.vladsch.flexmark"             {:resource "BSD.txt"}
+  "io.netty"                         {:resource "apache2_0.txt"}
   "org.clojure"                      {:resource "EPL.txt"}
   "org.opensaml"                     {:resource "apache2_0.txt"}}
 
  "amalloy"                     {"ring-gzip-middleware" {:resource "MIT.txt"}}
  "buddy"                       {"buddy-core" {:resource "apache2_0.txt"}}
  "colorize"                    {"colorize" {:resource "EPL.txt"}}
+ "com.amazonaws"               {"aws-java-sdk-core" {:resource "apache2_0.txt"}}
+ "com.google.api"              {"gax-grpc"     {:resource "BSD.txt"}
+                                "gax-httpjson" {:resource "BSD.txt"}
+                                "gax"          {:resource "BSD.txt"}}
+ "com.google.api-client"       {"google-api-client" {:resource "apache2_0.txt"}}
+ "com.google.oauth-client"     {"google-oauth-client" {:resource "apache2_0.txt"}}
  "com.sun.activation"          {"jakarta.activation" {:resource "EDL.txt"}}
+ "com.vertica.jdbc"            {"vertica-jdbc" {:resource "MIT.txt"}}
  "hiccup"                      {"hiccup" {:resource "EPL.txt"}}
  "io.dropwizard.metrics"       {"metrics-core" {:resource "apache2_0.txt"}}
  "jakarta.xml.bind"            {"jakarta.xml.bind-api" {:resource "EDL.txt"}}
@@ -24,6 +36,7 @@
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
                                 "antlr4-runtime" {:resource "BSD.txt"}}
+ "org.codehaus.mojo"           {"animal-sniffer-annotations" {:resource "MIT.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}
  "org.quartz-scheduler"        {"quartz" {:resource "apache2_0.txt"}}
  "org.slf4j"                   {"slf4j-api" {:resource "MIT.txt"}}
