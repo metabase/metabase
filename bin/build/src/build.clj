@@ -135,12 +135,10 @@
 
     clojure -X:build:build/list-without-license"
   [_options]
-  (let [[classpath]               (u/sh {:dir    u/project-root-directory
-                                         :quiet? true}
-                                        "clojure" "-A:ee" "-Spath")
-        classpath-entries         (license/jar-entries classpath)
+  (let [basis                     (b/create-basis
+                                   {:project (u/filename u/project-root-directory "deps.edn")})
         {:keys [without-license]} (license/process*
-                                   {:classpath-entries classpath-entries
+                                   {:libs              (:libs basis)
                                     :backfill          (edn/read-string
                                                         (slurp (io/resource "overrides.edn")))})]
     (if (seq without-license)
