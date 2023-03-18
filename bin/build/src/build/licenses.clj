@@ -30,81 +30,138 @@
    [clojure.string :as str]
    [clojure.tools.build.api :as b])
   (:import
-   (java.io FileReader)
-   (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
+   (java.io StringReader)
+   (java.nio.file Files FileSystem FileSystems LinkOption OpenOption Path Paths)
    (org.apache.maven.model License)
    (org.apache.maven.model.io.xpp3 MavenXpp3Reader)))
 
 (set! *warn-on-reflection* true)
 
-(defn- ->BiPredicate [f]
-  (reify java.util.function.BiPredicate
-    (test [_ x y]
-      (f x y))))
-
 (def ^:private path-options (into-array String []))
-(def ^:private filevisit-options (into-array FileVisitOption []))
 (def ^:private link-options (into-array LinkOption []))
 (def ^:private open-options (into-array OpenOption []))
 
-(defn determine-pom
-  "Produce a pom path from a jar. Looks first for a pom adjacent to the jar, and then finds all files that end with
-  pom.xml in the jar, returning the first.
-
-  In the future if we switch to deps.edn we can start with a canonical deps map and go from a proper dependency list
-  to artifacts. This would allow accessing the pom directly rather than searching for it. To optimize, we look for the
-  pom adjacent to the jar so we don't enumerate every jar."
-  [jar-filename ^FileSystem jar-fs]
-  (or (let [adjacent-pom (Paths/get (str/replace jar-filename #"\.jar" ".pom")
-                                    path-options)]
-        (when (Files/exists adjacent-pom link-options)
-          adjacent-pom))
-      (let [jar-root (.getPath jar-fs "/" path-options)
-            ^java.util.function.BiPredicate
-            pred (->BiPredicate (fn [^Path path _]
-                                  (str/ends-with? (str path) "pom.xml")))]
-        (.. (Files/find jar-root Integer/MAX_VALUE pred filevisit-options)
-            findFirst
-            (orElse nil)))))
-
-(defn do-with-path-is
-  "Open an inputstream on `path` and call `f` with the inputstream as an argument. Function `f` should not be lazy."
-  [^Path path f]
+(defn slurp-path
+  "Open an inputstream on `path` and slurp the contents."
+  [^Path path]
   (with-open [is (Files/newInputStream path open-options)]
-    (f is)))
+    (slurp is)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;     Protocols     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; pom->license. Handles strings and paths to poms
+;;;; search for files. Handles paths (git deps) and file-systems (jar filesystem)
+
+(defprotocol LicenseFromPom
+  (-pom->license [_]
+    "Return license information (if possible) from the pom.
+Read license information from a pom. This reads only the local pom and does not trace parent poms."))
 
 (defn license-from-pom
-  "Read license information from a pom. This reads only the local pom and does not trace parent poms. Clojure.core.async includes a parent pom:
+  "Get license information from a pom. Can be a path or a string (treated as the contents)."
+  [pom]
+  (-pom->license pom))
 
-  <parent>
-    <groupId>org.clojure</groupId>
-    <artifactId>pom.contrib</artifactId>
-    <version>1.1.0</version>
-  </parent>
+(defprotocol FileSearch
+  (-file-search [_ files]
+    "Find the first file matching the names passed in. Returns a Path."))
 
-  which would specify a license. To trace this would require setting up way more machinery and so just let the
-  overrides catch this scenario."
-  [^Path pom-path]
-  (try
-    (let [reader (MavenXpp3Reader.)
-          model  (.read reader (FileReader. (.toFile pom-path)))
-          license ^License (first (.getLicenses model))]
-      (when license
-        {:name (.getName license)
-         :url  (.getUrl license)}))
-    (catch Exception _e nil)))
+(extend-protocol LicenseFromPom
+  Path
+  (-pom->license [pom-path]
+    (-pom->license (slurp-path pom-path)))
 
-(def ^:private license-file-names
+  String
+  (-pom->license [pom-contents]
+    (try
+      (let [reader       (MavenXpp3Reader.)
+            model        (.read reader (StringReader. pom-contents))
+            license      ^License (first (.getLicenses model))]
+        ;; if we can figure out how to get jar paths based on parent info we could recurse on that.
+        (when license
+          {:name (.getName license)
+           :url  (.getUrl license)}))
+      (catch Exception _e nil))))
+
+(extend-protocol FileSearch
+  FileSystem
+  (-file-search [jar-fs files]
+    (->> files
+         (map #(.getPath jar-fs % path-options))
+         (filter #(Files/exists % link-options))
+         first))
+
+  Path
+  (-file-search [root-path files]
+    (->> files
+         (map (fn [^String filename]
+                (.resolve root-path filename)))
+         (filter (fn [^Path path]
+                   (Files/exists path link-options)))
+         first)))
+
+(def license-file-names
+  "Common places to look for a license in a jar."
   ["LICENSE" "LICENSE.txt" "META-INF/LICENSE"
    "META-INF/LICENSE.txt" "license/LICENSE"])
 
-(defn license-from-jar
-  "Look inside of a jar filesystem for license files."
-  [^FileSystem jar-fs]
-  (->> license-file-names
-       (map #(.getPath jar-fs % path-options))
-       (filter #(Files/exists % link-options))
-       first))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;     Jar helpers     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn adjacent-pom
+  "Sometimes jars don't have a pom but they are adjacent to the pom in .m2/repository."
+  [jar-filename]
+  (let [adjacent-pom (Paths/get (str/replace jar-filename #"\.jar" ".pom")
+                                path-options)]
+    (when (Files/exists adjacent-pom link-options)
+      adjacent-pom)))
+
+(defn determine-pom
+  "Find a pom for a jar. Look for expected location in the jar, and then check for the pom as a sibling file to the
+  jar."
+  [{:keys [jar-fs lib-name jar-filename]}]
+  (let [expected-pom (format "META-INF/maven/%s/%s/pom.xml"
+                             (namespace lib-name)
+                             (name lib-name))]
+    (or (-file-search jar-fs [expected-pom])
+        (adjacent-pom jar-filename))))
+
+(defmulti lib-license
+  "Determine the license from an lib. Implementations for both :mvn (jar) and :deps (git deps)."
+  (fn [[_lib-name info]]
+    (:deps/manifest info)))
+
+(defmethod lib-license :mvn
+  [[lib-name info]]
+  (let [jar-filename (-> info :paths first)
+        jar-path     (Paths/get ^String jar-filename path-options)
+        classloader  (ClassLoader/getSystemClassLoader)]
+    (if-not (Files/exists jar-path link-options)
+      {:error "Jar does not exist"}
+      (try
+        (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
+          (when-let [license (or (when-let [license-path (-file-search jar-fs license-file-names)]
+                                   (slurp-path license-path))
+                                 (when-let [pom-path (determine-pom {:jar-fs jar-fs
+                                                                     :lib-name lib-name
+                                                                     :jar-filename jar-filename})]
+                                   (let [{:keys [name url]} (license-from-pom pom-path)]
+                                     (when name (str name ": " url)))))]
+            {:license license}))
+        (catch Exception e
+          {:error e})))))
+
+(defmethod lib-license :deps
+  [[_lib-name info]]
+  (let [^String git-root (:deps/root info)
+        git-path         (Paths/get git-root path-options)]
+    (if-not (Files/exists git-path link-options)
+      {:error "Git path does not exist"}
+      (try
+        (when-let [license-path (-file-search git-path license-file-names)]
+          {:license (slurp-path license-path)})
+        (catch Exception e
+          {:error e})))))
 
 (defn license-from-backfill
   "Look in the backfill information for license information."
@@ -125,29 +182,19 @@
 (defn discern-license-and-coords
   "Returns a tuple of [jar-filename {:coords :license [:error]}. Error is optional. License will be a string of license
   text, coords a map with group and artifact."
-  [[lib-name info] backfill]
-  (let [jar-filename (-> info :paths first)
-        jar-path (Paths/get ^String jar-filename path-options)
-        classloader (ClassLoader/getSystemClassLoader)]
-    (if-not (Files/exists jar-path link-options)
-      [lib-name {:error "Jar does not exist"}]
-      (try
-        (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
-          (let [license  (or (when-let [license-path (license-from-jar jar-fs)]
-                               (with-open [is (Files/newInputStream license-path open-options)]
-                                 (slurp is)))
-                             (when-let [pom-path (determine-pom jar-filename jar-fs)]
-                               (let [{:keys [name url]} (license-from-pom pom-path)]
-                                 (when name (str name ": " url))))
-                             (license-from-backfill lib-name backfill))]
-            [lib-name (cond-> {:coords {:group (namespace lib-name)
-                                        :artifact (name lib-name)
-                                        :version (:mvn/version info)}
-                               :license license}
-                        (not license)
-                        (assoc :error "Error determining license"))]))
-        (catch Exception e
-          [lib-name {:error e}])))))
+  [[lib-name info :as lib-entry] backfill]
+  (let [{:keys [license error]} (lib-license lib-entry)
+        license (or license
+                    (license-from-backfill lib-name backfill))]
+    [lib-name (cond-> {:coords {:group (namespace lib-name)
+                                :artifact (name lib-name)}
+                       :license license}
+
+                (:mvn/version info)
+                (assoc :version (:mvn/version info))
+
+                (not license)
+                (assoc :error (or error "Error determining license")))]))
 
 (defn write-license [success-os [lib {:keys [coords license]}]]
   (binding [*out* success-os]
@@ -174,12 +221,6 @@
         categorized (group-by (comp (complement #(contains? % :error)) second) info)]
     {:with-license    (categorized true)
      :without-license (categorized false)}))
-
-(defn jar-entries
-  "Filters the `:libs` map of a basis to just `:mvn` based (jar based) libs. Keys are symbols of the lib and the value
-  is a map of `:mvn/version` and `:paths` amont others."
-  [basis]
-  (into {} (filter (comp #{:mvn} :deps/manifest val) (:libs basis))))
 
 (defn generate
   "Process a basis from clojure.tools.build.api/create-basis, creating a file of all license information, writing to
@@ -210,7 +251,7 @@
   (let [backfill (if (string? backfill)
                    (edn/read-string (slurp (io/resource backfill)))
                    (or backfill {}))
-        entries  (jar-entries basis)
+        entries  (:libs basis)
         {:keys [with-license without-license] :as license-info}
         (process* {:libs     entries
                    :backfill backfill})]
@@ -230,17 +271,39 @@
 
 (comment
   (def basis (b/create-basis {:project "path-to-metabase/deps.edn"}))
-  (def libs (process* {:libs     (jar-entries basis)
+  (def libs (process* {:libs     (:libs basis)
                        :backfill (edn/read-string
                                   (slurp (io/resource "overrides.edn")))}))
-  (process* {:libs (-> basis :libs (select-keys '[org.clojure/clojure
-                                                  org.clojure/core.async]))})
+  (->> libs :without-license (map first))
+
+  (process* {:libs (-> basis :libs (select-keys '[org.liquibase/liquibase-core]))})
 
   (get-in basis [:libs 'org.clojure/clojure])
 
-  (->> libs
-       :without-license
-       (map first))
+  (def libs-no-overrides (process* {:libs (:libs basis)}))
+  (->> libs-no-overrides :without-license (map first))
 
-  (def libs-no-overrides (process* {:libs (jar-entries basis)}))
-  (->> libs-no-overrides :without-license (map first)))
+  (let [overrides (edn/read-string (slurp (io/resource "overrides.edn")))
+        by-group  (:override/group overrides)
+        by-group? false]
+    (keep (fn [[lib _junk]]
+            (let [without-license (->> (process* {:libs (:libs basis)
+                                                  :backfill
+                                                  (if by-group?
+                                                    (update overrides
+                                                            :override/group
+                                                            dissoc lib)
+                                                    (dissoc overrides lib))})
+                                       :without-license
+                                       seq)]
+              (when-not without-license
+                lib)))
+          (if by-group?
+            by-group
+            (dissoc overrides :override/group))))
+
+  (->> (process* {:libs     (:libs basis)
+                  :backfill (edn/read-string
+                             (slurp (io/resource "overrides.edn")))})
+       :without-license)
+  )

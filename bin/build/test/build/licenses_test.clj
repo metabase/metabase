@@ -1,7 +1,6 @@
 (ns build.licenses-test
   (:require
    [build.licenses :as lic]
-   [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -12,9 +11,11 @@
    (java.io StringWriter)
    (java.nio.file Files FileSystems LinkOption Path Paths)))
 
-(defn- parse [rdr] (xml/parse rdr :skip-whitespace true))
+(set! *warn-on-reflection* true)
 
-(def clojure-xml "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+(def clojure-xml
+  "clojure pom contents which includes an EPL license"
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.clojure</groupId>
@@ -34,6 +35,7 @@
 
 
 (def ^:private clojure-jdbc-xml
+  "Clojure jdbc xml. Has no license information. Does have a parent (but we don't trace that yet)."
   "<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
   <modelVersion>4.0.0</modelVersion>
@@ -65,31 +67,38 @@
   (jar->path (-> basis :libs (get lib-name) :paths first)))
 
 (deftest license-from-pom-test
-  (let [clojure-jar (-> basis :libs (get 'org.clojure/clojure) :paths first)
+  (let [lib-name 'org.clojure/clojure
+        clojure-jar (-> basis :libs (get lib-name) :paths first)
         jar-path    (Paths/get ^String clojure-jar (into-array String []))]
     (with-open [jar-fs (FileSystems/newFileSystem jar-path
                                                   (ClassLoader/getSystemClassLoader))]
-      (let [clojure-pom (lic/determine-pom clojure-jar jar-fs)]
+      (let [clojure-pom (lic/determine-pom {:jar-fs jar-fs
+                                            :jar-filename clojure-jar
+                                            :lib-name lib-name})]
         (is (some? clojure-pom) "Clojure pom not found")
         (is (= {:name "Eclipse Public License 1.0"
                 :url "http://opensource.org/licenses/eclipse-1.0.php"}
                (lic/license-from-pom clojure-pom))))))
   (let [libs (-> basis :libs (select-keys '[org.clojure/clojure]) first)]
     (is (= "Eclipse Public License 1.0: http://opensource.org/licenses/eclipse-1.0.php"
-           (-> (lic/discern-license-and-coords libs {}) second :license)))))
+           (-> (lic/discern-license-and-coords libs {}) second :license))))
+  (testing "Checking against pom contents"
+    (is (= {:name "Eclipse Public License 1.0"
+            :url "http://opensource.org/licenses/eclipse-1.0.php"}
+           (lic/license-from-pom clojure-xml)))
+    (is (= nil (lic/license-from-pom clojure-jdbc-xml)))))
 
 (deftest license-from-jar-test
   (letfn [(license-path [j f]
             (with-open [jar-fs (FileSystems/newFileSystem (jar j) (ClassLoader/getSystemClassLoader))]
-              (some-> (lic/license-from-jar jar-fs)
+              (some-> (lic/-file-search jar-fs lic/license-file-names)
                       f)))
           (first-line [path]
-            (lic/do-with-path-is path (fn [is]
-                                        (->> (slurp is)
-                                             str/split-lines
-                                             (drop-while str/blank?)
-                                             first
-                                             str/trim))))]
+            (->> (lic/slurp-path path)
+                 str/split-lines
+                 (drop-while str/blank?)
+                 first
+                 str/trim))]
     (testing "Can find license information bundled in the jar"
       (is (= "META-INF/LICENSE.txt"
              (license-path 'org.apache.commons/commons-math3 str)))
@@ -169,7 +178,7 @@
                                         :license "license text"}])
            (str os)))))
 
-(defn- loop-until-success [f max step-name]
+(defn- loop-until-success [max step-name f]
   (loop [n 0]
     (let [success? (try (f) true
                     (catch Exception _ false))]
@@ -179,18 +188,19 @@
 
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
-    (loop-until-success #(u/sh {:dir u/project-root-directory} "clojure" "-A:ee" "-P") 3 "download deps")
-    (let [jar-libs (lic/jar-entries basis)
-          results  (lic/process* {:libs     jar-libs
+    (loop-until-success 3 "download deps"
+                        #(u/sh {:dir u/project-root-directory} "clojure" "-A:ee" "-P"))
+    (let [libs     (:libs basis)
+          results  (lic/process* {:libs     (:libs basis)
                                   :backfill (edn/read-string
                                              (slurp (io/resource "overrides.edn")))})]
       (is (nil? (:without-license results))
           (str "Deps without license information:\n"
                (str/join "\n" (map first (:without-license results)))))
-      (is (= (set (keys jar-libs))
+      (is (= (set (keys libs))
              (into #{} (->> results :with-license (map first)))))
       (is (some? (:without-license
-                  (lic/process* {:libs     jar-libs
+                  (lic/process* {:libs     libs
                                  :backfill {}})))))))
 
 (comment
